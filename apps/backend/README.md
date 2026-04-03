@@ -118,6 +118,82 @@ DEXCOM_REDIRECT_URI=https://backend.example.com/oauth/dexcom/callback
 
 Se il provider embeddings non supporta il parametro `dimensions`, ClinDiary ritenta automaticamente senza quel campo e salva comunque la dimensione reale ritornata in `document_chunks.embedding_dimensions`.
 
+Per iniziare la migrazione Gemma senza rompere il comportamento esistente:
+
+```bash
+SUMMARY_AI_PROVIDER=gemma
+SUMMARY_AI_RUNTIME_MODE=remote
+SUMMARY_AI_MODEL_NAME=gemma-4
+DOCUMENT_ANSWER_PROVIDER=gemma
+DOCUMENT_EMBEDDING_PROVIDER=gemma
+DOCUMENT_EMBEDDING_RUNTIME_MODE=remote
+DOCUMENT_EMBEDDING_MODEL_NAME=embeddinggemma
+DOCUMENT_RERANKER_PROVIDER=regolo_ai
+GEMMA_API_KEY=incolla-qui-la-tua-chiave
+GEMMA_BASE_URL=https://your-gemma-gateway.example/v1
+```
+
+In questa fase:
+
+- recap/report possono usare `gemma`
+- answer generation documentale puo` usare `gemma`
+- embeddings documentali possono usare `embeddinggemma`
+- rerank resta sul path attuale `regolo_ai`
+- i campi legacy `AI_PROVIDER` e `AI_*` restano validi come fallback di compatibilita
+
+Per il path locale su backend host attraverso le fasi 1-3:
+
+```bash
+SUMMARY_AI_PROVIDER=gemma
+SUMMARY_AI_RUNTIME_MODE=local
+DOCUMENT_ANSWER_PROVIDER=gemma
+DOCUMENT_ANSWER_RUNTIME_MODE=local
+DOCUMENT_EMBEDDING_PROVIDER=gemma
+DOCUMENT_EMBEDDING_RUNTIME_MODE=local
+DOCUMENT_RERANKER_PROVIDER=regolo_ai
+LOCAL_LLM_BACKEND=ollama
+LOCAL_LLM_BASE_URL=http://127.0.0.1:11434
+LOCAL_LLM_MODEL_NAME=<your-local-gemma-model-tag>
+LOCAL_EMBEDDING_MODEL_NAME=<your-local-embeddinggemma-model-tag>
+LOCAL_EMBEDDING_DIMENSIONS=1024
+LOCAL_MAX_CONTEXT_TOKENS=8192
+```
+
+Questa modalita` attiva Gemma locale per recap/report, answer generation documentale e embeddings sul backend. Supporta in modo concreto:
+
+- `ollama`
+- server locali OpenAI-compatible (`llama_cpp`, `vllm`, `openai_compatible`)
+
+Il mobile resta invariato e continua a parlare con il backend FastAPI. Il rerank puo` restare su `regolo_ai` oppure sul fallback `rule_based`.
+
+Bootstrap operativo consigliato per Ollama locale user-space:
+
+```bash
+cd /path/to/ClinDiary
+bash scripts/setup_local_gemma_ollama.sh --keep-server
+bash scripts/smoke_local_gemma_ollama.sh
+```
+
+Il setup usa:
+
+- `gemma4:e2b` per summary/report e document answer
+- `embeddinggemma` per il retrieval embeddings
+- `LOCAL_LLM_BASE_URL=http://127.0.0.1:11435`
+- `AI_TIMEOUT_SECONDS=300` nel profilo locale per payload piu` lenti su CPU
+
+Su host con RAM libera insufficiente per `gemma4:e2b`, puoi usare un fallback solo per smoke/dev:
+
+```bash
+LOCAL_GEMMA_MODEL=gemma3n:e2b bash scripts/setup_local_gemma_ollama.sh --keep-server
+LOCAL_LLM_MODEL_NAME=gemma3n:e2b bash scripts/smoke_local_gemma_ollama.sh
+```
+
+Il target di migrazione rimane `Gemma 4`; `gemma3n:e2b` serve solo come profilo operativo per macchine piu` strette.
+
+Template env dedicato:
+
+- `apps/backend/.env.gemma-local.example`
+
 Per il modulo `devices`:
 
 - `Withings`, `iHealth` e `Dexcom` richiedono le rispettive credenziali client/redirect per il flusso live
@@ -182,8 +258,12 @@ Smoke AI locale:
 
 ```bash
 clindiary-ai-smoke
+clindiary-ai-smoke --profile gemma_summary
 clindiary-ai-smoke --require-external-provider
 clindiary-ai-smoke --payload /percorso/payload.json --require-external-provider
+clindiary-document-rag-smoke
+clindiary-document-rag-smoke --profile embeddinggemma
+clindiary-document-rag-smoke --profile embeddinggemma --require-external-provider
 clindiary-ai-eval
 clindiary-ai-eval --inputs /percorso/casi-curati
 clindiary-ai-eval --inputs /percorso/casi-curati --require-external-provider
@@ -191,6 +271,7 @@ clindiary-ai-eval --inputs /percorso/casi-curati --require-external-provider
 
 Il comando AI usa un payload di prova interno se non ne passi uno. Con `--require-external-provider` fallisce se il provider configurato manca o se il backend ricade sul fallback `rule_based`.
 `clindiary-ai-eval` fa la stessa verifica su piu casi curati e controlla anche che il riepilogo rispetti la struttura clinica attesa.
+`clindiary-document-rag-smoke` verifica invece il provider embeddings attivo e mostra un piccolo ranking locale sui passaggi di prova.
 
 Endpoint documentali RAG:
 

@@ -185,7 +185,87 @@ DEXCOM_CLIENT_SECRET=...
 DEXCOM_REDIRECT_URI=https://backend.example.com/oauth/dexcom/callback
 ```
 
+Per iniziare la migrazione Gemma in modo graduale:
+
+```bash
+SUMMARY_AI_PROVIDER=gemma
+SUMMARY_AI_RUNTIME_MODE=remote
+SUMMARY_AI_MODEL_NAME=gemma-4
+DOCUMENT_ANSWER_PROVIDER=gemma
+DOCUMENT_EMBEDDING_PROVIDER=gemma
+DOCUMENT_EMBEDDING_RUNTIME_MODE=remote
+DOCUMENT_EMBEDDING_MODEL_NAME=embeddinggemma
+DOCUMENT_RERANKER_PROVIDER=regolo_ai
+GEMMA_API_KEY=incolla-qui-la-tua-chiave
+GEMMA_BASE_URL=https://your-gemma-gateway.example/v1
+```
+
+Questa combinazione sposta verso Gemma:
+
+- recap/report
+- answer generation documentale
+- embeddings documentali
+
+mentre il rerank resta sul path Regolo/Qwen per mantenere il comportamento attuale piu stabile.
+
 `DOCUMENT_EMBEDDING_DIMENSIONS=1024` e il compromesso consigliato tra spazio, latenza e qualita. Se il provider non supporta il parametro, ClinDiary ritenta automaticamente senza `dimensions` e continua a funzionare.
+
+Smoke utili per la migrazione:
+
+```bash
+cd apps/backend
+clindiary-ai-smoke --profile gemma_summary --require-external-provider
+clindiary-document-rag-smoke --profile embeddinggemma --require-external-provider
+clindiary-document-rag-smoke --mode answer --profile default --require-external-provider
+```
+
+Per il path locale su backend host attraverso le fasi 1-3, il setup consigliato e`:
+
+```bash
+SUMMARY_AI_PROVIDER=gemma
+SUMMARY_AI_RUNTIME_MODE=local
+DOCUMENT_ANSWER_PROVIDER=gemma
+DOCUMENT_ANSWER_RUNTIME_MODE=local
+DOCUMENT_EMBEDDING_PROVIDER=gemma
+DOCUMENT_EMBEDDING_RUNTIME_MODE=local
+DOCUMENT_RERANKER_PROVIDER=regolo_ai
+LOCAL_LLM_BACKEND=ollama
+LOCAL_LLM_BASE_URL=http://127.0.0.1:11434
+LOCAL_LLM_MODEL_NAME=<your-local-gemma-model-tag>
+LOCAL_EMBEDDING_MODEL_NAME=<your-local-embeddinggemma-model-tag>
+LOCAL_EMBEDDING_DIMENSIONS=1024
+LOCAL_MAX_CONTEXT_TOKENS=8192
+```
+
+Questo attiva Gemma locale per recap/report, answer generation documentale e embeddings senza toccare il mobile e senza spostare logica clinica deterministica nell'LLM. Per server locali OpenAI-compatible puoi usare `LOCAL_LLM_BACKEND=llama_cpp`, `vllm` o `openai_compatible`. Il rerank puo` restare su `regolo_ai` oppure sul fallback `rule_based`.
+
+Per un target locale ripetibile con Ollama user-space:
+
+```bash
+bash scripts/setup_local_gemma_ollama.sh --keep-server
+bash scripts/smoke_local_gemma_ollama.sh
+```
+
+Questo bootstrap usa:
+
+- `gemma4:e2b` come modello generativo locale
+- `embeddinggemma` come modello embeddings locale
+- porta dedicata `11435`
+- env hint generato in `.runtime/ollama-local/gemma-local.env`
+- `AI_TIMEOUT_SECONDS=300` per evitare timeout prematuri su inferenza CPU locale
+
+Se la macchina non ha abbastanza RAM libera per `gemma4:e2b`, puoi usare un fallback solo per smoke/dev:
+
+```bash
+LOCAL_GEMMA_MODEL=gemma3n:e2b bash scripts/setup_local_gemma_ollama.sh --keep-server
+LOCAL_LLM_MODEL_NAME=gemma3n:e2b bash scripts/smoke_local_gemma_ollama.sh
+```
+
+Il target architetturale resta `Gemma 4`; `gemma3n:e2b` serve solo come profilo di verifica per host locali piu` stretti.
+
+Se vuoi un profilo versionato da copiare nel backend, parti da:
+
+- `apps/backend/.env.gemma-local.example`
 
 Per la `Wave 1` dei device clinici:
 

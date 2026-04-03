@@ -54,3 +54,19 @@ def test_settings_accept_safe_production_configuration():
         "https://app.example.com",
         "https://admin.example.com",
     ]
+
+
+def test_settings_normalize_ai_runtime_aliases():
+    settings = Settings(
+        document_ai_runtime_mode="local",
+        embedding_runtime_mode="local",
+    )
+
+    assert settings.document_answer_runtime_mode == "local"
+    assert settings.document_embedding_runtime_mode == "local"
+
+
+def test_settings_normalize_local_backend_aliases():
+    settings = Settings(local_llm_backend="llama.cpp")
+
+    assert settings.local_llm_backend == "llama_cpp"

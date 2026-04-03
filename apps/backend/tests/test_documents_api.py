@@ -487,14 +487,29 @@ def test_document_query_returns_answer_with_citations(client, auth_headers, monk
     )
     from app.services import document_rag_service
 
-    class _FakeProvider:
+    class _FakeAnswerProvider:
         provider_name = "regolo_ai"
-        answer_model_name = "qwen3-8b"
-        embedding_model_name = "qwen3-embedding-8b"
-        reranker_model_name = "qwen3-reranker-4b"
+        model_name = "qwen3-8b"
+
+        def answer_question(self, *, question, context_blocks):
+            return DocumentAnswerResult(
+                answer="Nei documenti caricati risulta una creatinina elevata [1]. Questa risposta non sostituisce il medico.",
+                provider_name=self.provider_name,
+                model_name=self.model_name,
+                embedding_model_name="qwen3-embedding-8b",
+                reranker_model_name="qwen3-reranker-4b",
+            )
+
+    class _FakeEmbeddingProvider:
+        provider_name = "regolo_ai"
+        model_name = "qwen3-embedding-8b"
 
         def embed_texts(self, texts):
             return [[1.0, 0.0] for _ in texts]
+
+    class _FakeRerankProvider:
+        provider_name = "regolo_ai"
+        model_name = "qwen3-reranker-4b"
 
         def rerank(self, *, query, documents, top_n):
             return [
@@ -502,19 +517,20 @@ def test_document_query_returns_answer_with_citations(client, auth_headers, monk
                 for index in range(min(len(documents), top_n))
             ]
 
-        def answer_question(self, *, question, context_blocks):
-            return DocumentAnswerResult(
-                answer="Nei documenti caricati risulta una creatinina elevata [1]. Questa risposta non sostituisce il medico.",
-                provider_name=self.provider_name,
-                model_name=self.answer_model_name,
-                embedding_model_name=self.embedding_model_name,
-                reranker_model_name=self.reranker_model_name,
-            )
-
     monkeypatch.setattr(
         document_rag_service,
-        "build_document_rag_provider",
-        lambda settings: _FakeProvider(),
+        "build_document_answer_provider",
+        lambda settings: _FakeAnswerProvider(),
+    )
+    monkeypatch.setattr(
+        document_rag_service,
+        "build_document_embedding_provider",
+        lambda settings: _FakeEmbeddingProvider(),
+    )
+    monkeypatch.setattr(
+        document_rag_service,
+        "build_document_rerank_provider",
+        lambda settings: _FakeRerankProvider(),
     )
 
     upload_response = client.post(

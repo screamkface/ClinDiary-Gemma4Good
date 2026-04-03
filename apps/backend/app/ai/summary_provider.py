@@ -7,6 +7,12 @@ from typing import Any, Protocol
 
 import httpx
 
+from app.ai.local_runtime_adapter import (
+    LocalAiRuntimeUnavailableError,
+    LocalSummaryRuntimeAdapter,
+    build_local_summary_runtime_adapter,
+)
+from app.ai.provider_capabilities import provider_plans_runtime, provider_supports_runtime
 from app.core.config import Settings
 from app.core.logging import logger
 from app.core.metrics import get_metrics_registry
@@ -221,6 +227,10 @@ class RegoloAiSummaryProvider(OpenAICompatibleSummaryProvider):
     provider_name = "regolo_ai"
 
 
+class GemmaSummaryProvider(OpenAICompatibleSummaryProvider):
+    provider_name = "gemma"
+
+
 class GeminiAiStudioSummaryProvider:
     provider_name = "gemini_ai_studio"
 
@@ -285,6 +295,43 @@ class GeminiAiStudioSummaryProvider:
             raise ValueError("Gemini provider returned an empty summary")
         if finish_reason == "MAX_TOKENS":
             raise ValueError("Gemini provider response was truncated by max tokens")
+        return SummaryGenerationResult(
+            content=content.strip(),
+            provider_name=self.provider_name,
+            model_name=self.model_name,
+        )
+
+    def generate(self, payload: SummaryGenerationInput) -> str:
+        return self.generate_result(payload).content
+
+
+class LocalRuntimeSummaryProvider:
+    provider_name = "gemma"
+
+    def __init__(
+        self,
+        *,
+        model_name: str,
+        adapter: LocalSummaryRuntimeAdapter,
+        max_output_tokens: int,
+    ) -> None:
+        self.model_name = model_name
+        self.adapter = adapter
+        self.max_output_tokens = max_output_tokens
+
+    def generate_result(self, payload: SummaryGenerationInput) -> SummaryGenerationResult:
+        max_output_tokens = _effective_output_token_budget(
+            payload.summary_type,
+            self.max_output_tokens,
+        )
+        content = self.adapter.generate_summary(
+            model_name=self.model_name,
+            system_prompt=_system_prompt(),
+            user_prompt=_user_prompt(payload),
+            max_output_tokens=max_output_tokens,
+        )
+        if not content:
+            raise ValueError("Local runtime returned an empty summary")
         return SummaryGenerationResult(
             content=content.strip(),
             provider_name=self.provider_name,
@@ -369,9 +416,10 @@ def build_summary_provider(
     *,
     allow_external_provider: bool = True,
 ) -> SummaryProvider:
-    provider = (settings.ai_provider or "").strip().lower()
+    provider = _resolve_summary_provider_name(settings)
     fallback = RuleBasedSummaryProvider()
     metrics = get_metrics_registry()
+    runtime_mode = _normalize_runtime_mode(settings.summary_ai_runtime_mode)
 
     if not allow_external_provider:
         logger.info(
@@ -386,17 +434,61 @@ def build_summary_provider(
         )
         return fallback
 
-    if provider in {"openai", "openai_compatible"}:
-        if not settings.ai_base_url or not settings.ai_api_key:
+    if provider == "gemma" and runtime_mode == "local":
+        try:
+            adapter = build_local_summary_runtime_adapter(settings)
+        except LocalAiRuntimeUnavailableError as exc:
             logger.warning(
                 "ai.provider_config_missing",
                 provider=provider,
-                ai_base_url=bool(settings.ai_base_url),
-                ai_api_key=bool(settings.ai_api_key),
+                runtime_mode=runtime_mode,
+                error=str(exc),
             )
             metrics.record_ai_summary(
                 provider=provider,
-                model_name=settings.ai_model_name,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
+                outcome="config_missing",
+                used_fallback=True,
+            )
+            return fallback
+
+        return ResilientSummaryProvider(
+            primary=LocalRuntimeSummaryProvider(
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
+                adapter=adapter,
+                max_output_tokens=settings.ai_max_output_tokens,
+            ),
+            fallback=fallback,
+        )
+
+    if provider != "rule_based" and not provider_supports_runtime("summary", provider, runtime_mode):
+        logger.warning(
+            "ai.provider_runtime_unsupported",
+            provider=provider,
+            runtime_mode=runtime_mode,
+            planned_local=provider_plans_runtime("summary", provider, runtime_mode),
+        )
+        metrics.record_ai_summary(
+            provider=provider,
+            model_name=_resolve_summary_model_name(settings, provider, fallback),
+            outcome="runtime_unsupported",
+            used_fallback=True,
+        )
+        return fallback
+
+    if provider in {"openai", "openai_compatible"}:
+        base_url = settings.summary_ai_base_url or settings.ai_base_url
+        api_key = settings.summary_ai_api_key or settings.ai_api_key
+        if not base_url or not api_key:
+            logger.warning(
+                "ai.provider_config_missing",
+                provider=provider,
+                ai_base_url=bool(base_url),
+                ai_api_key=bool(api_key),
+            )
+            metrics.record_ai_summary(
+                provider=provider,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
                 outcome="config_missing",
                 used_fallback=True,
             )
@@ -404,9 +496,9 @@ def build_summary_provider(
 
         return ResilientSummaryProvider(
             primary=OpenAICompatibleSummaryProvider(
-                base_url=settings.ai_base_url,
-                api_key=settings.ai_api_key,
-                model_name=settings.ai_model_name,
+                base_url=base_url,
+                api_key=api_key,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
                 timeout_seconds=settings.ai_timeout_seconds,
                 temperature=settings.ai_temperature,
                 max_output_tokens=settings.ai_max_output_tokens,
@@ -415,7 +507,7 @@ def build_summary_provider(
         )
 
     if provider in {"regolo", "regolo_ai"}:
-        api_key = settings.regolo_api_key or settings.ai_api_key
+        api_key = settings.summary_ai_api_key or settings.regolo_api_key or settings.ai_api_key
         if not api_key:
             logger.warning(
                 "ai.provider_config_missing",
@@ -425,17 +517,19 @@ def build_summary_provider(
             )
             metrics.record_ai_summary(
                 provider=provider,
-                model_name=settings.regolo_model_name,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
                 outcome="config_missing",
                 used_fallback=True,
             )
             return fallback
 
-        configured_model = (settings.regolo_model_name or "").strip()
-        if not configured_model:
-            configured_model = (settings.ai_model_name or "").strip()
-        model_name = _normalize_regolo_model_name(configured_model)
-        base_url = settings.regolo_base_url or settings.ai_base_url or "https://api.regolo.ai/v1"
+        model_name = _resolve_summary_model_name(settings, provider, fallback)
+        base_url = (
+            settings.summary_ai_base_url
+            or settings.regolo_base_url
+            or settings.ai_base_url
+            or "https://api.regolo.ai/v1"
+        )
         return ResilientSummaryProvider(
             primary=RegoloAiSummaryProvider(
                 base_url=base_url,
@@ -448,8 +542,40 @@ def build_summary_provider(
             fallback=fallback,
         )
 
+    if provider == "gemma":
+        api_key = settings.summary_ai_api_key or settings.gemma_api_key or settings.ai_api_key
+        base_url = settings.summary_ai_base_url or settings.gemma_base_url or settings.ai_base_url
+        if not api_key or not base_url:
+            logger.warning(
+                "ai.provider_config_missing",
+                provider=provider,
+                gemma_api_key=bool(settings.gemma_api_key),
+                ai_api_key=bool(settings.ai_api_key),
+                gemma_base_url=bool(settings.gemma_base_url),
+                ai_base_url=bool(settings.ai_base_url),
+            )
+            metrics.record_ai_summary(
+                provider=provider,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
+                outcome="config_missing",
+                used_fallback=True,
+            )
+            return fallback
+
+        return ResilientSummaryProvider(
+            primary=GemmaSummaryProvider(
+                base_url=base_url,
+                api_key=api_key,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
+                timeout_seconds=settings.ai_timeout_seconds,
+                temperature=settings.ai_temperature,
+                max_output_tokens=settings.ai_max_output_tokens,
+            ),
+            fallback=fallback,
+        )
+
     if provider in {"gemini", "gemini_ai_studio", "google_ai_studio"}:
-        api_key = settings.gemini_api_key or settings.ai_api_key
+        api_key = settings.summary_ai_api_key or settings.gemini_api_key or settings.ai_api_key
         if not api_key:
             logger.warning(
                 "ai.provider_config_missing",
@@ -459,19 +585,18 @@ def build_summary_provider(
             )
             metrics.record_ai_summary(
                 provider=provider,
-                model_name=settings.ai_model_name,
+                model_name=_resolve_summary_model_name(settings, provider, fallback),
                 outcome="config_missing",
                 used_fallback=True,
             )
             return fallback
 
-        configured_model = (settings.ai_model_name or "").strip()
-        model_name = (
-            configured_model
-            if configured_model and configured_model != fallback.model_name
-            else "gemini-2.5-flash"
+        model_name = _resolve_summary_model_name(settings, provider, fallback)
+        base_url = (
+            settings.summary_ai_base_url
+            or settings.ai_base_url
+            or "https://generativelanguage.googleapis.com/v1beta"
         )
-        base_url = settings.ai_base_url or "https://generativelanguage.googleapis.com/v1beta"
         return ResilientSummaryProvider(
             primary=GeminiAiStudioSummaryProvider(
                 api_key=api_key,
@@ -486,6 +611,63 @@ def build_summary_provider(
         )
 
     return fallback
+
+
+def _resolve_summary_provider_name(settings: Settings) -> str:
+    configured = settings.summary_ai_provider or settings.ai_provider or "rule_based"
+    normalized = configured.strip().lower()
+    aliases = {
+        "openai": "openai_compatible",
+        "regolo": "regolo_ai",
+        "google_ai_studio": "gemini_ai_studio",
+        "gemma_remote": "gemma",
+    }
+    return aliases.get(normalized, normalized or "rule_based")
+
+
+def _resolve_summary_model_name(
+    settings: Settings,
+    provider: str,
+    fallback: RuleBasedSummaryProvider,
+) -> str:
+    if settings.summary_ai_model_name and settings.summary_ai_model_name.strip():
+        return settings.summary_ai_model_name.strip()
+
+    if provider in {"regolo", "regolo_ai"}:
+        configured_model = (settings.regolo_model_name or "").strip()
+        if not configured_model:
+            configured_model = (settings.ai_model_name or "").strip()
+        return _normalize_regolo_model_name(configured_model)
+
+    if provider == "gemma":
+        configured_local_model = (settings.local_llm_model_name or "").strip()
+        runtime_mode = _normalize_runtime_mode(settings.summary_ai_runtime_mode)
+        if runtime_mode == "local" and configured_local_model:
+            return configured_local_model
+        configured_model = (settings.ai_model_name or "").strip()
+        if configured_model and configured_model != fallback.model_name:
+            return configured_model
+        return "gemma-4"
+
+    if provider in {"gemini", "gemini_ai_studio", "google_ai_studio"}:
+        configured_model = (settings.ai_model_name or "").strip()
+        if configured_model and configured_model != fallback.model_name:
+            return configured_model
+        return "gemini-2.5-flash"
+
+    configured_model = (settings.ai_model_name or "").strip()
+    return configured_model or fallback.model_name
+
+
+def _normalize_runtime_mode(raw_value: str | None) -> str:
+    normalized = (raw_value or "remote").strip().lower()
+    aliases = {
+        "remote_api": "remote",
+        "server": "remote",
+        "cloud": "remote",
+        "on_device": "local",
+    }
+    return aliases.get(normalized, normalized or "remote")
 
 
 def _normalize_regolo_model_name(model_name: str) -> str:

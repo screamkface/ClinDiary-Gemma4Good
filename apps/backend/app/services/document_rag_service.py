@@ -10,10 +10,14 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.ai.document_rag_provider import (
+    DocumentAnswerProvider,
     DocumentAnswerResult,
-    DocumentRagProvider,
-    RuleBasedDocumentRagProvider,
-    build_document_rag_provider,
+    DocumentEmbeddingProvider,
+    DocumentRerankProvider,
+    RuleBasedDocumentAnswerProvider,
+    build_document_answer_provider,
+    build_document_embedding_provider,
+    build_document_rerank_provider,
 )
 from app.core.config import get_settings
 from app.core.logging import logger
@@ -62,21 +66,22 @@ class DocumentRagService:
         self,
         document_id: UUID,
         *,
-        provider: DocumentRagProvider | None = None,
+        provider: DocumentAnswerProvider | None = None,
     ) -> int:
         document = self.document_repository.get_by_id(document_id)
         if document is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-        active_provider = provider or build_document_rag_provider(settings)
+        active_provider = provider or build_document_answer_provider(settings)
+        embedding_provider = build_document_embedding_provider(settings)
         drafts = self._build_chunk_drafts(document)
         try:
-            embeddings = active_provider.embed_texts([item.content for item in drafts]) if drafts else []
+            embeddings = embedding_provider.embed_texts([item.content for item in drafts]) if drafts else []
         except Exception as exc:
             logger.warning(
                 "documents.embedding_failed",
                 document_id=str(document.id),
-                provider=active_provider.provider_name,
+                provider=embedding_provider.provider_name,
                 error=str(exc),
             )
             embeddings = [None for _ in drafts]
@@ -101,7 +106,7 @@ class DocumentRagService:
                     chunk_kind=draft.chunk_kind,
                     chunk_label=draft.chunk_label,
                     content=draft.content,
-                    embedding_model_name=active_provider.embedding_model_name,
+                    embedding_model_name=embedding_provider.model_name,
                     embedding_dimensions=(
                         len(embeddings[index])
                         if index < len(embeddings) and embeddings[index] is not None
@@ -117,14 +122,14 @@ class DocumentRagService:
             document_id=str(document.id),
             chunks=len(drafts),
             provider=active_provider.provider_name,
-            embedding_model=active_provider.embedding_model_name,
+            embedding_model=embedding_provider.model_name,
         )
         return len(drafts)
 
     def reindex_patient_documents(self, user: User) -> int:
         profile = self._require_profile(user)
         documents = self.document_repository.list_for_patient_with_details(profile.id)
-        provider = build_document_rag_provider(settings)
+        provider = build_document_answer_provider(settings)
         total_chunks = 0
         for document in documents:
             total_chunks += self.reindex_document(document.id, provider=provider)
@@ -139,12 +144,14 @@ class DocumentRagService:
     ) -> DocumentQueryResponse:
         self.billing_service.require_feature(user, BillingFeatureCode.AI_DOCUMENT_QUERY)
         profile = self._require_profile(user)
-        provider = build_document_rag_provider(settings)
+        answer_provider = build_document_answer_provider(settings)
+        embedding_provider = build_document_embedding_provider(settings)
+        rerank_provider = build_document_rerank_provider(settings)
         scope_label = self._scope_label(profile.id, payload.folder_id)
-        query_embedding = self._embed_query(provider=provider, question=payload.question)
+        query_embedding = self._embed_query(provider=embedding_provider, question=payload.question)
         query_embedding_dimensions = len(query_embedding) if query_embedding is not None else None
         scored = self._retrieve_scored_chunks(
-            provider=provider,
+            provider=answer_provider,
             patient_id=profile.id,
             folder_id=payload.folder_id,
             question=payload.question,
@@ -152,13 +159,13 @@ class DocumentRagService:
             query_embedding_dimensions=query_embedding_dimensions,
         )
         if not scored:
-            fallback = provider.answer_question(question=payload.question, context_blocks=[])
+            fallback = answer_provider.answer_question(question=payload.question, context_blocks=[])
             return DocumentQueryResponse(
                 answer=fallback.answer,
                 citations=[],
                 provider_name=fallback.provider_name,
                 model_name=fallback.model_name,
-                embedding_model_name=fallback.embedding_model_name,
+                embedding_model_name=embedding_provider.model_name or fallback.embedding_model_name,
                 reranker_model_name=fallback.reranker_model_name,
                 retrieved_chunks=0,
                 retrieved_documents=0,
@@ -168,7 +175,7 @@ class DocumentRagService:
             )
 
         ranked = self._rerank_chunks(
-            provider=provider,
+            provider=rerank_provider,
             question=payload.question,
             chunks=scored,
             top_n=payload.top_k or settings.document_answer_top_n,
@@ -178,7 +185,7 @@ class DocumentRagService:
             for index, item in enumerate(ranked)
         ]
         answer_result = self._answer_with_fallback(
-            provider=provider,
+            provider=answer_provider,
             question=payload.question,
             context_blocks=context_blocks,
         )
@@ -198,7 +205,7 @@ class DocumentRagService:
             citations=citations,
             provider_name=answer_result.provider_name,
             model_name=answer_result.model_name,
-            embedding_model_name=answer_result.embedding_model_name,
+            embedding_model_name=embedding_provider.model_name or answer_result.embedding_model_name,
             reranker_model_name=answer_result.reranker_model_name,
             retrieved_chunks=len(ranked),
             retrieved_documents=retrieved_documents,
@@ -221,7 +228,7 @@ class DocumentRagService:
     def _retrieve_scored_chunks(
         self,
         *,
-        provider: DocumentRagProvider,
+        provider: DocumentAnswerProvider,
         patient_id: UUID,
         folder_id: UUID | None,
         question: str,
@@ -279,7 +286,7 @@ class DocumentRagService:
     def _embed_query(
         self,
         *,
-        provider: DocumentRagProvider,
+        provider: DocumentEmbeddingProvider,
         question: str,
     ) -> list[float] | None:
         try:
@@ -323,7 +330,7 @@ class DocumentRagService:
     def _rerank_chunks(
         self,
         *,
-        provider: DocumentRagProvider,
+        provider: DocumentRerankProvider,
         question: str,
         chunks: list[_ScoredChunk],
         top_n: int,
@@ -488,7 +495,7 @@ class DocumentRagService:
     def _answer_with_fallback(
         self,
         *,
-        provider: DocumentRagProvider,
+        provider: DocumentAnswerProvider,
         question: str,
         context_blocks: list[str],
     ) -> DocumentAnswerResult:
@@ -503,7 +510,7 @@ class DocumentRagService:
                 provider=provider.provider_name,
                 error=str(exc),
             )
-            return RuleBasedDocumentRagProvider().answer_question(
+            return RuleBasedDocumentAnswerProvider().answer_question(
                 question=question,
                 context_blocks=context_blocks,
             )

@@ -94,7 +94,7 @@ def _summarize_group(
             concern_level=concern_level,
             concern_note=concern_note,
             summary=summary,
-            ai_summary=_ai_summary_line(summary, concern_note),
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=concern_note),
         )
 
     if metric_type in {"blood_glucose_bgm", "blood_glucose_cgm"} and primary_values:
@@ -120,7 +120,7 @@ def _summarize_group(
             concern_level=concern_level,
             concern_note=concern_note,
             summary=summary,
-            ai_summary=_ai_summary_line(summary, concern_note),
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=concern_note),
         )
 
     if metric_type == "body_weight" and primary_values:
@@ -153,7 +153,7 @@ def _summarize_group(
             concern_level=concern_level,
             concern_note=concern_note,
             summary=summary,
-            ai_summary=_ai_summary_line(summary, concern_note),
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=concern_note),
         )
 
     if metric_type == "spo2" and primary_values:
@@ -179,7 +179,7 @@ def _summarize_group(
             concern_level=concern_level,
             concern_note=concern_note,
             summary=summary,
-            ai_summary=_ai_summary_line(summary, concern_note),
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=concern_note),
         )
 
     if metric_type == "temperature" and primary_values:
@@ -205,7 +205,7 @@ def _summarize_group(
             concern_level=concern_level,
             concern_note=concern_note,
             summary=summary,
-            ai_summary=_ai_summary_line(summary, concern_note),
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=concern_note),
         )
 
     if metric_type == "heart_rate" and primary_values:
@@ -228,7 +228,7 @@ def _summarize_group(
             concern_level=None,
             concern_note=None,
             summary=summary,
-            ai_summary=summary,
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=None),
         )
 
     if primary_values:
@@ -251,7 +251,7 @@ def _summarize_group(
             concern_level=None,
             concern_note=None,
             summary=summary,
-            ai_summary=summary,
+            ai_summary=_ai_summary_line(metric_label=metric_label, summary=summary, concern_note=None),
         )
 
     return None
@@ -354,10 +354,11 @@ def _glucose_concern(values: list[float]) -> tuple[str | None, str | None]:
     return None, None
 
 
-def _ai_summary_line(summary: str, concern_note: str | None) -> str:
+def _ai_summary_line(*, metric_label: str, summary: str, concern_note: str | None) -> str:
+    prefixed = f"{metric_label.lower()}: {summary}"
     if not concern_note:
-        return summary
-    return f"{summary} Punto da discutere: {concern_note}"
+        return prefixed
+    return f"{prefixed} Punto da discutere: {concern_note}"
 
 
 def _format_number(value: float | None, decimals: int = 0) -> str:

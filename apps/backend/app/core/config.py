@@ -36,9 +36,35 @@ class Settings(BaseSettings):
     ai_model_name: str = "clindiary-safe-summary"
     ai_base_url: str | None = None
     ai_api_key: str | None = None
+    summary_ai_provider: str | None = None
+    summary_ai_model_name: str | None = None
+    summary_ai_base_url: str | None = None
+    summary_ai_api_key: str | None = None
+    summary_ai_runtime_mode: str = "remote"
+    document_ai_runtime_mode: str | None = None
+    document_answer_provider: str | None = None
+    document_answer_base_url: str | None = None
+    document_answer_api_key: str | None = None
+    document_answer_runtime_mode: str = "remote"
+    embedding_runtime_mode: str | None = None
+    document_embedding_provider: str | None = None
+    document_embedding_base_url: str | None = None
+    document_embedding_api_key: str | None = None
+    document_embedding_runtime_mode: str = "remote"
+    document_reranker_provider: str | None = None
+    document_reranker_base_url: str | None = None
+    document_reranker_api_key: str | None = None
+    local_llm_backend: str = "ollama"
+    local_llm_base_url: str | None = None
+    local_llm_model_name: str | None = None
+    local_max_context_tokens: int = 8192
+    local_embedding_model_name: str | None = None
+    local_embedding_dimensions: int | None = 1024
     regolo_api_key: str | None = None
     regolo_base_url: str = "https://api.regolo.ai/v1"
     regolo_model_name: str = "minimax-m2.5"
+    gemma_api_key: str | None = None
+    gemma_base_url: str | None = None
     document_answer_model_name: str = "qwen3-8b"
     document_embedding_model_name: str = "qwen3-embedding-8b"
     document_embedding_dimensions: int | None = 1024
@@ -146,6 +172,18 @@ class Settings(BaseSettings):
                 return False
         return value
 
+    @field_validator("local_llm_backend", mode="before")
+    @classmethod
+    def _normalize_local_llm_backend(cls, value):
+        normalized = str(value or "ollama").strip().lower()
+        aliases = {
+            "llama.cpp": "llama_cpp",
+            "llamacpp": "llama_cpp",
+            "openai": "openai_compatible",
+            "openai_local": "openai_compatible",
+        }
+        return aliases.get(normalized, normalized or "ollama")
+
     @model_validator(mode="after")
     def _validate_production_settings(self):
         if not self.is_production:
@@ -165,6 +203,25 @@ class Settings(BaseSettings):
         ]
         if localhost_origins:
             raise ValueError("ALLOWED_ORIGINS cannot include localhost origins in production")
+
+        return self
+
+    @model_validator(mode="after")
+    def _normalize_ai_runtime_aliases(self):
+        if (
+            self.document_ai_runtime_mode
+            and (self.document_answer_runtime_mode or "").strip().lower() == "remote"
+        ):
+            self.document_answer_runtime_mode = self.document_ai_runtime_mode
+
+        if (
+            self.embedding_runtime_mode
+            and (self.document_embedding_runtime_mode or "").strip().lower() == "remote"
+        ):
+            self.document_embedding_runtime_mode = self.embedding_runtime_mode
+
+        if self.local_embedding_dimensions is None and self.document_embedding_dimensions is not None:
+            self.local_embedding_dimensions = self.document_embedding_dimensions
 
         return self
 
