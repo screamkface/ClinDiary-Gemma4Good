@@ -1,0 +1,81 @@
+{
+  "summary_type": "weekly",
+  "summary_label": "riepilogo settimanale",
+  "period_start": "2026-03-17",
+  "period_end": "2026-03-24",
+  "data_considered": [
+    "7 check-up",
+    "5 giorni con wearable",
+    "2 documenti recenti",
+    "3 recap giornalieri precedenti"
+  ],
+  "patient_snapshot": [
+    "Luca Rossi, 48 anni, sesso biologico male",
+    "Fumo: si",
+    "Attivita fisica: leggera",
+    "Regione: Emilia-Romagna"
+  ],
+  "active_conditions": [
+    "ipertensione arteriosa (active)"
+  ],
+  "allergies": [],
+  "family_history": [
+    "padre: infarto miocardico"
+  ],
+  "medications": [
+    "Ramipril 5 mg",
+    "Omeprazolo 20 mg"
+  ],
+  "medication_adherence": [
+    "2026-03-21 08:00 - Ramipril: taken",
+    "2026-03-22 08:00 - Ramipril: taken",
+    "2026-03-23 08:00 - Ramipril: taken"
+  ],
+  "wearable_daily_summaries": [
+    "2026-03-18 (android): 6120 passi, sonno 6.1h, FC media 81 bpm",
+    "2026-03-19 (android): 5590 passi, sonno 5.8h, FC media 84 bpm",
+    "2026-03-20 (android): 7340 passi, sonno 7.0h, FC media 77 bpm"
+  ],
+  "journal_entries": [
+    {
+      "date": "2026-03-20",
+      "energy_level": 6,
+      "mood_level": 6,
+      "symptoms": ["affaticamento"],
+      "vitals": ["bp 142/88"],
+      "general_notes": "Settimana globalmente stabile."
+    },
+    {
+      "date": "2026-03-23",
+      "energy_level": 5,
+      "mood_level": 5,
+      "symptoms": ["cefalea lieve"],
+      "vitals": ["bp 138/84"],
+      "general_notes": "Nessun peggioramento marcato."
+    }
+  ],
+  "observations": [
+    "Pressione ancora da discutere col medico se confermata.",
+    "Sonno piu breve nei giorni con meno passi."
+  ],
+  "recent_lab_results": [
+    "2026-03-19 - Creatinina 1.0 mg/dL nel range",
+    "2026-03-19 - LDL 132 mg/dL fuori range"
+  ],
+  "recent_imaging_reports": [],
+  "recent_documents": [
+    "Referto controllo MMG 2026-03-19"
+  ],
+  "prior_daily_summaries": [
+    "2026-03-17: andamento stabile con lieve affaticamento.",
+    "2026-03-18: sonno ridotto e stanchezza serale.",
+    "2026-03-19: nessun evento acuto."
+  ],
+  "open_alerts": [],
+  "follow_up_reasons": [
+    "Valori pressori e LDL da confrontare in visita."
+  ],
+  "missing_data": [
+    "Peso non registrato in settimana."
+  ]
+}

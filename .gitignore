@@ -1,0 +1,67 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Environment / local config
+.env
+.env.*
+!.env.example
+*.local
+
+# Python / backend
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+.eggs/
+.venv/
+apps/backend/.venv/
+apps/backend/.pytest_cache/
+apps/backend/.mypy_cache/
+apps/backend/.ruff_cache/
+
+# Flutter / Dart
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages
+apps/mobile/.idea/
+apps/mobile/build/
+apps/mobile/devtools_options.yaml
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/ios/Flutter/ephemeral/
+apps/mobile/ios/Flutter/flutter_export_environment.sh
+apps/mobile/macos/Flutter/ephemeral/
+apps/mobile/linux/flutter/ephemeral/
+apps/mobile/windows/flutter/ephemeral/
+
+# Logs / temp
+*.log
+*.tmp
+.cache/
+.runtime/
+tmp/
+
+# Local data / storage
+*.sqlite
+*.sqlite3
+.storage/
+apps/backend/.storage/
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+postgres_data/
+minio_data/

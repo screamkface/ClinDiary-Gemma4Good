@@ -1,0 +1,962 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+
+import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/features/documents/data/local_document_vault_cipher.dart';
+import 'package:clindiary/features/documents/domain/clinical_document.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+
+class LocalDocumentVaultService {
+  LocalDocumentVaultService({
+    Directory? rootDirectory,
+    FlutterSecureStorage? secureStorage,
+    LocalDocumentVaultCipher? cipher,
+  }) : _rootDirectory = rootDirectory,
+       _cipher =
+           cipher ??
+           LocalDocumentVaultCipher(secureStorage: secureStorage);
+
+  static const int maxDocumentCount = 80;
+  static const int maxSingleFileBytes = 10 * 1024 * 1024;
+  static const int maxTotalBytes = 200 * 1024 * 1024;
+
+  final Directory? _rootDirectory;
+  final LocalDocumentVaultCipher _cipher;
+  final Random _random = Random.secure();
+
+  Future<List<ClinicalDocumentSummary>> fetchDocuments() async {
+    throw UnimplementedError('Use scoped fetchDocumentsForScope.');
+  }
+
+  Future<List<ClinicalDocumentSummary>> fetchDocumentsForScope({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in state.folders) folder.id: folder};
+    final documents = state.documents
+        .map((item) => item.toSummary(folderName: _pathLabelForFolder(item.folderId, folders)))
+        .toList()
+      ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+    return documents;
+  }
+
+  Future<ClinicalDocumentDetail> fetchDocumentDetail(String documentId) async {
+    throw UnimplementedError('Use scoped fetchDocumentDetailForScope.');
+  }
+
+  Future<ClinicalDocumentDetail> fetchDocumentDetailForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in state.folders) folder.id: folder};
+    final document = _requireDocument(state, documentId);
+    return document.toDetail(folderName: _pathLabelForFolder(document.folderId, folders));
+  }
+
+  Future<DocumentArchiveView> fetchArchive({
+    String? folderId,
+    String? query,
+  }) async {
+    throw UnimplementedError('Use scoped fetchArchiveForScope.');
+  }
+
+  Future<DocumentArchiveView> fetchArchiveForScope({
+    required String userScopeId,
+    String? profileScopeId,
+    String? folderId,
+    String? query,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in state.folders) folder.id: folder};
+    final currentFolder = folderId == null ? null : _requireFolder(state, folderId);
+    final normalizedQuery = _normalizeText(query);
+
+    final childFolderCounts = <String?, int>{};
+    for (final folder in state.folders) {
+      childFolderCounts[folder.parentFolderId] =
+          (childFolderCounts[folder.parentFolderId] ?? 0) + 1;
+    }
+
+    final documentCounts = <String?, int>{};
+    for (final document in state.documents) {
+      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+    }
+
+    final foldersForView = normalizedQuery == null
+        ? state.folders
+            .where((folder) => folder.parentFolderId == currentFolder?.id)
+            .map(
+              (folder) => _folderToItem(
+                folder,
+                folders,
+                childFolderCounts,
+                documentCounts,
+              ),
+            )
+            .toList()
+        : <DocumentFolderItem>[];
+
+    final documentsForView = state.documents
+        .where((document) {
+          if (normalizedQuery != null) {
+            return _matchesSearch(document, folders, normalizedQuery);
+          }
+          return document.folderId == currentFolder?.id;
+        })
+        .map((document) => document.toSummary(folderName: _pathLabelForFolder(document.folderId, folders)))
+        .toList()
+      ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+
+    final breadcrumbs = <DocumentFolderItem>[];
+    var node = currentFolder;
+    while (node != null) {
+      breadcrumbs.insert(
+        0,
+        _folderToItem(node, folders, childFolderCounts, documentCounts),
+      );
+      node = node.parentFolderId == null ? null : folders[node.parentFolderId];
+    }
+
+    return DocumentArchiveView(
+      currentFolder: currentFolder == null
+          ? null
+          : _folderToItem(currentFolder, folders, childFolderCounts, documentCounts),
+      breadcrumbs: breadcrumbs,
+      folders: foldersForView,
+      documents: documentsForView,
+      query: normalizedQuery,
+      isSearch: normalizedQuery != null,
+      storageLocation: 'local',
+    );
+  }
+
+  Future<List<DocumentFolderItem>> fetchFolders() async {
+    throw UnimplementedError('Use scoped fetchFoldersForScope.');
+  }
+
+  Future<List<DocumentFolderItem>> fetchFoldersForScope({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in state.folders) folder.id: folder};
+    final childFolderCounts = <String?, int>{};
+    for (final folder in state.folders) {
+      childFolderCounts[folder.parentFolderId] =
+          (childFolderCounts[folder.parentFolderId] ?? 0) + 1;
+    }
+    final documentCounts = <String?, int>{};
+    for (final document in state.documents) {
+      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+    }
+    return state.folders
+        .map((folder) => _folderToItem(folder, folders, childFolderCounts, documentCounts))
+        .toList()
+      ..sort((a, b) => a.pathLabel.compareTo(b.pathLabel));
+  }
+
+  Future<ClinicalDocumentSummary> uploadDocument({
+    required SelectedUploadDocument file,
+    required Map<String, String> fields,
+  }) async {
+    throw UnimplementedError('Use scoped uploadDocumentForScope.');
+  }
+
+  Future<ClinicalDocumentSummary> uploadDocumentForScope({
+    required String userScopeId,
+    String? profileScopeId,
+    required SelectedUploadDocument file,
+    required Map<String, String> fields,
+  }) async {
+    if (file.bytes.length > maxSingleFileBytes) {
+      throw ApiException(
+        'Nel piano free i file locali possono pesare al massimo 10 MB.',
+        statusCode: 413,
+      );
+    }
+
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    if (state.documents.length >= maxDocumentCount) {
+      throw ApiException(
+        'Hai raggiunto il limite locale di 80 documenti. Per archivio cloud e sincronizzazione serve AI Plus.',
+        statusCode: 402,
+        code: 'feature_locked',
+        details: const {
+          'feature_code': 'cloud_document_storage',
+          'recommended_plan_code': 'ai_plus_yearly',
+        },
+      );
+    }
+    final totalBytes = state.documents.fold<int>(0, (sum, item) => sum + item.fileSizeBytes);
+    if (totalBytes + file.bytes.length > maxTotalBytes) {
+      throw ApiException(
+        'Hai raggiunto il limite locale di 200 MB. Per piu spazio e backup cloud serve AI Plus.',
+        statusCode: 402,
+        code: 'feature_locked',
+        details: const {
+          'feature_code': 'cloud_document_storage',
+          'recommended_plan_code': 'ai_plus_yearly',
+        },
+      );
+    }
+
+    final normalizedFolderId = _normalizeText(fields['folder_id']);
+    if (normalizedFolderId != null) {
+      _requireFolder(state, normalizedFolderId);
+    }
+
+    final documentId = _newId('local-doc');
+    final extension = path.extension(file.name).trim();
+    final documentsDir = await _documentsDirectory(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final safeExtension = extension.isEmpty ? '' : extension.toLowerCase();
+    final savedFile = File(path.join(documentsDir.path, '$documentId$safeExtension'));
+    final encryptedBytes = await _cipher.encryptDocument(
+      file.bytes,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+      documentId: documentId,
+    );
+    await savedFile.writeAsBytes(encryptedBytes, flush: true);
+
+    final title = _normalizeText(fields['title']) ?? path.basenameWithoutExtension(file.name);
+    final source = _normalizeText(fields['source']);
+    final examDate = _tryParseDate(fields['exam_date']);
+    final document = _StoredDocument(
+      id: documentId,
+      folderId: normalizedFolderId,
+      title: title,
+      documentType: _normalizeText(fields['document_type']) ?? 'generic_document',
+      uploadDateIso: DateTime.now().toUtc().toIso8601String(),
+      examDateIso: examDate?.toIso8601String(),
+      source: source,
+      originalFilename: file.name,
+      mimeType: file.mimeType,
+      fileSizeBytes: file.bytes.length,
+      parsedStatus: 'local_only',
+      contextStatus: 'active',
+      localFilePath: savedFile.path,
+    );
+
+    final nextState = state.copyWith(documents: [...state.documents, document]);
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+
+    final folders = {for (final folder in nextState.folders) folder.id: folder};
+    return document.toSummary(
+      folderName: _pathLabelForFolder(document.folderId, folders),
+    );
+  }
+
+  Future<DocumentFolderItem> createFolder({
+    required String name,
+    String? parentFolderId,
+  }) async {
+    throw UnimplementedError('Use scoped createFolderForScope.');
+  }
+
+  Future<DocumentFolderItem> createFolderForScope({
+    required String userScopeId,
+    String? profileScopeId,
+    required String name,
+    String? parentFolderId,
+  }) async {
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) {
+      throw ApiException('Il nome della cartella non puo essere vuoto.');
+    }
+
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final normalizedParentId = _normalizeText(parentFolderId);
+    if (normalizedParentId != null) {
+      _requireFolder(state, normalizedParentId);
+    }
+
+    final siblingExists = state.folders.any(
+      (folder) =>
+          folder.parentFolderId == normalizedParentId &&
+          folder.name.toLowerCase() == normalizedName.toLowerCase(),
+    );
+    if (siblingExists) {
+      throw ApiException('Esiste gia una cartella con questo nome in questo percorso.', statusCode: 409);
+    }
+
+    final folder = _StoredFolder(
+      id: _newId('local-folder'),
+      name: normalizedName,
+      parentFolderId: normalizedParentId,
+      createdAtIso: DateTime.now().toUtc().toIso8601String(),
+    );
+    final nextState = state.copyWith(folders: [...state.folders, folder]);
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final item in nextState.folders) item.id: item};
+    final childFolderCounts = <String?, int>{};
+    for (final item in nextState.folders) {
+      childFolderCounts[item.parentFolderId] = (childFolderCounts[item.parentFolderId] ?? 0) + 1;
+    }
+    final documentCounts = <String?, int>{};
+    for (final document in nextState.documents) {
+      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+    }
+    return _folderToItem(folder, folders, childFolderCounts, documentCounts);
+  }
+
+  Future<ClinicalDocumentDetail> moveDocument(
+    String documentId, {
+    String? folderId,
+  }) async {
+    throw UnimplementedError('Use scoped moveDocumentForScope.');
+  }
+
+  Future<ClinicalDocumentDetail> moveDocumentForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+    String? folderId,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final normalizedFolderId = _normalizeText(folderId);
+    if (normalizedFolderId != null) {
+      _requireFolder(state, normalizedFolderId);
+    }
+
+    final updatedDocuments = state.documents.map((item) {
+      if (item.id != documentId) {
+        return item;
+      }
+      return item.copyWith(folderId: normalizedFolderId);
+    }).toList();
+
+    if (!updatedDocuments.any((item) => item.id == documentId)) {
+      throw ApiException('Documento non trovato.', statusCode: 404);
+    }
+
+    final nextState = state.copyWith(documents: updatedDocuments);
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in nextState.folders) folder.id: folder};
+    final updated = updatedDocuments.firstWhere((item) => item.id == documentId);
+    return updated.toDetail(folderName: _pathLabelForFolder(updated.folderId, folders));
+  }
+
+  Future<ClinicalDocumentDetail> updateDocumentContextStatus(
+    String documentId, {
+    required String contextStatus,
+  }) async {
+    throw UnimplementedError('Use scoped updateDocumentContextStatusForScope.');
+  }
+
+  Future<ClinicalDocumentDetail> updateDocumentContextStatusForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+    required String contextStatus,
+  }) async {
+    final normalizedStatus = contextStatus.trim().toLowerCase();
+    if (normalizedStatus != 'active' && normalizedStatus != 'old') {
+      throw ApiException('Stato documento non valido.', statusCode: 422);
+    }
+
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final updatedDocuments = state.documents.map((item) {
+      if (item.id != documentId) {
+        return item;
+      }
+      return item.copyWith(contextStatus: normalizedStatus);
+    }).toList();
+    if (!updatedDocuments.any((item) => item.id == documentId)) {
+      throw ApiException('Documento non trovato.', statusCode: 404);
+    }
+
+    final nextState = state.copyWith(documents: updatedDocuments);
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in nextState.folders) folder.id: folder};
+    final updated = updatedDocuments.firstWhere((item) => item.id == documentId);
+    return updated.toDetail(folderName: _pathLabelForFolder(updated.folderId, folders));
+  }
+
+  Future<void> deleteDocument(String documentId) async {
+    throw UnimplementedError('Use scoped deleteDocumentForScope.');
+  }
+
+  Future<void> deleteDocumentForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final document = _requireDocument(state, documentId);
+    final nextState = state.copyWith(
+      documents: state.documents.where((item) => item.id != documentId).toList(),
+    );
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final file = File(document.localFilePath);
+    if (await file.exists()) {
+      await file.delete();
+    }
+    final previewDir = await _previewDirectory(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final previewFile = File(
+      path.join(
+        previewDir.path,
+        '${document.id}-preview${path.extension(document.originalFilename).toLowerCase()}',
+      ),
+    );
+    if (await previewFile.exists()) {
+      await previewFile.delete();
+    }
+  }
+
+  Future<void> deleteAllForUserScope(String userScopeId) async {
+    final baseDir = await _baseDirectory();
+    final userSegment = _sanitizeSegment(userScopeId);
+    final dir = Directory(path.join(baseDir.path, 'user-$userSegment'));
+    if (await dir.exists()) {
+      await dir.delete(recursive: true);
+    }
+    await _cipher.deleteKeyForUserScope(userScopeId);
+  }
+
+  Future<String> prepareViewerFileForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final document = _requireDocument(state, documentId);
+    final sourceFile = File(document.localFilePath);
+    if (!await sourceFile.exists()) {
+      throw ApiException('File locale non trovato.', statusCode: 404);
+    }
+    final encryptedBytes = await sourceFile.readAsBytes();
+    final clearBytes = await _cipher.decryptDocument(
+      encryptedBytes,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+      documentId: documentId,
+    );
+    final previewDir = await _previewDirectory(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final extension = path.extension(document.originalFilename).toLowerCase();
+    final previewFile = File(
+      path.join(previewDir.path, '$documentId-preview$extension'),
+    );
+    await previewFile.writeAsBytes(clearBytes, flush: true);
+    return previewFile.path;
+  }
+
+  Future<File> _stateFile({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final baseDir = await _scopeDirectory(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    return File(path.join(baseDir.path, 'vault-index.json'));
+  }
+
+  Future<Directory> _documentsDirectory({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final baseDir = await _scopeDirectory(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final dir = Directory(path.join(baseDir.path, 'files'));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  Future<Directory> _previewDirectory({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final baseDir = await _scopeDirectory(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final dir = Directory(path.join(baseDir.path, 'preview'));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  Future<Directory> _baseDirectory() async {
+    final rootDirectory = _rootDirectory;
+    if (rootDirectory != null) {
+      if (!await rootDirectory.exists()) {
+        await rootDirectory.create(recursive: true);
+      }
+      return rootDirectory;
+    }
+    final applicationDocuments = await getApplicationDocumentsDirectory();
+    final dir = Directory(path.join(applicationDocuments.path, 'clindiary-local-documents'));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  Future<Directory> _scopeDirectory({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final baseDir = await _baseDirectory();
+    final userSegment = _sanitizeSegment(userScopeId);
+    final profileSegment = _sanitizeSegment(profileScopeId ?? 'default');
+    final dir = Directory(
+      path.join(baseDir.path, 'user-$userSegment', 'profile-$profileSegment'),
+    );
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  Future<_LocalVaultState> _loadState({
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final stateFile = await _stateFile(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    if (!await stateFile.exists()) {
+      return const _LocalVaultState(folders: [], documents: []);
+    }
+    final rawBytes = await stateFile.readAsBytes();
+    if (rawBytes.isEmpty) {
+      return const _LocalVaultState(folders: [], documents: []);
+    }
+    final wasEncrypted = _cipher.isEncrypted(rawBytes);
+    final raw = await _cipher.decryptState(
+      rawBytes,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    if (raw.trim().isEmpty) {
+      return const _LocalVaultState(folders: [], documents: []);
+    }
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final state = _LocalVaultState.fromJson(decoded);
+    return _migrateStateIfNeeded(
+      state,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+      rewriteState: !wasEncrypted,
+    );
+  }
+
+  Future<void> _saveState(
+    _LocalVaultState state, {
+    required String userScopeId,
+    String? profileScopeId,
+  }) async {
+    final stateFile = await _stateFile(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final encrypted = await _cipher.encryptState(
+      jsonEncode(state.toJson()),
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    await stateFile.writeAsBytes(encrypted, flush: true);
+  }
+
+  Future<_LocalVaultState> _migrateStateIfNeeded(
+    _LocalVaultState state, {
+    required String userScopeId,
+    String? profileScopeId,
+    required bool rewriteState,
+  }) async {
+    var migrated = rewriteState;
+    for (final document in state.documents) {
+      final file = File(document.localFilePath);
+      if (!await file.exists()) {
+        continue;
+      }
+      final bytes = await file.readAsBytes();
+      if (_cipher.isEncrypted(bytes)) {
+        continue;
+      }
+      final encrypted = await _cipher.encryptDocument(
+        bytes,
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+        documentId: document.id,
+      );
+      await file.writeAsBytes(encrypted, flush: true);
+      migrated = true;
+    }
+    if (migrated) {
+      await _saveState(
+        state,
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+      );
+    }
+    return state;
+  }
+
+  String _sanitizeSegment(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return 'default';
+    }
+    return trimmed.replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '_');
+  }
+
+  _StoredFolder _requireFolder(_LocalVaultState state, String folderId) {
+    return state.folders.firstWhere(
+      (folder) => folder.id == folderId,
+      orElse: () => throw ApiException('Cartella non trovata.', statusCode: 404),
+    );
+  }
+
+  _StoredDocument _requireDocument(_LocalVaultState state, String documentId) {
+    return state.documents.firstWhere(
+      (document) => document.id == documentId,
+      orElse: () => throw ApiException('Documento non trovato.', statusCode: 404),
+    );
+  }
+
+  DocumentFolderItem _folderToItem(
+    _StoredFolder folder,
+    Map<String, _StoredFolder> folderMap,
+    Map<String?, int> childFolderCounts,
+    Map<String?, int> documentCounts,
+  ) {
+    return DocumentFolderItem(
+      id: folder.id,
+      name: folder.name,
+      parentFolderId: folder.parentFolderId,
+      pathLabel: _pathLabelForFolder(folder.id, folderMap),
+      childFolderCount: childFolderCounts[folder.id] ?? 0,
+      documentCount: documentCounts[folder.id] ?? 0,
+    );
+  }
+
+  String _pathLabelForFolder(String? folderId, Map<String, _StoredFolder> folders) {
+    if (folderId == null) {
+      return '';
+    }
+    final labels = <String>[];
+    var current = folders[folderId];
+    while (current != null) {
+      labels.insert(0, current.name);
+      current = current.parentFolderId == null ? null : folders[current.parentFolderId];
+    }
+    return labels.join(' / ');
+  }
+
+  bool _matchesSearch(
+    _StoredDocument document,
+    Map<String, _StoredFolder> folders,
+    String normalizedQuery,
+  ) {
+    final haystack = [
+      document.title,
+      document.originalFilename,
+      document.source,
+      document.documentType,
+      _pathLabelForFolder(document.folderId, folders),
+    ].whereType<String>().join(' ').toLowerCase();
+    return haystack.contains(normalizedQuery);
+  }
+
+  String _newId(String prefix) {
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final random = _random.nextInt(1 << 32).toRadixString(16);
+    return '$prefix-$timestamp-$random';
+  }
+
+  String? _normalizeText(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  DateTime? _tryParseDate(String? value) {
+    final normalized = _normalizeText(value);
+    if (normalized == null) {
+      return null;
+    }
+    return DateTime.tryParse(normalized);
+  }
+}
+
+class _LocalVaultState {
+  const _LocalVaultState({
+    required this.folders,
+    required this.documents,
+  });
+
+  final List<_StoredFolder> folders;
+  final List<_StoredDocument> documents;
+
+  _LocalVaultState copyWith({
+    List<_StoredFolder>? folders,
+    List<_StoredDocument>? documents,
+  }) {
+    return _LocalVaultState(
+      folders: folders ?? this.folders,
+      documents: documents ?? this.documents,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'version': 1,
+      'folders': folders.map((folder) => folder.toJson()).toList(),
+      'documents': documents.map((document) => document.toJson()).toList(),
+    };
+  }
+
+  factory _LocalVaultState.fromJson(Map<String, dynamic> json) {
+    return _LocalVaultState(
+      folders: (json['folders'] as List<dynamic>? ?? const [])
+          .map((item) => _StoredFolder.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      documents: (json['documents'] as List<dynamic>? ?? const [])
+          .map((item) => _StoredDocument.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class _StoredFolder {
+  const _StoredFolder({
+    required this.id,
+    required this.name,
+    required this.parentFolderId,
+    required this.createdAtIso,
+  });
+
+  final String id;
+  final String name;
+  final String? parentFolderId;
+  final String createdAtIso;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'parent_folder_id': parentFolderId,
+      'created_at': createdAtIso,
+    };
+  }
+
+  factory _StoredFolder.fromJson(Map<String, dynamic> json) {
+    return _StoredFolder(
+      id: json['id'].toString(),
+      name: json['name'].toString(),
+      parentFolderId: json['parent_folder_id'] as String?,
+      createdAtIso: json['created_at']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+    );
+  }
+}
+
+class _StoredDocument {
+  const _StoredDocument({
+    required this.id,
+    required this.folderId,
+    required this.title,
+    required this.documentType,
+    required this.uploadDateIso,
+    required this.examDateIso,
+    required this.source,
+    required this.originalFilename,
+    required this.mimeType,
+    required this.fileSizeBytes,
+    required this.parsedStatus,
+    required this.contextStatus,
+    required this.localFilePath,
+  });
+
+  final String id;
+  final String? folderId;
+  final String title;
+  final String documentType;
+  final String uploadDateIso;
+  final String? examDateIso;
+  final String? source;
+  final String originalFilename;
+  final String mimeType;
+  final int fileSizeBytes;
+  final String parsedStatus;
+  final String contextStatus;
+  final String localFilePath;
+
+  _StoredDocument copyWith({
+    String? folderId,
+    String? contextStatus,
+  }) {
+    return _StoredDocument(
+      id: id,
+      folderId: folderId,
+      title: title,
+      documentType: documentType,
+      uploadDateIso: uploadDateIso,
+      examDateIso: examDateIso,
+      source: source,
+      originalFilename: originalFilename,
+      mimeType: mimeType,
+      fileSizeBytes: fileSizeBytes,
+      parsedStatus: parsedStatus,
+      contextStatus: contextStatus ?? this.contextStatus,
+      localFilePath: localFilePath,
+    );
+  }
+
+  ClinicalDocumentSummary toSummary({String? folderName}) {
+    return ClinicalDocumentSummary(
+      id: id,
+      folderId: folderId,
+      folderName: folderName?.isEmpty == true ? null : folderName,
+      title: title,
+      documentType: documentType,
+      uploadDate: DateTime.parse(uploadDateIso),
+      examDate: examDateIso == null ? null : DateTime.parse(examDateIso!),
+      source: source,
+      originalFilename: originalFilename,
+      mimeType: mimeType,
+      fileSizeBytes: fileSizeBytes,
+      parsedStatus: parsedStatus,
+      contextStatus: contextStatus,
+      pendingSync: false,
+      storageLocation: 'local',
+      localFilePath: localFilePath,
+    );
+  }
+
+  ClinicalDocumentDetail toDetail({String? folderName}) {
+    return ClinicalDocumentDetail(
+      id: id,
+      folderId: folderId,
+      folderName: folderName?.isEmpty == true ? null : folderName,
+      title: title,
+      documentType: documentType,
+      uploadDate: DateTime.parse(uploadDateIso),
+      examDate: examDateIso == null ? null : DateTime.parse(examDateIso!),
+      source: source,
+      originalFilename: originalFilename,
+      mimeType: mimeType,
+      fileSizeBytes: fileSizeBytes,
+      parsedStatus: parsedStatus,
+      contextStatus: contextStatus,
+      pendingSync: false,
+      fileUrl: localFilePath,
+      ocrText: null,
+      viewerUrl: null,
+      processedAt: null,
+      labPanels: const [],
+      imagingReports: const [],
+      storageLocation: 'local',
+      localFilePath: localFilePath,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'folder_id': folderId,
+      'title': title,
+      'document_type': documentType,
+      'upload_date': uploadDateIso,
+      'exam_date': examDateIso,
+      'source': source,
+      'original_filename': originalFilename,
+      'mime_type': mimeType,
+      'file_size_bytes': fileSizeBytes,
+      'parsed_status': parsedStatus,
+      'context_status': contextStatus,
+      'local_file_path': localFilePath,
+    };
+  }
+
+  factory _StoredDocument.fromJson(Map<String, dynamic> json) {
+    return _StoredDocument(
+      id: json['id'].toString(),
+      folderId: json['folder_id'] as String?,
+      title: json['title'].toString(),
+      documentType: json['document_type']?.toString() ?? 'generic_document',
+      uploadDateIso: json['upload_date']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      examDateIso: json['exam_date'] as String?,
+      source: json['source'] as String?,
+      originalFilename: json['original_filename']?.toString() ?? 'documento',
+      mimeType: json['mime_type']?.toString() ?? 'application/octet-stream',
+      fileSizeBytes: json['file_size_bytes'] as int? ?? 0,
+      parsedStatus: json['parsed_status']?.toString() ?? 'local_only',
+      contextStatus: json['context_status']?.toString() ?? 'active',
+      localFilePath: json['local_file_path']?.toString() ?? '',
+    );
+  }
+}

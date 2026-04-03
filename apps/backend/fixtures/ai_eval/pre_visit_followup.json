@@ -1,0 +1,89 @@
+{
+  "summary_type": "pre_visit",
+  "summary_label": "riepilogo pre-visita",
+  "period_start": "2026-02-24",
+  "period_end": "2026-03-24",
+  "data_considered": [
+    "30 giorni di diario",
+    "12 recap giornalieri precedenti",
+    "4 documenti recenti",
+    "2 report recenti"
+  ],
+  "patient_snapshot": [
+    "Maria Verdi, 61 anni, sesso biologico female",
+    "Fumo: no",
+    "Attivita fisica: bassa",
+    "Regione: Lazio"
+  ],
+  "active_conditions": [
+    "diabete tipo 2 (active)",
+    "ipercolesterolemia (active)"
+  ],
+  "allergies": [
+    "lattice (mild)"
+  ],
+  "family_history": [
+    "sorella: diabete tipo 2"
+  ],
+  "medications": [
+    "Metformina 1000 mg",
+    "Rosuvastatina 10 mg"
+  ],
+  "medication_adherence": [
+    "2026-03-24 08:00 - Metformina: taken",
+    "2026-03-24 20:00 - Metformina: taken",
+    "2026-03-24 22:00 - Rosuvastatina: taken"
+  ],
+  "wearable_daily_summaries": [
+    "2026-03-21 (android): 4980 passi, sonno 6.4h, FC media 72 bpm",
+    "2026-03-22 (android): 4740 passi, sonno 6.2h, FC media 73 bpm",
+    "2026-03-23 (android): 5120 passi, sonno 6.6h, FC media 71 bpm"
+  ],
+  "journal_entries": [
+    {
+      "date": "2026-03-21",
+      "energy_level": 5,
+      "mood_level": 5,
+      "symptoms": ["sete"],
+      "vitals": ["glucose 148 mg/dL"],
+      "general_notes": "Giornata tranquilla."
+    },
+    {
+      "date": "2026-03-24",
+      "energy_level": 6,
+      "mood_level": 6,
+      "symptoms": ["stanchezza"],
+      "vitals": ["glucose 136 mg/dL"],
+      "general_notes": "Segnali complessivamente stabili."
+    }
+  ],
+  "observations": [
+    "Glicemie ancora da verificare nel follow-up.",
+    "Attivita fisica bassa e sonno regolare ma non ottimale."
+  ],
+  "recent_lab_results": [
+    "2026-03-20 - HbA1c 7.4 % fuori range",
+    "2026-03-20 - Microalbuminuria negativa"
+  ],
+  "recent_imaging_reports": [
+    "2026-03-18 - Ecografia addome: nessuna nuova alterazione significativa"
+  ],
+  "recent_documents": [
+    "Lettera diabetologica 2026-03-20",
+    "Referto laboratorio 2026-03-20"
+  ],
+  "prior_daily_summaries": [
+    "2026-03-12: glicemie un po' piu alte del solito.",
+    "2026-03-19: andamento abbastanza stabile con stanchezza serale."
+  ],
+  "open_alerts": [
+    "follow_up: diabete da discutere in visita"
+  ],
+  "follow_up_reasons": [
+    "HbA1c fuori range da discutere con il medico.",
+    "C'e un follow-up aperto per diabete e stile di vita."
+  ],
+  "missing_data": [
+    "Peso e circonferenza vita non recenti."
+  ]
+}

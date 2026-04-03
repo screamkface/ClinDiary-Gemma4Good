@@ -1,0 +1,71 @@
+{
+  "summary_type": "daily",
+  "summary_label": "riepilogo giornaliero",
+  "period_start": "2026-03-24",
+  "period_end": "2026-03-24",
+  "data_considered": [
+    "1 check-up",
+    "2 sintomi",
+    "1 documento recente",
+    "recap dei 15 giorni precedenti"
+  ],
+  "patient_snapshot": [
+    "Anna Bianchi, 33 anni, sesso biologico female",
+    "Fumo: no",
+    "Attivita fisica: moderata",
+    "Regione: Lombardia"
+  ],
+  "active_conditions": [
+    "asma (active)"
+  ],
+  "allergies": [
+    "penicillina (moderate)"
+  ],
+  "family_history": [
+    "madre: tumore mammario"
+  ],
+  "medications": [
+    "Atorvastatina 20 mg"
+  ],
+  "medication_adherence": [
+    "2026-03-24 08:00 - Atorvastatina: taken"
+  ],
+  "wearable_daily_summaries": [
+    "2026-03-24 (android): 8421 passi, sonno 7.3h, FC media 76 bpm"
+  ],
+  "journal_entries": [
+    {
+      "date": "2026-03-24",
+      "energy_level": 4,
+      "mood_level": 5,
+      "symptoms": ["cefalea", "stanchezza"],
+      "vitals": ["spo2 97 %"],
+      "general_notes": "Giornata stabile, lieve stanchezza serale."
+    }
+  ],
+  "observations": [
+    "Energia media 5/10.",
+    "Lieve cefalea serale non progressiva."
+  ],
+  "recent_lab_results": [
+    "2026-03-23 - Emocromo: emoglobina 11.2 g/dL range 12-16 fuori range"
+  ],
+  "recent_imaging_reports": [
+    "2026-03-23 - RX torace: nessun versamento pleurico"
+  ],
+  "recent_documents": [
+    "Esami sangue del 2026-03-23"
+  ],
+  "prior_daily_summaries": [
+    "2026-03-23 (generato 2026-03-23): andamento stabile con lieve cefalea serale."
+  ],
+  "open_alerts": [
+    "attention: dolore toracico"
+  ],
+  "follow_up_reasons": [
+    "Sono presenti alert aperti da discutere con il medico."
+  ],
+  "missing_data": [
+    "Nessun peso recente disponibile."
+  ]
+}

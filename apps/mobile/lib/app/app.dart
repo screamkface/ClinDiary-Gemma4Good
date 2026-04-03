@@ -1,0 +1,59 @@
+import 'package:clindiary/app/bootstrap/medication_reminder_bootstrap.dart';
+import 'package:clindiary/app/bootstrap/wearable_sync_bootstrap.dart';
+import 'package:clindiary/app/core/settings/app_display_settings.dart';
+import 'package:clindiary/app/router.dart';
+import 'package:clindiary/app/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class ClinDiaryApp extends ConsumerWidget {
+  const ClinDiaryApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
+    final displaySettings =
+        ref.watch(appDisplaySettingsControllerProvider).valueOrNull ??
+        const AppDisplaySettings();
+    return MaterialApp.router(
+      title: 'ClinDiary',
+      theme: buildClinDiaryTheme(brightness: Brightness.light),
+      darkTheme: buildClinDiaryTheme(brightness: Brightness.dark),
+      themeMode: displaySettings.themeMode,
+      scrollBehavior: const _MinimalScrollBehavior(),
+      routerConfig: router,
+      debugShowCheckedModeBanner: false,
+      supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      builder: (context, child) {
+        final scaledChild = MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(displaySettings.textScale)),
+          child: child ?? const SizedBox.shrink(),
+        );
+        return MedicationReminderBootstrap(
+          child: WearableSyncBootstrap(child: scaledChild),
+        );
+      },
+    );
+  }
+}
+
+class _MinimalScrollBehavior extends MaterialScrollBehavior {
+  const _MinimalScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
