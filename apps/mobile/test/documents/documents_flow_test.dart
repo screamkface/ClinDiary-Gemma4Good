@@ -330,6 +330,7 @@ void main() {
                 entitlementCodes: ['cloud_document_storage'],
                 hasActivePaidSubscription: true,
                 checkoutReady: false,
+                isHackathonDemoMode: false,
               ),
             ),
             documentFoldersProvider.overrideWith(

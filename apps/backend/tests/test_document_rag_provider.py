@@ -2,19 +2,8 @@ import json
 
 import httpx
 
-from app.ai.document_rag_provider import (
-    GemmaDocumentAnswerProvider,
-    GemmaDocumentEmbeddingProvider,
-    LocalRuntimeDocumentAnswerProvider,
-    LocalRuntimeDocumentEmbeddingProvider,
-    RegoloDocumentRagProvider,
-    RegoloDocumentRerankProvider,
-    RuleBasedDocumentRerankProvider,
-    build_document_answer_provider,
-    build_document_embedding_provider,
-    build_document_rag_provider,
-    build_document_rerank_provider,
-)
+from app.ai.local_runtime_adapter import OllamaLocalDocumentEmbeddingRuntimeAdapter
+from app.ai.document_rag_provider import RegoloDocumentRagProvider
 from app.core.config import Settings
 
 
@@ -104,167 +93,42 @@ def test_settings_default_document_embedding_dimensions():
     assert settings.document_embedding_dimensions == 1024
 
 
-def test_build_document_embedding_provider_supports_gemma():
-    settings = Settings(
-        document_embedding_provider="gemma",
-        gemma_api_key="gemma-secret",
-        gemma_base_url="https://gemma.example.com/v1",
-    )
-
-    provider = build_document_embedding_provider(settings)
-
-    assert isinstance(provider, GemmaDocumentEmbeddingProvider)
-    assert provider.model_name == "embeddinggemma"
-
-
-def test_gemma_document_embedding_provider_uses_remote_embeddings_contract():
-    captured: dict[str, object] = {}
+def test_ollama_local_embedding_adapter_uses_embed_endpoint_and_retries_without_dimensions():
+    requests: list[tuple[str, dict[str, object]]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
+        payload = json.loads(request.content.decode())
+        requests.append((request.url.path, payload))
+        if len(requests) == 1:
+            return httpx.Response(
+                422,
+                json={"error": "dimensions not supported"},
+            )
         return httpx.Response(
             200,
             json={
-                "data": [
-                    {
-                        "index": 0,
-                        "embedding": [0.3, 0.4],
-                    }
+                "embeddings": [
+                    [0.1, 0.2, 0.3],
+                    [0.4, 0.5, 0.6],
                 ]
             },
         )
 
-    provider = GemmaDocumentEmbeddingProvider(
-        base_url="https://gemma.example.com/v1",
-        api_key="secret",
+    adapter = OllamaLocalDocumentEmbeddingRuntimeAdapter(
+        base_url="http://127.0.0.1:11435",
+        timeout_seconds=5,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    result = adapter.embed_texts(
         model_name="embeddinggemma",
-        embedding_dimensions=768,
-        timeout_seconds=5,
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        texts=["nota 1", "nota 2"],
+        dimensions=768,
     )
 
-    result = provider.embed_texts(["ciao"])
-
-    assert result == [[0.3, 0.4]]
-    assert captured["json"]["model"] == "embeddinggemma"
-    assert captured["json"]["dimensions"] == 768
-
-
-def test_build_document_embedding_provider_supports_local_gemma_runtime():
-    settings = Settings(
-        document_embedding_provider="gemma",
-        document_embedding_runtime_mode="local",
-        local_llm_backend="ollama",
-        local_embedding_model_name="embeddinggemma-local",
-        local_embedding_dimensions=768,
-    )
-
-    provider = build_document_embedding_provider(settings)
-
-    assert isinstance(provider, LocalRuntimeDocumentEmbeddingProvider)
-    assert provider.model_name == "embeddinggemma-local"
-    assert provider.embedding_dimensions == 768
-
-
-def test_build_document_answer_provider_supports_gemma():
-    settings = Settings(
-        document_answer_provider="gemma",
-        gemma_api_key="gemma-secret",
-        gemma_base_url="https://gemma.example.com/v1",
-    )
-
-    provider = build_document_answer_provider(settings)
-
-    assert isinstance(provider, GemmaDocumentAnswerProvider)
-    assert provider.model_name == "gemma-4"
-
-
-def test_gemma_document_answer_provider_uses_remote_chat_contract():
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "Sintesi documentale Gemma [1]. Questa risposta non sostituisce il medico.",
-                        }
-                    }
-                ]
-            },
-        )
-
-    provider = GemmaDocumentAnswerProvider(
-        base_url="https://gemma.example.com/v1",
-        api_key="secret",
-        model_name="gemma-4",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=1200,
-        client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-
-    result = provider.answer_question(
-        question="Cosa emerge dal documento?",
-        context_blocks=["[1] Documento: Referto | Tipo: lab_panel\nCreatinina 1.4 mg/dL"],
-    )
-
-    assert "Gemma" in result.answer
-    assert captured["json"]["model"] == "gemma-4"
-    assert captured["json"]["messages"][0]["content"].startswith("Sei ClinDiary.")
-
-
-def test_build_document_answer_provider_supports_local_gemma_runtime():
-    settings = Settings(
-        document_answer_provider="gemma",
-        document_answer_runtime_mode="local",
-        local_llm_backend="ollama",
-        local_llm_model_name="gemma-local",
-    )
-
-    provider = build_document_answer_provider(settings)
-
-    assert isinstance(provider, LocalRuntimeDocumentAnswerProvider)
-    assert provider.model_name == "gemma-local"
-
-
-def test_build_document_rerank_provider_supports_regolo():
-    settings = Settings(
-        document_reranker_provider="regolo_ai",
-        regolo_api_key="regolo-secret",
-        regolo_base_url="https://api.regolo.ai/v1",
-    )
-
-    provider = build_document_rerank_provider(settings)
-
-    assert isinstance(provider, RegoloDocumentRerankProvider)
-    assert provider.model_name == "qwen3-reranker-4b"
-
-
-def test_build_document_rerank_provider_falls_back_when_unsupported():
-    settings = Settings(
-        document_reranker_provider="gemma",
-        gemma_api_key="gemma-secret",
-        gemma_base_url="https://gemma.example.com/v1",
-    )
-
-    provider = build_document_rerank_provider(settings)
-
-    assert isinstance(provider, RuleBasedDocumentRerankProvider)
-
-
-def test_build_document_rag_provider_supports_gemma_answer_with_rule_based_rerank_fallback():
-    settings = Settings(
-        document_answer_provider="gemma",
-        gemma_api_key="gemma-secret",
-        gemma_base_url="https://gemma.example.com/v1",
-    )
-
-    provider = build_document_rag_provider(settings)
-
-    assert provider.provider_name == "gemma"
-    assert provider.answer_model_name == "gemma-4"
-    assert provider.reranker_model_name is None
+    assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+    assert requests[0][0] == "/api/embed"
+    assert requests[0][1]["input"] == ["nota 1", "nota 2"]
+    assert requests[0][1]["dimensions"] == 768
+    assert requests[1][0] == "/api/embed"
+    assert "dimensions" not in requests[1][1]

@@ -46,6 +46,7 @@ class BillingStatusResponse(BaseModel):
     entitlement_codes: list[str] = Field(default_factory=list)
     has_active_paid_subscription: bool = False
     checkout_ready: bool = False
+    hackathon_demo_mode: bool = False
 
 
 class BillingActivateRequest(BaseModel):

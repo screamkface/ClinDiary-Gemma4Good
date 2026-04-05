@@ -14,6 +14,8 @@ import 'package:clindiary/features/documents/data/local_document_vault_service.d
 import 'package:clindiary/features/documents/data/documents_repository.dart';
 import 'package:clindiary/features/history/data/history_repository.dart';
 import 'package:clindiary/features/insights/data/insights_repository.dart';
+import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
+import 'package:clindiary/features/insights/data/on_device_prompt_builder.dart';
 import 'package:clindiary/features/medications/data/medications_repository.dart';
 import 'package:clindiary/features/notifications/data/notifications_repository.dart';
 import 'package:clindiary/features/prevention_center/data/prevention_center_repository.dart';
@@ -105,6 +107,18 @@ final dailyJournalRepositoryProvider = Provider<DailyJournalRepository>(
 final insightsRepositoryProvider = Provider<InsightsRepository>(
   (ref) => InsightsRepository(
     apiClient: ref.watch(apiClientProvider),
+    localDatabase: ref.watch(localDatabaseProvider),
+    onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
+    onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
+  ),
+);
+
+final onDeviceAiServiceProvider = Provider<OnDeviceAiService>(
+  (ref) => OnDeviceAiService(),
+);
+
+final onDevicePromptBuilderProvider = Provider<OnDevicePromptBuilder>(
+  (ref) => OnDevicePromptBuilder(
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );

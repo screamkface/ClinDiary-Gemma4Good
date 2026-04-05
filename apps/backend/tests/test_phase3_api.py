@@ -234,6 +234,140 @@ def test_daily_insight_regenerate_endpoint_forces_new_generation(client, auth_he
     assert regenerate_body["generated_at"] != first_body["generated_at"]
 
 
+def test_private_local_daily_insight_is_transient_and_does_not_overwrite_persisted_summary(
+    client,
+    auth_headers,
+    db_session,
+    monkeypatch,
+):
+    target_date = date(2026, 3, 20)
+    _create_entry(client, auth_headers, target_date)
+
+    standard_response = client.get(
+        f"/api/v1/insights/daily?reference_date={target_date.isoformat()}",
+        headers=auth_headers,
+    )
+    assert standard_response.status_code == 200
+    standard_body = standard_response.json()
+
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            return "Sintesi privata locale Gemma 4."
+
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
+    )
+
+    local_response = client.get(
+        f"/api/v1/insights/daily/private-local?reference_date={target_date.isoformat()}",
+        headers=auth_headers,
+    )
+    assert local_response.status_code == 200
+    local_body = local_response.json()
+
+    assert local_body["summary_type"] == "daily"
+    assert local_body["provider_name"] == "local_gemma4"
+    assert local_body["id"] != standard_body["id"]
+    assert "Sintesi privata locale Gemma 4." in local_body["content"]
+
+    user = db_session.scalar(select(User).where(User.email == "patient@example.com"))
+    assert user is not None
+    stored_summary = db_session.scalar(
+        select(AiSummary).where(
+            AiSummary.patient_id == user.profile.id,
+            AiSummary.summary_type == AiSummaryType.DAILY,
+            AiSummary.period_start == target_date,
+            AiSummary.period_end == target_date,
+        )
+    )
+    assert stored_summary is not None
+    assert str(stored_summary.id) == standard_body["id"]
+    assert stored_summary.content == standard_body["content"]
+
+
+def test_private_local_daily_insight_regenerate_endpoint_returns_transient_summary(
+    client,
+    auth_headers,
+    monkeypatch,
+):
+    target_date = date(2026, 3, 20)
+    _create_entry(client, auth_headers, target_date)
+
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            return "Rigenerazione privata locale."
+
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
+    )
+
+    regenerate_response = client.post(
+        f"/api/v1/insights/daily/private-local/regenerate?reference_date={target_date.isoformat()}",
+        headers=auth_headers,
+    )
+    assert regenerate_response.status_code == 200
+    regenerate_body = regenerate_response.json()
+
+    assert regenerate_body["summary_type"] == "daily"
+    assert regenerate_body["provider_name"] == "local_gemma4"
+    assert "Rigenerazione privata locale." in regenerate_body["content"]
+
+
+def test_private_local_status_endpoint_reports_sanitized_metadata(
+    client,
+    auth_headers,
+    monkeypatch,
+):
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            return "ok"
+
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
+    )
+
+    response = client.get(
+        "/api/v1/insights/local-status",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["enabled"] is True
+    assert body["provider"] == "local_gemma4"
+    assert body["runtime_mode"] == "local"
+    assert body["fallback_provider"] == "rule_based"
+    assert body["is_cloud_bypassed_for_this_request"] is True
+    assert body["active_provider_label"] in {"Gemma 4 Local", "Modalita privata locale"}
+
+
+def test_on_device_daily_prompt_endpoint_returns_minimized_prompt(
+    client,
+    auth_headers,
+):
+    target_date = date(2026, 3, 20)
+    _create_entry(client, auth_headers, target_date)
+
+    response = client.get(
+        f"/api/v1/insights/daily/on-device-prompt?reference_date={target_date.isoformat()}",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["summary_type"] == "daily"
+    assert body["period_start"] == target_date.isoformat()
+    assert body["period_end"] == target_date.isoformat()
+    assert body["provider_name"] == "on_device_litertlm"
+    assert body["suggested_model_family"] == "Gemma 4"
+    assert body["is_cloud_bypassed_for_this_request"] is True
+    assert "Usa esclusivamente i dati presenti nel payload JSON" in body["system_prompt"]
+    assert "Genera un riepilogo clinico prudente usando ESCLUSIVAMENTE" in body["user_prompt"]
+
+
 def test_daily_insight_payload_includes_previous_15_day_recaps(client, auth_headers, db_session):
     target_date = date(2026, 3, 20)
     _create_entry(client, auth_headers, target_date)

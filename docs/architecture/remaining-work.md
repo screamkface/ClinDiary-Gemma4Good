@@ -4,25 +4,34 @@ Questo documento descrive lo stato reale del progetto dopo l'ultimo step impleme
 
 ## Aggiornamento continuo
 
-- Ultimo aggiornamento: **3 aprile 2026**
+- Ultimo aggiornamento: **5 aprile 2026**
 - Regola operativa: a fine di ogni step implementativo, questo file viene aggiornato con stato reale e prossime priorita.
 - Pacchetto business/documentale aggiunto per founder outreach verso So.Re.Sa./Regione Campania, con piano operativo per la fase senza societa`, gate di costituzione e strategia di accesso progressivo a pilot e procurement.
 - aggiunto report markdown completo dello stato attuale del prodotto, con funzioni, modelli AI, stack tecnologico, architettura e gap ancora aperti in `docs/architecture/app-current-state-report.md`
-- completata la phase 1 Gemma local-first sul backend AI: recap/report possono ora usare `gemma` in `local` runtime mode tramite backend-host locale (`ollama` o server OpenAI-compatible locali) senza toccare la logica clinica deterministica
-- completate anche le phase 2 e 3 del backend AI Gemma: answer generation documentale ed embeddings possono ora usare `gemma` anche in `local` runtime mode sul backend-host, con builder separati, capability matrix condivisa e smoke CLI aggiornati
-- aggiunto anche il wiring operativo per il target Ollama locale user-space: script `scripts/setup_local_gemma_ollama.sh`, script `scripts/smoke_local_gemma_ollama.sh` e template `apps/backend/.env.gemma-local.example` per il setup `gemma4:e2b` + `embeddinggemma` su porta dedicata `11435`; smoke reali confermati su `embeddinggemma` e sul path generativo locale con fallback dev `gemma3n:e2b`, mentre `gemma4:e2b` su questo host richiede piu RAM libera di quella disponibile
+- aggiunto percorso hackathon `Private / Local Daily Recap` con provider alias `local_gemma4`, endpoint proofabili, modalita mobile dedicata, demo mode e seed scenari guidati
+- aggiunta nota architetturale Gemma in `docs/architecture/ai-gemma-migration.md`
 
-## Snapshot rapido (1 aprile 2026)
+## Snapshot rapido (5 aprile 2026)
 
 - Fasi 1-4: implementate e testate.
+- Hackathon MVP: implementato.
+  - recap giornaliero `private-local` transiente lato backend
+  - proof endpoint `insights/local-status`
+  - selector mobile `standard` vs `privata locale`
+  - proof card UI con provider/runtime/modello
+  - demo mode con seed a tre scenari e sblocco AI automatico per il demo user
+  - bootstrap user-space di Ollama per demo host locale con `scripts/setup_local_gemma_ollama.sh`
+  - recap giornaliero `sul dispositivo` via LiteRT-LM Android con prompt prudente costruito dal backend
+  - bridge nativo Android `MethodChannel` + runtime `OnDeviceGemmaRuntime`
+  - proof card on-device con backend risolto, modello rilevato e conferma `Cloud esterno usato: No`
+  - script `scripts/push_android_litert_model.sh` per copiare il file `.litertlm` nella directory attesa del telefono
+  - import in-app del file `.litertlm` dalla schermata `Recap AI`, con copia nella cartella modelli Android e reset automatico del runtime
+  - schermata `Gestisci modello` con path, dimensione file, sostituzione, rimozione e reset runtime
+  - script `scripts/check_xiaomi_on_device_demo.sh` per checklist rapida su Xiaomi / Android demo host
+  - prompt-builder locale mobile: se il contesto e in cache il telefono costruisce il prompt del recap senza round-trip backend
 - Fase 5: baseline importante presente:
   - middleware HTTP con `X-Request-ID`, `X-Response-Time-Ms`, logging strutturato e rate limit auth Redis-backed con fallback in-memory
   - adapter AI provider-agnostic con supporto `openai_compatible`, `regolo_ai`, `gemini_ai_studio` e fallback sicuro al provider rule-based; Regolo AI e` il provider di default nel setup attuale con modello `minimax-m2.5`
-  - migrazione Gemma phase 1 completata sul layer AI backend: `SUMMARY_AI_PROVIDER`, `DOCUMENT_ANSWER_PROVIDER`, `DOCUMENT_EMBEDDING_PROVIDER` e `DOCUMENT_RERANKER_PROVIDER` chiariscono il routing per capability; recap/report possono ora usare `gemma` anche in `SUMMARY_AI_RUNTIME_MODE=local` tramite backend-host locale (`ollama`, `llama_cpp`, `vllm`, `openai_compatible`)
-  - migrazione Gemma phases 2-3 completata sul backend AI: il modulo RAG documentale usa builder separati per answer, embeddings e rerank; `DOCUMENT_ANSWER_PROVIDER=gemma` e `DOCUMENT_EMBEDDING_PROVIDER=gemma` sono supportati davvero sia in `remote` sia in `local` runtime mode, mentre il rerank resta esplicitamente separato e puo` continuare su `regolo_ai`
-  - capability matrix condivisa introdotta in `apps/backend/app/ai/provider_capabilities.py` per dichiarare i runtime supportati oggi (`remote` e `local` per i path Gemma summary/document answer/document embeddings) e le combinazioni volutamente ancora escluse
-  - smoke CLI aggiornati per verificare separatamente `gemma` sui summary, `embeddinggemma` sul retrieval e la answer generation documentale (`clindiary-ai-smoke --profile gemma_summary`, `clindiary-document-rag-smoke --profile embeddinggemma`, `clindiary-document-rag-smoke --mode answer --profile default`)
-  - nota architetturale dedicata aggiornata in `docs/architecture/ai-gemma-migration.md`, con perimetro preciso di cio` che e` stato spostato, cio` che resta invariato e cio` che e` ancora rinviato (rerank locale, sidecar safety, on-device mobile)
   - verifica locale completata: Regolo AI risponde davvero su `minimax-m2.5` senza fallback; timeout AI locale aumentato a 60 secondi per accomodare la latenza del provider
   - recap AI lunghi corretti: il renderer mobile mostra tutto il contenuto senza clipping locale e il backend assegna un budget output piu alto a `weekly`, `monthly` e `pre_visit` per evitare troncamenti del provider
   - recap AI con tabelle gestite deterministicamente nel renderer condiviso: markdown table e pipe-table semplici vengono convertite in tabelle native scrollabili su Giorno, Settimana, Mese, Pre-visita, Storico e Report
@@ -117,6 +126,8 @@ Questo documento descrive lo stato reale del progetto dopo l'ultimo step impleme
   - `cd apps/mobile && flutter build apk --debug`
 - Tooling locale:
   - script Android disponibili in `scripts/run_android_app.sh` e `scripts/run_android_app.ps1`; il launcher Android accetta sia l'ID sia il nome Flutter del device e supporta `--restart-services` per ricaricare davvero `.env` e provider esterni
+  - per la demo on-device Android il provisioning del file modello puo avvenire sia via script `adb` sia direttamente dall'app; il caricamento dal file system e l'inferenza LiteRT-LM sono gia` integrati nell'app
+  - resta ancora aperta la versione full-offline end-to-end anche per il prompt quando la cache locale non basta
   - logging script corretto su `stderr` per non contaminare `API_BASE_URL` durante `flutter run`
   - `LocalDatabase` Drift include una migration strategy esplicita per upgrade schema su device
 - env backend locale presente in `apps/backend/.env`, caricato automaticamente dallo script Android insieme al `.env` di root se presente
@@ -162,7 +173,6 @@ ClinDiary oggi copre:
 - Fase 4/5 esperienza prevenzione: l'utente ha anche un Centro prevenzione personale distinto dagli screening grezzi, con vaccini, follow-up e controlli stagionali spiegabili; i vaccini ora usano in modo prudente anche lo storico vaccinale gia registrato
 - Dossier salute: l'utente ha una cartella clinica personale ordinata e sempre pronta, costruita aggregando i moduli clinici gia presenti
 - Fase 5 baseline: hardening HTTP, rate limit distribuito, OCR configurabile, adapter AI esterno, scheduling farmaci evoluto, screenings regionali seedati, storico giornaliero mobile, offline mobile esteso e wearable sync giornaliera verso backend/AI
-- Fase 5 AI migration: il layer AI backend ora supporta una migrazione graduale Gemma-first tramite provider capability-specific per summary, document answer, document embedding e rerank, con phase 1 locale attiva per recap/report sul backend host, mantenendo fallback `rule_based` e separazione rigorosa dalla logica clinica deterministica
 - Fase 5 device baseline: modulo `devices` Wave 1 con supporto reale al setup dei connettori clinici, import manuale per i flussi gia` supportati e tracking degli import
 - Fase 5 AI/device context: le misure device entrano nel payload AI come aggregati clinici per periodo (`pressione`, `peso`, `SpO2`, `glicemia`, ecc.), con conteggio, media/ultima misura e trend breve
 - Fase 5 UI: dialoghi long-form e conferme principali allineati a layout scrollabili, cancel sicuri e back gesture coerente con la shell
@@ -174,15 +184,11 @@ ClinDiary oggi copre:
 ### 2.1. Gap ancora aperti rispetto al blueprint
 
 1. Validazione provider AI reale
-   - Stato: codice pronto per `openai_compatible`, `regolo_ai`, `gemini_ai_studio` e path Gemma reale per summary/report e document answer; i summary/report possono ora girare anche in locale sul backend host tramite adapter dedicato. Il retrieval documentale supporta anche provider embeddings separato (`embeddinggemma`) e reranker builder dedicato, con fallback rule-based e metadata provider/model persistiti. Regolo AI resta il default operativo nel setup attuale con modello `minimax-m2.5`.
+   - Stato: codice pronto per `openai_compatible`, `regolo_ai` e `gemini_ai_studio`, con fallback rule-based e metadata provider/model persistiti; Regolo AI e` il provider di default nel setup attuale con modello `minimax-m2.5` e Gemini resta supportato come alternativa compatibile.
    - Manca ancora:
      - prompt evaluation clinica su casi reali o curati
-     - validazione reale del gateway Gemma scelto per `SUMMARY_AI_PROVIDER=gemma`
-     - valutare se mantenere il reranker su `regolo_ai` come scelta stabile o introdurre un provider alternativo dedicato
-     - collegare davvero un runtime `local` al nuovo adapter separato, oggi solo preparato come direzione architetturale
    - Dove intervenire:
      - `apps/backend/app/ai/summary_provider.py`
-     - `apps/backend/app/ai/document_rag_provider.py`
      - `apps/backend/app/services/insight_service.py`
 
 2. OCR e scan su casi reali

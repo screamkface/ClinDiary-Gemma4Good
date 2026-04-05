@@ -235,28 +235,68 @@ class OllamaLocalDocumentEmbeddingRuntimeAdapter:
         texts: list[str],
         dimensions: int | None = None,
     ) -> list[list[float] | None]:
-        if not texts:
-            return []
+        payload: dict[str, object] = {
+            "model": model_name,
+            "input": texts,
+        }
+        if dimensions is not None:
+            payload["dimensions"] = dimensions
+
         response = self._client.post(
             f"{self.base_url}/api/embed",
-            json={
-                "model": model_name,
-                "input": texts,
-            },
+            json=payload,
         )
+        if dimensions is not None and _should_retry_embedding_without_dimensions(response):
+            response = self._client.post(
+                f"{self.base_url}/api/embed",
+                json={
+                    "model": model_name,
+                    "input": texts,
+                },
+            )
+        elif response.status_code == 404:
+            return self._embed_texts_legacy(
+                model_name=model_name,
+                texts=texts,
+                dimensions=dimensions,
+            )
+
         response.raise_for_status()
-        payload = response.json()
-        embeddings = payload.get("embeddings")
-        if isinstance(embeddings, list):
-            normalized = [_normalize_embedding(item) for item in embeddings[: len(texts)]]
-            if len(normalized) < len(texts):
-                normalized.extend([None] * (len(texts) - len(normalized)))
-            return normalized
-        embedding = payload.get("embedding")
-        if isinstance(embedding, list):
-            normalized = _normalize_embedding(embedding)
-            return [normalized if index == 0 else None for index in range(len(texts))]
-        raise ValueError("Local Ollama runtime returned no embeddings")
+        return _normalize_ollama_embeddings_response(
+            response.json(),
+            expected_count=len(texts),
+        )
+
+    def _embed_texts_legacy(
+        self,
+        *,
+        model_name: str,
+        texts: list[str],
+        dimensions: int | None = None,
+    ) -> list[list[float] | None]:
+        embeddings: list[list[float] | None] = []
+        for text in texts:
+            payload: dict[str, object] = {
+                "model": model_name,
+                "prompt": text,
+            }
+            if dimensions is not None:
+                payload["dimensions"] = dimensions
+            response = self._client.post(
+                f"{self.base_url}/api/embeddings",
+                json=payload,
+            )
+            if dimensions is not None and _should_retry_embedding_without_dimensions(response):
+                response = self._client.post(
+                    f"{self.base_url}/api/embeddings",
+                    json={
+                        "model": model_name,
+                        "prompt": text,
+                    },
+                )
+            response.raise_for_status()
+            embeddings.append(_normalize_embedding(response.json().get("embedding")))
+        return embeddings
 
 
 class OpenAICompatibleLocalDocumentEmbeddingRuntimeAdapter:
@@ -269,7 +309,6 @@ class OpenAICompatibleLocalDocumentEmbeddingRuntimeAdapter:
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self._client = client or httpx.Client(timeout=timeout_seconds)
-        self._dimensions_enabled = True
 
     def embed_texts(
         self,
@@ -278,29 +317,25 @@ class OpenAICompatibleLocalDocumentEmbeddingRuntimeAdapter:
         texts: list[str],
         dimensions: int | None = None,
     ) -> list[list[float] | None]:
-        if not texts:
-            return []
-
         payload: dict[str, object] = {
             "model": model_name,
             "input": texts,
         }
-        if self._dimensions_enabled and dimensions is not None:
+        if dimensions is not None:
             payload["dimensions"] = dimensions
-
-        response = self._client.post(
-            f"{self.base_url}/embeddings",
-            json=payload,
-        )
-        if payload.get("dimensions") is not None and _should_retry_embedding_without_dimensions(
-            response
-        ):
-            self._dimensions_enabled = False
-            payload.pop("dimensions", None)
-            response = self._client.post(
+        with self._client as client:
+            response = client.post(
                 f"{self.base_url}/embeddings",
                 json=payload,
             )
+            if dimensions is not None and _should_retry_embedding_without_dimensions(response):
+                response = client.post(
+                    f"{self.base_url}/embeddings",
+                    json={
+                        "model": model_name,
+                        "input": texts,
+                    },
+                )
         response.raise_for_status()
         response_payload = response.json()
         items = response_payload.get("data") or []
@@ -415,6 +450,26 @@ def _normalize_embedding(value: object) -> list[float] | None:
     if not isinstance(value, list):
         return None
     return [float(item) for item in value]
+
+
+def _normalize_ollama_embeddings_response(
+    payload: dict[str, object],
+    *,
+    expected_count: int,
+) -> list[list[float] | None]:
+    raw_embeddings = payload.get("embeddings")
+    if isinstance(raw_embeddings, list):
+        normalized: list[list[float] | None] = []
+        for item in raw_embeddings:
+            normalized.append(_normalize_embedding(item))
+        if len(normalized) < expected_count:
+            normalized.extend([None] * (expected_count - len(normalized)))
+        return normalized[:expected_count]
+
+    single_embedding = _normalize_embedding(payload.get("embedding"))
+    if expected_count <= 1:
+        return [single_embedding]
+    return [single_embedding, *([None] * (expected_count - 1))]
 
 
 def _should_retry_embedding_without_dimensions(response: httpx.Response) -> bool:

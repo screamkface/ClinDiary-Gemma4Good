@@ -15,6 +15,7 @@ API_BASE_URL_OVERRIDE=""
 KEEP_BACKGROUND=false
 SKIP_SEED=false
 RESTART_SERVICES=false
+USE_LOCAL_GEMMA=false
 
 STARTED_PIDS=()
 ADB_REVERSE_ACTIVE=false
@@ -30,6 +31,7 @@ Uso:
 Opzioni:
   --device-id ID        Usa uno specifico device Android collegato (ID o nome Flutter).
   --api-base-url URL    Forza un API_BASE_URL specifico per Flutter.
+  --local-gemma         Applica l'overlay env generato da scripts/setup_local_gemma_ollama.sh.
   --skip-seed           Non eseguire il seed demo.
   --restart-services    Riavvia backend/worker/beat per ricaricare la configurazione.
   --keep-background     Lascia attivi backend/worker/beat dopo l'uscita di Flutter.
@@ -72,6 +74,9 @@ parse_args() {
         [[ $# -gt 0 ]] || fail "Manca il valore per --api-base-url"
         API_BASE_URL_OVERRIDE="$1"
         ;;
+      --local-gemma)
+        USE_LOCAL_GEMMA=true
+        ;;
       --skip-seed)
         SKIP_SEED=true
         ;;
@@ -111,6 +116,29 @@ load_env_files() {
     # shellcheck disable=SC1091
     source "$BACKEND_DIR/.env"
     set +a
+  fi
+
+  if [[ "$USE_LOCAL_GEMMA" == "true" ]]; then
+    local local_profile generated_overlay
+    local_profile="$BACKEND_DIR/.env.gemma-local.example"
+    generated_overlay="$ROOT_DIR/.runtime/ollama-local/gemma-local.env"
+
+    if [[ -f "$local_profile" ]]; then
+      set -a
+      # shellcheck disable=SC1091
+      source "$local_profile"
+      set +a
+    fi
+
+    if [[ -f "$generated_overlay" ]]; then
+      set -a
+      # shellcheck disable=SC1091
+      source "$generated_overlay"
+      set +a
+      info "Overlay locale Gemma caricato da $generated_overlay"
+    else
+      warn "Overlay locale Gemma non trovato in $generated_overlay: uso solo i valori base del profilo."
+    fi
   fi
 
   export DATABASE_URL="${DATABASE_URL:-postgresql+psycopg://clindiary:clindiary@localhost:5432/clindiary}"

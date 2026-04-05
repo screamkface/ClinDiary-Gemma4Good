@@ -1,76 +1,81 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND_DIR="$ROOT_DIR/apps/backend"
-RUNTIME_ENV="$ROOT_DIR/.runtime/ollama-local/gemma-local.env"
+BASE_URL="${CLINDIARY_BASE_URL:-http://127.0.0.1:8000}"
+EMAIL="${CLINDIARY_EMAIL:-demo@clindiary.app}"
+PASSWORD="${CLINDIARY_PASSWORD:-ChangeMe123!}"
+REFERENCE_DATE="${CLINDIARY_REFERENCE_DATE:-$(date +%F)}"
+EXPECT_FALLBACK="${EXPECT_FALLBACK:-0}"
 
-info() {
-  printf '[ClinDiary][GemmaSmoke] %s\n' "$*" >&2
-}
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
 
-fail() {
-  printf '[ClinDiary][GemmaSmoke] Errore: %s\n' "$*" >&2
-  exit 1
-}
+login_body="$tmp_dir/login.json"
+status_body="$tmp_dir/local_status.json"
+summary_body="$tmp_dir/private_local_daily.json"
 
-if [[ ! -f "$RUNTIME_ENV" ]]; then
-  fail "Env runtime non trovato: $RUNTIME_ENV. Esegui prima scripts/setup_local_gemma_ollama.sh"
+curl -sS \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}" \
+  "${BASE_URL}/api/v1/auth/login" \
+  > "$login_body"
+
+token="$(python3 - <<'PY' "$login_body"
+import json, sys
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+print(payload.get("access_token", ""))
+PY
+)"
+
+if [ -z "$token" ]; then
+  echo "login_failed=true"
+  cat "$login_body"
+  exit 2
 fi
 
-if [[ ! -x "$BACKEND_DIR/.venv/bin/python" ]]; then
-  fail "Virtualenv backend mancante in $BACKEND_DIR/.venv"
-fi
+auth_header="Authorization: Bearer ${token}"
 
-USER_LOCAL_LLM_MODEL_NAME="${LOCAL_LLM_MODEL_NAME:-}"
-USER_LOCAL_EMBEDDING_MODEL_NAME="${LOCAL_EMBEDDING_MODEL_NAME:-}"
-USER_LOCAL_LLM_BASE_URL="${LOCAL_LLM_BASE_URL:-}"
-USER_LOCAL_LLM_BACKEND="${LOCAL_LLM_BACKEND:-}"
-USER_LOCAL_EMBEDDING_DIMENSIONS="${LOCAL_EMBEDDING_DIMENSIONS:-}"
-USER_AI_TIMEOUT_SECONDS="${AI_TIMEOUT_SECONDS:-}"
+curl -sS \
+  -H "$auth_header" \
+  "${BASE_URL}/api/v1/insights/local-status" \
+  > "$status_body"
 
-set -a
-# shellcheck disable=SC1090
-source "$RUNTIME_ENV"
-set +a
+echo "== local_status =="
+python3 - <<'PY' "$status_body"
+import json, sys
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+for key in (
+    "enabled",
+    "provider",
+    "active_provider_label",
+    "runtime_mode",
+    "backend",
+    "model_name",
+    "configured_base_url_present",
+    "fallback_provider",
+    "is_cloud_bypassed_for_this_request",
+):
+    print(f"{key}={payload.get(key)}")
+PY
 
-if [[ -n "$USER_LOCAL_LLM_MODEL_NAME" ]]; then
-  export LOCAL_LLM_MODEL_NAME="$USER_LOCAL_LLM_MODEL_NAME"
-fi
-if [[ -n "$USER_LOCAL_EMBEDDING_MODEL_NAME" ]]; then
-  export LOCAL_EMBEDDING_MODEL_NAME="$USER_LOCAL_EMBEDDING_MODEL_NAME"
-fi
-if [[ -n "$USER_LOCAL_LLM_BASE_URL" ]]; then
-  export LOCAL_LLM_BASE_URL="$USER_LOCAL_LLM_BASE_URL"
-fi
-if [[ -n "$USER_LOCAL_LLM_BACKEND" ]]; then
-  export LOCAL_LLM_BACKEND="$USER_LOCAL_LLM_BACKEND"
-fi
-if [[ -n "$USER_LOCAL_EMBEDDING_DIMENSIONS" ]]; then
-  export LOCAL_EMBEDDING_DIMENSIONS="$USER_LOCAL_EMBEDDING_DIMENSIONS"
-fi
-if [[ -n "$USER_AI_TIMEOUT_SECONDS" ]]; then
-  export AI_TIMEOUT_SECONDS="$USER_AI_TIMEOUT_SECONDS"
-fi
+curl -sS \
+  -H "$auth_header" \
+  "${BASE_URL}/api/v1/insights/daily/private-local?reference_date=${REFERENCE_DATE}" \
+  > "$summary_body"
 
-export PYTHONPATH="$BACKEND_DIR"
-
-info "Smoke summary/report locale"
-(
-  cd "$BACKEND_DIR"
-  .venv/bin/python -m app.ai_smoke --profile gemma_summary --require-external-provider
-)
-
-info "Smoke document answer locale"
-(
-  cd "$BACKEND_DIR"
-  .venv/bin/python -m app.document_rag_smoke --mode answer --profile default --require-external-provider
-)
-
-info "Smoke embeddings locali"
-(
-  cd "$BACKEND_DIR"
-  .venv/bin/python -m app.document_rag_smoke --profile embeddinggemma --require-external-provider
-)
-
-info "Smoke completati"
+echo
+echo "== private_local_daily =="
+python3 - <<'PY' "$summary_body" "$EXPECT_FALLBACK"
+import json, sys
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+expect_fallback = sys.argv[2] == "1"
+provider = payload.get("provider_name")
+print(f"id={payload.get('id')}")
+print(f"provider={provider}")
+print(f"model={payload.get('model_name')}")
+content = str(payload.get("content", "")).strip().replace("\n", " ")
+print(f"content_preview={content[:240]}")
+if expect_fallback and provider != "rule_based":
+    raise SystemExit("expected_fallback_but_local_provider_was_used")
+PY

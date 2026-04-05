@@ -3,15 +3,15 @@ import json
 
 import httpx
 
-from app.ai import summary_provider
+from app.ai.local_runtime_adapter import LocalAiRuntimeUnavailableError
 from app.ai.summary_provider import (
     GeminiAiStudioSummaryProvider,
-    GemmaSummaryProvider,
     OpenAICompatibleSummaryProvider,
     RuleBasedSummaryProvider,
     RegoloAiSummaryProvider,
     SummaryGenerationInput,
     SummaryGenerationResult,
+    SummaryProviderOverride,
     ResilientSummaryProvider,
     build_summary_provider,
 )
@@ -214,97 +214,6 @@ def test_build_summary_provider_supports_gemini_ai_studio():
     assert provider.provider_name == "gemini_ai_studio"
 
 
-def test_gemma_summary_provider_extracts_summary():
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "Sintesi Gemma prudente.\nNon costituisce diagnosi.",
-                        }
-                    }
-                ]
-            },
-        )
-
-    transport = httpx.MockTransport(handler)
-    provider = GemmaSummaryProvider(
-        base_url="https://gemma.example.com/v1",
-        api_key="secret",
-        model_name="gemma-4",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=400,
-        client=httpx.Client(transport=transport),
-    )
-
-    result = provider.generate(_payload())
-
-    assert "Sintesi Gemma prudente" in result
-    assert captured["json"]["model"] == "gemma-4"
-    assert captured["json"]["messages"][0]["content"].startswith("Segui rigorosamente")
-
-
-def test_build_summary_provider_supports_gemma():
-    settings = Settings(
-        summary_ai_provider="gemma",
-        gemma_api_key="gemma-secret",
-        gemma_base_url="https://gemma.example.com/v1",
-    )
-
-    provider = build_summary_provider(settings)
-
-    assert provider.provider_name == "gemma"
-    assert provider.model_name == "gemma-4"
-
-
-def test_build_summary_provider_falls_back_when_local_gemma_runtime_config_missing():
-    settings = Settings(
-        summary_ai_provider="gemma",
-        summary_ai_runtime_mode="local",
-        local_llm_backend="unsupported_local_backend",
-    )
-
-    provider = build_summary_provider(settings)
-
-    assert isinstance(provider, RuleBasedSummaryProvider)
-
-
-def test_build_summary_provider_supports_local_gemma_runtime(monkeypatch):
-    class _FakeLocalAdapter:
-        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
-            assert model_name == "gemma-local"
-            assert "Segui rigorosamente" in system_prompt
-            assert "DATI STRUTTURATI" in user_prompt
-            return "Sintesi Gemma locale prudente."
-
-    monkeypatch.setattr(
-        summary_provider,
-        "build_local_summary_runtime_adapter",
-        lambda settings: _FakeLocalAdapter(),
-    )
-
-    settings = Settings(
-        summary_ai_provider="gemma",
-        summary_ai_runtime_mode="local",
-        local_llm_backend="ollama",
-        local_llm_model_name="gemma-local",
-    )
-
-    provider = build_summary_provider(settings)
-    result = provider.generate_result(_payload())
-
-    assert provider.provider_name == "gemma"
-    assert result.provider_name == "gemma"
-    assert result.model_name == "gemma-local"
-    assert "locale prudente" in result.content
-
-
 def test_regolo_ai_provider_extracts_summary():
     captured: dict[str, object] = {}
 
@@ -352,6 +261,73 @@ def test_build_summary_provider_supports_regolo_ai():
     provider = build_summary_provider(settings)
 
     assert provider.provider_name == "regolo_ai"
+
+
+def test_build_summary_provider_supports_gemma_remote():
+    settings = Settings(
+        summary_ai_provider="gemma",
+        gemma_api_key="gemma-secret",
+        gemma_base_url="https://gemma.example.com/v1",
+    )
+
+    provider = build_summary_provider(settings)
+
+    assert provider.provider_name == "gemma"
+    assert provider.model_name == "gemma-4"
+
+
+def test_build_summary_provider_resolves_local_gemma4_override(monkeypatch):
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            return "Sintesi locale Gemma 4."
+
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
+    )
+
+    settings = Settings(
+        summary_ai_provider="regolo_ai",
+        regolo_api_key="regolo-secret",
+        regolo_model_name="minimax-m2.5",
+        local_llm_model_name="gemma-4-e2b",
+    )
+
+    provider = build_summary_provider(
+        settings,
+        override=SummaryProviderOverride(
+            provider_name="local_gemma4",
+            runtime_mode="local",
+            response_provider_name="local_gemma4",
+        ),
+    )
+
+    assert provider.provider_name == "local_gemma4"
+    assert provider.model_name == "gemma-4-e2b"
+    result = provider.generate_result(_payload())
+    assert result.provider_name == "local_gemma4"
+    assert result.model_name == "gemma-4-e2b"
+    assert "Sintesi locale Gemma 4." in result.content
+
+
+def test_build_summary_provider_local_gemma4_falls_back_to_rule_based_when_runtime_missing(monkeypatch):
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: (_ for _ in ()).throw(LocalAiRuntimeUnavailableError("runtime offline")),
+    )
+
+    settings = Settings(local_llm_model_name="gemma-4-e2b")
+
+    provider = build_summary_provider(
+        settings,
+        override=SummaryProviderOverride(
+            provider_name="local_gemma4",
+            runtime_mode="local",
+            response_provider_name="local_gemma4",
+        ),
+    )
+
+    assert isinstance(provider, RuleBasedSummaryProvider)
 
 
 def test_build_summary_provider_prefers_regolo_model_name_over_generic_ai_model_name():

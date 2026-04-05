@@ -31,6 +31,11 @@ class BillingStatusSnapshot:
     available_plans: list[BillingPlan]
     active_subscription: UserSubscription | None
     entitlement_codes: set[str]
+    hackathon_demo_mode: bool = False
+
+
+HACKATHON_DEMO_EMAIL = "demo@clindiary.app"
+LEGACY_HACKATHON_DEMO_EMAIL = "demo@clindiary.local"
 
 
 class BillingService:
@@ -145,11 +150,15 @@ class BillingService:
             if active_subscription is not None
             else set()
         )
+        hackathon_demo_mode = self._is_hackathon_demo_user(user)
+        if hackathon_demo_mode:
+            entitlement_codes.update(self._hackathon_demo_entitlement_codes())
         return BillingStatusSnapshot(
             current_plan=current_plan,
             available_plans=available_plans,
             active_subscription=active_subscription,
             entitlement_codes=entitlement_codes,
+            hackathon_demo_mode=hackathon_demo_mode,
         )
 
     def has_feature(self, user: User, feature_code: str) -> bool:
@@ -234,6 +243,25 @@ class BillingService:
         if plan is None or not plan.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Billing plan not found")
         return plan
+
+    def _is_hackathon_demo_user(self, user: User) -> bool:
+        if not self.settings.hackathon_demo_mode:
+            return False
+        normalized_email = (user.email or "").strip().lower()
+        return normalized_email in {
+            HACKATHON_DEMO_EMAIL,
+            LEGACY_HACKATHON_DEMO_EMAIL,
+        }
+
+    @staticmethod
+    def _hackathon_demo_entitlement_codes() -> set[str]:
+        return {
+            BillingFeatureCode.AI_DAILY_SUMMARY,
+            BillingFeatureCode.AI_PERIODIC_SUMMARIES,
+            BillingFeatureCode.AI_PREVISIT_SUMMARY,
+            BillingFeatureCode.AI_DOCUMENT_QUERY,
+            BillingFeatureCode.AI_REPORT_GENERATION,
+        }
 
     def _upsert_plan(
         self,

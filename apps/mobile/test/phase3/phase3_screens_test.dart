@@ -7,6 +7,7 @@ import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/insights/data/insights_repository.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
+import 'package:clindiary/features/insights/domain/local_ai_status.dart';
 import 'package:clindiary/features/insights/presentation/insights_screen.dart';
 import 'package:clindiary/features/reports/data/reports_repository.dart';
 import 'package:clindiary/features/reports/domain/clinical_report.dart';
@@ -77,7 +78,9 @@ void main() {
           ),
         ],
         child: const MaterialApp(
-          home: InsightsScreen(),
+          home: InsightsScreen(
+            initialSummaryMode: InsightSummaryMode.privateLocal,
+          ),
           supportedLocales: [Locale('it', 'IT'), Locale('en', 'US')],
           localizationsDelegates: [
             GlobalMaterialLocalizations.delegate,
@@ -93,6 +96,54 @@ void main() {
     expect(find.text('Recap AI'), findsOneWidget);
     expect(find.byIcon(Icons.content_copy_outlined), findsOneWidget);
     expect(find.text('Rigenera'), findsOneWidget);
+    expect(find.text('Privata locale'), findsOneWidget);
+  });
+
+  test('insight summary query distingue la modalita privata locale', () {
+    const standard = InsightSummaryQuery(summaryType: 'daily');
+    const privateLocal = InsightSummaryQuery(
+      summaryType: 'daily',
+      mode: InsightSummaryMode.privateLocal,
+    );
+
+    expect(standard, isNot(privateLocal));
+    expect(standard.hashCode, isNot(privateLocal.hashCode));
+  });
+
+  testWidgets('insights screen mostra proof card in modalita privata locale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: LocalProofCard(
+            status: LocalAiStatus(
+              enabled: true,
+              provider: 'local_gemma4',
+              activeProviderLabel: 'Gemma 4 Local',
+              runtimeMode: 'local',
+              backend: 'ollama',
+              modelName: 'gemma-4-e2b',
+              configuredBaseUrlPresent: true,
+              fallbackProvider: 'rule_based',
+              isCloudBypassedForThisRequest: true,
+            ),
+          ),
+        ),
+          supportedLocales: [Locale('it', 'IT'), Locale('en', 'US')],
+          localizationsDelegates: [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Proof locale'), findsOneWidget);
+    expect(find.textContaining('Provider attivo: Gemma 4 Local'), findsOneWidget);
+    expect(find.textContaining('Cloud esterno usato: No'), findsOneWidget);
   });
 
   testWidgets('insights screen apre il date picker senza crash', (

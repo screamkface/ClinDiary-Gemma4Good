@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.ai.summary_provider import SummaryGenerationInput, build_summary_provider
+from app.ai.summary_provider import (
+    SummaryGenerationInput,
+    SummaryProviderOverride,
+    build_summary_prompts,
+    build_summary_provider,
+)
 from app.core.config import get_settings
 from app.core.security import utcnow
 from app.models.ai_summary import AiSummary
@@ -25,6 +31,18 @@ from app.services.billing_service import BillingFeatureCode, BillingService
 from app.services.device_measurement_summary_service import summarize_device_measurements
 from app.services.profile_context import resolve_user_profile
 from app.services.screening_service import ITALIAN_SCREENING_REGIONS
+
+
+@dataclass(slots=True)
+class TransientInsightSummary:
+    id: UUID
+    summary_type: AiSummaryType
+    period_start: date
+    period_end: date
+    content: str
+    provider_name: str | None
+    model_name: str | None
+    generated_at: datetime
 
 
 class InsightService:
@@ -82,6 +100,114 @@ class InsightService:
             force_refresh=True,
             allow_external_provider=self._allow_external_provider(profile, onboarding),
         )
+
+    def get_private_local_daily_summary(
+        self,
+        user: User,
+        reference_date: date | None = None,
+        *,
+        model_name: str | None = None,
+    ) -> TransientInsightSummary:
+        self.billing_service.require_feature(
+            user,
+            self.billing_service.summary_feature_code(AiSummaryType.DAILY),
+        )
+        profile = self._require_profile(user)
+        target_date = reference_date or self._latest_entry_date(profile.id) or date.today()
+        payload = self._build_private_local_daily_recap_payload(
+            patient_id=profile.id,
+            period_start=target_date,
+            period_end=target_date,
+        )
+        provider = build_summary_provider(
+            self.settings,
+            allow_external_provider=True,
+            override=SummaryProviderOverride(
+                provider_name="local_gemma4",
+                runtime_mode="local",
+                model_name=model_name,
+                response_provider_name="local_gemma4",
+            ),
+        )
+        result = provider.generate_result(payload)
+        return TransientInsightSummary(
+            id=uuid4(),
+            summary_type=AiSummaryType.DAILY,
+            period_start=target_date,
+            period_end=target_date,
+            content=result.content,
+            provider_name=result.provider_name,
+            model_name=result.model_name,
+            generated_at=utcnow(),
+        )
+
+    def regenerate_private_local_daily_summary(
+        self,
+        user: User,
+        reference_date: date | None = None,
+        *,
+        model_name: str | None = None,
+    ) -> TransientInsightSummary:
+        return self.get_private_local_daily_summary(
+            user,
+            reference_date,
+            model_name=model_name,
+        )
+
+    def get_private_local_runtime_status(self) -> dict[str, object]:
+        override = SummaryProviderOverride(
+            provider_name="local_gemma4",
+            runtime_mode="local",
+            response_provider_name="local_gemma4",
+        )
+        provider = build_summary_provider(
+            self.settings,
+            allow_external_provider=True,
+            override=override,
+        )
+        model_name = getattr(provider, "model_name", None)
+        enabled = getattr(provider, "provider_name", None) == "local_gemma4"
+        return {
+            "enabled": enabled,
+            "provider": "local_gemma4",
+            "active_provider_label": (
+                "Gemma 4 Local" if self._supports_gemma4_label(model_name) and enabled else "Modalita privata locale"
+            ),
+            "runtime_mode": "local",
+            "backend": self.settings.local_llm_backend,
+            "model_name": model_name,
+            "configured_base_url_present": bool((self.settings.local_llm_base_url or "").strip()),
+            "fallback_provider": "rule_based",
+            "is_cloud_bypassed_for_this_request": True,
+        }
+
+    def get_on_device_daily_recap_prompt(
+        self,
+        user: User,
+        reference_date: date | None = None,
+    ) -> dict[str, object]:
+        self.billing_service.require_feature(
+            user,
+            self.billing_service.summary_feature_code(AiSummaryType.DAILY),
+        )
+        profile = self._require_profile(user)
+        target_date = reference_date or self._latest_entry_date(profile.id) or date.today()
+        payload = self._build_private_local_daily_recap_payload(
+            patient_id=profile.id,
+            period_start=target_date,
+            period_end=target_date,
+        )
+        system_prompt, user_prompt = build_summary_prompts(payload)
+        return {
+            "summary_type": AiSummaryType.DAILY,
+            "period_start": target_date,
+            "period_end": target_date,
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt,
+            "provider_name": "on_device_litertlm",
+            "suggested_model_family": "Gemma 4",
+            "is_cloud_bypassed_for_this_request": True,
+        }
 
     def get_weekly_summary(self, user: User, reference_date: date | None = None) -> AiSummary:
         self.billing_service.require_feature(
@@ -316,6 +442,22 @@ class InsightService:
         self.db.commit()
         self.db.refresh(summary)
         return summary
+
+    def _build_private_local_daily_recap_payload(
+        self,
+        *,
+        patient_id: UUID,
+        period_start: date,
+        period_end: date,
+    ) -> SummaryGenerationInput:
+        payload = self._build_summary_payload(
+            patient_id=patient_id,
+            summary_type="daily",
+            summary_label="riassunto giornaliero privato locale",
+            period_start=period_start,
+            period_end=period_end,
+        )
+        return self._minimize_private_local_daily_payload(payload)
 
     def can_access_summary(self, user: User, summary_type: AiSummaryType) -> bool:
         return self.billing_service.has_feature(
@@ -1140,3 +1282,43 @@ class InsightService:
             missing_data=_take(payload.missing_data, "missing_data"),
             clinical_episodes=_take(payload.clinical_episodes, "clinical_episodes"),
         )
+
+    def _minimize_private_local_daily_payload(
+        self,
+        payload: SummaryGenerationInput,
+    ) -> SummaryGenerationInput:
+        def _take(items, limit: int | None):
+            if items is None or limit is None:
+                return items
+            return items[:limit]
+
+        return SummaryGenerationInput(
+            summary_type=payload.summary_type,
+            summary_label=payload.summary_label,
+            period_start=payload.period_start,
+            period_end=payload.period_end,
+            data_considered=_take(payload.data_considered, 6) or [],
+            patient_snapshot=_take(payload.patient_snapshot, 4) or [],
+            active_conditions=_take(payload.active_conditions, 3) or [],
+            allergies=_take(payload.allergies, 2) or [],
+            family_history=[],
+            medications=_take(payload.medications, 4) or [],
+            medication_adherence=_take(payload.medication_adherence, 3) or [],
+            wearable_daily_summaries=_take(payload.wearable_daily_summaries, 2) or [],
+            device_measurement_summaries=_take(payload.device_measurement_summaries, 2),
+            journal_entries=_take(payload.journal_entries, 2) or [],
+            observations=_take(payload.observations, 5) or [],
+            recent_lab_results=_take(payload.recent_lab_results, 3) or [],
+            recent_imaging_reports=_take(payload.recent_imaging_reports, 1) or [],
+            recent_documents=_take(payload.recent_documents, 2) or [],
+            prior_daily_summaries=_take(payload.prior_daily_summaries, 2) or [],
+            open_alerts=_take(payload.open_alerts, 2) or [],
+            follow_up_reasons=_take(payload.follow_up_reasons, 3) or [],
+            missing_data=_take(payload.missing_data, 3) or [],
+            clinical_episodes=_take(payload.clinical_episodes, 2),
+        )
+
+    @staticmethod
+    def _supports_gemma4_label(model_name: str | None) -> bool:
+        normalized = (model_name or "").strip().lower().replace(" ", "").replace("_", "-")
+        return "gemma-4" in normalized or normalized.startswith("gemma4")

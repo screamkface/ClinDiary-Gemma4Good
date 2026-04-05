@@ -128,6 +128,7 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_use_tls: bool = True
+    hackathon_demo_mode: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",

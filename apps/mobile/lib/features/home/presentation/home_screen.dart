@@ -15,12 +15,15 @@ class HomeScreen extends ConsumerWidget {
     final pendingMedicationsAsync = ref.watch(pendingMedicationDosesProvider);
     final profileAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
+    final billingStatusAsync = ref.watch(billingStatusProvider);
 
     final alertsCount = alertsAsync.asData?.value.length ?? 0;
     final hasUnreadNotifications =
         unreadNotificationsAsync.asData?.value ?? false;
     final hasPendingMedications =
         pendingMedicationsAsync.asData?.value ?? false;
+    final isHackathonDemoMode =
+        billingStatusAsync.asData?.value?.isHackathonDemoMode == true;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -144,6 +147,50 @@ class HomeScreen extends ConsumerWidget {
             error: (error, _) =>
                 SectionCard(title: 'Oggi', child: Text(error.toString())),
           ),
+          if (isHackathonDemoMode) ...[
+            const SizedBox(height: 12),
+            profileAsync.when(
+              data: (bundle) {
+                if (bundle == null) {
+                  return const SizedBox.shrink();
+                }
+                final profiles = bundle.managedProfiles.isNotEmpty
+                    ? bundle.managedProfiles
+                    : <PatientProfile>[bundle.profile];
+                if (profiles.length < 3) {
+                  return const SizedBox.shrink();
+                }
+                final selectedId = activeProfileIdAsync.asData?.value;
+                return SectionCard(
+                  title: 'Scenari demo',
+                  subtitle:
+                      'Judge mode attivo. Cambia scenario e apri subito il recap locale.',
+                  action: FilledButton.tonalIcon(
+                    onPressed: () => context.go('/app/ai'),
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    label: const Text('Apri Recap AI'),
+                  ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var index = 0; index < profiles.length && index < 3; index++)
+                        FilterChip(
+                          selected: profiles[index].id == selectedId,
+                          label: Text(
+                            _hackathonScenarioLabel(index, profiles[index]),
+                          ),
+                          onSelected: (_) =>
+                              _setActiveProfile(context, ref, profiles[index].id),
+                        ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+          ],
           const SizedBox(height: 12),
           SectionCard(
             title: 'Vai a',
@@ -321,6 +368,14 @@ String _profileChipLabel(PatientProfile profile) {
     parts.add('principale');
   }
   return parts.join(' · ');
+}
+
+String _hackathonScenarioLabel(int index, PatientProfile profile) {
+  const prefixes = ['Scenario A', 'Scenario B', 'Scenario C'];
+  final prefix = index < prefixes.length
+      ? prefixes[index]
+      : 'Scenario ${index + 1}';
+  return '$prefix · ${profile.displayName}';
 }
 
 Future<void> _setActiveProfile(

@@ -1,5 +1,7 @@
 from datetime import date
 
+from app.core.config import get_settings
+
 
 def test_billing_status_lists_free_and_paid_catalog(client, free_auth_headers):
     status_response = client.get("/api/v1/billing/me", headers=free_auth_headers)
@@ -79,3 +81,43 @@ def test_debug_plan_activation_unlocks_ai_endpoints(client, free_auth_headers):
     cancel_response = client.post("/api/v1/billing/dev/cancel", headers=free_auth_headers)
     assert cancel_response.status_code == 200
     assert cancel_response.json()["status"]["current_plan"]["code"] == "free"
+
+
+def test_hackathon_demo_mode_unlocks_ai_for_demo_user(client, monkeypatch):
+    monkeypatch.setenv("HACKATHON_DEMO_MODE", "true")
+    get_settings.cache_clear()
+
+    try:
+        auth_response = client.post(
+            "/api/v1/auth/register",
+            json={"email": "demo@clindiary.app", "password": "StrongPass123!"},
+        )
+        assert auth_response.status_code == 201
+        access_token = auth_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {access_token}"}
+        onboarding_response = client.post(
+            "/api/v1/profile/onboarding/complete",
+            headers=headers,
+            json={
+                "health_data_consent": True,
+                "ai_external_consent": False,
+                "first_name": "Demo",
+                "last_name": "User",
+                "birth_date": "1992-04-10",
+                "biological_sex": "female",
+                "smoker": False,
+            },
+        )
+        assert onboarding_response.status_code == 200
+
+        status_response = client.get("/api/v1/billing/me", headers=headers)
+        assert status_response.status_code == 200
+        body = status_response.json()
+        assert body["hackathon_demo_mode"] is True
+        assert "ai_daily_summary" in body["entitlement_codes"]
+
+        insight_response = client.get("/api/v1/insights/daily", headers=headers)
+        assert insight_response.status_code == 200
+    finally:
+        monkeypatch.delenv("HACKATHON_DEMO_MODE", raising=False)
+        get_settings.cache_clear()

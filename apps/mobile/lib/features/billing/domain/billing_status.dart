@@ -116,6 +116,7 @@ class BillingStatus {
     required this.entitlementCodes,
     required this.hasActivePaidSubscription,
     required this.checkoutReady,
+    required this.isHackathonDemoMode,
     this.activeSubscription,
   });
 
@@ -124,6 +125,7 @@ class BillingStatus {
   final List<String> entitlementCodes;
   final bool hasActivePaidSubscription;
   final bool checkoutReady;
+  final bool isHackathonDemoMode;
   final BillingSubscription? activeSubscription;
 
   bool hasFeature(String featureCode) => entitlementCodes.contains(featureCode);
@@ -141,6 +143,7 @@ class BillingStatus {
     hasActivePaidSubscription:
         json['has_active_paid_subscription'] as bool? ?? false,
     checkoutReady: json['checkout_ready'] as bool? ?? false,
+    isHackathonDemoMode: json['hackathon_demo_mode'] as bool? ?? false,
     activeSubscription: json['active_subscription'] == null
         ? null
         : BillingSubscription.fromJson(

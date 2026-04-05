@@ -1,5 +1,6 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
+import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/home/presentation/home_screen.dart';
@@ -224,5 +225,98 @@ void main() {
     expect(find.text('Dossier'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-notifications-badge')), findsOne);
     expect(find.byKey(const ValueKey('home-medications-badge')), findsOne);
+  });
+
+  testWidgets('home screen mostra scenari demo solo in hackathon mode', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
+          billingStatusProvider.overrideWith(
+            (ref) async => const BillingStatus(
+              currentPlan: BillingPlan(
+                id: 'plan-free',
+                code: 'free',
+                name: 'ClinDiary Free',
+                billingInterval: 'free',
+                priceCents: 0,
+                currency: 'EUR',
+                sortOrder: 0,
+                isActive: true,
+                isPublic: true,
+                isRecommended: false,
+                featureCodes: [],
+              ),
+              availablePlans: [],
+              entitlementCodes: ['ai_daily_summary'],
+              hasActivePaidSubscription: false,
+              checkoutReady: false,
+              isHackathonDemoMode: true,
+            ),
+          ),
+          profileBundleProvider.overrideWith(
+            (ref) async => ProfileBundle(
+              profile: const PatientProfile(
+                id: 'profile-1',
+                userId: 'user-1',
+                isPrimary: true,
+                firstName: 'Giulia',
+                lastName: 'Rossi',
+                relationshipLabel: 'Scenario A',
+                smoker: false,
+              ),
+              onboarding: const OnboardingStatus(healthDataConsent: true),
+              allergies: const [],
+              medicalConditions: const [],
+              medications: const [],
+              familyHistory: const [],
+              managedProfiles: const [
+                PatientProfile(
+                  id: 'profile-1',
+                  userId: 'user-1',
+                  isPrimary: true,
+                  firstName: 'Giulia',
+                  lastName: 'Rossi',
+                  relationshipLabel: 'Scenario A',
+                  smoker: false,
+                ),
+                PatientProfile(
+                  id: 'profile-2',
+                  userId: 'user-1',
+                  isPrimary: false,
+                  firstName: 'Elena',
+                  lastName: 'Rossi',
+                  relationshipLabel: 'Scenario B',
+                  smoker: false,
+                ),
+                PatientProfile(
+                  id: 'profile-3',
+                  userId: 'user-1',
+                  isPrimary: false,
+                  firstName: 'Paolo',
+                  lastName: 'Rossi',
+                  relationshipLabel: 'Scenario C',
+                  smoker: false,
+                ),
+              ],
+            ),
+          ),
+          alertsProvider.overrideWith((ref) async => const []),
+          unreadNotificationsProvider.overrideWith((ref) async => false),
+          pendingMedicationDosesProvider.overrideWith((ref) async => false),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Scenari demo'), findsOneWidget);
+    expect(find.textContaining('Scenario A'), findsOneWidget);
+    expect(find.textContaining('Scenario B'), findsOneWidget);
+    expect(find.textContaining('Scenario C'), findsOneWidget);
+    expect(find.text('Apri Recap AI'), findsOneWidget);
   });
 }

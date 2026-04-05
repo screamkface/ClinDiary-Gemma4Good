@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+enum InsightSummaryMode { standard, privateLocal, onDevice }
+
 class InsightSummary {
   const InsightSummary({
     required this.id,
@@ -35,18 +37,24 @@ class InsightSummary {
 
 @immutable
 class InsightSummaryQuery {
-  const InsightSummaryQuery({required this.summaryType, this.referenceDate});
+  const InsightSummaryQuery({
+    required this.summaryType,
+    this.referenceDate,
+    this.mode = InsightSummaryMode.standard,
+  });
 
   final String summaryType;
   final DateTime? referenceDate;
+  final InsightSummaryMode mode;
 
   @override
   bool operator ==(Object other) {
     return other is InsightSummaryQuery &&
         other.summaryType == summaryType &&
-        other.referenceDate == referenceDate;
+        other.referenceDate == referenceDate &&
+        other.mode == mode;
   }
 
   @override
-  int get hashCode => Object.hash(summaryType, referenceDate);
+  int get hashCode => Object.hash(summaryType, referenceDate, mode);
 }

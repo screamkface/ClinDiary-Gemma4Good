@@ -84,7 +84,7 @@ ollama_bin() {
 }
 
 install_local_ollama() {
-  local tmp_dir archive_url archive_path staged_dir version_output
+  local tmp_dir archive_url archive_path version_output
 
   require_command curl
   require_command tar
@@ -93,8 +93,6 @@ install_local_ollama() {
   mkdir -p "$RUNTIME_DIR"
   tmp_dir="$(mktemp -d)"
   archive_path="$tmp_dir/ollama-linux-amd64.tar.zst"
-  staged_dir="$tmp_dir/staged"
-  mkdir -p "$staged_dir"
   archive_url="https://ollama.com/download/ollama-linux-amd64.tar.zst"
 
   info "Scarico Ollama user-space ufficiale..."
@@ -187,6 +185,7 @@ LOCAL_EMBEDDING_MODEL_NAME=${EMBED_MODEL}
 LOCAL_EMBEDDING_DIMENSIONS=768
 LOCAL_MAX_CONTEXT_TOKENS=8192
 AI_TIMEOUT_SECONDS=300
+HACKATHON_DEMO_MODE=true
 EOF
   info "Hint env scritto in $env_file"
 }

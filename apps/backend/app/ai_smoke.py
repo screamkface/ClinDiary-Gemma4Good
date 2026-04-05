@@ -6,67 +6,18 @@ from datetime import date
 from pathlib import Path
 import sys
 
-from app.ai.summary_provider import SummaryGenerationInput, build_summary_provider
+from app.ai.summary_provider import SummaryGenerationInput, SummaryProviderOverride, build_summary_provider
 from app.core.config import get_settings
 
 
 def sample_payload(profile: str = "default") -> SummaryGenerationInput:
-    if profile == "gemma_summary":
-        return SummaryGenerationInput(
-            summary_type="pre_visit",
-            summary_label="riepilogo pre-visita",
-            period_start=date(2026, 3, 1),
-            period_end=date(2026, 3, 24),
-            data_considered=[
-                "12 check-up",
-                "5 sintomi registrati",
-                "3 documenti recenti",
-                "2 misure da dispositivi clinici",
-            ],
-            patient_snapshot=[
-                "Anna Bianchi, 33 anni, sesso biologico female",
-                "Regione screening/prevenzione: Campania",
-                "Attivita fisica: moderata",
-            ],
-            active_conditions=["asma (active)"],
-            allergies=["penicillina (moderate)"],
-            family_history=["madre: tumore mammario"],
-            medications=["Atorvastatina 20 mg", "Vitamina D 1000 UI"],
-            medication_adherence=["2026-03-24 08:00 - Atorvastatina: taken"],
-            wearable_daily_summaries=[
-                "2026-03-24 (android): 8421 passi, sonno 7.3h, FC media 76 bpm",
-                "2026-03-23 (android): 6120 passi, sonno 6.4h, FC media 80 bpm",
-            ],
-            device_measurement_summaries=[
-                "pressione arteriosa: A&D Medical: 2 misure, media 127/80 mmHg, ultima 128/80 mmHg · FC 68 bpm.",
-                "peso: Withings: ultimo 69.4 kg · variazione +0.8 kg.",
-            ],
-            journal_entries=[
-                {
-                    "date": "2026-03-24",
-                    "energy_level": 4,
-                    "mood_level": 5,
-                    "symptoms": ["cefalea", "stanchezza serale"],
-                    "vitals": ["spo2 97 %"],
-                    "general_notes": "Stanchezza serale dopo giornata intensa.",
-                }
-            ],
-            observations=["Sonno irregolare nei tre giorni precedenti."],
-            recent_lab_results=["2026-03-23 - Emocromo: emoglobina 11.2 g/dL range 12-16 fuori range"],
-            recent_imaging_reports=["2026-03-22 - Ecografia addome: nessun reperto acuto"],
-            recent_documents=["Esami sangue del 2026-03-23", "Ecografia addome del 2026-03-22"],
-            prior_daily_summaries=[
-                "2026-03-23 (generato 2026-03-23): lieve cefalea serale con sonno ridotto.",
-                "2026-03-22 (generato 2026-03-22): giornata stabile con energia bassa.",
-            ],
-            open_alerts=[],
-            follow_up_reasons=["Portare in visita il trend pressorio e l'emoglobina fuori range."],
-            missing_data=["Nessuna saturazione notturna disponibile."],
-        )
-
     return SummaryGenerationInput(
         summary_type="daily",
-        summary_label="riepilogo giornaliero",
+        summary_label=(
+            "riepilogo giornaliero privato locale"
+            if profile == "private_local_daily"
+            else "riepilogo giornaliero"
+        ),
         period_start=date(2026, 3, 24),
         period_end=date(2026, 3, 24),
         data_considered=[
@@ -166,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--profile",
-        choices=("default", "gemma_summary"),
+        choices=("default", "private_local_daily"),
         default="default",
         help="Profilo payload predefinito da usare quando --payload non e specificato",
     )
@@ -194,7 +145,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"payload_error={exc}")
         return 2
 
-    provider = build_summary_provider(get_settings())
+    override = (
+        SummaryProviderOverride(
+            provider_name="local_gemma4",
+            runtime_mode="local",
+            response_provider_name="local_gemma4",
+        )
+        if args.profile == "private_local_daily"
+        else None
+    )
+    provider = build_summary_provider(get_settings(), override=override)
     try:
         result = provider.generate_result(payload)
     except Exception as exc:
@@ -203,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
 
     content = result.content.strip()
     preview = content.replace("\n", " ")[:400]
+    print(f"profile={args.profile}")
     print(f"provider={result.provider_name}")
     print(f"model={result.model_name}")
     print(f"used_fallback={str(result.used_fallback).lower()}")

@@ -11,6 +11,8 @@ import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/history/domain/history_day.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
+import 'package:clindiary/features/insights/domain/local_ai_status.dart';
+import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
@@ -70,6 +72,22 @@ final insightSummaryProvider =
       }
       return ref.watch(insightsRepositoryProvider).fetchSummary(query);
     });
+
+final localAiStatusProvider = FutureProvider<LocalAiStatus>((ref) async {
+  final session = await ref.watch(authControllerProvider.future);
+  if (session == null) {
+    throw Exception('Sessione non disponibile');
+  }
+  return ref.watch(insightsRepositoryProvider).fetchLocalStatus();
+});
+
+final onDeviceAiStatusProvider = FutureProvider<OnDeviceAiStatus>((ref) async {
+  final session = await ref.watch(authControllerProvider.future);
+  if (session == null) {
+    throw Exception('Sessione non disponibile');
+  }
+  return ref.watch(insightsRepositoryProvider).fetchOnDeviceStatus();
+});
 
 final historyDayProvider = FutureProvider.family<HistoryDay, DateTime>((
   ref,

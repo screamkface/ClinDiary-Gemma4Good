@@ -50,6 +50,7 @@ def _status_response(service: BillingService, user: User) -> BillingStatusRespon
         entitlement_codes=sorted(status_snapshot.entitlement_codes),
         has_active_paid_subscription=status_snapshot.active_subscription is not None,
         checkout_ready=False,
+        hackathon_demo_mode=status_snapshot.hackathon_demo_mode,
     )
 
 

@@ -1,303 +1,122 @@
-# ClinDiary - Migrazione Gemma e Local-First
-
-Data: 3 aprile 2026
+# ClinDiary AI Gemma Migration
 
 ## Obiettivo
 
-Avviare una migrazione prudente del layer AI verso una stack Gemma-first senza modificare:
+Per la submission Kaggle `Gemma 4 Good Hackathon`, ClinDiary non prova a rendere locale tutta la piattaforma AI.
 
-- logica clinica deterministica
-- comportamento prodotto esistente
-- fallback di sicurezza `rule_based`
+Il focus implementato e:
 
-## Perche` backend-host locale prima del mobile
+- `Private / Local Daily Recap`
 
-Per ClinDiary il phase 1 corretto non e` l'inferenza on-device su Flutter.
+Questa scelta mantiene il progetto dimostrabile, sicuro e coerente con l'architettura esistente.
 
-Il backend-host locale viene prima perche`:
+## Flusso attuale
 
-- migliora subito la privacy story del progetto
-- mantiene stabile il prodotto esistente
-- evita un rewrite Android/iOS prematuro
-- si allinea bene alla narrativa hackathon: Gemma come memoria sanitaria privata e non come chatbot generico
+ClinDiary continua a separare due blocchi:
 
-L'inferenza mobile on-device resta rinviata a una fase successiva, dopo che il path locale lato backend sara` validato su prompt, latenza e stabilita`.
+1. logica clinica deterministica
+2. narrativa AI prudente
 
-## Stato prima della migrazione
+Restano deterministici:
 
-### Summary / report
+- red flags
+- screening e prevenzione
+- reminder e follow-up hard-coded
+- eligibilita e regole cliniche spiegabili
 
-- builder: `apps/backend/app/ai/summary_provider.py`
-- orchestrazione: `apps/backend/app/services/insight_service.py`
-- report PDF: `apps/backend/app/services/report_service.py`
-- provider di default: `regolo_ai`
-- modello principale: `minimax-m2.5`
+Il modello viene usato per:
 
-### Document RAG
+- recap giornalieri
+- recap periodici
+- pre-visita
+- sintesi narrative
 
-- provider unico: `apps/backend/app/ai/document_rag_provider.py`
-- answer generation: `qwen3-8b`
-- embeddings: `qwen3-embedding-8b`
-- rerank: `qwen3-reranker-4b`
+## Cosa e stato aggiunto
 
-Prima di questa fase il selettore `AI_PROVIDER` guidava sia:
+### Backend
 
-- recap/report
-- document answer generation
-- document embeddings
-- rerank
+- alias provider `local_gemma4`
+- override per-call su provider/runtime/model
+- endpoint dedicati:
+  - `GET /api/v1/insights/daily/private-local`
+  - `POST /api/v1/insights/daily/private-local/regenerate`
+  - `GET /api/v1/insights/local-status`
+- endpoint prompt per recap on-device:
+  - `GET /api/v1/insights/daily/on-device-prompt`
+- payload minimizzato per il recap locale giornaliero
+- recap locale transiente, non persistito in `ai_summaries`
+- proof metadata sanitizzata per la UI e per i judge
+- bootstrap user-space di Ollama in `scripts/setup_local_gemma_ollama.sh`
+- profilo env locale in `apps/backend/.env.gemma-local.example`
 
-Questo coupling rendeva rischioso introdurre Gemma in modo incrementale.
+### Mobile
 
-## Cosa cambia in fase 1
+- modalita recap `standard` vs `privata locale`
+- modalita recap `sul dispositivo`
+- proof card leggibile nella schermata `Recap AI`
+- badge provider coerente con il proof endpoint
+- schermata `Gestisci modello` per import, rimozione, reset runtime e dettagli file
+- card `Scenari demo` in Home quando `HACKATHON_DEMO_MODE=true`
+- bridge Android nativo `LiteRT-LM` tramite `MethodChannel`
+- runtime on-device con risoluzione automatica del file `.litertlm` in `Android/data/it.clindiary.clindiary/files/models/`
+- import in-app del file `.litertlm` direttamente dalla schermata `Recap AI`
+- primo prompt-builder locale mobile: se il contesto del giorno e presente in cache, il telefono costruisce il prompt senza chiamare l'endpoint backend
 
-### 1. Summary/report Gemma in locale sul backend host
+### Demo mode
 
-Il primo traguardo locale e` ora reale:
+- `HACKATHON_DEMO_MODE=true`
+- utente demo con tre scenari profilo
+- entitlement AI automatici per il demo user, senza toggle billing manuali
 
-- daily recap
-- weekly recap
-- monthly recap
-- pre-visit report
+## Perche backend-host locale e stato il primo passo
 
-La modalita` supportata e`:
+Per il MVP hackathon, `locale` significa:
 
-- `SUMMARY_AI_PROVIDER=gemma`
-- `SUMMARY_AI_RUNTIME_MODE=local`
+- runtime privato/locale sul backend host
+- nessuna dipendenza obbligatoria da provider cloud per il recap locale
+- proof endpoint verificabile
 
-con backend locali supportati in modo concreto:
+Questa scelta e piu solida di un tentativo affrettato di inference on-device mobile, perche:
 
-- `ollama`
-- server locali OpenAI-compatible (`llama_cpp`, `vllm`, `openai_compatible`)
+- non cambia l'architettura Flutter
+- non introduce un doppio stack Android/iOS
+- mantiene osservabilita e fallback chiari
+- resta facile da dimostrare in video e ai judge
 
-Il path mantiene invariati:
+Una volta chiuso quel passaggio, ClinDiary e stato esteso anche con il percorso on-device Android:
 
-- prompt clinico prudente
-- struttura del payload
-- disclaimer
-- fallback `rule_based`
-- backend FastAPI come punto di orchestrazione
+- il backend costruisce il prompt prudente minimizzato
+- Android esegue l'inferenza finale via LiteRT-LM
+- la proof card mostra runtime, backend risolto e modello rilevato sul device
 
-Configurazione nuova:
+Questo e oggi il percorso demo piu forte sul telefono.
 
-- `LOCAL_LLM_BACKEND`
-- `LOCAL_LLM_BASE_URL`
-- `LOCAL_LLM_MODEL_NAME`
-- `LOCAL_MAX_CONTEXT_TOKENS`
-- `SUMMARY_AI_PROVIDER`
-- `SUMMARY_AI_MODEL_NAME`
-- `SUMMARY_AI_BASE_URL`
-- `SUMMARY_AI_API_KEY`
-- `SUMMARY_AI_RUNTIME_MODE`
-- `GEMMA_API_KEY`
-- `GEMMA_BASE_URL`
+## Cosa rimane volutamente fuori
 
-Questa e` la scelta corretta per il progetto:
+- full local RAG documentale come hero feature
+- OCR locale come centro della submission
+- sostituzione del motore deterministico con il modello
 
-- privacy story forte
-- impatto minimo sull'architettura
-- nessun rewrite del mobile
-- demo hackathon credibile con Gemma
+Resta fuori:
 
-### 2. Embedding provider separato
+- iOS on-device
+- document RAG come inference locale hero feature
+- import in-app di file modello multi-gigabyte
 
-Le embeddings documentali vengono separate dall'answer generation.
+## Posizionamento hackathon
 
-Nuova idea architetturale:
+La narrativa corretta e:
 
-- `DocumentRagProvider` resta responsabile di answer + rerank
-- `DocumentEmbeddingProvider` diventa responsabile solo di embeddings
+> ClinDiary e una personal health memory mobile-first.
+> Gemma 4 abilita un recap giornaliero prudente tramite percorso on-device Android e, in alternativa, tramite percorso privato locale lato host.
+> I dati sensibili non devono uscire obbligatoriamente verso un provider cloud per il caso d'uso base.
+> Le regole cliniche safety-sensitive restano deterministiche e spiegabili.
 
-Questo consente di usare:
+## Limiti noti
 
-- `regolo_ai` per answer generation documentale
-- `gemma` per embeddings
-
-senza cambiare il resto della pipeline pgvector.
-
-Configurazione nuova:
-
-- `DOCUMENT_EMBEDDING_PROVIDER`
-- `DOCUMENT_EMBEDDING_BASE_URL`
-- `DOCUMENT_EMBEDDING_API_KEY`
-- `DOCUMENT_EMBEDDING_RUNTIME_MODE`
-
-In fase 1 l'uso locale delle embeddings viene preparato ma non ancora attivato.
-
-### 3. Chiarezza dei selettori
-
-Sono introdotti selettori capability-specific:
-
-- `SUMMARY_AI_PROVIDER`
-- `DOCUMENT_ANSWER_PROVIDER`
-- `DOCUMENT_EMBEDDING_PROVIDER`
-- `DOCUMENT_RERANKER_PROVIDER`
-
-I campi legacy restano validi per compatibilita:
-
-- `AI_PROVIDER`
-- `AI_MODEL_NAME`
-- `AI_BASE_URL`
-- `AI_API_KEY`
-
-## Cosa cambia in fase 2
-
-### 1. Answer generation documentale Gemma
-
-Viene introdotto un provider `gemma` reale anche per:
-
-- document Q&A
-- user Q&A grounded sui passaggi documentali recuperati
-
-Il prompt prudente, i vincoli anti-diagnosi e il formato con citazioni restano invariati.
-
-La modalita` supportata e` ora doppia:
-
-- `DOCUMENT_ANSWER_PROVIDER=gemma`
-- `DOCUMENT_ANSWER_RUNTIME_MODE=remote|local`
-
-Quando `DOCUMENT_ANSWER_RUNTIME_MODE=local`, ClinDiary usa un runtime backend-host locale con gli stessi backend gia` supportati per i summary:
-
-- `ollama`
-- `llama_cpp`
-- `vllm`
-- `openai_compatible`
-
-### 2. Split completo answer / embedding / rerank
-
-Il modulo documentale non usa piu` un singolo provider implicito per tutto.
-
-Ora esistono builder distinti per:
-
-- `build_document_answer_provider`
-- `build_document_embedding_provider`
-- `build_document_rerank_provider`
-
-e un composite legacy resta disponibile solo per compatibilita`.
-
-Questo consente configurazioni reali tipo:
-
-- `DOCUMENT_ANSWER_PROVIDER=gemma`
-- `DOCUMENT_EMBEDDING_PROVIDER=gemma`
-- `DOCUMENT_RERANKER_PROVIDER=regolo_ai`
-
-senza alterare la pipeline pgvector o il retrieval SQL esistente.
-
-### 3. Capability matrix
-
-E` introdotta una matrice capability-specific in:
-
-- `apps/backend/app/ai/provider_capabilities.py`
-
-Serve a dichiarare esplicitamente:
-
-- quali provider supportano `remote`
-- quali runtime `local` sono gia` attivi
-- quali combinazioni restano volutamente non supportate
-
-### 4. Smoke operativi
-
-Sono ora disponibili verifiche pratiche separate:
-
-- `clindiary-ai-smoke --profile gemma_summary`
-- `clindiary-document-rag-smoke --profile embeddinggemma`
-- `clindiary-document-rag-smoke --mode answer --profile default`
-
-Questo rende verificabili separatamente:
-
-- Gemma per recap/report
-- Gemma per answer generation documentale
-- EmbeddingGemma per retrieval
-
-### 5. Local-first esteso al RAG documentale
-
-La direzione `local-first` non e` piu` limitata ai recap/report.
-
-Ora copre:
-
-- inferenza locale sul backend host per recap/report
-- answer generation documentale locale su chunk gia` recuperati
-
-Esiste una scaffolding dedicata per adapter locali:
-
-- `apps/backend/app/ai/local_runtime_adapter.py`
-
-Restano invece volutamente rinviati:
-
-- inferenza mobile on-device
-
-## Cosa cambia in fase 3
-
-### 1. EmbeddingGemma locale su backend host
-
-Le embeddings documentali possono ora usare anche un runtime locale:
-
-- `DOCUMENT_EMBEDDING_PROVIDER=gemma`
-- `DOCUMENT_EMBEDDING_RUNTIME_MODE=local`
-- `LOCAL_EMBEDDING_MODEL_NAME=<your-local-embeddinggemma-model-tag>`
-- `LOCAL_EMBEDDING_DIMENSIONS=1024`
-
-Sono supportati:
-
-- `ollama` tramite `/api/embed`
-- server OpenAI-compatible tramite `/embeddings`
-
-La pipeline pgvector resta invariata:
-
-- chunking
-- persistenza embeddings
-- retrieval SQL/pgvector
-- rerank separato
-
-Target operativo consigliato nel repo:
-
-- backend locale user-space con Ollama aggiornato
-- `gemma4:e2b` come modello generativo
-- `embeddinggemma` come modello embeddings
-- porta dedicata `11435`
-- timeout locale piu` alto (`AI_TIMEOUT_SECONDS=300`) per inference CPU-bound
-- script di bootstrap: `scripts/setup_local_gemma_ollama.sh`
-- script smoke: `scripts/smoke_local_gemma_ollama.sh`
-
-Nota operativa: su host CPU con circa `7 GiB` di RAM libera, `gemma4:e2b` puo` non caricarsi. In quel caso il wiring resta valido, ma per smoke/dev conviene usare temporaneamente `gemma3n:e2b` come modello locale override, lasciando invariato il target architetturale `Gemma 4`.
-
-### 2. Cosa resta ancora rinviato
-
-- reranker locale
-- sidecar safety tipo ShieldGemma
-- inferenza mobile on-device
-- routing automatico per classi diverse di device locali
-
-## Cosa resta invariato
-
-- `red flags`
-- `screening eligibility`
-- `prevention engine`
-- `care-path reminders`
-- `medication reminder logic`
-- reranker documentale
-- mobile UI e payload clinici
-
-In particolare:
-
-- nessuna logica deterministica viene spostata in LLM
-- Gemma non decide regole cliniche
-
-## Cosa e` volutamente rinviato
-
-Queste fasi non implementano ancora:
-
-- reranker Gemma o sidecar safety
-- inferenza on-device reale
-- runtime mobile on-device
-
-## Direzione futura
-
-La direzione architetturale resta:
-
-- Gemma 4 per sintesi e recap
-- EmbeddingGemma per retrieval embeddings
-- eventuale ShieldGemma come sidecar safety
-- modalita` local-first nel medio termine
-
-Le fasi 1-3 preparano il percorso Gemma-first senza forzare una sostituzione totale immediata del backend AI esistente.
+- `Gemma 4 On-device` viene mostrato in UI solo se il runtime Android rileva un model label coerente
+- l'inferenza on-device e oggi disponibile solo su Android
+- il file `.litertlm` puo essere provisionato manualmente sul device oppure importato dall'app
+- il prompt prudente viene costruito in locale quando i dati necessari sono gia presenti in cache; se il contesto locale non basta, ClinDiary ricade ancora sul backend per il solo prompt minimizzato
+- su host di sviluppo con risorse limitate puo essere necessario un modello Gemma piu piccolo solo per smoke/dev
+- il recap locale e piu corto e intenzionalmente limitato rispetto ai flussi cloud piu ricchi

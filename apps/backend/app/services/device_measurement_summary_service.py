@@ -355,10 +355,10 @@ def _glucose_concern(values: list[float]) -> tuple[str | None, str | None]:
 
 
 def _ai_summary_line(*, metric_label: str, summary: str, concern_note: str | None) -> str:
-    prefixed = f"{metric_label.lower()}: {summary}"
+    intro = f"{metric_label.lower()}: {summary}"
     if not concern_note:
-        return prefixed
-    return f"{prefixed} Punto da discutere: {concern_note}"
+        return intro
+    return f"{intro} Punto da discutere: {concern_note}"
 
 
 def _format_number(value: float | None, decimals: int = 0) -> str:

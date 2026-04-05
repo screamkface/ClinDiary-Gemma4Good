@@ -2,6 +2,42 @@
 
 ClinDiary e una baseline production-oriented per una app clinica mobile con diario giornaliero, timeline sanitaria unica, archivio documentale, supporto AI prudente, alert clinici spiegabili, screening/prevenzione, aderenza terapeutica, inbox notifiche, report PDF e sync wearable/smartwatch. In questa repository Fase 1, Fase 2, Fase 3 e Fase 4 sono implementate e Fase 5 e ormai quasi tutta chiusa lato codice, con hardening reale backend/mobile.
 
+## Gemma 4 Good Hackathon MVP
+
+La submission e focalizzata su una sola hero feature:
+
+- `Private / Local Daily Recap`
+
+In pratica:
+
+- ClinDiary raccoglie sintomi, check-up, parametri, terapia, wearable e timeline
+- il motore deterministico continua a gestire alert, screening, prevenzione e follow-up hard-coded
+- il recap giornaliero puo essere richiesto anche tramite percorso `Sul dispositivo`
+- il percorso `Sul dispositivo` usa LiteRT-LM su Android e un modello `.litertlm` caricato sul telefono
+- il backend continua a esistere come orchestratore del prompt prudente e come fallback privato locale lato host
+- il recap locale non viene persistito in `ai_summaries`: e transiente e separato dal recap cloud/default
+- il frontend mostra badge e proof card per distinguere percorso cloud, percorso locale host e percorso on-device
+
+Per il MVP hackathon:
+
+- `Gemma 4` e la famiglia di modelli target per il recap locale
+- `Gemma 4 On-device` viene mostrato in UI solo quando il runtime Android rileva davvero un modello coerente
+- se il runtime locale e attivo ma il label non e definitivo, la UI usa `On-device locale` o `Modalita privata locale`
+- il fallback resta `rule_based`
+
+## Locale vs cloud
+
+- `Cloud/default recap`: usa il provider AI configurato normalmente per i recap persistiti
+- `On-device recap`: usa `GET /api/v1/insights/daily/on-device-prompt` per ottenere il prompt minimizzato e genera il testo direttamente su Android via LiteRT-LM
+- `Private/local recap`: usa `GET /api/v1/insights/daily/private-local` e `POST /api/v1/insights/daily/private-local/regenerate` come percorso alternativo locale lato host
+- `Proof locale`: `GET /api/v1/insights/local-status`
+
+Limite intenzionale del MVP:
+
+- il focus e solo sul `daily recap`
+- document RAG locale resta fuori dalla hero feature
+- la logica clinica deterministica non viene spostata nel modello
+
 ## Stato attuale
 
 Completato fino a Fase 4:
@@ -52,6 +88,84 @@ Roadmap successiva:
 - credenziali reali FCM/APNs/SMTP e test end-to-end dei canali esterni
 - validazione OCR su scansioni reali difficili e wearable su dispositivi veri
 - dataset screening regionali/ASL con link istituzionali verificati
+
+## Judge Path
+
+Percorso rapido verificabile in meno di 3 minuti:
+
+1. imposta il backend in modalita hackathon e locale, per esempio:
+
+```bash
+bash scripts/push_android_litert_model.sh /percorso/al/tuo/gemma-4-E2B-it.litertlm
+```
+
+2. avvia backend + mobile e ricarica il seed demo:
+
+```bash
+DATABASE_URL=postgresql+psycopg://clindiary:clindiary@localhost:5432/clindiary apps/backend/.venv/bin/clindiary-seed
+bash scripts/run_android_app.sh --skip-seed
+```
+
+3. accedi con:
+
+```text
+demo@clindiary.app
+ChangeMe123!
+```
+
+4. dalla Home apri `Scenari demo`, cambia profilo e tocca `Apri Recap AI`
+5. nella schermata `Recap AI`, scegli `Giorno` e `Sul dispositivo`
+6. se non c'e ancora un modello, usa il pulsante `Importa modello .litertlm`
+7. scegli il file dal telefono; ClinDiary lo copia nella propria cartella modelli Android
+8. se vuoi controllare path, dimensione file o rimuovere il modello, usa `Gestisci modello`
+9. verifica:
+   - badge provider on-device
+   - proof card con provider/runtime/modello/backend
+   - `Cloud esterno usato: No`
+
+Verifica tecnica equivalente:
+
+```bash
+bash scripts/push_android_litert_model.sh /percorso/al/tuo/gemma-4-E2B-it.litertlm
+adb shell ls -lh /sdcard/Android/data/it.clindiary.clindiary/files/models
+bash scripts/check_xiaomi_on_device_demo.sh
+```
+
+Se vuoi mostrare anche il percorso locale lato host come confronto tecnico:
+
+```bash
+bash scripts/setup_local_gemma_ollama.sh --keep-server
+bash scripts/smoke_local_gemma_ollama.sh
+```
+
+## Video Demo Path
+
+Sequenza consigliata per un video di 2-3 minuti:
+
+1. Home: mostra che ClinDiary non e un chatbot ma una app salute completa
+2. `Scenari demo`: passa da Scenario A a Scenario B
+3. `Recap AI`: seleziona `Sul dispositivo`
+4. se serve, usa `Importa modello .litertlm` direttamente nell'app
+5. fai vedere il badge provider, la proof card e il path del modello sul device
+6. genera o rigenera il recap del giorno
+7. chiudi mostrando che alert/screening/prevenzione restano deterministicamente separati dal modello
+
+## Safety Boundaries
+
+- nessuna diagnosi
+- nessuna prescrizione o dose
+- nessun uso del modello per red flags, screening o prevenzione deterministica
+- il recap usa solo il payload disponibile
+- il testo resta prudente e orientato all'italiano clinico non diagnostico
+
+## Known Limitations
+
+- il percorso `Sul dispositivo` oggi e implementato solo su Android, non su iOS
+- il modello `.litertlm` puo essere provisionato via script `adb` oppure importato direttamente dall'app
+- il recap `Sul dispositivo` oggi genera il testo sul telefono, ma costruisce ancora il prompt prudente tramite backend ClinDiary; la modalita full-offline end-to-end resta step successivo
+- `Gemma 4` resta il target di submission; su device o host di sviluppo deboli puo servire un modello Gemma piu piccolo solo per smoke/dev
+- il recap locale e volutamente piu corto e non copre l'intera piattaforma AI
+- document RAG locale non e il centro della demo hackathon
 
 ## Struttura repository
 
@@ -185,87 +299,7 @@ DEXCOM_CLIENT_SECRET=...
 DEXCOM_REDIRECT_URI=https://backend.example.com/oauth/dexcom/callback
 ```
 
-Per iniziare la migrazione Gemma in modo graduale:
-
-```bash
-SUMMARY_AI_PROVIDER=gemma
-SUMMARY_AI_RUNTIME_MODE=remote
-SUMMARY_AI_MODEL_NAME=gemma-4
-DOCUMENT_ANSWER_PROVIDER=gemma
-DOCUMENT_EMBEDDING_PROVIDER=gemma
-DOCUMENT_EMBEDDING_RUNTIME_MODE=remote
-DOCUMENT_EMBEDDING_MODEL_NAME=embeddinggemma
-DOCUMENT_RERANKER_PROVIDER=regolo_ai
-GEMMA_API_KEY=incolla-qui-la-tua-chiave
-GEMMA_BASE_URL=https://your-gemma-gateway.example/v1
-```
-
-Questa combinazione sposta verso Gemma:
-
-- recap/report
-- answer generation documentale
-- embeddings documentali
-
-mentre il rerank resta sul path Regolo/Qwen per mantenere il comportamento attuale piu stabile.
-
 `DOCUMENT_EMBEDDING_DIMENSIONS=1024` e il compromesso consigliato tra spazio, latenza e qualita. Se il provider non supporta il parametro, ClinDiary ritenta automaticamente senza `dimensions` e continua a funzionare.
-
-Smoke utili per la migrazione:
-
-```bash
-cd apps/backend
-clindiary-ai-smoke --profile gemma_summary --require-external-provider
-clindiary-document-rag-smoke --profile embeddinggemma --require-external-provider
-clindiary-document-rag-smoke --mode answer --profile default --require-external-provider
-```
-
-Per il path locale su backend host attraverso le fasi 1-3, il setup consigliato e`:
-
-```bash
-SUMMARY_AI_PROVIDER=gemma
-SUMMARY_AI_RUNTIME_MODE=local
-DOCUMENT_ANSWER_PROVIDER=gemma
-DOCUMENT_ANSWER_RUNTIME_MODE=local
-DOCUMENT_EMBEDDING_PROVIDER=gemma
-DOCUMENT_EMBEDDING_RUNTIME_MODE=local
-DOCUMENT_RERANKER_PROVIDER=regolo_ai
-LOCAL_LLM_BACKEND=ollama
-LOCAL_LLM_BASE_URL=http://127.0.0.1:11434
-LOCAL_LLM_MODEL_NAME=<your-local-gemma-model-tag>
-LOCAL_EMBEDDING_MODEL_NAME=<your-local-embeddinggemma-model-tag>
-LOCAL_EMBEDDING_DIMENSIONS=1024
-LOCAL_MAX_CONTEXT_TOKENS=8192
-```
-
-Questo attiva Gemma locale per recap/report, answer generation documentale e embeddings senza toccare il mobile e senza spostare logica clinica deterministica nell'LLM. Per server locali OpenAI-compatible puoi usare `LOCAL_LLM_BACKEND=llama_cpp`, `vllm` o `openai_compatible`. Il rerank puo` restare su `regolo_ai` oppure sul fallback `rule_based`.
-
-Per un target locale ripetibile con Ollama user-space:
-
-```bash
-bash scripts/setup_local_gemma_ollama.sh --keep-server
-bash scripts/smoke_local_gemma_ollama.sh
-```
-
-Questo bootstrap usa:
-
-- `gemma4:e2b` come modello generativo locale
-- `embeddinggemma` come modello embeddings locale
-- porta dedicata `11435`
-- env hint generato in `.runtime/ollama-local/gemma-local.env`
-- `AI_TIMEOUT_SECONDS=300` per evitare timeout prematuri su inferenza CPU locale
-
-Se la macchina non ha abbastanza RAM libera per `gemma4:e2b`, puoi usare un fallback solo per smoke/dev:
-
-```bash
-LOCAL_GEMMA_MODEL=gemma3n:e2b bash scripts/setup_local_gemma_ollama.sh --keep-server
-LOCAL_LLM_MODEL_NAME=gemma3n:e2b bash scripts/smoke_local_gemma_ollama.sh
-```
-
-Il target architetturale resta `Gemma 4`; `gemma3n:e2b` serve solo come profilo di verifica per host locali piu` stretti.
-
-Se vuoi un profilo versionato da copiare nel backend, parti da:
-
-- `apps/backend/.env.gemma-local.example`
 
 Per la `Wave 1` dei device clinici:
 
