@@ -151,11 +151,6 @@ class OnDeviceAiService {
   }
 
   Future<void> _copyPickedFile(PlatformFile file, String targetPath) async {
-    if (file.path != null && file.path!.trim().isNotEmpty) {
-      await File(file.path!).copy(targetPath);
-      return;
-    }
-
     if (file.readStream != null) {
       final targetFile = File(targetPath);
       final sink = targetFile.openWrite();
@@ -169,6 +164,11 @@ class OnDeviceAiService {
 
     if (file.bytes != null) {
       await File(targetPath).writeAsBytes(file.bytes!, flush: true);
+      return;
+    }
+
+    if (file.path != null && file.path!.trim().isNotEmpty) {
+      await File(file.path!).copy(targetPath);
       return;
     }
 

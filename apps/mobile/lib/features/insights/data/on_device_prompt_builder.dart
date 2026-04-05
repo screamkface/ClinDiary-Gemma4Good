@@ -4,6 +4,8 @@ import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
+import 'package:clindiary/features/dossier/domain/health_dossier.dart';
+import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/on_device_recap_prompt.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
@@ -20,6 +22,7 @@ class OnDevicePromptBuilder {
     required DateTime referenceDate,
   }) async {
     final profileBundle = await _readProfileBundle();
+    final dossier = await _readHealthDossier();
     final entries = await _readDailyEntries();
     final alerts = await _readAlerts();
     final medicationLogs = await _readMedicationLogs();
@@ -27,31 +30,88 @@ class OnDevicePromptBuilder {
     final timelineEvents = await _readTimelineEvents();
 
     final targetDay = _dateOnly(referenceDate);
-    final entriesForDay = entries
+    final directEntriesForDay = entries
         .where((entry) => _sameDay(entry.entryDate, targetDay))
-        .toList()
-      ..sort((a, b) => a.entryDate.compareTo(b.entryDate));
+        .toList();
+    final entriesForDay = [
+      ...directEntriesForDay,
+      if (dossier != null && directEntriesForDay.isEmpty)
+        ...dossier.recentDailyEntries.where(
+          (entry) => _sameDay(entry.entryDate, targetDay),
+        ),
+    ]..sort((a, b) => a.entryDate.compareTo(b.entryDate));
     final relevantLogs = medicationLogs.where((item) {
       final scheduledDay = _dateOnly(item.scheduledAt);
       return _sameDay(scheduledDay, targetDay);
     }).toList();
-    final relevantWearables = wearableSummaries
+    final directWearablesForDay = wearableSummaries
         .where((item) => _sameDay(item.summaryDate, targetDay))
         .toList();
+    final relevantWearables = [
+      ...directWearablesForDay,
+      if (dossier != null && directWearablesForDay.isEmpty)
+        ...dossier.wearableSummaries.where(
+          (item) => _sameDay(item.summaryDate, targetDay),
+        ),
+    ];
     final relevantTimeline = timelineEvents
         .where((item) => _sameDay(item.eventDate, targetDay))
         .toList()
       ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
-    final openAlerts = alerts.where((item) => !item.isResolved).toList();
+    final directOpenAlerts = alerts.where((item) => !item.isResolved).toList();
+    final openAlerts = [
+      ...directOpenAlerts,
+      if (dossier != null && directOpenAlerts.isEmpty)
+        ...dossier.alerts.where((item) => !item.isResolved),
+    ];
+    final deviceMeasurementSummaries =
+        dossier?.deviceMeasurementSummaries.map((item) => item.summary).toList() ??
+        const <String>[];
+    final recentLabResults =
+        dossier?.recentLabPanels.map(_labPanelLine).toList() ?? const <String>[];
+    final recentImagingReports =
+        dossier?.recentImagingReports.map(_imagingReportLine).toList() ??
+        const <String>[];
+    final timelineLines = relevantTimeline.map(_timelineLine).toList();
+    final structuredDocumentLines =
+        dossier?.recentDocuments.map(_documentLine).toList() ?? const <String>[];
+    final recentDocumentLines = [
+      ...timelineLines,
+      ...structuredDocumentLines,
+    ];
+    final priorDailySummaries =
+        dossier?.recentInsights
+            .where((item) => item.summaryType.toLowerCase() == 'daily')
+            .map(_priorDailySummaryLine)
+            .toList() ??
+        const <String>[];
 
     final hasLocalContext =
         profileBundle != null ||
+        dossier != null ||
         entriesForDay.isNotEmpty ||
         relevantLogs.isNotEmpty ||
         relevantWearables.isNotEmpty ||
         relevantTimeline.isNotEmpty ||
-        openAlerts.isNotEmpty;
+        openAlerts.isNotEmpty ||
+        deviceMeasurementSummaries.isNotEmpty ||
+        recentLabResults.isNotEmpty ||
+        recentImagingReports.isNotEmpty ||
+        recentDocumentLines.isNotEmpty ||
+        priorDailySummaries.isNotEmpty;
     if (!hasLocalContext) {
+      return null;
+    }
+
+    final hasSufficientClinicalContext =
+        entriesForDay.isNotEmpty ||
+        relevantWearables.isNotEmpty ||
+        deviceMeasurementSummaries.isNotEmpty ||
+        recentLabResults.isNotEmpty ||
+        recentImagingReports.isNotEmpty ||
+        structuredDocumentLines.isNotEmpty ||
+        priorDailySummaries.isNotEmpty;
+    if (!hasSufficientClinicalContext) {
       return null;
     }
 
@@ -63,26 +123,34 @@ class OnDevicePromptBuilder {
       '${relevantWearables.length} riepiloghi wearable',
       '${relevantTimeline.length} eventi timeline',
       '${openAlerts.length} alert aperti',
+      '${deviceMeasurementSummaries.length} sintesi device',
+      '${recentLabResults.length} pannelli lab recenti',
+      '${recentImagingReports.length} referti imaging recenti',
+      '${recentDocumentLines.length} documenti/eventi recenti',
+      '${priorDailySummaries.length} recap precedenti',
     ];
 
-    final patientSnapshot = _patientSnapshot(profileBundle);
-    final activeConditions =
-        profileBundle?.medicalConditions.map((item) => item.name).toList() ??
-        const <String>[];
-    final allergies =
-        profileBundle?.allergies.map((item) => item.allergen).toList() ??
-        const <String>[];
-    final familyHistory =
-        profileBundle?.familyHistory
-            .map((item) => '${item.relation}: ${item.conditionName}')
-            .toList() ??
-        const <String>[];
-    final medications =
-        profileBundle?.medications
-            .where((item) => item.active)
-            .map(_medicationLine)
-            .toList() ??
-        const <String>[];
+    final patientSnapshot = _patientSnapshot(profileBundle, dossier);
+    final activeConditions = _mergeStrings(
+      profileBundle?.medicalConditions.map((item) => item.name),
+      dossier?.medicalConditions.map((item) => item.name),
+    );
+    final allergies = _mergeStrings(
+      profileBundle?.allergies.map((item) => item.allergen),
+      dossier?.allergies.map((item) => item.allergen),
+    );
+    final familyHistory = _mergeStrings(
+      profileBundle?.familyHistory.map(
+        (item) => '${item.relation}: ${item.conditionName}',
+      ),
+      dossier?.familyHistory.map(
+        (item) => '${item.relation}: ${item.conditionName}',
+      ),
+    );
+    final medications = _mergeStrings(
+      profileBundle?.medications.where((item) => item.active).map(_medicationLine),
+      dossier?.medications.where((item) => item.active).map(_medicationLine),
+    );
     final medicationAdherence = relevantLogs.map(_medicationLogLine).toList();
     final wearableLines = relevantWearables.map((item) => item.toDiagnosticText()).toList();
     final journalEntries = entriesForDay.map(_serializeEntry).toList();
@@ -93,11 +161,12 @@ class OnDevicePromptBuilder {
       relevantWearables: relevantWearables,
       relevantLogs: relevantLogs,
       profileBundle: profileBundle,
+      dossier: dossier,
     );
-    final timelineLines = relevantTimeline.map(_timelineLine).toList();
-    final clinicalEpisodes =
-        profileBundle?.clinicalEpisodes.map(_clinicalEpisodeLine).toList() ??
-        const <String>[];
+    final clinicalEpisodes = _mergeStrings(
+      profileBundle?.clinicalEpisodes.map(_clinicalEpisodeLine),
+      dossier?.clinicalEpisodes.map(_clinicalEpisodeLine),
+    );
 
     final payload = <String, Object?>{
       'summary_type': 'daily',
@@ -112,13 +181,13 @@ class OnDevicePromptBuilder {
       'medications': medications,
       'medication_adherence': medicationAdherence,
       'wearable_daily_summaries': wearableLines,
-      'device_measurement_summaries': const <String>[],
+      'device_measurement_summaries': deviceMeasurementSummaries.take(6).toList(),
       'journal_entries': journalEntries,
       'observations': observations,
-      'recent_lab_results': const <String>[],
-      'recent_imaging_reports': const <String>[],
-      'recent_documents': timelineLines,
-      'prior_daily_summaries': const <String>[],
+      'recent_lab_results': recentLabResults.take(6).toList(),
+      'recent_imaging_reports': recentImagingReports.take(4).toList(),
+      'recent_documents': recentDocumentLines.take(8).toList(),
+      'prior_daily_summaries': priorDailySummaries.take(4).toList(),
       'clinical_episodes': clinicalEpisodes,
       'open_alerts': openAlerts.take(5).map((item) => '${item.severity}: ${item.title}').toList(),
       'follow_up_reasons': followUpReasons,
@@ -215,11 +284,39 @@ class OnDevicePromptBuilder {
         .map((item) => TimelineEventItem.fromJson(item as Map<String, dynamic>))
         .toList();
   }
+
+  Future<HealthDossier?> _readHealthDossier() async {
+    final cached = await readProfileScopedCache(_localDatabase, 'health_dossier');
+    if (cached == null) {
+      return null;
+    }
+    final decoded = jsonDecode(cached) as Map<String, dynamic>;
+    return HealthDossier.fromJson(decoded);
+  }
 }
 
-List<String> _patientSnapshot(ProfileBundle? bundle) {
+List<String> _patientSnapshot(ProfileBundle? bundle, HealthDossier? dossier) {
   if (bundle == null) {
-    return const <String>[];
+    if (dossier == null) {
+      return const <String>[];
+    }
+    final snapshot = <String>[dossier.displayName];
+    final demographics = <String>[];
+    if (dossier.age != null) {
+      demographics.add('${dossier.age} anni');
+    }
+    if (dossier.biologicalSex != null && dossier.biologicalSex!.trim().isNotEmpty) {
+      demographics.add('sesso biologico ${dossier.biologicalSex}');
+    }
+    if (demographics.isNotEmpty) {
+      snapshot[0] = '${dossier.displayName}: ${demographics.join(', ')}';
+    }
+    snapshot.addAll(
+      dossier.profileFacts
+          .take(6)
+          .map((item) => '${item.label}: ${item.value}'),
+    );
+    return snapshot;
   }
   final profile = bundle.profile;
   final snapshot = <String>[];
@@ -381,9 +478,10 @@ List<String> _buildMissingData({
   required List<WearableDaySummary> relevantWearables,
   required List<MedicationLogItem> relevantLogs,
   required ProfileBundle? profileBundle,
+  required HealthDossier? dossier,
 }) {
   final missing = <String>[];
-  if (profileBundle == null) {
+  if (profileBundle == null && dossier == null) {
     missing.add('Profilo clinico non disponibile nella cache locale.');
   }
   if (entriesForDay.isEmpty) {
@@ -396,6 +494,26 @@ List<String> _buildMissingData({
     missing.add('Nessun log terapia locale disponibile per il giorno selezionato.');
   }
   return missing;
+}
+
+List<String> _mergeStrings(
+  Iterable<String>? primary,
+  Iterable<String>? secondary,
+) {
+  final merged = <String>[];
+  for (final collection in [primary, secondary]) {
+    if (collection == null) {
+      continue;
+    }
+    for (final item in collection) {
+      final normalized = item.trim();
+      if (normalized.isEmpty || merged.contains(normalized)) {
+        continue;
+      }
+      merged.add(normalized);
+    }
+  }
+  return merged;
 }
 
 Map<String, Object?> _serializeEntry(DailyEntry entry) {
@@ -443,6 +561,54 @@ String _clinicalEpisodeLine(ClinicalEpisodeItem item) {
     parts.add(item.summary!.trim());
   }
   return parts.join(' - ');
+}
+
+String _documentLine(DossierDocumentItem item) {
+  final parts = <String>[item.documentType, item.title];
+  final referenceDate = item.examDate ?? item.uploadDate;
+  parts.add(referenceDate.toIso8601String().split('T').first);
+  if (item.source != null && item.source!.trim().isNotEmpty) {
+    parts.add(item.source!.trim());
+  }
+  return parts.join(' - ');
+}
+
+String _labPanelLine(DossierLabPanelItem item) {
+  final parts = <String>[item.panelName];
+  if (item.panelDate != null) {
+    parts.add(item.panelDate!.toIso8601String().split('T').first);
+  }
+  if (item.keyResults.isNotEmpty) {
+    parts.add(item.keyResults.take(3).join(', '));
+  }
+  if (item.abnormalResultsCount > 0) {
+    parts.add('${item.abnormalResultsCount} risultati fuori range');
+  }
+  return parts.join(' - ');
+}
+
+String _imagingReportLine(DossierImagingReportItem item) {
+  final parts = <String>[
+    if (item.examType != null && item.examType!.trim().isNotEmpty) item.examType!.trim(),
+    if (item.bodyPart != null && item.bodyPart!.trim().isNotEmpty) item.bodyPart!.trim(),
+    if (item.documentTitle.trim().isNotEmpty) item.documentTitle.trim(),
+  ];
+  if (item.examDate != null) {
+    parts.add(item.examDate!.toIso8601String().split('T').first);
+  }
+  if (item.impression != null && item.impression!.trim().isNotEmpty) {
+    parts.add(item.impression!.trim());
+  }
+  return parts.join(' - ');
+}
+
+String _priorDailySummaryLine(InsightSummary item) {
+  final day = item.periodEnd.toIso8601String().split('T').first;
+  final compactContent = item.content.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final excerpt = compactContent.length <= 180
+      ? compactContent
+      : '${compactContent.substring(0, 177)}...';
+  return '$day - $excerpt';
 }
 
 DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);

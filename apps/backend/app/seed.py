@@ -6,25 +6,35 @@ from app.core.security import hash_password, utcnow
 from app.core.storage import get_storage_service
 from app.models.alert import Alert
 from app.models.allergy import Allergy
+from app.models.ai_summary import AiSummary
 from app.models.clinical_document import ClinicalDocument
 from app.models.daily_entry import DailyEntry
+from app.models.device_connection import DeviceConnection
+from app.models.device_measurement import DeviceMeasurement
 from app.models.enums import (
     ActivityLevel,
     AlcoholUse,
     AlertSeverity,
+    AiSummaryType,
     BiologicalSex,
     ClinicalDocumentType,
+    DocumentContextStatus,
     DocumentParsedStatus,
     ItalianRegionCode,
     MedicationLogStatus,
+    ReportType,
     TimelineEventType,
 )
 from app.models.family_history import FamilyHistoryEntry
+from app.models.imaging_report import ImagingReport
+from app.models.lab_panel import LabPanel
+from app.models.lab_result import LabResult
 from app.models.medical_condition import MedicalCondition
 from app.models.medication import Medication
 from app.models.medication_log import MedicationLog
 from app.models.medication_schedule import MedicationSchedule
 from app.models.patient_profile import PatientProfile
+from app.models.report import Report
 from app.models.symptom_entry import SymptomEntry
 from app.models.timeline_event import TimelineEvent
 from app.models.user import User
@@ -64,7 +74,7 @@ def main() -> None:
         profiles = [
             _build_profile(
                 user_id=user.id,
-                is_primary=True,
+                is_primary=False,
                 first_name="Giulia",
                 last_name="Rossi",
                 relationship_label="Scenario A",
@@ -83,10 +93,10 @@ def main() -> None:
             ),
             _build_profile(
                 user_id=user.id,
-                is_primary=False,
+                is_primary=True,
                 first_name="Elena",
                 last_name="Rossi",
-                relationship_label="Scenario B",
+                relationship_label="Scenario B - Demo completo",
                 birth_date=date(1988, 11, 2),
                 biological_sex=BiologicalSex.FEMALE,
                 height_cm=166,
@@ -123,7 +133,7 @@ def main() -> None:
 
         db.add_all(profiles)
         db.flush()
-        user.profile = profiles[0]
+        user.profile = profiles[1]
 
         _seed_scenario_a(db, profiles[0])
         _seed_scenario_b(db, profiles[1])
@@ -140,6 +150,17 @@ def main() -> None:
 
 def _reset_existing_demo_users(db) -> None:
     existing_users = db.query(User).filter(User.email.in_([DEMO_EMAIL, LEGACY_DEMO_EMAIL])).all()
+    existing_profiles = (
+        db.query(PatientProfile)
+        .filter(PatientProfile.user_id.in_([user.id for user in existing_users]))
+        .all()
+        if existing_users
+        else []
+    )
+    for profile in existing_profiles:
+        db.delete(profile)
+    if existing_profiles:
+        db.flush()
     for user in existing_users:
         db.delete(user)
     if existing_users:
@@ -333,6 +354,11 @@ def _seed_scenario_b(db, profile: PatientProfile) -> None:
                 name="Rinite ricorrente",
                 notes="Peggiora quando dorme poco o lavora molte ore consecutive.",
             ),
+            FamilyHistoryEntry(
+                patient_id=profile.id,
+                relation="padre",
+                condition_name="broncopatia cronica",
+            ),
             medication,
         ]
     )
@@ -452,6 +478,10 @@ def _seed_scenario_b(db, profile: PatientProfile) -> None:
             )
         )
 
+    _seed_scenario_b_devices(db, profile)
+    _seed_scenario_b_documents(db, profile)
+    _seed_scenario_b_summaries_and_report(db, profile)
+
     db.add(
         Alert(
             patient_id=profile.id,
@@ -463,12 +493,6 @@ def _seed_scenario_b(db, profile: PatientProfile) -> None:
             source_id=None,
             triggered_at=_timestamp_for(date.today(), 7, 30),
         )
-    )
-    _add_demo_document(
-        db,
-        profile=profile,
-        title="Scenario B - referto visita recente",
-        source="Seed hackathon",
     )
 
 
@@ -652,6 +676,316 @@ def _add_demo_document(db, *, profile: PatientProfile, title: str, source: str) 
         )
     except Exception:
         return
+
+
+def _seed_scenario_b_devices(db, profile: PatientProfile) -> None:
+    omron = DeviceConnection(
+        patient_id=profile.id,
+        provider_code="omron",
+        provider_name="OMRON Connect",
+        integration_kind="cloud_api",
+        connection_flow="oauth",
+        status="connected",
+        account_label="Misuratore domiciliare demo",
+        last_synced_at=_timestamp_for(date.today(), 8, 10),
+    )
+    withings = DeviceConnection(
+        patient_id=profile.id,
+        provider_code="withings",
+        provider_name="Withings",
+        integration_kind="cloud_api",
+        connection_flow="oauth",
+        status="connected",
+        account_label="Bilancia smart demo",
+        last_synced_at=_timestamp_for(date.today(), 8, 15),
+    )
+    db.add_all([omron, withings])
+    db.flush()
+
+    blood_pressure_points = [
+        (date.today() - timedelta(days=3), 128, 82, 78),
+        (date.today() - timedelta(days=2), 132, 84, 80),
+        (date.today() - timedelta(days=1), 135, 86, 84),
+        (date.today(), 136, 88, 86),
+    ]
+    for day, systolic, diastolic, heart_rate in blood_pressure_points:
+        db.add(
+            DeviceMeasurement(
+                patient_id=profile.id,
+                connection_id=omron.id,
+                provider_code="omron",
+                metric_type="blood_pressure",
+                measured_at=_timestamp_for(day, 7, 20),
+                source_record_id=f"demo-bp-{day.isoformat()}",
+                source_device_model="OMRON M7",
+                unit="mmHg",
+                primary_value=systolic,
+                secondary_value=diastolic,
+                tertiary_value=heart_rate,
+                notes="Rilevazione domiciliare mattutina seed hackathon.",
+            )
+        )
+
+    weight_points = [
+        (date.today() - timedelta(days=3), 64.1),
+        (date.today() - timedelta(days=1), 63.7),
+        (date.today(), 63.6),
+    ]
+    for day, weight in weight_points:
+        db.add(
+            DeviceMeasurement(
+                patient_id=profile.id,
+                connection_id=withings.id,
+                provider_code="withings",
+                metric_type="body_weight",
+                measured_at=_timestamp_for(day, 7, 10),
+                source_record_id=f"demo-weight-{day.isoformat()}",
+                source_device_model="Body Smart",
+                unit="kg",
+                primary_value=weight,
+                notes="Peso registrato dal seed hackathon.",
+            )
+        )
+
+
+def _seed_scenario_b_documents(db, profile: PatientProfile) -> None:
+    lab_document = _create_structured_demo_document(
+        db,
+        profile=profile,
+        title="Scenario B - emocromo e PCR",
+        document_type=ClinicalDocumentType.LAB_REPORT,
+        exam_date=date.today() - timedelta(days=1),
+        source="Laboratorio demo Hackathon",
+        body=(
+            "Emocromo completo con lieve leucocitosi e PCR moderatamente elevata. "
+            "Quadro da contestualizzare con tosse, sonno scarso e andamento dei sintomi."
+        ),
+        timeline_type=TimelineEventType.LAB_RESULT_SUMMARY,
+        timeline_title="Analisi del sangue recenti",
+        timeline_description="Esami recenti con PCR elevata e GB lievemente aumentati.",
+    )
+    panel = LabPanel(
+        document_id=lab_document.id,
+        panel_name="Emocromo + PCR",
+        panel_date=date.today() - timedelta(days=1),
+        confidence_score=0.98,
+    )
+    db.add(panel)
+    db.flush()
+    db.add_all(
+        [
+            LabResult(
+                lab_panel_id=panel.id,
+                analyte_name="PCR",
+                value="12",
+                unit="mg/L",
+                ref_min=0,
+                ref_max=5,
+                abnormal_flag=True,
+                confidence_score=0.99,
+            ),
+            LabResult(
+                lab_panel_id=panel.id,
+                analyte_name="Globuli bianchi",
+                value="10.8",
+                unit="x10^3/uL",
+                ref_min=4.0,
+                ref_max=10.0,
+                abnormal_flag=True,
+                confidence_score=0.98,
+            ),
+            LabResult(
+                lab_panel_id=panel.id,
+                analyte_name="Emoglobina",
+                value="13.4",
+                unit="g/dL",
+                ref_min=12.0,
+                ref_max=16.0,
+                abnormal_flag=False,
+                confidence_score=0.99,
+            ),
+        ]
+    )
+
+    imaging_document = _create_structured_demo_document(
+        db,
+        profile=profile,
+        title="Scenario B - RX torace",
+        document_type=ClinicalDocumentType.IMAGING_REPORT,
+        exam_date=date.today() - timedelta(days=1),
+        source="Radiologia demo Hackathon",
+        body=(
+            "RX torace eseguita per tosse persistente. Non si osservano addensamenti focali; "
+            "si segnala lieve ispessimento peribronchiale."
+        ),
+        timeline_type=TimelineEventType.IMAGING_SUMMARY,
+        timeline_title="RX torace recente",
+        timeline_description="Imaging recente disponibile per il recap e il dossier.",
+    )
+    db.add(
+        ImagingReport(
+            document_id=imaging_document.id,
+            exam_type="RX",
+            body_part="Torace",
+            report_text=(
+                "Non evidenza di addensamenti focali. Lieve ispessimento peribronchiale. "
+                "Non versamento pleurico."
+            ),
+            impression="Assenza di addensamento focale; lieve ispessimento peribronchiale.",
+            confidence_score=0.97,
+        )
+    )
+
+    _create_structured_demo_document(
+        db,
+        profile=profile,
+        title="Scenario B - visita MMG",
+        document_type=ClinicalDocumentType.SPECIALIST_VISIT,
+        exam_date=date.today(),
+        source="Medico curante demo",
+        body=(
+            "Visita per tosse persistente e sonno ridotto. Consigliato monitoraggio dei sintomi, "
+            "idratazione e rivalutazione clinica se febbre o peggioramento persistono."
+        ),
+        timeline_type=TimelineEventType.DOCUMENT_UPLOADED,
+        timeline_title="Visita recente caricata",
+        timeline_description="Nota clinica sintetica disponibile per il caso demo hackathon.",
+    )
+
+
+def _seed_scenario_b_summaries_and_report(db, profile: PatientProfile) -> None:
+    previous_day = date.today() - timedelta(days=1)
+    db.add_all(
+        [
+            AiSummary(
+                patient_id=profile.id,
+                summary_type=AiSummaryType.DAILY,
+                period_start=previous_day,
+                period_end=previous_day,
+                content=(
+                    "Il diario mostra peggioramento di tosse e stanchezza con sonno ridotto rispetto ai giorni precedenti. "
+                    "Sono presenti dati wearable coerenti con riduzione del riposo e minore attività."
+                ),
+                provider_name="local_gemma4",
+                model_name="gemma-4-e2b",
+                generated_at=_timestamp_for(previous_day, 22, 5),
+            ),
+            AiSummary(
+                patient_id=profile.id,
+                summary_type=AiSummaryType.WEEKLY,
+                period_start=date.today() - timedelta(days=6),
+                period_end=date.today(),
+                content=(
+                    "Nell'ultima settimana si osservano sonno in progressivo calo, tosse più frequente e minore energia. "
+                    "Documenti recenti e misure domiciliari aggiungono contesto ma non sostituiscono la valutazione medica."
+                ),
+                provider_name="local_gemma4",
+                model_name="gemma-4-e2b",
+                generated_at=_timestamp_for(date.today(), 8, 40),
+            ),
+        ]
+    )
+
+    report_body = (
+        "Report pre-visita demo.\n"
+        "Sintomi: tosse in aumento da 4 giorni, stanchezza, sonno frammentato.\n"
+        "Wearable: passi in calo e sonno ridotto.\n"
+        "Device: pressione domiciliare lievemente in salita.\n"
+        "Documenti: emocromo/PCR recenti e RX torace senza addensamenti focali.\n"
+        "Uso previsto: aiutare il medico a leggere rapidamente il caso durante la demo."
+    )
+    stored = _store_demo_text_bytes(
+        profile=profile,
+        stem="scenario-b-pre-visit-report",
+        body=report_body,
+        content_type="text/plain",
+        extension="txt",
+    )
+    db.add(
+        Report(
+            patient_id=profile.id,
+            report_type=ReportType.PRE_VISIT_REPORT,
+            title="Scenario B - report pre-visita",
+            period_start=date.today() - timedelta(days=6),
+            period_end=date.today(),
+            summary_excerpt=(
+                "Tosse e sonno scarso in peggioramento con dati wearable, device e documenti recenti pronti per la visita."
+            ),
+            content_text=report_body,
+            file_url=stored.object_key,
+            generated_at=_timestamp_for(date.today(), 8, 45),
+        )
+    )
+
+
+def _create_structured_demo_document(
+    db,
+    *,
+    profile: PatientProfile,
+    title: str,
+    document_type: ClinicalDocumentType,
+    exam_date: date,
+    source: str,
+    body: str,
+    timeline_type: TimelineEventType,
+    timeline_title: str,
+    timeline_description: str,
+) -> ClinicalDocument:
+    stored = _store_demo_text_bytes(
+        profile=profile,
+        stem=title.lower().replace(" ", "-"),
+        body=body,
+        content_type="text/plain",
+        extension="txt",
+    )
+    document = ClinicalDocument(
+        patient_id=profile.id,
+        title=title,
+        document_type=document_type,
+        exam_date=exam_date,
+        source=source,
+        file_url=stored.object_key,
+        original_filename=f"{title.lower().replace(' ', '-')}.txt",
+        mime_type="text/plain",
+        file_size_bytes=stored.size_bytes,
+        parsed_status=DocumentParsedStatus.PARSED,
+        context_status=DocumentContextStatus.ACTIVE,
+        classification_confidence=0.99,
+        parsing_confidence=0.99,
+        ocr_text=body,
+        processed_at=_timestamp_for(exam_date, 11, 30),
+    )
+    db.add(document)
+    db.flush()
+    db.add(
+        TimelineEvent(
+            patient_id=profile.id,
+            event_type=timeline_type,
+            source_type="clinical_document",
+            source_id=document.id,
+            title=timeline_title,
+            description=timeline_description,
+            event_date=_timestamp_for(exam_date, 12, 0),
+        )
+    )
+    return document
+
+
+def _store_demo_text_bytes(
+    *,
+    profile: PatientProfile,
+    stem: str,
+    body: str,
+    content_type: str,
+    extension: str,
+):
+    storage = get_storage_service()
+    object_key = f"patients/{profile.id}/documents/{stem}.{extension}"
+    return storage.save_bytes(
+        object_key=object_key,
+        data=body.encode("utf-8"),
+        content_type=content_type,
+    )
 
 
 def _timestamp_for(target_date: date, hour: int, minute: int) -> object:
