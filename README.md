@@ -234,6 +234,13 @@ powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --keep-back
 powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --with-ocr
 ```
 
+Per il debug Wi-Fi Android con backend incluso usa:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_android_app_wifi.ps1 --connect-address 192.168.1.42:5555
+powershell -ExecutionPolicy Bypass -File scripts/run_android_app_wifi.ps1 --pair-address 192.168.1.42:37123 --pair-code 123456 --connect-address 192.168.1.42:5555
+```
+
 Per usare il telefono senza dipendere dal cavo USB:
 
 - compila almeno una volta l'app con `--prefer-lan` oppure con `--api-base-url http://IP_DEL_PC:8000`

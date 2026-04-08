@@ -140,6 +140,22 @@ class RuleBasedSummaryProvider:
             lines.extend(f"- {item}" for item in payload.recent_imaging_reports[:3])
             lines.extend(f"- {item}" for item in payload.recent_documents[:4])
 
+        if _is_pre_visit_summary(payload):
+            lines.append("Preparazione visita:")
+            lines.append("- Porta i documenti ed esami recenti piu rilevanti.")
+            if payload.follow_up_reasons:
+                lines.append("Domande utili da portare in visita:")
+                lines.extend(f"- {item}" for item in payload.follow_up_reasons[:4])
+            if payload.open_alerts:
+                lines.append("Segnali da ricordare prima della visita:")
+                lines.extend(
+                    f"- Alert deterministico aperto: {item}"
+                    for item in payload.open_alerts[:4]
+                )
+            lines.append(
+                "Porta il riepilogo, i referti recenti e segnala eventuali peggioramenti o nuovi sintomi prima dell'appuntamento."
+            )
+
         if payload.open_alerts or payload.follow_up_reasons:
             lines.append("Quando parlarne con il medico:")
             if payload.open_alerts:
@@ -730,6 +746,16 @@ def _effective_output_token_budget(summary_type: str, configured_max_tokens: int
     return max(configured_max_tokens, minimum)
 
 
+def _is_pre_visit_summary(payload: SummaryGenerationInput) -> bool:
+    normalized_type = payload.summary_type.strip().lower()
+    normalized_label = payload.summary_label.strip().lower()
+    return (
+        normalized_type in {"pre_visit", "pre-visit"}
+        or "pre-visita" in normalized_label
+        or "pre visit" in normalized_label
+    )
+
+
 def _system_prompt() -> str:
     return (
         "Segui rigorosamente le istruzioni dell'utente. "
@@ -819,7 +845,16 @@ def _user_prompt(payload: SummaryGenerationInput) -> str:
         "7. considera eventuali recap giornalieri gia disponibili dei 15 giorni precedenti\n"
         "8. considera alert aperti\n"
         "9. valuta se il quadro suggerisce opportunita di confronto medico, senza fare triage aggressivo se i dati non lo supportano\n\n"
-        "REGOLE SULLE CORRELAZIONI\n"
+        + (
+            "ISTRUZIONI AGGIUNTIVE PER PRE-VISITA\n"
+            "- Scrivi una scheda pronta da portare alla visita medica\n"
+            "- Evidenzia i punti da discutere e i documenti utili\n"
+            "- Includi domande pratiche da fare al medico\n"
+            "- Termina con una breve checklist di cose da monitorare prima dell'appuntamento\n\n"
+            if _is_pre_visit_summary(payload)
+            else ""
+        )
+        + "REGOLE SULLE CORRELAZIONI\n"
         "- Riporta una correlazione solo se emerge da dati ripetuti o chiaramente osservabili nel periodo\n"
         "- Se il pattern e debole o incerto, usa formule come:\n"
         "  - \"si osserva una possibile associazione temporale\"\n"

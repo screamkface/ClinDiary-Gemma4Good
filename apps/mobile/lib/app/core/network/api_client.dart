@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:clindiary/app/core/app_config.dart';
+import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
@@ -45,16 +46,20 @@ class ApiClient {
     required http.Client client,
     required AppConfig config,
     required SecureTokenStorage tokenStorage,
+    required SessionExpiryNotifier sessionExpiryNotifier,
     LocalDatabase? localDatabase,
   }) : _client = client,
        _config = config,
        _tokenStorage = tokenStorage,
+       _sessionExpiryNotifier = sessionExpiryNotifier,
        _localDatabase = localDatabase;
 
   final http.Client _client;
   final AppConfig _config;
   final SecureTokenStorage _tokenStorage;
+  final SessionExpiryNotifier _sessionExpiryNotifier;
   final LocalDatabase? _localDatabase;
+  Future<AuthSession>? _refreshSessionInFlight;
 
   Future<Map<String, dynamic>> getJson(
     String path, {
@@ -261,6 +266,22 @@ class ApiClient {
     return headers;
   }
 
+  Future<AuthSession> refreshSession() async {
+    final inFlight = _refreshSessionInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final refreshFuture = _refreshSessionInternal();
+    _refreshSessionInFlight = refreshFuture;
+    refreshFuture.then<void>((_) {}, onError: (_) {}).whenComplete(() {
+      if (identical(_refreshSessionInFlight, refreshFuture)) {
+        _refreshSessionInFlight = null;
+      }
+    });
+    return refreshFuture;
+  }
+
   Future<AuthSession> _ensureValidSession() async {
     final session = await _tokenStorage.readSession();
     if (session == null) {
@@ -274,7 +295,34 @@ class ApiClient {
       return session;
     }
 
-    final response = await _client.post(
+    return refreshSession();
+  }
+
+  Future<AuthSession> _refreshSessionInternal() async {
+    final session = await _tokenStorage.readSession();
+    if (session == null) {
+      throw ApiException('Sessione non disponibile', statusCode: 401);
+    }
+
+    final now = DateTime.now().toUtc();
+    if (session.refreshTokenExpiresAt.isBefore(
+      now.add(const Duration(seconds: 30)),
+    )) {
+      await _handleExpiredSession();
+      throw ApiException(
+        'Sessione scaduta. Accedi di nuovo.',
+        statusCode: 401,
+      );
+    }
+
+    if (session.accessTokenExpiresAt.isAfter(
+      now.add(const Duration(seconds: 30)),
+    )) {
+      return session;
+    }
+
+    try {
+      final response = await _client.post(
       _uri('/api/v1/auth/refresh'),
       headers: const {
         'Content-Type': 'application/json',
@@ -283,10 +331,25 @@ class ApiClient {
       body: jsonEncode({'refresh_token': session.refreshToken}),
     );
 
-    final decoded = _decodeMap(response);
-    final refreshed = AuthSession.fromJson(decoded);
-    await _tokenStorage.saveSession(refreshed);
-    return refreshed;
+      final decoded = _decodeMap(response);
+      final refreshed = AuthSession.fromJson(decoded);
+      await _tokenStorage.saveSession(refreshed);
+      return refreshed;
+    } on ApiException catch (error) {
+      if (error.statusCode != 401) {
+        rethrow;
+      }
+      await _handleExpiredSession();
+      throw ApiException(
+        'Sessione scaduta. Accedi di nuovo.',
+        statusCode: 401,
+      );
+    }
+  }
+
+  Future<void> _handleExpiredSession() async {
+    _sessionExpiryNotifier.notifySessionExpired();
+    await _tokenStorage.clear();
   }
 
   Future<http.Response> _send({

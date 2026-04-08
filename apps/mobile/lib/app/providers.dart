@@ -11,6 +11,7 @@ import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/history/domain/history_day.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
+import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
 import 'package:clindiary/features/insights/domain/local_ai_status.dart';
 import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
@@ -47,6 +48,17 @@ final billingStatusProvider = FutureProvider<BillingStatus?>((ref) async {
 final activeProfileIdProvider = FutureProvider<String?>((ref) async {
   return ref.watch(profileRepositoryProvider).getActiveProfileId();
 });
+
+final gemmaCenterHistoryProvider =
+    FutureProvider<List<GemmaCenterHistoryEntry>>((ref) async {
+      final activeProfileId = await ref.watch(activeProfileIdProvider.future);
+      if (activeProfileId == null || activeProfileId.trim().isEmpty) {
+        return const [];
+      }
+      return ref
+          .watch(gemmaCenterHistoryStoreProvider)
+          .readEntries(profileScope: activeProfileId.trim());
+    });
 
 final profileRegionCodeProvider = FutureProvider<String>((ref) async {
   final bundle = await ref.watch(profileBundleProvider.future);

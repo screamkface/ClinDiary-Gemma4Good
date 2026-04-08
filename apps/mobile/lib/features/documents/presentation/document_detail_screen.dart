@@ -177,6 +177,17 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     context.push('/app/home/billing?feature=cloud_document_storage');
   }
 
+  void _openGemmaCenter(ClinicalDocumentDetail detail) {
+    final uri = Uri(
+      path: '/app/ai',
+      queryParameters: {
+        'documentId': detail.id,
+        'question': 'Spiega questo documento in parole semplici.',
+      },
+    );
+    context.push(uri.toString());
+  }
+
   Future<void> _moveDocument(ClinicalDocumentDetail detail) async {
     final folders = await ref.read(documentFoldersProvider.future);
     if (!mounted) {
@@ -386,6 +397,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
               detail.isCloud && hasCloudStorageAccess;
           final isReadOnlyCloudDocument =
               detail.isCloud && !hasCloudStorageAccess;
+          final canAskGemmaAboutDocument =
+            detail.ocrText != null && detail.ocrText!.trim().isNotEmpty ||
+            detail.labPanels.isNotEmpty ||
+            detail.imagingReports.isNotEmpty;
 
           return ListView(
           padding: const EdgeInsets.all(16),
@@ -510,6 +525,13 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       ),
                     ),
                   const SizedBox(height: 16),
+                  if (canAskGemmaAboutDocument)
+                    FilledButton.tonalIcon(
+                      onPressed: () => _openGemmaCenter(detail),
+                      icon: const Icon(Icons.auto_awesome_outlined),
+                      label: const Text('Spiega con Gemma'),
+                    ),
+                  if (canAskGemmaAboutDocument) const SizedBox(height: 12),
                   if (detail.isCloud)
                     Wrap(
                       spacing: 12,

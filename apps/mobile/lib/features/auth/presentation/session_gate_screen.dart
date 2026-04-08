@@ -1,4 +1,5 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,31 @@ class SessionGateScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
+
+    Widget loadingBody(String message) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ClinDiaryLogo(size: 86),
+            const SizedBox(height: 18),
+            Text(
+              'ClinDiary',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 18),
+            const CircularProgressIndicator(),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       body: authState.when(
@@ -23,16 +49,16 @@ class SessionGateScreen extends ConsumerWidget {
               context.go(target);
             }
           });
-          return const Center(child: CircularProgressIndicator());
+          return loadingBody('Verifico la sessione...');
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => loadingBody('Avvio ClinDiary...'),
         error: (_, _) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               context.go('/login');
             }
           });
-          return const Center(child: CircularProgressIndicator());
+          return loadingBody('Reindirizzo al login...');
         },
       ),
     );

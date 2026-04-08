@@ -26,6 +26,7 @@ $script:PidDir = Join-Path $RuntimeDir "pids"
 $script:StartedProcesses = New-Object System.Collections.Generic.List[System.Diagnostics.Process]
 $script:AdbReverseActive = $false
 $script:AdbPath = $null
+$script:FlutterSdkPath = $null
 $script:AndroidEmulator = $false
 $script:AndroidDeviceName = ""
 
@@ -140,6 +141,33 @@ function Require-Command {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         Fail "Comando richiesto non trovato: $Name"
     }
+}
+
+function Ensure-FlutterOnPath {
+    if (Get-Command "flutter" -ErrorAction SilentlyContinue) {
+        return
+    }
+
+    $candidates = @()
+    if ($env:FLUTTER_ROOT) {
+        $candidates += $env:FLUTTER_ROOT
+    }
+    if ($env:LOCALAPPDATA) {
+        $candidates += (Join-Path $env:LOCALAPPDATA "flutter")
+    }
+    $candidates += "C:\Users\Nicola\tools\flutter"
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        $flutterBin = Join-Path $candidate "bin"
+        $flutterExecutable = Join-Path $flutterBin "flutter.bat"
+        if (Test-Path $flutterExecutable) {
+            $env:PATH = "$flutterBin;$env:PATH"
+            $script:FlutterSdkPath = $candidate
+            return
+        }
+    }
+
+    Fail "Flutter non trovato nella PATH o in C:\Users\Nicola\tools\flutter. Apri un terminale con Flutter disponibile oppure imposta FLUTTER_ROOT."
 }
 
 function Import-DotEnv {
@@ -678,6 +706,7 @@ Parse-Args $ScriptArgs
 try {
     Require-Command "python"
     Require-Command "docker"
+    Ensure-FlutterOnPath
 
     New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
     New-Item -ItemType Directory -Force -Path $PidDir | Out-Null
@@ -701,7 +730,6 @@ try {
         exit 0
     }
 
-    Require-Command "flutter"
     Ensure-MobileDependencies
     Detect-AndroidDevice
 

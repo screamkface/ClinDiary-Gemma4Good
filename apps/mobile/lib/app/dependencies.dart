@@ -1,5 +1,6 @@
 import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
@@ -7,6 +8,7 @@ import 'package:clindiary/features/auth/data/auth_repository.dart';
 import 'package:clindiary/features/billing/data/billing_repository.dart';
 import 'package:clindiary/features/alerts/data/alerts_repository.dart';
 import 'package:clindiary/features/daily_journal/data/daily_journal_repository.dart';
+import 'package:clindiary/features/daily_journal/data/voice_check_in_assistant.dart';
 import 'package:clindiary/features/devices/data/devices_repository.dart';
 import 'package:clindiary/features/dossier/data/dossier_repository.dart';
 import 'package:clindiary/features/documents/data/document_picker_service.dart';
@@ -14,6 +16,8 @@ import 'package:clindiary/features/documents/data/local_document_vault_service.d
 import 'package:clindiary/features/documents/data/documents_repository.dart';
 import 'package:clindiary/features/history/data/history_repository.dart';
 import 'package:clindiary/features/insights/data/insights_repository.dart';
+import 'package:clindiary/features/insights/data/gemma_center_history_store.dart';
+import 'package:clindiary/features/insights/data/gemma_coach_service.dart';
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
 import 'package:clindiary/features/insights/data/on_device_prompt_builder.dart';
 import 'package:clindiary/features/medications/data/medications_repository.dart';
@@ -51,11 +55,16 @@ final localDatabaseProvider = Provider<LocalDatabase>((ref) {
   return database;
 });
 
+final sessionExpiryNotifierProvider = ChangeNotifierProvider<SessionExpiryNotifier>(
+  (ref) => SessionExpiryNotifier(),
+);
+
 final apiClientProvider = Provider<ApiClient>(
   (ref) => ApiClient(
     client: ref.watch(httpClientProvider),
     config: ref.watch(appConfigProvider),
     tokenStorage: ref.watch(secureTokenStorageProvider),
+    sessionExpiryNotifier: ref.watch(sessionExpiryNotifierProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
@@ -117,10 +126,29 @@ final onDeviceAiServiceProvider = Provider<OnDeviceAiService>(
   (ref) => OnDeviceAiService(),
 );
 
-final onDevicePromptBuilderProvider = Provider<OnDevicePromptBuilder>(
-  (ref) => OnDevicePromptBuilder(
+final voiceCheckInAssistantProvider = Provider<VoiceCheckInAssistant>(
+  (ref) => VoiceCheckInAssistant(
+    onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
+  ),
+);
+
+final gemmaCoachServiceProvider = Provider<GemmaCoachService>(
+  (ref) => GemmaCoachService(
+    onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
+    onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
+    documentsRepository: ref.watch(documentsRepositoryProvider),
+  ),
+);
+
+final gemmaCenterHistoryStoreProvider = Provider<GemmaCenterHistoryStore>(
+  (ref) => GemmaCenterHistoryStore(
     localDatabase: ref.watch(localDatabaseProvider),
   ),
+);
+
+final onDevicePromptBuilderProvider = Provider<OnDevicePromptBuilder>(
+  (ref) =>
+      OnDevicePromptBuilder(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final historyRepositoryProvider = Provider<HistoryRepository>(

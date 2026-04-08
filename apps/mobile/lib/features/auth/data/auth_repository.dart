@@ -34,6 +34,13 @@ class AuthRepository {
   Future<AuthSession?> restoreSession() async {
     final session = await _tokenStorage.readSession();
     if (session != null) {
+      final now = DateTime.now().toUtc();
+      if (session.refreshTokenExpiresAt.isBefore(
+        now.add(const Duration(seconds: 30)),
+      )) {
+        await clearLocalSessionState();
+        return null;
+      }
       await _persistSessionContext(session);
     }
     return session;
@@ -97,12 +104,16 @@ class AuthRepository {
     } catch (_) {
       // Logout best-effort: we still clear the local session below.
     } finally {
-      await _localMedicationReminderService.cancelAllMedicationReminders();
-      await _tokenStorage.clear();
-      await _localDatabase.clearPendingOperations();
-      await _localDatabase.clearCache();
-      await _localDatabase.clearRequestTraces();
+      await clearLocalSessionState();
     }
+  }
+
+  Future<void> clearLocalSessionState() async {
+    await _localMedicationReminderService.cancelAllMedicationReminders();
+    await _tokenStorage.clear();
+    await _localDatabase.clearPendingOperations();
+    await _localDatabase.clearCache();
+    await _localDatabase.clearRequestTraces();
   }
 
   Future<void> deleteAccount({required String confirmationText}) async {
@@ -124,12 +135,8 @@ class AuthRepository {
       // Continue local cleanup even if provider disconnect fails.
     }
 
-    await _localMedicationReminderService.cancelAllMedicationReminders();
+    await clearLocalSessionState();
     await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
-    await _tokenStorage.clear();
-    await _localDatabase.clearPendingOperations();
-    await _localDatabase.clearCache();
-    await _localDatabase.clearRequestTraces();
   }
 
   Future<void> updateUser(UserSummary user) async {

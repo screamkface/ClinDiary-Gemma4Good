@@ -17,6 +17,7 @@ import 'package:clindiary/features/documents/presentation/document_upload_screen
 import 'package:clindiary/features/documents/presentation/documents_screen.dart';
 import 'package:clindiary/features/history/presentation/history_screen.dart';
 import 'package:clindiary/features/home/presentation/home_screen.dart';
+import 'package:clindiary/features/insights/presentation/gemma_center_screen.dart';
 import 'package:clindiary/features/insights/presentation/insights_screen.dart';
 import 'package:clindiary/features/medications/presentation/medications_screen.dart';
 import 'package:clindiary/features/notifications/presentation/notifications_screen.dart';
@@ -51,11 +52,50 @@ final _profileBranchNavigatorKey = GlobalKey<NavigatorState>(
 );
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  ref.watch(authControllerProvider);
+  final authState = ref.watch(authControllerProvider);
+
+  bool isPublicRoute(String location) {
+    return location == '/' ||
+        location == '/login' ||
+        location == '/register' ||
+        location.startsWith('/legal');
+  }
+
+  bool isAuthRoute(String location) {
+    return location == '/login' || location == '/register';
+  }
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    redirect: (context, state) {
+      final location = state.matchedLocation;
+      final session = authState.valueOrNull;
+
+      if (authState.isLoading) {
+        return null;
+      }
+
+      if (session == null) {
+        if (isPublicRoute(location)) {
+          return null;
+        }
+        return '/login';
+      }
+
+      if (!session.user.onboardingCompleted) {
+        if (location == '/onboarding' || isPublicRoute(location)) {
+          return null;
+        }
+        return '/onboarding';
+      }
+
+      if (location == '/' || isAuthRoute(location) || location == '/onboarding') {
+        return '/app/home';
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -195,7 +235,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/ai',
-                builder: (context, state) => const InsightsScreen(),
+                builder: (context, state) => GemmaCenterScreen(
+                  initialQuestion: state.uri.queryParameters['question'],
+                  documentId: state.uri.queryParameters['documentId'],
+                ),
               ),
             ],
           ),

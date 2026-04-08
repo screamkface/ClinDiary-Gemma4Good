@@ -11,6 +11,13 @@ import 'package:path_provider/path_provider.dart';
 class OnDeviceAiService {
   static const MethodChannel _channel = MethodChannel('clindiary/on_device_ai');
 
+  Future<Map<String, dynamic>?> _invokePrompt(
+    String method,
+    Map<String, dynamic> arguments,
+  ) async {
+    return _channel.invokeMapMethod<String, dynamic>(method, arguments);
+  }
+
   Future<OnDeviceAiStatus> fetchStatus() async {
     try {
       final response = await _channel.invokeMapMethod<String, dynamic>(
@@ -45,7 +52,7 @@ class OnDeviceAiService {
     required OnDeviceRecapPrompt prompt,
   }) async {
     try {
-      final response = await _channel.invokeMapMethod<String, dynamic>(
+      final response = await _invokePrompt(
         'generateDailyRecap',
         <String, dynamic>{
           'systemPrompt': prompt.systemPrompt,
@@ -56,17 +63,49 @@ class OnDeviceAiService {
         throw Exception('Il runtime on-device non ha restituito una risposta.');
       }
       return InsightSummary(
-        id: response['id']?.toString() ?? 'on-device-${DateTime.now().millisecondsSinceEpoch}',
+        id:
+            response['id']?.toString() ??
+            'on-device-${DateTime.now().millisecondsSinceEpoch}',
         summaryType: prompt.summaryType,
         periodStart: prompt.periodStart,
         periodEnd: prompt.periodEnd,
         content: response['content']?.toString() ?? '',
-        providerName: response['provider_name']?.toString() ?? 'on_device_litertlm',
+        providerName:
+            response['provider_name']?.toString() ?? 'on_device_litertlm',
         modelName: response['model_name']?.toString(),
         generatedAt: DateTime.parse(
-          response['generated_at']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+          response['generated_at']?.toString() ??
+              DateTime.now().toUtc().toIso8601String(),
         ),
       );
+    } on MissingPluginException {
+      throw Exception('Inferenza on-device disponibile solo su Android.');
+    } on PlatformException catch (error) {
+      throw Exception(error.message ?? 'Generazione on-device non riuscita.');
+    }
+  }
+
+  Future<String> generateText({
+    required String systemPrompt,
+    required String userPrompt,
+    String? modelPath,
+  }) async {
+    try {
+      final response = await _invokePrompt('generateText', <String, dynamic>{
+        'systemPrompt': systemPrompt,
+        'userPrompt': userPrompt,
+        if (modelPath != null) 'modelPath': modelPath,
+      });
+      if (response == null) {
+        throw Exception('Il runtime on-device non ha restituito una risposta.');
+      }
+      final content = response['content']?.toString().trim() ?? '';
+      if (content.isEmpty) {
+        throw Exception(
+          'Il runtime on-device ha restituito un contenuto vuoto.',
+        );
+      }
+      return content;
     } on MissingPluginException {
       throw Exception('Inferenza on-device disponibile solo su Android.');
     } on PlatformException catch (error) {
@@ -143,8 +182,7 @@ class OnDeviceAiService {
       return;
     }
     await for (final entity in directory.list()) {
-      if (entity is File &&
-          entity.path.toLowerCase().endsWith('.litertlm')) {
+      if (entity is File && entity.path.toLowerCase().endsWith('.litertlm')) {
         await entity.delete();
       }
     }

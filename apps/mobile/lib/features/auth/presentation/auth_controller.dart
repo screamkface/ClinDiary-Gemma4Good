@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:clindiary/app/dependencies.dart';
+import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthController extends AsyncNotifier<AuthSession?> {
   @override
   Future<AuthSession?> build() {
+    ref.listen<SessionExpiryNotifier>(sessionExpiryNotifierProvider, (_, __) {
+      unawaited(forceLogout());
+    });
     return ref.watch(authRepositoryProvider).restoreSession();
   }
 
@@ -57,6 +63,14 @@ class AuthController extends AsyncNotifier<AuthSession?> {
         .read(authRepositoryProvider)
         .deleteAccount(confirmationText: confirmationText);
     state = const AsyncData(null);
+  }
+
+  Future<void> forceLogout() async {
+    try {
+      await ref.read(authRepositoryProvider).clearLocalSessionState();
+    } finally {
+      state = const AsyncData(null);
+    }
   }
 
   Future<void> updateUser(UserSummary user) async {

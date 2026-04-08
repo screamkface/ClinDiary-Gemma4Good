@@ -50,6 +50,19 @@ class MainActivity : FlutterFragmentActivity() {
                     )
                 }
 
+                "generateText" -> runOnDevice(result) {
+                    val systemPrompt = call.argument<String>("systemPrompt")
+                        ?: throw IllegalArgumentException("systemPrompt mancante")
+                    val userPrompt = call.argument<String>("userPrompt")
+                        ?: throw IllegalArgumentException("userPrompt mancante")
+                    val modelPath = call.argument<String>("modelPath")
+                    onDeviceGemmaRuntime.generateText(
+                        modelPath = modelPath,
+                        systemPrompt = systemPrompt,
+                        userPrompt = userPrompt,
+                    )
+                }
+
                 "resetRuntime" -> runOnDevice(result) {
                     onDeviceGemmaRuntime.close()
                     mapOf("ok" to true)

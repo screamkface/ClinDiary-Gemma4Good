@@ -80,38 +80,38 @@ class OnDeviceGemmaRuntime(
         systemPrompt: String,
         userPrompt: String,
     ): Map<String, Any?> {
-        val modelFile = resolveModelFile(modelPath)
-            ?: throw IllegalStateException(
-                "Nessun modello LiteRT-LM trovato. Copia il file .litertlm in ${defaultModelDirectory()?.absolutePath ?: "files/models"}."
-            )
+        val completion = runPrompt(modelPath, systemPrompt, userPrompt)
+        return mapOf(
+            "id" to UUID.randomUUID().toString(),
+            "content" to completion.content,
+            "provider_name" to "on_device_litertlm",
+            "model_name" to completion.modelName,
+            "generated_at" to Instant.now().toString(),
+            "runtime" to "LiteRT-LM Android",
+            "backendResolved" to backendResolved,
+            "activeProviderLabel" to if (supportsGemma4Label(completion.modelName)) "Gemma 4 On-device" else "On-device locale",
+            "isCloudBypassedForThisRequest" to true,
+        )
+    }
 
-        val engine = ensureEngine(modelFile)
-        val conversationConfig =
-            ConversationConfig(systemInstruction = Contents.of(systemPrompt))
-        val conversation = engine.createConversation(conversationConfig)
-        try {
-            val reply = conversation.sendMessage(userPrompt).toString().trim()
-            if (reply.isBlank()) {
-                throw IllegalStateException("Il modello on-device ha restituito una risposta vuota.")
-            }
-            val modelName = modelFile.nameWithoutExtensionSafe()
-            return mapOf(
-                "id" to UUID.randomUUID().toString(),
-                "content" to reply,
-                "provider_name" to "on_device_litertlm",
-                "model_name" to modelName,
-                "generated_at" to Instant.now().toString(),
-                "runtime" to "LiteRT-LM Android",
-                "backendResolved" to backendResolved,
-                "activeProviderLabel" to if (supportsGemma4Label(modelName)) "Gemma 4 On-device" else "On-device locale",
-                "isCloudBypassedForThisRequest" to true,
-            )
-        } catch (t: Throwable) {
-            lastError = t.message ?: t::class.java.simpleName
-            throw t
-        } finally {
-            conversation.close()
-        }
+    @Synchronized
+    fun generateText(
+        modelPath: String?,
+        systemPrompt: String,
+        userPrompt: String,
+    ): Map<String, Any?> {
+        val completion = runPrompt(modelPath, systemPrompt, userPrompt)
+        return mapOf(
+            "id" to UUID.randomUUID().toString(),
+            "content" to completion.content,
+            "provider_name" to "on_device_litertlm",
+            "model_name" to completion.modelName,
+            "generated_at" to Instant.now().toString(),
+            "runtime" to "LiteRT-LM Android",
+            "backendResolved" to backendResolved,
+            "activeProviderLabel" to if (supportsGemma4Label(completion.modelName)) "Gemma 4 On-device" else "On-device locale",
+            "isCloudBypassedForThisRequest" to true,
+        )
     }
 
     @Synchronized
@@ -159,6 +159,37 @@ class OnDeviceGemmaRuntime(
             "Impossibile inizializzare LiteRT-LM. ${errors.joinToString(" | ")}"
         lastError = message
         throw IllegalStateException(message)
+    }
+
+    private fun runPrompt(
+        modelPath: String?,
+        systemPrompt: String,
+        userPrompt: String,
+    ): GeneratedCompletion {
+        val modelFile = resolveModelFile(modelPath)
+            ?: throw IllegalStateException(
+                "Nessun modello LiteRT-LM trovato. Copia il file .litertlm in ${defaultModelDirectory()?.absolutePath ?: "files/models"}."
+            )
+
+        val engine = ensureEngine(modelFile)
+        val conversationConfig =
+            ConversationConfig(systemInstruction = Contents.of(systemPrompt))
+        val conversation = engine.createConversation(conversationConfig)
+        try {
+            val reply = conversation.sendMessage(userPrompt).toString().trim()
+            if (reply.isBlank()) {
+                throw IllegalStateException("Il modello on-device ha restituito una risposta vuota.")
+            }
+            return GeneratedCompletion(
+                content = reply,
+                modelName = modelFile.nameWithoutExtensionSafe(),
+            )
+        } catch (t: Throwable) {
+            lastError = t.message ?: t::class.java.simpleName
+            throw t
+        } finally {
+            conversation.close()
+        }
     }
 
     private fun backendCandidates(): List<BackendCandidate> =
@@ -226,4 +257,9 @@ class OnDeviceGemmaRuntime(
         } else {
             nameWithoutExtension
         }
+
+    private data class GeneratedCompletion(
+        val content: String,
+        val modelName: String,
+    )
 }
