@@ -1,0 +1,1 @@
+powershell -ExecutionPolicy Bypass -File "C:\Users\Nicola\Documents\Clingemma\Clin-Diary---Gemma\scripts\run_android_app.ps1" --device-id 608f2ab2
