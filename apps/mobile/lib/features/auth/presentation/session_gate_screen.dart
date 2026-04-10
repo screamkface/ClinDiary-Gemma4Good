@@ -1,4 +1,5 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ class SessionGateScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     Widget loadingBody(String message) {
       return Center(
@@ -19,7 +21,7 @@ class SessionGateScreen extends ConsumerWidget {
             const ClinDiaryLogo(size: 86),
             const SizedBox(height: 18),
             Text(
-              'ClinDiary',
+              l10n.appTitle,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w900,
               ),
@@ -49,16 +51,16 @@ class SessionGateScreen extends ConsumerWidget {
               context.go(target);
             }
           });
-          return loadingBody('Verifico la sessione...');
+          return loadingBody(l10n.verifyingSession);
         },
-        loading: () => loadingBody('Avvio ClinDiary...'),
+        loading: () => loadingBody(l10n.startingApp),
         error: (_, _) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               context.go('/login');
             }
           });
-          return loadingBody('Reindirizzo al login...');
+          return loadingBody(l10n.redirectingToLogin);
         },
       ),
     );

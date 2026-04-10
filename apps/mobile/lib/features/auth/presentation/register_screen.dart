@@ -1,5 +1,6 @@
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -43,13 +45,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       context.go('/onboarding');
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.registrationFailed(error.message))),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registrazione non riuscita: $error')),
+        SnackBar(content: Text(l10n.registrationFailed(error.toString()))),
       );
     } finally {
       if (mounted) {
@@ -60,8 +62,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(title: Text(l10n.createAccount)),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -76,21 +79,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Crea account',
+                        l10n.createAccount,
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Completerai il profilo nel passo successivo.',
-                      ),
+                      Text(l10n.completeProfileNext),
                       const SizedBox(height: 18),
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(labelText: 'Email'),
+                        decoration: InputDecoration(labelText: l10n.emailLabel),
                         validator: (value) {
                           if (value == null || !value.contains('@')) {
-                            return 'Inserisci una email valida';
+                            return l10n.emailInvalid;
                           }
                           return null;
                         },
@@ -98,13 +99,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _passwordController,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
+                        decoration: InputDecoration(
+                          labelText: l10n.passwordLabel,
                         ),
                         obscureText: true,
                         validator: (value) {
                           if (value == null || value.length < 8) {
-                            return 'Minimo 8 caratteri';
+                            return l10n.passwordMinLength;
                           }
                           return null;
                         },
@@ -112,13 +113,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _confirmPasswordController,
-                        decoration: const InputDecoration(
-                          labelText: 'Conferma password',
+                        decoration: InputDecoration(
+                          labelText: l10n.confirmPasswordLabel,
                         ),
                         obscureText: true,
                         validator: (value) {
                           if (value != _passwordController.text) {
-                            return 'Le password non coincidono';
+                            return l10n.passwordsDoNotMatch;
                           }
                           return null;
                         },
@@ -129,7 +130,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         child: FilledButton(
                           onPressed: _isSubmitting ? null : _submit,
                           child: Text(
-                            _isSubmitting ? 'Registrazione...' : 'Continua',
+                            _isSubmitting ? l10n.creatingAccount : l10n.continueButton,
                           ),
                         ),
                       ),
@@ -138,7 +139,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onPressed: _isSubmitting
                             ? null
                             : () => context.go('/login'),
-                        child: const Text('Hai già un account? Accedi'),
+                        child: Text(l10n.alreadyHaveAccountSignIn),
                       ),
                     ],
                   ),

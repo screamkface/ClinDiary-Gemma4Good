@@ -1,0 +1,63 @@
+{
+  "@@locale": "it",
+  "appTitle": "ClinDiary",
+  "appSubtitle": "Diario clinico personale.",
+  "signInTitle": "Accedi",
+  "signInSubtitle": "Diario clinico personale.",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "confirmPasswordLabel": "Conferma password",
+  "passwordsDoNotMatch": "Le password non coincidono",
+  "emailInvalid": "Inserisci una email valida",
+  "passwordMinLength": "Minimo 8 caratteri",
+  "signIn": "Accedi",
+  "signingIn": "Accesso...",
+  "signInWithGoogle": "Accedi con Google",
+  "signingInWithGoogle": "Accesso Google...",
+  "googleAuthNotConfigured": "Google auth non configurato in questa build.",
+  "googleIdTokenInvalid": "Google non ha restituito un id token valido.",
+  "signInFailed": "Accesso non riuscito: {error}",
+  "@signInFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "googleSignInFailed": "Accesso Google non riuscito: {error}",
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "resetPassword": "Avvia reset password",
+  "passwordResetPrompt": "Inserisci prima l’email per avviare il reset.",
+  "passwordResetStarted": "Reset avviato. Controlla il canale previsto.",
+  "passwordResetStartedToken": "Reset avviato. Token sviluppo: {token}",
+  "@passwordResetStartedToken": {
+    "placeholders": {
+      "token": {}
+    }
+  },
+  "passwordResetFailed": "Reset non riuscito: {error}",
+  "@passwordResetFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noAccountPrompt": "Non hai un account?",
+  "register": "Registrati",
+  "createAccount": "Crea account",
+  "completeProfileNext": "Completerai il profilo nel passo successivo.",
+  "creatingAccount": "Creazione account...",
+  "continueButton": "Continua",
+  "alreadyHaveAccountSignIn": "Hai già un account? Accedi",
+  "registrationFailed": "Registrazione non riuscita: {error}",
+  "@registrationFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "verifyingSession": "Verifico la sessione...",
+  "startingApp": "Avvio ClinDiary...",
+  "redirectingToLogin": "Reindirizzo al login...",
+  "discoverAiPlus": "Scopri AI Plus"
+}

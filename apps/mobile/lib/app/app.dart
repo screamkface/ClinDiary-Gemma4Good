@@ -3,6 +3,7 @@ import 'package:clindiary/app/bootstrap/wearable_sync_bootstrap.dart';
 import 'package:clindiary/app/core/settings/app_display_settings.dart';
 import 'package:clindiary/app/router.dart';
 import 'package:clindiary/app/theme/app_theme.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,15 +18,17 @@ class ClinDiaryApp extends ConsumerWidget {
         ref.watch(appDisplaySettingsControllerProvider).valueOrNull ??
         const AppDisplaySettings();
     return MaterialApp.router(
-      title: 'ClinDiary',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: buildClinDiaryTheme(brightness: Brightness.light),
       darkTheme: buildClinDiaryTheme(brightness: Brightness.dark),
       themeMode: displaySettings.themeMode,
       scrollBehavior: const _MinimalScrollBehavior(),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
-      supportedLocales: const [Locale('it', 'IT'), Locale('en', 'US')],
+      locale: const Locale('en'),
+      supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,

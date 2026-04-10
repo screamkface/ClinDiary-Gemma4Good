@@ -1,5 +1,6 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ class HomeScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
     final billingStatusAsync = ref.watch(billingStatusProvider);
+    final l10n = AppLocalizations.of(context);
 
     final alertsCount = alertsAsync.asData?.value.length ?? 0;
     final hasUnreadNotifications =
@@ -34,7 +36,7 @@ class HomeScreen extends ConsumerWidget {
         children: [
           profileAsync.when(
             data: (bundle) => SectionCard(
-              title: 'Oggi',
+              title: l10n.todayTitle,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -46,7 +48,7 @@ class HomeScreen extends ConsumerWidget {
                           children: [
                             Text(
                               bundle?.profile.displayName ??
-                                  'Profilo in configurazione',
+                                  l10n.profileSetupInProgress,
                               style: Theme.of(
                                 context,
                               ).textTheme.headlineSmall?.copyWith(
@@ -56,8 +58,8 @@ class HomeScreen extends ConsumerWidget {
                             const SizedBox(height: 4),
                             Text(
                               bundle == null
-                                  ? 'Completa l\'onboarding per iniziare.'
-                                  : 'Scegli un recap oppure salva un check-up.',
+                                  ? l10n.completeOnboardingToStart
+                                  : l10n.chooseRecapOrSaveCheckUp,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -77,7 +79,9 @@ class HomeScreen extends ConsumerWidget {
                             ? Icons.check_circle_outline
                             : Icons.notification_important_outlined,
                         label: Text(
-                          alertsCount == 0 ? 'Alert ok' : '$alertsCount alert',
+                          alertsCount == 0
+                              ? l10n.alertsAllClear
+                              : l10n.alertsCountLabel(alertsCount),
                         ),
                       ),
                       _StatusPill(
@@ -86,8 +90,8 @@ class HomeScreen extends ConsumerWidget {
                             : Icons.notifications_none_outlined,
                         label: Text(
                           hasUnreadNotifications
-                              ? 'Da leggere'
-                              : 'Notifiche ok',
+                              ? l10n.notificationsUnread
+                              : l10n.notificationsAllCaughtUp,
                         ),
                       ),
                       _StatusPill(
@@ -96,8 +100,8 @@ class HomeScreen extends ConsumerWidget {
                             : Icons.checklist_outlined,
                         label: Text(
                           hasPendingMedications
-                              ? 'Terapie da fare'
-                              : 'Terapie ok',
+                              ? l10n.medicationsDue
+                              : l10n.medicationsAllCaughtUp,
                         ),
                       ),
                     ],
@@ -109,12 +113,12 @@ class HomeScreen extends ConsumerWidget {
                       final aiButton = FilledButton.icon(
                         onPressed: () => context.go('/app/ai'),
                         icon: const Icon(Icons.auto_awesome_outlined),
-                        label: const Text('Recap AI'),
+                        label: Text(l10n.aiRecap),
                       );
                       final checkUpButton = FilledButton.tonalIcon(
                         onPressed: () => context.push('/app/diary/check-up'),
                         icon: const Icon(Icons.add_circle_outline),
-                        label: const Text('Check-up'),
+                        label: Text(l10n.checkUp),
                       );
 
                       if (isCompact) {
@@ -140,12 +144,12 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            loading: () => const SectionCard(
-              title: 'Oggi',
-              child: Center(child: CircularProgressIndicator()),
+            loading: () => SectionCard(
+              title: l10n.todayTitle,
+              child: const Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) =>
-                SectionCard(title: 'Oggi', child: Text(error.toString())),
+                SectionCard(title: l10n.todayTitle, child: Text(error.toString())),
           ),
           if (isHackathonDemoMode) ...[
             const SizedBox(height: 12),
@@ -162,13 +166,12 @@ class HomeScreen extends ConsumerWidget {
                 }
                 final selectedId = activeProfileIdAsync.asData?.value;
                 return SectionCard(
-                  title: 'Scenari demo',
-                  subtitle:
-                      'Judge mode attivo. Cambia scenario e apri subito il recap locale.',
+                  title: l10n.demoScenarios,
+                  subtitle: l10n.judgeModeSubtitle,
                   action: FilledButton.tonalIcon(
                     onPressed: () => context.go('/app/ai'),
                     icon: const Icon(Icons.auto_awesome_outlined),
-                    label: const Text('Apri Recap AI'),
+                    label: Text(l10n.openAiRecap),
                   ),
                   child: Wrap(
                     spacing: 8,
@@ -193,7 +196,7 @@ class HomeScreen extends ConsumerWidget {
           ],
           const SizedBox(height: 12),
           SectionCard(
-            title: 'Vai a',
+            title: l10n.goTo,
             child: GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -203,34 +206,34 @@ class HomeScreen extends ConsumerWidget {
               childAspectRatio: 1.3,
               children: [
                 _DashboardActionCard(
-                  title: 'Documenti',
-                  subtitle: 'Referti',
+                  title: l10n.documents,
+                  subtitle: l10n.reports,
                   icon: Icons.description_outlined,
                   onTap: () => context.go('/app/documents'),
                 ),
                 _DashboardActionCard(
-                  title: 'Farmaci',
-                  subtitle: 'Terapie',
+                  title: l10n.medications,
+                  subtitle: l10n.treatments,
                   icon: Icons.medication_outlined,
                   onTap: () => context.push('/app/home/medications'),
                   showBadge: hasPendingMedications,
                   badgeKey: const ValueKey('home-medications-badge'),
                 ),
                 _DashboardActionCard(
-                  title: 'Prevenzione',
-                  subtitle: 'Controlli',
+                  title: l10n.prevention,
+                  subtitle: l10n.checkups,
                   icon: Icons.health_and_safety_outlined,
                   onTap: () => context.push('/app/home/prevention-center'),
                 ),
                 _DashboardActionCard(
-                  title: 'Dispositivi',
+                  title: l10n.devices,
                   subtitle: 'Wave 1',
                   icon: Icons.device_hub_outlined,
                   onTap: () => context.push('/app/home/devices'),
                 ),
                 _DashboardActionCard(
-                  title: 'Dossier',
-                  subtitle: 'Storico',
+                  title: l10n.dossier,
+                  subtitle: l10n.history,
                   icon: Icons.folder_shared_outlined,
                   onTap: () => context.push('/app/home/dossier'),
                 ),
@@ -241,9 +244,9 @@ class HomeScreen extends ConsumerWidget {
           profileAsync.when(
             data: (bundle) {
               if (bundle == null) {
-                return const SectionCard(
-                  title: 'Profili',
-                  child: Text('Completa l\'onboarding per iniziare.'),
+                return SectionCard(
+                  title: l10n.profiles,
+                  child: Text(l10n.completeOnboardingToStart),
                 );
               }
               final selectedId = activeProfileIdAsync.asData?.value;
@@ -255,12 +258,12 @@ class HomeScreen extends ConsumerWidget {
                 orElse: () => bundle.profile,
               );
               return SectionCard(
-                title: 'Profili',
-                subtitle: 'Stai usando ${activeProfile.displayName}',
+                title: l10n.profiles,
+                subtitle: l10n.activeProfileLabel(activeProfile.displayName),
                 action: TextButton.icon(
                   onPressed: () => context.push('/app/profile/family'),
                   icon: const Icon(Icons.manage_accounts_outlined),
-                  label: const Text('Gestisci'),
+                  label: Text(l10n.manage),
                 ),
                 child: Wrap(
                   spacing: 8,
@@ -274,52 +277,52 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     ActionChip(
                       avatar: const Icon(Icons.add, size: 18),
-                      label: const Text('Aggiungi'),
+                      label: Text(l10n.add),
                       onPressed: () => context.push('/app/profile/family'),
                     ),
                   ],
                 ),
               );
             },
-            loading: () => const SectionCard(
-              title: 'Profili',
-              child: Center(child: CircularProgressIndicator()),
+            loading: () => SectionCard(
+              title: l10n.profiles,
+              child: const Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) =>
-                SectionCard(title: 'Profili', child: Text(error.toString())),
+                SectionCard(title: l10n.profiles, child: Text(error.toString())),
           ),
           const SizedBox(height: 12),
           SectionCard(
-            title: 'Altro',
-            subtitle: 'Strumenti secondari',
+            title: l10n.more,
+            subtitle: l10n.secondaryTools,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 _MiniActionChip(
-                  label: 'Timeline',
+                  label: l10n.timeline,
                   icon: Icons.timeline_outlined,
                   onPressed: () => context.push('/app/home/timeline'),
                 ),
                 _MiniActionChip(
-                  label: 'Notifiche',
+                  label: l10n.notifications,
                   icon: Icons.notifications_outlined,
                   onPressed: () => context.push('/app/home/notifications'),
                   showBadge: hasUnreadNotifications,
                   badgeKey: const ValueKey('home-notifications-badge'),
                 ),
                 _MiniActionChip(
-                  label: 'Smartwatch',
+                  label: l10n.smartwatch,
                   icon: Icons.watch_outlined,
                   onPressed: () => context.push('/app/home/wearables'),
                 ),
                 _MiniActionChip(
-                  label: 'AI Plus',
+                  label: l10n.aiPlus,
                   icon: Icons.workspace_premium_outlined,
                   onPressed: () => context.push('/app/home/billing'),
                 ),
                 _MiniActionChip(
-                  label: 'Alert',
+                  label: l10n.alerts,
                   icon: Icons.notification_important_outlined,
                   onPressed: () => context.push('/app/home/alerts'),
                 ),
@@ -341,6 +344,7 @@ List<Widget> _buildProfileChips(
   if (bundle == null) {
     return const [];
   }
+  final l10n = AppLocalizations.of(context);
   final profiles = bundle.managedProfiles.isNotEmpty
       ? bundle.managedProfiles
       : <PatientProfile>[bundle.profile];
@@ -349,7 +353,7 @@ List<Widget> _buildProfileChips(
       : bundle.profile.id;
 
   return profiles.map((profile) {
-    final label = _profileChipLabel(profile);
+    final label = _profileChipLabel(profile, l10n);
     return FilterChip(
       selected: profile.id == selectedId,
       label: Text(label),
@@ -358,14 +362,14 @@ List<Widget> _buildProfileChips(
   }).toList();
 }
 
-String _profileChipLabel(PatientProfile profile) {
+String _profileChipLabel(PatientProfile profile, AppLocalizations l10n) {
   final parts = <String>[profile.displayName];
   if (profile.relationshipLabel != null &&
       profile.relationshipLabel!.isNotEmpty) {
     parts.add(profile.relationshipLabel!);
   }
   if (profile.isPrimary) {
-    parts.add('principale');
+    parts.add(l10n.primaryProfileLabel);
   }
   return parts.join(' · ');
 }

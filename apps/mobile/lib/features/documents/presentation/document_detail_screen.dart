@@ -66,8 +66,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       ref.invalidate(notificationsProvider);
       if (!mounted) return;
       final message = nextStatus == 'old'
-          ? 'Documento segnato come vecchio. Non verra usato nei recap AI.'
-          : 'Documento riattivato per i recap AI.';
+          ? 'Document marked as old. It will not be used in AI recaps.'
+          : 'Document reactivated for AI recaps.';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
@@ -87,9 +87,9 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Elimina documento'),
+        title: const Text('Delete document'),
         content: const Text(
-          'Il documento verra eliminato definitivamente. Vuoi continuare?',
+          'The document will be deleted permanently. Do you want to continue?',
         ),
         actions: [
           TextButton(
@@ -97,14 +97,14 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
               dialogContext,
               rootNavigator: true,
             ).pop(false),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(
               dialogContext,
               rootNavigator: true,
             ).pop(true),
-            child: const Text('Elimina'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -127,7 +127,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Documento eliminato.')));
+      ).showSnackBar(const SnackBar(content: Text('Document deleted.')));
       context.pop();
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -151,7 +151,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       if (!launched) {
         await SharePlus.instance.share(
           ShareParams(
-            text: 'Documento ClinDiary',
+            text: 'ClinDiary document',
             files: [XFile(localPath)],
           ),
         );
@@ -168,7 +168,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossibile aprire il documento.')),
+        const SnackBar(content: Text('Unable to open the document.')),
       );
     }
   }
@@ -182,7 +182,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       path: '/app/ai',
       queryParameters: {
         'documentId': detail.id,
-        'question': 'Spiega questo documento in parole semplici.',
+        'question': 'Explain this document in simple terms.',
       },
     );
     context.push(uri.toString());
@@ -210,7 +210,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sposta file',
+                      'Move file',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
@@ -222,8 +222,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     _FolderChoiceTile(
-                      title: 'Archivio principale',
-                      subtitle: 'Fuori da qualsiasi cartella',
+                      title: 'Main archive',
+                      subtitle: 'Outside any folder',
                       selected: nextFolderId.isEmpty,
                       onTap: () => setModalState(() => nextFolderId = ''),
                     ),
@@ -249,7 +249,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         onPressed: () => Navigator.of(
                           sheetContext,
                         ).pop(nextFolderId.isEmpty ? null : nextFolderId),
-                        child: const Text('Sposta'),
+                        child: const Text('Move'),
                       ),
                     ),
                   ],
@@ -278,7 +278,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Documento spostato.')));
+      ).showSnackBar(const SnackBar(content: Text('Document moved.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -299,11 +299,11 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     final hasCloudStorageAccess =
         billingStatusAsync.asData?.value?.hasFeature('cloud_document_storage') ??
         false;
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dettaglio documento'),
+        title: const Text('Document details'),
         actions: [
           IconButton(
             onPressed: () =>
@@ -343,7 +343,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       SizedBox(width: 12),
                       Flexible(
                         child: Text(
-                          'Sposta file',
+                          'Move file',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -364,8 +364,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         Flexible(
                           child: Text(
                             detail.isOld
-                                ? 'Riattiva per AI'
-                                : 'Segna come vecchio',
+                                ? 'Reactivate for AI'
+                                : 'Mark as old',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -380,7 +380,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       SizedBox(width: 12),
                       Flexible(
                         child: Text(
-                          'Elimina documento',
+                          'Delete document',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -408,15 +408,15 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
             SectionCard(
               title: detail.title,
               subtitle: detail.isLocal
-                  ? 'Metadati del file salvato sul dispositivo.'
-                  : 'Metadati, stato e contenuti estratti.',
+                  ? 'Metadata for the file saved on the device.'
+                  : 'Metadata, status, and extracted content.',
               action: FilledButton.tonalIcon(
                 onPressed: (detail.isLocal ||
                         (detail.viewerUrl != null && detail.viewerUrl!.isNotEmpty))
                     ? () => _openViewer(detail)
                     : null,
                 icon: const Icon(Icons.open_in_new),
-                label: const Text('Apri file'),
+                label: const Text('Open file'),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,7 +430,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         label: Text(documentStorageLabel(detail.storageLocation)),
                       ),
                       if (detail.folderName != null && detail.folderName!.isNotEmpty)
-                        Chip(label: Text('Cartella: ${detail.folderName}')),
+                        Chip(label: Text('Folder: ${detail.folderName}')),
                       Chip(
                         label: Text(documentStatusLabel(detail.parsedStatus)),
                       ),
@@ -446,7 +446,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       if (detail.classificationConfidence != null)
                         Chip(
                           label: Text(
-                            'Classificazione ${(detail.classificationConfidence! * 100).round()}%',
+                            'Classification ${(detail.classificationConfidence! * 100).round()}%',
                           ),
                         ),
                       if (detail.parsingConfidence != null)
@@ -457,7 +457,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         ),
                       if (detail.pendingSync)
                         Chip(
-                          label: const Text('Sync in attesa'),
+                          label: const Text('Sync pending'),
                           backgroundColor: Theme.of(
                             context,
                           ).colorScheme.tertiaryContainer,
@@ -468,7 +468,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        'Questo documento ha modifiche in attesa di sincronizzazione.',
+                        'This document has changes waiting to sync.',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.secondary,
                         ),
@@ -480,25 +480,25 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                     runSpacing: 12,
                     children: [
                       _InfoTile(
-                        label: 'Upload',
+                        label: 'Uploaded',
                         value: dateFormat.format(detail.uploadDate.toLocal()),
                       ),
                       _InfoTile(
-                        label: 'Esame',
+                        label: 'Exam',
                         value: detail.examDate == null
-                            ? 'n/d'
+                            ? 'N/A'
                             : detail.examDate!.toIso8601String().split('T').first,
                       ),
                       _InfoTile(
-                        label: 'Sorgente',
-                        value: detail.source ?? 'n/d',
+                        label: 'Source',
+                        value: detail.source ?? 'N/A',
                       ),
                       _InfoTile(
                         label: 'File',
                         value: detail.originalFilename,
                       ),
                       _InfoTile(
-                        label: 'Dimensione',
+                        label: 'Size',
                         value: formatFileSize(detail.fileSizeBytes),
                       ),
                     ],
@@ -507,7 +507,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        'Questo documento e segnato come vecchio e non viene incluso nei recap AI.',
+                        'This document is marked as old and is not included in AI recaps.',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.secondary,
                         ),
@@ -529,7 +529,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                     FilledButton.tonalIcon(
                       onPressed: () => _openGemmaCenter(detail),
                       icon: const Icon(Icons.auto_awesome_outlined),
-                      label: const Text('Spiega con Gemma'),
+                      label: const Text('Explain with Gemma'),
                     ),
                   if (canAskGemmaAboutDocument) const SizedBox(height: 12),
                   if (detail.isCloud)
@@ -545,7 +545,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                               ? null
                               : _processDocument,
                           icon: const Icon(Icons.auto_fix_high_outlined),
-                          label: Text(_processing ? 'Processing...' : 'Processa'),
+                          label: Text(_processing ? 'Processing...' : 'Process'),
                         ),
                         OutlinedButton.icon(
                           onPressed:
@@ -556,7 +556,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                                   '/app/documents/${widget.documentId}/review',
                                 ),
                           icon: const Icon(Icons.edit_note_outlined),
-                          label: const Text('Revisione manuale'),
+                          label: const Text('Manual review'),
                         ),
                       ],
                     )
@@ -574,18 +574,18 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Questo documento e salvato solo sul dispositivo.',
+                            'This document is saved only on the device.',
                             style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'OCR, parsing automatico, backup cloud e domande ai documenti sono disponibili con AI Plus.',
+                            'OCR, automatic parsing, cloud backup, and document questions are available with AI Plus.',
                           ),
                           const SizedBox(height: 12),
                           FilledButton.tonalIcon(
                             onPressed: _openBillingForCloudArchive,
                             icon: const Icon(Icons.workspace_premium_outlined),
-                            label: const Text('Sblocca archivio cloud'),
+                            label: const Text('Unlock cloud archive'),
                           ),
                         ],
                       ),
@@ -606,18 +606,18 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Documento cloud in sola lettura',
+                              'Read-only cloud document',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Il file resta consultabile anche sul piano free, ma spostamento, processing e modifiche richiedono AI Plus.',
+                              'The file remains viewable on the free plan, but moving, processing, and edits require AI Plus.',
                             ),
                             const SizedBox(height: 12),
                             FilledButton.tonalIcon(
                               onPressed: _openBillingForCloudArchive,
                               icon: const Icon(Icons.workspace_premium_outlined),
-                              label: const Text('Riattiva AI Plus'),
+                              label: const Text('Reactivate AI Plus'),
                             ),
                           ],
                         ),
@@ -629,10 +629,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
             const SizedBox(height: 12),
             if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
               SectionCard(
-                title: 'Testo estratto',
+                title: 'Extracted text',
                 subtitle: _showExtractedText
-                    ? 'Testo OCR del documento.'
-                    : 'Disponibile su richiesta.',
+                    ? 'OCR text for the document.'
+                    : 'Available on demand.',
                 action: TextButton.icon(
                   onPressed: () => setState(
                     () => _showExtractedText = !_showExtractedText,
@@ -643,7 +643,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         : Icons.visibility_outlined,
                   ),
                   label: Text(
-                    _showExtractedText ? 'Nascondi testo' : 'Mostra testo',
+                    _showExtractedText ? 'Hide text' : 'Show text',
                   ),
                 ),
                 child: _showExtractedText
@@ -659,13 +659,13 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         child: SelectableText(detail.ocrText!),
                       )
                     : const Text(
-                        'Il testo estratto è pronto ma resta nascosto finché non scegli di visualizzarlo.',
+                        'The extracted text is ready but stays hidden until you choose to view it.',
                       ),
               ),
             if (detail.labPanels.isNotEmpty) ...[
               const SizedBox(height: 12),
               SectionCard(
-                title: 'Risultati laboratorio',
+                title: 'Lab results',
                 child: Column(
                   children: detail.labPanels
                       .map(
@@ -681,7 +681,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
             if (detail.imagingReports.isNotEmpty) ...[
               const SizedBox(height: 12),
               SectionCard(
-                title: 'Referto imaging',
+                title: 'Imaging report',
                 child: Column(
                   children: detail.imagingReports
                       .map(
@@ -825,7 +825,7 @@ class _LabPanelView extends StatelessWidget {
                 ],
               ),
               trailing: Chip(
-                label: Text(isAbnormal ? 'Fuori range' : 'OK'),
+                label: Text(isAbnormal ? 'Out of range' : 'OK'),
                 visualDensity: VisualDensity.compact,
                 backgroundColor: isAbnormal
                     ? Theme.of(

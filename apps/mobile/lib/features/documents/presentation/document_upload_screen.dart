@@ -58,7 +58,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       initialDate: parsed ?? now,
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
-      helpText: 'Seleziona data esame',
+      helpText: 'Select exam date',
     );
     if (selected == null || !mounted) {
       return;
@@ -73,7 +73,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     if (!_formKey.currentState!.validate() || _selectedDocument == null) {
       if (_selectedDocument == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Seleziona prima un file.')),
+          const SnackBar(content: Text('Select a file first.')),
         );
       }
       return;
@@ -119,7 +119,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Carica documento')),
+      appBar: AppBar(title: const Text('Upload document')),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -130,11 +130,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 title: 'File',
                 subtitle: widget.initialFolderName == null
                     ? (_isLocalStorage
-                          ? 'Scegli il documento da salvare sul dispositivo.'
-                          : 'Scegli il documento da caricare nel cloud ClinDiary.')
+                          ? 'Choose the document to save on the device.'
+                          : 'Choose the document to upload to the ClinDiary cloud.')
                     : (_isLocalStorage
-                          ? 'Il file verra salvato localmente nella cartella corrente.'
-                          : 'Il file verra caricato nella cartella cloud corrente.'),
+                          ? 'The file will be saved locally in the current folder.'
+                          : 'The file will be uploaded to the current cloud folder.'),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -145,9 +145,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                             : Icons.cloud_outlined,
                       ),
                       label: Text(
-                        _isLocalStorage
-                            ? 'Archivio sul dispositivo'
-                            : 'Archivio cloud',
+                        _isLocalStorage ? 'On-device archive' : 'Cloud archive',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -164,7 +162,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                       icon: const Icon(Icons.attach_file),
                       label: Text(
                         _selectedDocument == null
-                            ? 'Seleziona file'
+                            ? 'Select file'
                             : _selectedDocument!.name,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -172,7 +170,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                     if (_selectedDocument != null) ...[
                       const SizedBox(height: 12),
                       _UploadInfoTile(
-                        label: 'Selezionato',
+                        label: 'Selected',
                         value:
                             '${_selectedDocument!.name} • ${_selectedDocument!.mimeType}',
                       ),
@@ -182,51 +180,51 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               ),
               const SizedBox(height: 12),
               SectionCard(
-                title: 'Dettagli',
-                subtitle: 'Aggiungi solo le informazioni utili.',
+                title: 'Details',
+                subtitle: 'Add only the useful information.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
-                        labelText: 'Titolo documento',
+                        labelText: 'Document title',
                       ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _documentType,
                       decoration: const InputDecoration(
-                        labelText: 'Tipo documento',
+                        labelText: 'Document type',
                       ),
                       items: const [
                         DropdownMenuItem(
                           value: 'generic_document',
-                          child: Text('Documento generico'),
+                          child: Text('General document'),
                         ),
                         DropdownMenuItem(
                           value: 'lab_report',
-                          child: Text('Referto laboratorio'),
+                          child: Text('Lab report'),
                         ),
                         DropdownMenuItem(
                           value: 'imaging_report',
-                          child: Text('Referto imaging'),
+                          child: Text('Imaging report'),
                         ),
                         DropdownMenuItem(
                           value: 'discharge_letter',
-                          child: Text('Lettera dimissione'),
+                          child: Text('Discharge summary'),
                         ),
                         DropdownMenuItem(
                           value: 'specialist_visit',
-                          child: Text('Visita specialistica'),
+                          child: Text('Specialist visit'),
                         ),
                         DropdownMenuItem(
                           value: 'prescription',
-                          child: Text('Prescrizione'),
+                          child: Text('Prescription'),
                         ),
                         DropdownMenuItem(
                           value: 'medical_certificate',
-                          child: Text('Certificato medico'),
+                          child: Text('Medical certificate'),
                         ),
                       ],
                       onChanged: (value) => setState(
@@ -239,7 +237,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                       readOnly: true,
                       onTap: _uploading ? null : _pickExamDate,
                       decoration: const InputDecoration(
-                        labelText: 'Data esame',
+                        labelText: 'Exam date',
                         hintText: 'YYYY-MM-DD',
                         suffixIcon: Icon(Icons.calendar_month_outlined),
                       ),
@@ -248,14 +246,14 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                           return null;
                         }
                         return DateTime.tryParse(value) == null
-                            ? 'Data non valida'
+                            ? 'Invalid date'
                             : null;
                       },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _sourceController,
-                      decoration: const InputDecoration(labelText: 'Fonte'),
+                      decoration: const InputDecoration(labelText: 'Source'),
                     ),
                   ],
                 ),
@@ -271,11 +269,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 label: Text(
                   _uploading
                       ? (_isLocalStorage
-                            ? 'Salvataggio in corso...'
-                            : 'Upload in corso...')
+                            ? 'Saving...'
+                            : 'Uploading...')
                       : (_isLocalStorage
-                            ? 'Salva sul dispositivo'
-                            : 'Carica documento'),
+                            ? 'Save on device'
+                            : 'Upload document'),
                 ),
               ),
             ],

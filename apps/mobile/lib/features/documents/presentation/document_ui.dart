@@ -3,40 +3,40 @@ import 'package:flutter/material.dart';
 String documentTypeLabel(String type) {
   switch (type) {
     case 'lab_report':
-      return 'Referto laboratorio';
+      return 'Lab report';
     case 'imaging_report':
-      return 'Referto imaging';
+      return 'Imaging report';
     case 'discharge_letter':
-      return 'Lettera di dimissione';
+      return 'Discharge summary';
     case 'specialist_visit':
-      return 'Visita specialistica';
+      return 'Specialist visit';
     case 'prescription':
-      return 'Prescrizione';
+      return 'Prescription';
     case 'medical_certificate':
-      return 'Certificato medico';
+      return 'Medical certificate';
     default:
-      return 'Documento generico';
+      return 'General document';
   }
 }
 
 String documentStatusLabel(String status) {
   switch (status) {
     case 'local_only':
-      return 'Solo locale';
+      return 'Local only';
     case 'pending':
-      return 'In attesa';
+      return 'Pending';
     case 'processing':
-      return 'In lavorazione';
+      return 'Processing';
     case 'parsed':
-      return 'Processato';
+      return 'Parsed';
     case 'ocr_pending':
-      return 'OCR futuro';
+      return 'OCR pending';
     case 'review_required':
-      return 'Da rivedere';
+      return 'Needs review';
     case 'reviewed':
-      return 'Revisionato';
+      return 'Reviewed';
     case 'failed':
-      return 'Errore';
+      return 'Error';
     default:
       return status;
   }
@@ -45,10 +45,10 @@ String documentStatusLabel(String status) {
 String documentContextStatusLabel(String status) {
   switch (status) {
     case 'old':
-      return 'Vecchio';
+      return 'Old';
     case 'active':
     default:
-      return 'Attivo';
+      return 'Active';
   }
 }
 
@@ -85,7 +85,7 @@ Color documentStatusColor(BuildContext context, String status) {
 String documentStorageLabel(String storageLocation) {
   switch (storageLocation) {
     case 'local':
-      return 'Sul dispositivo';
+      return 'On device';
     case 'cloud':
     default:
       return 'Cloud';

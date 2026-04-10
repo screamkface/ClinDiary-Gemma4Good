@@ -1,4 +1,5 @@
 import 'package:clindiary/shared/widgets/section_card.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class FeatureLockCard extends StatelessWidget {
@@ -19,6 +20,7 @@ class FeatureLockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final child = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -31,7 +33,7 @@ class FeatureLockCard extends StatelessWidget {
         FilledButton.icon(
           onPressed: onOpenBilling,
           icon: const Icon(Icons.workspace_premium_outlined),
-          label: const Text('Scopri AI Plus'),
+          label: Text(l10n.discoverAiPlus),
         ),
       ],
     );

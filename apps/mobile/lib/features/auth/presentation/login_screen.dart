@@ -1,5 +1,6 @@
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -48,14 +50,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.signInFailed(error.message))),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Accesso non riuscito: $error')));
+      ).showSnackBar(
+        SnackBar(content: Text(l10n.signInFailed(error.toString()))),
+      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -64,12 +68,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submitWithGoogle() async {
+    final l10n = AppLocalizations.of(context)!;
     final clientId = ref.read(appConfigProvider).googleAuthClientId.trim();
     if (clientId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Google auth non configurato in questa build.'),
-        ),
+        SnackBar(content: Text(l10n.googleAuthNotConfigured)),
       );
       return;
     }
@@ -83,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final auth = account.authentication;
       final idToken = auth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        throw Exception('Google non ha restituito un id token valido.');
+        throw Exception(l10n.googleIdTokenInvalid);
       }
       final session = await ref
           .read(authControllerProvider.notifier)
@@ -98,17 +101,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Accesso Google non riuscito: $error')),
+        SnackBar(content: Text(l10n.googleSignInFailed(error.toString()))),
       );
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.googleSignInFailed(error.message))),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Accesso Google non riuscito: $error')),
+        SnackBar(content: Text(l10n.googleSignInFailed(error.toString()))),
       );
     } finally {
       if (mounted) {
@@ -129,11 +132,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _requestPasswordReset() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Inserisci prima l’email per avviare il reset.'),
-        ),
+        SnackBar(content: Text(l10n.passwordResetPrompt)),
       );
       return;
     }
@@ -144,27 +146,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .requestPasswordReset(_emailController.text.trim());
       if (!mounted) return;
       final message = previewToken == null
-          ? 'Reset avviato. Controlla il canale previsto.'
-          : 'Reset avviato. Token sviluppo: $previewToken';
+          ? l10n.passwordResetStarted
+          : l10n.passwordResetStartedToken(previewToken);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.passwordResetFailed(error.message))),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Reset non riuscito: $error')));
+      ).showSnackBar(
+        SnackBar(content: Text(l10n.passwordResetFailed(error.toString()))),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final googleAuthClientId = ref.watch(appConfigProvider).googleAuthClientId.trim();
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: DecoratedBox(
@@ -198,13 +203,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'ClinDiary',
+                                    l10n.appTitle,
                                     style: Theme.of(context).textTheme.headlineMedium
                                         ?.copyWith(fontWeight: FontWeight.w900),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Diario clinico personale.',
+                                    l10n.appSubtitle,
                                     style: Theme.of(context).textTheme.bodyLarge,
                                   ),
                                 ],
@@ -216,10 +221,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(labelText: 'Email'),
+                          decoration: InputDecoration(labelText: l10n.emailLabel),
                           validator: (value) {
                             if (value == null || !value.contains('@')) {
-                              return 'Inserisci una email valida';
+                              return l10n.emailInvalid;
                             }
                             return null;
                           },
@@ -228,12 +233,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
+                          decoration: InputDecoration(
+                            labelText: l10n.passwordLabel,
                           ),
                           validator: (value) {
                             if (value == null || value.length < 8) {
-                              return 'Minimo 8 caratteri';
+                              return l10n.passwordMinLength;
                             }
                             return null;
                           },
@@ -244,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: FilledButton(
                             onPressed: _isSubmitting ? null : _submit,
                             child: Text(
-                              _isSubmitting ? 'Accesso...' : 'Accedi',
+                              _isSubmitting ? l10n.signingIn : l10n.signIn,
                             ),
                           ),
                         ),
@@ -259,8 +264,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               icon: const Icon(Icons.account_circle_outlined),
                               label: Text(
                                 _isGoogleSubmitting
-                                    ? 'Accesso Google...'
-                                    : 'Accedi con Google',
+                                    ? l10n.signingInWithGoogle
+                                    : l10n.signInWithGoogle,
                               ),
                             ),
                           ),
@@ -270,18 +275,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           onPressed: _isSubmitting
                               ? null
                               : _requestPasswordReset,
-                          child: const Text('Avvia reset password'),
+                          child: Text(l10n.resetPassword),
                         ),
                         const SizedBox(height: 12),
                         Wrap(
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Text('Non hai un account?'),
+                            Text(l10n.noAccountPrompt),
                             TextButton(
                               onPressed: _isSubmitting
                                   ? null
                                   : () => context.go('/register'),
-                              child: const Text('Registrati'),
+                              child: Text(l10n.register),
                             ),
                           ],
                         ),

@@ -64,12 +64,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final createdName = await showDialog<String?>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Nuova cartella'),
+        title: const Text('New folder'),
         content: TextFormField(
           autofocus: true,
           decoration: const InputDecoration(
-            labelText: 'Nome cartella',
-            hintText: 'Es. Esami sangue',
+            labelText: 'Folder name',
+            hintText: 'E.g. Blood tests',
           ),
           textInputAction: TextInputAction.done,
           onChanged: (value) => folderName = value,
@@ -84,14 +84,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               dialogContext,
               rootNavigator: true,
             ).pop(),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(
               dialogContext,
               rootNavigator: true,
             ).pop(folderName.trim()),
-            child: const Text('Crea'),
+            child: const Text('Create'),
           ),
         ],
       ),
@@ -109,7 +109,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Cartella "$createdName" creata.')));
+      ).showSnackBar(SnackBar(content: Text('Folder "$createdName" created.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -140,7 +140,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sposta file',
+                      'Move file',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
@@ -152,8 +152,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     ),
                     const SizedBox(height: 12),
                     _FolderChoiceTile(
-                      title: 'Archivio principale',
-                      subtitle: 'Fuori da qualsiasi cartella',
+                      title: 'Main archive',
+                      subtitle: 'Outside any folder',
                       selected: nextFolderId.isEmpty,
                       onTap: () => setModalState(() => nextFolderId = ''),
                     ),
@@ -179,7 +179,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         onPressed: () => Navigator.of(
                           sheetContext,
                         ).pop(nextFolderId.isEmpty ? null : nextFolderId),
-                        child: const Text('Sposta'),
+                        child: const Text('Move'),
                       ),
                     ),
                   ],
@@ -206,7 +206,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Documento spostato.')));
+      ).showSnackBar(const SnackBar(content: Text('Document moved.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -247,11 +247,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     final archiveAsync = ref.watch(documentArchiveProvider(_archiveQuery));
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Documenti'),
+        title: const Text('Documents'),
         actions: [
           IconButton(
             onPressed: () => _refreshAll(),
@@ -266,14 +266,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: archive.currentFolder?.name ?? 'Archivio',
+                title: archive.currentFolder?.name ?? 'Archive',
                 subtitle: archive.isSearch
                     ? (archive.isLocal
-                          ? 'Ricerca locale tra i file salvati su questo dispositivo.'
-                          : 'Ricerca tra tutti i documenti caricati nel cloud.')
+                          ? 'Local search across files saved on this device.'
+                          : 'Search across all documents uploaded to the cloud.')
                     : (archive.isLocal
-                          ? 'Cartelle e file salvati localmente su questo dispositivo.'
-                          : 'Cartelle e file in un archivio cloud ordinato.'),
+                          ? 'Folders and files saved locally on this device.'
+                          : 'Folders and files in a tidy cloud archive.'),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -282,10 +282,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       onSubmitted: (_) => _applySearch(),
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
-                        labelText: 'Cerca file',
+                        labelText: 'Search files',
                         hintText: archive.isLocal
-                            ? 'Titolo, cartella, sorgente, nome file...'
-                            : 'Titolo, nome file, testo estratto...',
+                          ? 'Title, folder, source, file name...'
+                          : 'Title, file name, extracted text...',
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: _appliedQuery == null
                             ? IconButton(
@@ -314,7 +314,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         FilledButton.tonalIcon(
                           onPressed: _createFolder,
                           icon: const Icon(Icons.create_new_folder_outlined),
-                          label: const Text('Nuova cartella'),
+                          label: const Text('New folder'),
                         ),
                         FilledButton.icon(
                           onPressed: () => _openUpload(archive),
@@ -325,10 +325,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           ),
                           label: Text(
                             archive.currentFolder == null
-                                ? (archive.isLocal
-                                      ? 'Salva file'
-                                      : 'Carica file')
-                                : (archive.isLocal ? 'Salva qui' : 'Carica qui'),
+                              ? (archive.isLocal
+                                ? 'Save file'
+                                : 'Upload file')
+                              : (archive.isLocal ? 'Save here' : 'Upload here'),
                           ),
                         ),
                         FilledButton.tonalIcon(
@@ -339,7 +339,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 : Icons.chat_bubble_outline,
                           ),
                           label: Text(
-                            archive.isLocal ? 'Sblocca cloud' : 'Chiedi ai file',
+                            archive.isLocal ? 'Unlock cloud' : 'Ask files',
                           ),
                         ),
                       ],
@@ -348,7 +348,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(
-                          'Nel piano free i file restano sul dispositivo. OCR, parsing automatico, backup cloud e domande ai documenti si sbloccano con AI Plus.',
+                          'On the free plan, files stay on the device. OCR, automatic parsing, cloud backup, and document Q&A unlock with AI Plus.',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.secondary,
                           ),
@@ -359,14 +359,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(label: Text('${archive.folders.length} cartelle')),
+                        Chip(label: Text('${archive.folders.length} folders')),
                         Chip(
                           label: Text(
-                            '${archive.documents.length + archive.legacyCloudDocuments.length} file',
+                            '${archive.documents.length + archive.legacyCloudDocuments.length} files',
                           ),
                         ),
                         if (archive.isSearch)
-                          const Chip(label: Text('Ricerca attiva')),
+                          const Chip(label: Text('Search active')),
                       ],
                     ),
                   ],
@@ -382,10 +382,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               if (archive.folders.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Cartelle',
+                  title: 'Folders',
                   subtitle: archive.isSearch
-                      ? 'Le cartelle restano disponibili come destinazioni.'
-                      : 'Apri una cartella per vedere solo i suoi file.',
+                      ? 'Folders remain available as destinations.'
+                      : 'Open a folder to see only its files.',
                   child: Column(
                     children: archive.folders
                         .map(
@@ -404,7 +404,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 subtitle: Text(
-                                  '${folder.childFolderCount} sottocartelle • ${folder.documentCount} file',
+                                  '${folder.childFolderCount} subfolders • ${folder.documentCount} files',
                                 ),
                                 trailing: const Icon(
                                   Icons.chevron_right_rounded,
@@ -422,19 +422,19 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   archive.folders.isEmpty &&
                   !archive.hasLegacyCloudDocuments)
                 SectionCard(
-                  title: archive.isSearch ? 'Nessun risultato' : 'Archivio vuoto',
+                  title: archive.isSearch ? 'No results' : 'Empty archive',
                   child: Text(
                     archive.isSearch
-                        ? 'Prova con parole diverse o svuota la ricerca.'
-                        : 'Crea una cartella o carica il primo documento.',
+                        ? 'Try different words or clear the search.'
+                        : 'Create a folder or upload your first document.',
                   ),
                 )
               else if (archive.documents.isNotEmpty)
                 SectionCard(
-                  title: archive.isSearch ? 'File trovati' : 'File',
+                  title: archive.isSearch ? 'Found files' : 'Files',
                   subtitle: archive.isSearch
-                      ? 'Risultati trovati in tutto l\'archivio.'
-                      : 'Apri un file o spostalo in un\'altra cartella.',
+                      ? 'Results found across the entire archive.'
+                      : 'Open a file or move it to another folder.',
                   child: Column(
                     children: archive.documents
                         .map(
@@ -457,9 +457,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               if (archive.hasLegacyCloudDocuments) ...[
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Archivio cloud in sola lettura',
+                  title: 'Cloud archive read-only',
                   subtitle:
-                      'Questi file erano già nel cloud. Restano consultabili anche sul piano free, ma per modificarli serve AI Plus.',
+                      'These files were already in the cloud. They remain viewable on the free plan, but editing them requires AI Plus.',
                   child: Column(
                     children: archive.legacyCloudDocuments
                         .map(
@@ -522,7 +522,7 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
         ActionChip(
           onPressed: onOpenRoot,
           avatar: const Icon(Icons.home_outlined, size: 18),
-          label: const Text('Archivio'),
+          label: const Text('Archive'),
         ),
         ...archive.breadcrumbs.map(
           (folder) => ActionChip(
@@ -535,7 +535,7 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
           ActionChip(
             onPressed: onClearSearch,
             avatar: const Icon(Icons.close, size: 18),
-            label: const Text('Chiudi ricerca'),
+            label: const Text('Close search'),
           ),
       ],
     );
@@ -600,7 +600,7 @@ class _DocumentArchiveTile extends StatelessWidget {
             ),
             if (showFolderName && document.folderName != null)
               Text(
-                'Cartella: ${document.folderName}',
+                'Folder: ${document.folderName}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -613,12 +613,12 @@ class _DocumentArchiveTile extends StatelessWidget {
                   children: [
                     if (document.isLocal)
                       const Chip(
-                        label: Text('Sul dispositivo'),
+                        label: Text('On device'),
                         visualDensity: VisualDensity.compact,
                       ),
                     if (document.isOld)
                       Chip(
-                        label: const Text('Vecchio'),
+                        label: const Text('Old'),
                         backgroundColor: documentContextStatusColor(
                           context,
                           document.contextStatus,
@@ -627,7 +627,7 @@ class _DocumentArchiveTile extends StatelessWidget {
                       ),
                     if (document.pendingSync)
                       Chip(
-                        label: const Text('Sync in attesa'),
+                        label: const Text('Sync pending'),
                         backgroundColor: Theme.of(
                           context,
                         ).colorScheme.tertiaryContainer,
@@ -651,7 +651,7 @@ class _DocumentArchiveTile extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'In attesa di sincronizzazione',
+                  'Waiting for sync',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.secondary,
                   ),
@@ -677,7 +677,7 @@ class _DocumentArchiveTile extends StatelessWidget {
                         SizedBox(width: 12),
                         Flexible(
                           child: Text(
-                            'Sposta file',
+                            'Move file',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

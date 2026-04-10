@@ -1,0 +1,63 @@
+{
+  "@@locale": "en",
+  "appTitle": "ClinDiary",
+  "appSubtitle": "Personal health diary.",
+  "signInTitle": "Sign in",
+  "signInSubtitle": "Personal health diary.",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "confirmPasswordLabel": "Confirm password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "emailInvalid": "Enter a valid email",
+  "passwordMinLength": "Minimum 8 characters",
+  "signIn": "Sign in",
+  "signingIn": "Signing in...",
+  "signInWithGoogle": "Sign in with Google",
+  "signingInWithGoogle": "Signing in with Google...",
+  "googleAuthNotConfigured": "Google auth is not configured in this build.",
+  "googleIdTokenInvalid": "Google did not return a valid ID token.",
+  "signInFailed": "Sign-in failed: {error}",
+  "@signInFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "googleSignInFailed": "Google sign-in failed: {error}",
+  "@googleSignInFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "resetPassword": "Reset password",
+  "passwordResetPrompt": "Enter your email first to start the reset.",
+  "passwordResetStarted": "Reset started. Check the expected channel.",
+  "passwordResetStartedToken": "Reset started. Development token: {token}",
+  "@passwordResetStartedToken": {
+    "placeholders": {
+      "token": {}
+    }
+  },
+  "passwordResetFailed": "Password reset failed: {error}",
+  "@passwordResetFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noAccountPrompt": "Don't have an account?",
+  "register": "Register",
+  "createAccount": "Create account",
+  "completeProfileNext": "You will complete your profile in the next step.",
+  "creatingAccount": "Creating account...",
+  "continueButton": "Continue",
+  "alreadyHaveAccountSignIn": "Already have an account? Sign in",
+  "registrationFailed": "Registration failed: {error}",
+  "@registrationFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "verifyingSession": "Verifying session...",
+  "startingApp": "Starting ClinDiary...",
+  "redirectingToLogin": "Redirecting to sign in...",
+  "discoverAiPlus": "Discover AI Plus"
+}

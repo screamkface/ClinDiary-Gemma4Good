@@ -110,7 +110,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Revisione manuale salvata.')),
+        const SnackBar(content: Text('Manual review saved.')),
       );
       Navigator.of(context).maybePop();
     } on ApiException catch (error) {
@@ -144,7 +144,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
       if (results.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Aggiungi almeno un risultato laboratorio valido.'),
+            content: Text('Add at least one valid lab result.'),
           ),
         );
         return null;
@@ -162,7 +162,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
       if (_imagingReportTextController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Inserisci il corpo del referto imaging.'),
+            content: Text('Enter the body of the imaging report.'),
           ),
         );
         return null;
@@ -191,7 +191,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
     final detailAsync = ref.watch(documentDetailProvider(widget.documentId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Revisione manuale')),
+      appBar: AppBar(title: const Text('Manual review')),
       body: detailAsync.when(
         data: (detail) {
           _hydrateFromDetail(detail);
@@ -201,55 +201,55 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 SectionCard(
-                  title: 'Correggi e conferma il documento',
+                  title: 'Correct and confirm the document',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Correggi metadati e dati estratti.',
+                        'Correct metadata and extracted data.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _titleController,
                         decoration: const InputDecoration(
-                          labelText: 'Titolo documento',
+                          labelText: 'Document title',
                         ),
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _documentType,
                         decoration: const InputDecoration(
-                          labelText: 'Tipo documento',
+                          labelText: 'Document type',
                         ),
                         items: const [
                           DropdownMenuItem(
                             value: 'generic_document',
-                            child: Text('Documento generico'),
+                            child: Text('General document'),
                           ),
                           DropdownMenuItem(
                             value: 'lab_report',
-                            child: Text('Referto laboratorio'),
+                            child: Text('Lab report'),
                           ),
                           DropdownMenuItem(
                             value: 'imaging_report',
-                            child: Text('Referto imaging'),
+                            child: Text('Imaging report'),
                           ),
                           DropdownMenuItem(
                             value: 'discharge_letter',
-                            child: Text('Lettera di dimissione'),
+                            child: Text('Discharge summary'),
                           ),
                           DropdownMenuItem(
                             value: 'specialist_visit',
-                            child: Text('Visita specialistica'),
+                            child: Text('Specialist visit'),
                           ),
                           DropdownMenuItem(
                             value: 'prescription',
-                            child: Text('Prescrizione'),
+                            child: Text('Prescription'),
                           ),
                           DropdownMenuItem(
                             value: 'medical_certificate',
-                            child: Text('Certificato medico'),
+                            child: Text('Medical certificate'),
                           ),
                         ],
                         onChanged: (value) => setState(
@@ -260,21 +260,21 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
                       TextFormField(
                         controller: _examDateController,
                         decoration: const InputDecoration(
-                          labelText: 'Data esame (YYYY-MM-DD)',
+                          labelText: 'Exam date (YYYY-MM-DD)',
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return null;
                           }
                           return DateTime.tryParse(value) == null
-                              ? 'Data non valida'
+                              ? 'Invalid date'
                               : null;
                         },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _sourceController,
-                        decoration: const InputDecoration(labelText: 'Fonte'),
+                        decoration: const InputDecoration(labelText: 'Source'),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -282,7 +282,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
                         minLines: 6,
                         maxLines: 12,
                         decoration: const InputDecoration(
-                          labelText: 'Testo corretto o integrato',
+                          labelText: 'Corrected or added text',
                           alignLabelWithHint: true,
                         ),
                       ),
@@ -297,7 +297,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
                   onPressed: _saving ? null : _submit,
                   icon: const Icon(Icons.fact_check_outlined),
                   label: Text(
-                    _saving ? 'Salvataggio...' : 'Salva revisione manuale',
+                    _saving ? 'Saving...' : 'Save manual review',
                   ),
                 ),
               ],
@@ -312,24 +312,24 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
 
   Widget _buildLabReviewSection() {
     return SectionCard(
-      title: 'Risultati laboratorio',
+      title: 'Lab results',
       action: TextButton.icon(
         onPressed: () => setState(() => _labResults.add(_LabResultDraft())),
         icon: const Icon(Icons.add),
-        label: const Text('Aggiungi risultato'),
+        label: const Text('Add result'),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextFormField(
             controller: _panelNameController,
-            decoration: const InputDecoration(labelText: 'Nome pannello'),
+            decoration: const InputDecoration(labelText: 'Panel name'),
             validator: (value) {
               if (_documentType != 'lab_report') {
                 return null;
               }
               if (value == null || value.trim().isEmpty) {
-                return 'Inserisci il nome del pannello';
+                return 'Enter the panel name';
               }
               return null;
             },
@@ -359,22 +359,22 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
 
   Widget _buildImagingSection() {
     return SectionCard(
-      title: 'Referto imaging',
+      title: 'Imaging report',
       child: Column(
         children: [
           TextFormField(
             controller: _imagingExamTypeController,
-            decoration: const InputDecoration(labelText: 'Tipo esame'),
+            decoration: const InputDecoration(labelText: 'Exam type'),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _imagingBodyPartController,
-            decoration: const InputDecoration(labelText: 'Distretto'),
+            decoration: const InputDecoration(labelText: 'Body part'),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _imagingImpressionController,
-            decoration: const InputDecoration(labelText: 'Conclusione'),
+            decoration: const InputDecoration(labelText: 'Impression'),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -382,7 +382,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
             minLines: 6,
             maxLines: 12,
             decoration: const InputDecoration(
-              labelText: 'Testo referto',
+              labelText: 'Report text',
               alignLabelWithHint: true,
             ),
             validator: (value) {
@@ -390,7 +390,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
                 return null;
               }
               if (value == null || value.trim().isEmpty) {
-                return 'Inserisci il contenuto del referto';
+                return 'Enter the report content';
               }
               return null;
             },
@@ -425,7 +425,7 @@ class _LabResultCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Risultato ${index + 1}',
+                    'Result ${index + 1}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -435,13 +435,13 @@ class _LabResultCard extends StatelessWidget {
                   IconButton(
                     onPressed: onRemove,
                     icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Rimuovi risultato',
+                    tooltip: 'Remove result',
                   ),
               ],
             ),
             TextFormField(
               controller: draft.analyteController,
-              decoration: const InputDecoration(labelText: 'Analita'),
+              decoration: const InputDecoration(labelText: 'Analyte'),
             ),
             const SizedBox(height: 12),
             Row(
@@ -449,14 +449,14 @@ class _LabResultCard extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: draft.valueController,
-                    decoration: const InputDecoration(labelText: 'Valore'),
+                    decoration: const InputDecoration(labelText: 'Value'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
                     controller: draft.unitController,
-                    decoration: const InputDecoration(labelText: 'Unita'),
+                    decoration: const InputDecoration(labelText: 'Unit'),
                   ),
                 ),
               ],
@@ -467,7 +467,7 @@ class _LabResultCard extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: draft.refMinController,
-                    decoration: const InputDecoration(labelText: 'Range min'),
+                    decoration: const InputDecoration(labelText: 'Min range'),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -477,7 +477,7 @@ class _LabResultCard extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: draft.refMaxController,
-                    decoration: const InputDecoration(labelText: 'Range max'),
+                    decoration: const InputDecoration(labelText: 'Max range'),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -488,13 +488,13 @@ class _LabResultCard extends StatelessWidget {
             const SizedBox(height: 8),
             DropdownButtonFormField<bool?>(
               initialValue: draft.abnormalFlag,
-              decoration: const InputDecoration(labelText: 'Flag fuori range'),
+              decoration: const InputDecoration(labelText: 'Out-of-range flag'),
               items: const [
-                DropdownMenuItem<bool?>(value: null, child: Text('Automatico')),
-                DropdownMenuItem<bool?>(value: false, child: Text('Normale')),
+                DropdownMenuItem<bool?>(value: null, child: Text('Automatic')),
+                DropdownMenuItem<bool?>(value: false, child: Text('Normal')),
                 DropdownMenuItem<bool?>(
                   value: true,
-                  child: Text('Fuori range'),
+                  child: Text('Out of range'),
                 ),
               ],
               onChanged: (value) => draft.abnormalFlag = value,
@@ -514,11 +514,11 @@ class _LabResultDraft {
     String refMin = '',
     String refMax = '',
     this.abnormalFlag,
-  }) : analyteController = TextEditingController(text: analyte),
-       valueController = TextEditingController(text: value),
-       unitController = TextEditingController(text: unit),
-       refMinController = TextEditingController(text: refMin),
-       refMaxController = TextEditingController(text: refMax);
+  })  : analyteController = TextEditingController(text: analyte),
+        valueController = TextEditingController(text: value),
+        unitController = TextEditingController(text: unit),
+        refMinController = TextEditingController(text: refMin),
+        refMaxController = TextEditingController(text: refMax);
 
   factory _LabResultDraft.fromExisting(LabResultItem result) => _LabResultDraft(
     analyte: result.analyteName,

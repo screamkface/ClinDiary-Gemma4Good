@@ -28,9 +28,9 @@ class DocumentQueryScreen extends ConsumerStatefulWidget {
 
 class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
   static const _questionSuggestions = <String>[
-    'Quali esami recenti parlano di creatinina o funzionalita renale?',
-    'Ci sono documenti con valori fuori range negli ultimi mesi?',
-    'Riassumi i referti recenti da portare dal medico.',
+    'Which recent tests mention creatinine or kidney function?',
+    'Are there documents with out-of-range values in the last few months?',
+    'Summarize the recent reports to bring to the doctor.',
   ];
 
   late final TextEditingController _questionController;
@@ -61,7 +61,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
   Future<void> _submit() async {
     final question = _questionController.text.trim();
     if (question.length < 3) {
-      setState(() => _errorMessage = 'Scrivi una domanda un po piu precisa.');
+      setState(() => _errorMessage = 'Write a slightly more specific question.');
       return;
     }
 
@@ -114,8 +114,8 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
         SnackBar(
           content: Text(
             queued == 1
-                ? 'Indicizzazione avviata per 1 documento.'
-                : 'Indicizzazione avviata per $queued documenti.',
+                ? 'Indexing started for 1 document.'
+                : 'Indexing started for $queued documents.',
           ),
         ),
       );
@@ -139,7 +139,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
     final billingStatusAsync = ref.watch(billingStatusProvider);
     final proactiveLock =
         billingStatusAsync.asData?.value?.hasFeature('ai_document_query') ==
@@ -147,7 +147,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chiedi ai documenti'),
+        title: const Text('Ask files'),
         actions: [
           TextButton.icon(
             onPressed: _isReindexing ? null : _reindex,
@@ -158,7 +158,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.sync_outlined),
-            label: Text(_isReindexing ? 'Aggiorno...' : 'Aggiorna indice'),
+            label: Text(_isReindexing ? 'Updating...' : 'Refresh index'),
           ),
         ],
       ),
@@ -166,46 +166,46 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const ClinicalScopeNotice(
-            title: 'Ricerca con citazioni',
+            title: 'Citation search',
             message:
-                'Le risposte sui documenti riassumono solo i file recuperati e citati. Servono per orientarsi nei referti, non per fare diagnosi.',
+                'Document answers summarize only the retrieved and cited files. They help you navigate reports, not make diagnoses.',
             icon: Icons.manage_search_outlined,
           ),
           const SizedBox(height: 12),
           if (proactiveLock)
             FeatureLockCard(
-              title: 'Chiedi ai documenti',
-              featureLabel: 'Domande ai documenti',
+              title: 'Ask files',
+              featureLabel: 'Document questions',
               message:
-                  'La ricerca conversazionale con citazioni fa parte di ClinDiary AI Plus. Archivio, cartelle e ricerca classica restano disponibili.',
+                  'Conversational search with citations is part of ClinDiary AI Plus. Archive, folders, and classic search stay available.',
               onOpenBilling: _openBilling,
             )
           else ...[
             SectionCard(
-              title: 'Ambito della ricerca',
+              title: 'Search scope',
               subtitle: _folderName == null
-                  ? 'La domanda usa tutto l archivio del profilo attivo.'
-                  : 'La domanda e limitata alla cartella corrente.',
+                  ? 'The question searches the entire archive for the active profile.'
+                  : 'The question is limited to the current folder.',
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   Chip(
                     avatar: const Icon(Icons.folder_open_outlined, size: 18),
-                    label: Text(_folderName ?? 'Tutto l archivio'),
+                    label: Text(_folderName ?? 'Entire archive'),
                   ),
                   const Chip(
                     avatar: Icon(Icons.link_outlined, size: 18),
-                    label: Text('Citazioni obbligatorie'),
+                    label: Text('Citations required'),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
             SectionCard(
-              title: 'Fai una domanda',
+              title: 'Ask a question',
               subtitle:
-                  'Usa domande pratiche: esami recenti, valori fuori range, documenti da portare in visita.',
+                  'Use practical questions: recent tests, out-of-range values, documents to bring to the visit.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -215,9 +215,9 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
                     maxLines: 6,
                     textInputAction: TextInputAction.newline,
                     decoration: const InputDecoration(
-                      labelText: 'Domanda',
+                      labelText: 'Question',
                       hintText:
-                          'Es. Ci sono referti recenti con creatinina alta?',
+                          'E.g. Are there recent reports with high creatinine?',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -256,8 +256,8 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
                           : const Icon(Icons.auto_awesome_outlined),
                       label: Text(
                         _isSubmitting
-                            ? 'Sto cercando...'
-                            : 'Cerca nei documenti',
+                            ? 'Searching...'
+                            : 'Search files',
                       ),
                     ),
                   ),
@@ -267,22 +267,22 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
             const SizedBox(height: 12),
             if (_isSubmitting)
               const SectionCard(
-                title: 'Risposta in preparazione',
+                title: 'Preparing answer',
                 child: LinearProgressIndicator(),
               )
             else if (_result == null)
               const SectionCard(
-                title: 'Nessuna risposta ancora',
+                title: 'No answer yet',
                 child: Text(
-                  'Invia una domanda per ottenere un riepilogo con citazioni ai documenti usati.',
+                  'Send a question to get a summary with citations to the documents used.',
                 ),
               )
             else ...[
               SectionCard(
-                title: 'Risposta',
+                title: 'Answer',
                 subtitle: _result!.usedFallback
-                    ? 'Fallback prudente attivo.'
-                    : 'Risposta generata sui passaggi trovati.',
+                    ? 'Conservative fallback active.'
+                    : 'Answer generated from the retrieved passages.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -292,7 +292,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
                       children: [
                         Chip(label: Text(_result!.searchScopeLabel)),
                         Chip(label: Text('Provider: ${_result!.providerName}')),
-                        Chip(label: Text('Modello: ${_result!.modelName}')),
+                        Chip(label: Text('Model: ${_result!.modelName}')),
                         if (_result!.embeddingModelName != null)
                           Chip(
                             label: Text(
@@ -307,11 +307,11 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
                           ),
                         Chip(
                           label: Text(
-                            '${_result!.retrievedDocuments} documenti',
+                            '${_result!.retrievedDocuments} documents',
                           ),
                         ),
                         Chip(
-                          label: Text('${_result!.retrievedChunks} passaggi'),
+                          label: Text('${_result!.retrievedChunks} passages'),
                         ),
                       ],
                     ),
@@ -332,14 +332,14 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
               ),
               const SizedBox(height: 12),
               SectionCard(
-                title: 'Fonti usate',
+                title: 'Sources used',
                 subtitle:
-                    'Apri il documento per controllare direttamente il passaggio.',
+                    'Open the document to check the passage directly.',
                 child: Column(
                   children: _result!.citations.isEmpty
                       ? const [
                           Text(
-                            'Nessuna citazione disponibile. Prova ad aggiornare l indice o a riformulare la domanda.',
+                            'No citations available. Try refreshing the index or rephrasing the question.',
                           ),
                         ]
                       : _result!.citations
