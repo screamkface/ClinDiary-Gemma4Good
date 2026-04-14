@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
+import unicodedata
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -1040,6 +1041,11 @@ class InsightService:
 
     @staticmethod
     def _serialize_entry(entry) -> dict[str, object]:
+        general_note_tags = InsightService._note_tags(entry.general_notes)
+        general_note_summary = InsightService._compact_note_summary(
+            entry.general_notes,
+            general_note_tags,
+        )
         return {
             "date": entry.entry_date.isoformat(),
             "sleep_hours": entry.sleep_hours,
@@ -1050,26 +1056,10 @@ class InsightService:
             "appetite_level": entry.appetite_level,
             "hydration_level": entry.hydration_level,
             "general_pain": entry.general_pain,
-            "general_notes": (
-                entry.general_notes[:280].rstrip() + "..."
-                if entry.general_notes and len(entry.general_notes) > 280
-                else entry.general_notes
-            ),
+            "general_notes": general_note_summary,
+            "general_note_tags": general_note_tags,
             "symptoms": [
-                " ".join(
-                    part
-                    for part in [
-                        symptom.symptom_code,
-                        f"sev {symptom.severity}/10" if symptom.severity is not None else None,
-                        f"loc {symptom.body_location}" if symptom.body_location else None,
-                        (
-                            f"durata {symptom.duration_minutes} min"
-                            if symptom.duration_minutes is not None
-                            else None
-                        ),
-                    ]
-                    if part
-                )
+                InsightService._serialize_symptom(symptom)
                 for symptom in entry.symptoms
             ],
             "vitals": [
@@ -1077,6 +1067,127 @@ class InsightService:
                 for vital in entry.vitals
             ],
         }
+
+    @staticmethod
+    def _serialize_symptom(symptom) -> dict[str, object]:
+        metadata_digest = InsightService._symptom_metadata_digest(symptom.metadata_json)
+        payload: dict[str, object] = {
+            "code": symptom.symptom_code,
+            "severity": symptom.severity,
+            "duration_minutes": symptom.duration_minutes,
+            "body_location": symptom.body_location,
+        }
+        if metadata_digest["metadata_flags"]:
+            payload["metadata_flags"] = metadata_digest["metadata_flags"]
+        if metadata_digest["note_tags"]:
+            payload["note_tags"] = metadata_digest["note_tags"]
+        if metadata_digest["note_excerpt"]:
+            payload["note_excerpt"] = metadata_digest["note_excerpt"]
+        return payload
+
+    @staticmethod
+    def _symptom_metadata_digest(metadata: dict | None) -> dict[str, object]:
+        note_text = None
+        if isinstance(metadata, dict):
+            for key in ("notes", "note", "description", "comment", "text", "associated_symptoms"):
+                note_text = InsightService._normalize_text(metadata.get(key))
+                if note_text:
+                    break
+
+        note_tags = InsightService._note_tags(note_text)
+        metadata_flags: list[str] = []
+        if isinstance(metadata, dict):
+            temperature = metadata.get("temperature_c")
+            if isinstance(temperature, (int, float)):
+                metadata_flags.append(
+                    f"temperature_c={InsightService._format_number(float(temperature), 1)}"
+                )
+
+            duration_days = metadata.get("duration_days")
+            if isinstance(duration_days, (int, float)):
+                metadata_flags.append(f"duration_days={int(round(float(duration_days)))}")
+            elif isinstance(duration_days, str) and duration_days.strip():
+                metadata_flags.append(f"duration_days={duration_days.strip()}")
+
+            for key in ("with_nausea", "with_aura", "vomiting"):
+                if metadata.get(key) is True:
+                    metadata_flags.append(f"{key}=true")
+
+        note_excerpt = None
+        if note_text and not note_tags:
+            note_excerpt = InsightService._truncate_text(note_text, 80)
+
+        return {
+            "note_tags": note_tags,
+            "metadata_flags": metadata_flags,
+            "note_excerpt": note_excerpt,
+        }
+
+    @staticmethod
+    def _compact_note_summary(text: str | None, note_tags: list[str]) -> str | None:
+        normalized = InsightService._normalize_text(text)
+        if not normalized:
+            if note_tags:
+                return f"tags: {', '.join(note_tags[:4])}"
+            return None
+        if note_tags:
+            return f"tags: {', '.join(note_tags[:4])}"
+        return InsightService._truncate_text(normalized, 120)
+
+    @staticmethod
+    def _note_tags(text: str | None) -> list[str]:
+        folded = InsightService._fold_text(text)
+        if not folded:
+            return []
+
+        tags: list[str] = []
+
+        def add(tag: str) -> None:
+            if tag not in tags:
+                tags.append(tag)
+
+        tag_patterns = (
+            ("stress_lavoro", ("stress", "lavor", "uffic", "turno", "riunion", "scaden")),
+            ("umore_basso", ("giu di morale", "trist", "umore", "ansi", "preoccup", "demoral")),
+            ("sonno_scarso", ("sonn", "dorm", "insonn", "risvegli", "riposo")),
+            ("cefalea", ("cefale", "mal di testa", "headache")),
+            ("tosse", ("toss", "cough")),
+            ("febbre", ("febbr", "temperatur")),
+            ("nausea", ("nause", "vomit")),
+            ("dolore", ("dolor", "pain")),
+            ("digestivo", ("addom", "stomac", "gastr", "diarr", "intestin")),
+            ("respiratorio", ("respir", "fiat", "dispn", "saturaz")),
+        )
+
+        for tag, fragments in tag_patterns:
+            if any(fragment in folded for fragment in fragments):
+                add(tag)
+            if len(tags) >= 4:
+                break
+
+        return tags
+
+    @staticmethod
+    def _normalize_text(value) -> str | None:
+        if value is None:
+            return None
+        text = " ".join(str(value).split()).strip()
+        return text or None
+
+    @staticmethod
+    def _fold_text(text: str | None) -> str:
+        if not text:
+            return ""
+        normalized = unicodedata.normalize("NFKD", text)
+        folded = "".join(char for char in normalized if not unicodedata.combining(char))
+        return folded.lower()
+
+    @staticmethod
+    def _truncate_text(text: str, max_length: int) -> str:
+        compact = " ".join(text.split()).strip()
+        if len(compact) <= max_length:
+            return compact
+        return compact[: max_length - 3].rstrip() + "..."
 
     @staticmethod
     def _document_date(document) -> date:

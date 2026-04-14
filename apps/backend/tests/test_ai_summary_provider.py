@@ -353,6 +353,17 @@ def test_rule_based_provider_mentions_medical_follow_up_without_diagnosis():
     assert "emoglobina 11.2" in result
 
 
+def test_rule_based_provider_prefers_tagged_note_digests_over_raw_notes():
+    payload = _payload()
+    payload.journal_entries[0]["general_note_tags"] = ["sonno_scarso", "stress_lavoro"]
+    payload.journal_entries[0]["general_notes"] = "Lavoro intenso e sonno ridotto nelle ultime notti."
+
+    result = RuleBasedSummaryProvider().generate(payload)
+
+    assert "tag sonno_scarso, stress_lavoro" in result
+    assert "Lavoro intenso e sonno ridotto" not in result
+
+
 def test_openai_compatible_provider_increases_budget_for_monthly_summary():
     captured: dict[str, object] = {}
 

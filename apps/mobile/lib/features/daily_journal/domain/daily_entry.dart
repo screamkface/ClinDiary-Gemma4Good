@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class SymptomEntry {
   const SymptomEntry({
     required this.id,
@@ -5,6 +7,7 @@ class SymptomEntry {
     this.severity,
     this.durationMinutes,
     this.bodyLocation,
+    this.metadataJson = const <String, dynamic>{},
   });
 
   final String id;
@@ -12,6 +15,7 @@ class SymptomEntry {
   final int? severity;
   final int? durationMinutes;
   final String? bodyLocation;
+  final Map<String, dynamic> metadataJson;
 
   factory SymptomEntry.fromJson(Map<String, dynamic> json) => SymptomEntry(
     id: json['id'].toString(),
@@ -19,7 +23,44 @@ class SymptomEntry {
     severity: json['severity'] as int?,
     durationMinutes: json['duration_minutes'] as int?,
     bodyLocation: json['body_location'] as String?,
+    metadataJson: _parseMetadataJson(json['metadata_json']),
   );
+
+  static Map<String, dynamic> _parseMetadataJson(dynamic value) {
+    if (value == null) {
+      return const <String, dynamic>{};
+    }
+    if (value is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(value);
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.fromEntries(
+        value.entries.map(
+          (entry) => MapEntry(entry.key.toString(), entry.value),
+        ),
+      );
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      final trimmed = value.trim();
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map<String, dynamic>) {
+          return Map<String, dynamic>.from(decoded);
+        }
+        if (decoded is Map) {
+          return Map<String, dynamic>.fromEntries(
+            decoded.entries.map(
+              (entry) => MapEntry(entry.key.toString(), entry.value),
+            ),
+          );
+        }
+      } catch (_) {
+        return <String, dynamic>{'notes': trimmed};
+      }
+      return <String, dynamic>{'notes': trimmed};
+    }
+    return const <String, dynamic>{};
+  }
 }
 
 class VitalSignEntry {

@@ -791,7 +791,7 @@ def _user_prompt(payload: SummaryGenerationInput) -> str:
             "missing_data": payload.missing_data,
         },
         ensure_ascii=True,
-        indent=2,
+        separators=(",", ":"),
     )
     return (
         "Genera un riepilogo clinico prudente usando ESCLUSIVAMENTE i dati presenti nel payload JSON.\n\n"
@@ -916,9 +916,41 @@ def _journal_entry_line(entry: dict[str, Any]) -> str:
         metrics.append(f"{symptom_count} sintomi")
     if vital_count:
         metrics.append(f"{vital_count} parametri")
-    notes = entry.get("general_notes")
-    if notes:
-        metrics.append(str(notes))
+    note_tags = entry.get("general_note_tags")
+    if isinstance(note_tags, list) and note_tags:
+        cleaned_tags = [str(item).strip() for item in note_tags if str(item).strip()]
+        if cleaned_tags:
+            metrics.append(f"tag {', '.join(cleaned_tags[:3])}")
+    else:
+        notes = entry.get("general_notes")
+        if notes:
+            metrics.append(str(notes))
+
+    symptom_signals: list[str] = []
+    for symptom in entry.get("symptoms", []):
+        if not isinstance(symptom, dict):
+            continue
+        metadata_flags = symptom.get("metadata_flags")
+        if isinstance(metadata_flags, list):
+            for flag in metadata_flags:
+                cleaned_flag = str(flag).strip()
+                if cleaned_flag and cleaned_flag not in symptom_signals:
+                    symptom_signals.append(cleaned_flag)
+                if len(symptom_signals) >= 3:
+                    break
+        tags = symptom.get("note_tags")
+        if not isinstance(tags, list):
+            continue
+        for tag in tags:
+            cleaned_tag = str(tag).strip()
+            if cleaned_tag and cleaned_tag not in symptom_signals:
+                symptom_signals.append(cleaned_tag)
+            if len(symptom_signals) >= 3:
+                break
+        if len(symptom_signals) >= 3:
+            break
+    if symptom_signals:
+        metrics.append(f"sintomi taggati {', '.join(symptom_signals)}")
     if metrics:
         parts.append(" - ".join(metrics))
     return ": ".join(parts)

@@ -56,10 +56,11 @@ class OnDevicePromptBuilder {
           (item) => _sameDay(item.summaryDate, targetDay),
         ),
     ];
-    final relevantTimeline = timelineEvents
-        .where((item) => _sameDay(item.eventDate, targetDay))
-        .toList()
-      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final relevantTimeline =
+        timelineEvents
+            .where((item) => _sameDay(item.eventDate, targetDay))
+            .toList()
+          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
     final directOpenAlerts = alerts.where((item) => !item.isResolved).toList();
     final openAlerts = [
       ...directOpenAlerts,
@@ -67,20 +68,21 @@ class OnDevicePromptBuilder {
         ...dossier.alerts.where((item) => !item.isResolved),
     ];
     final deviceMeasurementSummaries =
-        dossier?.deviceMeasurementSummaries.map((item) => item.summary).toList() ??
+        dossier?.deviceMeasurementSummaries
+            .map((item) => item.summary)
+            .toList() ??
         const <String>[];
     final recentLabResults =
-        dossier?.recentLabPanels.map(_labPanelLine).toList() ?? const <String>[];
+        dossier?.recentLabPanels.map(_labPanelLine).toList() ??
+        const <String>[];
     final recentImagingReports =
         dossier?.recentImagingReports.map(_imagingReportLine).toList() ??
         const <String>[];
     final timelineLines = relevantTimeline.map(_timelineLine).toList();
     final structuredDocumentLines =
-        dossier?.recentDocuments.map(_documentLine).toList() ?? const <String>[];
-    final recentDocumentLines = [
-      ...timelineLines,
-      ...structuredDocumentLines,
-    ];
+        dossier?.recentDocuments.map(_documentLine).toList() ??
+        const <String>[];
+    final recentDocumentLines = [...timelineLines, ...structuredDocumentLines];
     final priorDailySummaries =
         dossier?.recentInsights
             .where((item) => item.summaryType.toLowerCase() == 'daily')
@@ -150,14 +152,26 @@ class OnDevicePromptBuilder {
       ),
     );
     final medications = _mergeStrings(
-      profileBundle?.medications.where((item) => item.active).map(_medicationLine),
+      profileBundle?.medications
+          .where((item) => item.active)
+          .map(_medicationLine),
       dossier?.medications.where((item) => item.active).map(_medicationLine),
     );
     final medicationAdherence = relevantLogs.map(_medicationLogLine).toList();
-    final wearableLines = relevantWearables.map((item) => item.toDiagnosticText()).toList();
+    final wearableLines = relevantWearables
+        .map((item) => item.toDiagnosticText())
+        .toList();
     final journalEntries = entriesForDay.map(_serializeEntry).toList();
-    final observations = _buildObservations(entriesForDay, relevantWearables, relevantTimeline);
-    final followUpReasons = _buildFollowUpReasons(entriesForDay, relevantWearables, openAlerts);
+    final observations = _buildObservations(
+      entriesForDay,
+      relevantWearables,
+      relevantTimeline,
+    );
+    final followUpReasons = _buildFollowUpReasons(
+      entriesForDay,
+      relevantWearables,
+      openAlerts,
+    );
     final missingData = _buildMissingData(
       entriesForDay: entriesForDay,
       relevantWearables: relevantWearables,
@@ -183,7 +197,9 @@ class OnDevicePromptBuilder {
       'medications': medications,
       'medication_adherence': medicationAdherence,
       'wearable_daily_summaries': wearableLines,
-      'device_measurement_summaries': deviceMeasurementSummaries.take(6).toList(),
+      'device_measurement_summaries': deviceMeasurementSummaries
+          .take(6)
+          .toList(),
       'journal_entries': journalEntries,
       'observations': observations,
       'recent_lab_results': recentLabResults.take(6).toList(),
@@ -191,7 +207,10 @@ class OnDevicePromptBuilder {
       'recent_documents': recentDocumentLines.take(8).toList(),
       'prior_daily_summaries': priorDailySummaries.take(4).toList(),
       'clinical_episodes': clinicalEpisodes,
-      'open_alerts': openAlerts.take(5).map((item) => '${item.severity}: ${item.title}').toList(),
+      'open_alerts': openAlerts
+          .take(5)
+          .map((item) => '${item.severity}: ${item.title}')
+          .toList(),
       'follow_up_reasons': followUpReasons,
       'missing_data': missingData,
     };
@@ -311,7 +330,10 @@ class OnDevicePromptBuilder {
   }
 
   Future<ProfileBundle?> _readProfileBundle() async {
-    final cached = await readProfileScopedCache(_localDatabase, 'profile_bundle');
+    final cached = await readProfileScopedCache(
+      _localDatabase,
+      'profile_bundle',
+    );
     if (cached == null) {
       return null;
     }
@@ -320,7 +342,10 @@ class OnDevicePromptBuilder {
   }
 
   Future<List<DailyEntry>> _readDailyEntries() async {
-    final cached = await readProfileScopedCache(_localDatabase, 'daily_entries');
+    final cached = await readProfileScopedCache(
+      _localDatabase,
+      'daily_entries',
+    );
     if (cached == null) {
       return const <DailyEntry>[];
     }
@@ -367,8 +392,7 @@ class OnDevicePromptBuilder {
       final decoded = jsonDecode(cached) as List<dynamic>;
       return decoded
           .map(
-            (item) =>
-                WearableDaySummary.fromJson(item as Map<String, dynamic>),
+            (item) => WearableDaySummary.fromJson(item as Map<String, dynamic>),
           )
           .toList();
     }
@@ -390,7 +414,10 @@ class OnDevicePromptBuilder {
   }
 
   Future<HealthDossier?> _readHealthDossier() async {
-    final cached = await readProfileScopedCache(_localDatabase, 'health_dossier');
+    final cached = await readProfileScopedCache(
+      _localDatabase,
+      'health_dossier',
+    );
     if (cached == null) {
       return null;
     }
@@ -416,8 +443,15 @@ class OnDevicePromptBuilder {
     );
 
     final entriesForPeriod = [
-      ...entries.where((entry) => _isWithinRange(entry.entryDate, periodStart, periodEnd)),
-      if (entries.where((entry) => _isWithinRange(entry.entryDate, periodStart, periodEnd)).isEmpty &&
+      ...entries.where(
+        (entry) => _isWithinRange(entry.entryDate, periodStart, periodEnd),
+      ),
+      if (entries
+              .where(
+                (entry) =>
+                    _isWithinRange(entry.entryDate, periodStart, periodEnd),
+              )
+              .isEmpty &&
           dossier != null)
         ...dossier.recentDailyEntries.where(
           (entry) => _isWithinRange(entry.entryDate, periodStart, periodEnd),
@@ -433,19 +467,25 @@ class OnDevicePromptBuilder {
       ...wearableSummaries.where(
         (item) => _isWithinRange(item.summaryDate, periodStart, periodEnd),
       ),
-      if (wearableSummaries.where(
-            (item) => _isWithinRange(item.summaryDate, periodStart, periodEnd),
-          ).isEmpty &&
+      if (wearableSummaries
+              .where(
+                (item) =>
+                    _isWithinRange(item.summaryDate, periodStart, periodEnd),
+              )
+              .isEmpty &&
           dossier != null)
         ...dossier.wearableSummaries.where(
           (item) => _isWithinRange(item.summaryDate, periodStart, periodEnd),
         ),
     ];
 
-    final timelineForPeriod = timelineEvents
-        .where((item) => _isWithinRange(item.eventDate, periodStart, periodEnd))
-        .toList()
-      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final timelineForPeriod =
+        timelineEvents
+            .where(
+              (item) => _isWithinRange(item.eventDate, periodStart, periodEnd),
+            )
+            .toList()
+          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
 
     final openAlerts = [
       ...alerts.where((item) => !item.isResolved),
@@ -470,7 +510,9 @@ class OnDevicePromptBuilder {
       ),
     );
     final medications = _mergeStrings(
-      profileBundle?.medications.where((item) => item.active).map(_medicationLine),
+      profileBundle?.medications
+          .where((item) => item.active)
+          .map(_medicationLine),
       dossier?.medications.where((item) => item.active).map(_medicationLine),
     );
     final medicationAdherence = logsForPeriod.map(_medicationLogLine).toList();
@@ -496,15 +538,19 @@ class OnDevicePromptBuilder {
       dossier: dossier,
     );
     final deviceMeasurementSummaries =
-        dossier?.deviceMeasurementSummaries.map((item) => item.summary).toList() ??
+        dossier?.deviceMeasurementSummaries
+            .map((item) => item.summary)
+            .toList() ??
         const <String>[];
     final recentLabResults =
-        dossier?.recentLabPanels.map(_labPanelLine).toList() ?? const <String>[];
+        dossier?.recentLabPanels.map(_labPanelLine).toList() ??
+        const <String>[];
     final recentImagingReports =
         dossier?.recentImagingReports.map(_imagingReportLine).toList() ??
         const <String>[];
     final recentDocuments =
-        dossier?.recentDocuments.map(_documentLine).toList() ?? const <String>[];
+        dossier?.recentDocuments.map(_documentLine).toList() ??
+        const <String>[];
     final priorDailySummaries =
         dossier?.recentInsights
             .where((item) => item.summaryType.toLowerCase() == 'daily')
@@ -512,15 +558,14 @@ class OnDevicePromptBuilder {
             .toList() ??
         const <String>[];
     final recentReports =
-        dossier?.recentReports
-            .map((item) {
-              final parts = <String>[item.title];
-              if (item.summaryExcerpt != null && item.summaryExcerpt!.trim().isNotEmpty) {
-                parts.add(item.summaryExcerpt!.trim());
-              }
-              return parts.join(' - ');
-            })
-            .toList() ??
+        dossier?.recentReports.map((item) {
+          final parts = <String>[item.title];
+          if (item.summaryExcerpt != null &&
+              item.summaryExcerpt!.trim().isNotEmpty) {
+            parts.add(item.summaryExcerpt!.trim());
+          }
+          return parts.join(' - ');
+        }).toList() ??
         const <String>[];
     final clinicalEpisodes = _mergeStrings(
       profileBundle?.clinicalEpisodes.map(_clinicalEpisodeLine),
@@ -573,7 +618,9 @@ class OnDevicePromptBuilder {
         'medications': medications,
         'medication_adherence': medicationAdherence,
         'wearable_daily_summaries': wearableLines.take(8).toList(),
-        'device_measurement_summaries': deviceMeasurementSummaries.take(6).toList(),
+        'device_measurement_summaries': deviceMeasurementSummaries
+            .take(6)
+            .toList(),
         'journal_entries': journalEntries.take(10).toList(),
         'observations': observations,
         'recent_lab_results': recentLabResults.take(6).toList(),
@@ -582,7 +629,10 @@ class OnDevicePromptBuilder {
         'prior_daily_summaries': priorDailySummaries.take(4).toList(),
         'recent_reports': recentReports.take(4).toList(),
         'clinical_episodes': clinicalEpisodes,
-        'open_alerts': openAlerts.take(5).map((item) => '${item.severity}: ${item.title}').toList(),
+        'open_alerts': openAlerts
+            .take(5)
+            .map((item) => '${item.severity}: ${item.title}')
+            .toList(),
         'follow_up_reasons': followUpReasons,
         'missing_data': missingData,
       },
@@ -674,7 +724,7 @@ Se trovi elementi rilevanti, segnala cosa monitorare o discutere con il medico s
   }
 
   static String _questionUserPrompt(Map<String, Object?> payload) {
-    final serialized = const JsonEncoder.withIndent('  ').convert(payload);
+    final serialized = jsonEncode(payload);
     return '''
 L'utente sta facendo una domanda sulla propria storia clinica.
 
@@ -695,7 +745,7 @@ $serialized
   }
 
   static String _trendUserPrompt(Map<String, Object?> payload) {
-    final serialized = const JsonEncoder.withIndent('  ').convert(payload);
+    final serialized = jsonEncode(payload);
     return '''
 Devi spiegare l'andamento clinico recente del paziente in modo prudente.
 
@@ -714,7 +764,7 @@ $serialized
   }
 
   static String _preVisitUserPrompt(Map<String, Object?> payload) {
-    final serialized = const JsonEncoder.withIndent('  ').convert(payload);
+    final serialized = jsonEncode(payload);
     return '''
 Devi preparare una scheda pre-visita da portare al medico.
 
@@ -734,7 +784,7 @@ $serialized
   }
 
   static String _documentUserPrompt(Map<String, Object?> payload) {
-    final serialized = const JsonEncoder.withIndent('  ').convert(payload);
+    final serialized = jsonEncode(payload);
     return '''
 Devi spiegare questo documento clinico in parole semplici.
 
@@ -763,7 +813,8 @@ List<String> _patientSnapshot(ProfileBundle? bundle, HealthDossier? dossier) {
     if (dossier.age != null) {
       demographics.add('${dossier.age} anni');
     }
-    if (dossier.biologicalSex != null && dossier.biologicalSex!.trim().isNotEmpty) {
+    if (dossier.biologicalSex != null &&
+        dossier.biologicalSex!.trim().isNotEmpty) {
       demographics.add('sesso biologico ${dossier.biologicalSex}');
     }
     if (demographics.isNotEmpty) {
@@ -782,7 +833,8 @@ List<String> _patientSnapshot(ProfileBundle? bundle, HealthDossier? dossier) {
   if (profile.birthDate != null) {
     demographics.add('${_ageFromBirthDate(profile.birthDate!)} anni');
   }
-  if (profile.biologicalSex != null && profile.biologicalSex!.trim().isNotEmpty) {
+  if (profile.biologicalSex != null &&
+      profile.biologicalSex!.trim().isNotEmpty) {
     demographics.add('sesso biologico ${profile.biologicalSex}');
   }
   if (demographics.isNotEmpty) {
@@ -797,7 +849,8 @@ List<String> _patientSnapshot(ProfileBundle? bundle, HealthDossier? dossier) {
   if (profile.weightKg != null) {
     snapshot.add('peso ${profile.weightKg!.toStringAsFixed(1)} kg');
   }
-  if (profile.exerciseHabits != null && profile.exerciseHabits!.trim().isNotEmpty) {
+  if (profile.exerciseHabits != null &&
+      profile.exerciseHabits!.trim().isNotEmpty) {
     snapshot.add('attivita abituale: ${profile.exerciseHabits}');
   }
   if (profile.sleepPattern != null && profile.sleepPattern!.trim().isNotEmpty) {
@@ -834,7 +887,9 @@ List<String> _buildObservations(
 ) {
   final items = <String>[];
   if (entries.isEmpty) {
-    items.add('Nel giorno selezionato non risultano check-up completi salvati in locale.');
+    items.add(
+      'Nel giorno selezionato non risultano check-up completi salvati in locale.',
+    );
   } else {
     final symptomLabels = <String, int>{};
     for (final entry in entries) {
@@ -860,7 +915,9 @@ List<String> _buildObservations(
         );
       }
       if (entry.sleepHours != null) {
-        items.add('Sonno riportato ${entry.sleepHours!.toStringAsFixed(1)} ore.');
+        items.add(
+          'Sonno riportato ${entry.sleepHours!.toStringAsFixed(1)} ore.',
+        );
       }
     }
     if (symptomLabels.isNotEmpty) {
@@ -882,14 +939,14 @@ List<String> _buildObservations(
       );
     }
     if (wearable.heartRateAvgBpm != null) {
-      items.add('Wearable: FC media ${wearable.heartRateAvgBpm!.toStringAsFixed(0)} bpm.');
+      items.add(
+        'Wearable: FC media ${wearable.heartRateAvgBpm!.toStringAsFixed(0)} bpm.',
+      );
     }
   }
 
   if (timeline.isNotEmpty) {
-    items.add(
-      'Timeline del giorno con ${timeline.length} eventi registrati.',
-    );
+    items.add('Timeline del giorno con ${timeline.length} eventi registrati.');
   }
   return items.take(10).toList();
 }
@@ -946,10 +1003,14 @@ List<String> _buildMissingData({
     missing.add('Nessun check-up locale registrato per il giorno selezionato.');
   }
   if (relevantWearables.isEmpty) {
-    missing.add('Nessun dato wearable locale disponibile per il giorno selezionato.');
+    missing.add(
+      'Nessun dato wearable locale disponibile per il giorno selezionato.',
+    );
   }
   if (relevantLogs.isEmpty) {
-    missing.add('Nessun log terapia locale disponibile per il giorno selezionato.');
+    missing.add(
+      'Nessun log terapia locale disponibile per il giorno selezionato.',
+    );
   }
   return missing;
 }
@@ -975,6 +1036,7 @@ List<String> _mergeStrings(
 }
 
 Map<String, Object?> _serializeEntry(DailyEntry entry) {
+  final noteDigest = _digestText(entry.generalNotes);
   return {
     'date': entry.entryDate.toIso8601String().split('T').first,
     'sleep_hours': entry.sleepHours,
@@ -983,27 +1045,184 @@ Map<String, Object?> _serializeEntry(DailyEntry entry) {
     'mood_level': entry.moodLevel,
     'stress_level': entry.stressLevel,
     'general_pain': entry.generalPain,
-    'general_notes': entry.generalNotes,
-    'symptoms': entry.symptoms
-        .map(
-          (item) => {
-            'code': item.symptomCode,
-            'severity': item.severity,
-            'duration_minutes': item.durationMinutes,
-            'body_location': item.bodyLocation,
-          },
-        )
-        .toList(),
+    'general_notes':
+        noteDigest.excerpt ??
+        (noteDigest.tags.isEmpty
+            ? null
+            : 'tags: ${noteDigest.tags.join(', ')}'),
+    if (noteDigest.tags.isNotEmpty) 'general_note_tags': noteDigest.tags,
+    'symptoms': entry.symptoms.map(_serializeSymptom).toList(),
     'vitals': entry.vitals
         .map(
-          (item) => {
-            'type': item.type,
-            'value': item.value,
-            'unit': item.unit,
-          },
+          (item) => {'type': item.type, 'value': item.value, 'unit': item.unit},
         )
         .toList(),
   };
+}
+
+Map<String, Object?> _serializeSymptom(SymptomEntry symptom) {
+  final metadataDigest = _digestTextFromMetadata(symptom.metadataJson);
+  return {
+    'code': symptom.symptomCode,
+    'severity': symptom.severity,
+    'duration_minutes': symptom.durationMinutes,
+    'body_location': symptom.bodyLocation,
+    if (metadataDigest.flags.isNotEmpty) 'metadata_flags': metadataDigest.flags,
+    if (metadataDigest.tags.isNotEmpty) 'note_tags': metadataDigest.tags,
+    if (metadataDigest.excerpt != null) 'note_excerpt': metadataDigest.excerpt,
+  };
+}
+
+_TextDigest _digestText(String? text) {
+  final normalized = _normalizeText(text);
+  if (normalized == null) {
+    return const _TextDigest(tags: []);
+  }
+
+  final tags = _noteTags(normalized);
+  if (tags.isNotEmpty) {
+    return _TextDigest(tags: tags);
+  }
+
+  return _TextDigest(tags: const [], excerpt: _truncateText(normalized, 120));
+}
+
+_TextDigest _digestTextFromMetadata(Map<String, dynamic> metadataJson) {
+  final rawText = _metadataText(metadataJson);
+  final normalized = _normalizeText(rawText);
+  final tags = _noteTags(normalized);
+  final flags = <String>[];
+
+  final temperature = metadataJson['temperature_c'];
+  if (temperature is num) {
+    flags.add('temperature_c=${temperature.toStringAsFixed(1)}');
+  }
+  final durationDays = metadataJson['duration_days'];
+  if (durationDays is num) {
+    flags.add('duration_days=${durationDays.round()}');
+  } else if (durationDays is String && durationDays.trim().isNotEmpty) {
+    flags.add('duration_days=${durationDays.trim()}');
+  }
+  for (final key in const ['with_nausea', 'with_aura', 'vomiting']) {
+    if (metadataJson[key] == true) {
+      flags.add('$key=true');
+    }
+  }
+
+  return _TextDigest(
+    tags: tags,
+    flags: flags,
+    excerpt: normalized != null && tags.isEmpty
+        ? _truncateText(normalized, 80)
+        : null,
+  );
+}
+
+String? _metadataText(Map<String, dynamic> metadataJson) {
+  for (final key in const [
+    'notes',
+    'note',
+    'description',
+    'comment',
+    'text',
+    'associated_symptoms',
+  ]) {
+    final value = metadataJson[key];
+    final normalized = _normalizeText(value?.toString());
+    if (normalized != null) {
+      return normalized;
+    }
+  }
+  return null;
+}
+
+List<String> _noteTags(String? text) {
+  final folded = _foldText(text);
+  if (folded.isEmpty) {
+    return const [];
+  }
+
+  final tags = <String>[];
+  void add(String tag) {
+    if (!tags.contains(tag)) {
+      tags.add(tag);
+    }
+  }
+
+  const tagPatterns = <String, List<String>>{
+    'stress_lavoro': ['stress', 'lavor', 'uffic', 'turno', 'riunion', 'scaden'],
+    'umore_basso': [
+      'giu di morale',
+      'trist',
+      'umore',
+      'ansi',
+      'preoccup',
+      'demoral',
+    ],
+    'sonno_scarso': ['sonn', 'dorm', 'insonn', 'risvegli', 'riposo'],
+    'cefalea': ['cefale', 'mal di testa', 'headache'],
+    'tosse': ['toss', 'cough'],
+    'febbre': ['febbr', 'temperatur'],
+    'nausea': ['nause', 'vomit'],
+    'dolore': ['dolor', 'pain'],
+    'digestivo': ['addom', 'stomac', 'gastr', 'diarr', 'intestin'],
+    'respiratorio': ['respir', 'fiat', 'dispn', 'saturaz'],
+  };
+
+  for (final entry in tagPatterns.entries) {
+    if (entry.value.any(folded.contains)) {
+      add(entry.key);
+    }
+    if (tags.length >= 4) {
+      break;
+    }
+  }
+
+  return tags;
+}
+
+String? _normalizeText(String? text) {
+  if (text == null) {
+    return null;
+  }
+  final compact = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return compact.isEmpty ? null : compact;
+}
+
+String _foldText(String? text) {
+  if (text == null || text.isEmpty) {
+    return '';
+  }
+  final normalized = text
+      .replaceAll(RegExp(r'[àáâãäå]'), 'a')
+      .replaceAll(RegExp(r'[èéêë]'), 'e')
+      .replaceAll(RegExp(r'[ìíîï]'), 'i')
+      .replaceAll(RegExp(r'[òóôõö]'), 'o')
+      .replaceAll(RegExp(r'[ùúûü]'), 'u')
+      .replaceAll(RegExp(r'ç'), 'c')
+      .replaceAll(RegExp(r'ñ'), 'n')
+      .toLowerCase();
+  return normalized;
+}
+
+String _truncateText(String text, int maxLength) {
+  final compact = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (compact.length <= maxLength) {
+    return compact;
+  }
+  return '${compact.substring(0, maxLength - 3).trimRight()}...';
+}
+
+class _TextDigest {
+  const _TextDigest({
+    required this.tags,
+    this.flags = const <String>[],
+    this.excerpt,
+  });
+
+  final List<String> tags;
+  final List<String> flags;
+  final String? excerpt;
 }
 
 String _timelineLine(TimelineEventItem item) {
@@ -1047,8 +1266,10 @@ String _labPanelLine(DossierLabPanelItem item) {
 
 String _imagingReportLine(DossierImagingReportItem item) {
   final parts = <String>[
-    if (item.examType != null && item.examType!.trim().isNotEmpty) item.examType!.trim(),
-    if (item.bodyPart != null && item.bodyPart!.trim().isNotEmpty) item.bodyPart!.trim(),
+    if (item.examType != null && item.examType!.trim().isNotEmpty)
+      item.examType!.trim(),
+    if (item.bodyPart != null && item.bodyPart!.trim().isNotEmpty)
+      item.bodyPart!.trim(),
     if (item.documentTitle.trim().isNotEmpty) item.documentTitle.trim(),
   ];
   if (item.examDate != null) {
@@ -1069,10 +1290,13 @@ String _priorDailySummaryLine(InsightSummary item) {
   return '$day - $excerpt';
 }
 
-DateTime _dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 
 bool _sameDay(DateTime left, DateTime right) =>
-    left.year == right.year && left.month == right.month && left.day == right.day;
+    left.year == right.year &&
+    left.month == right.month &&
+    left.day == right.day;
 
 bool _isWithinRange(DateTime value, DateTime start, DateTime end) {
   final day = _dateOnly(value);
@@ -1101,7 +1325,9 @@ List<String> _buildWindowObservations(
 ) {
   final items = <String>[];
   if (entries.isEmpty) {
-    items.add('Nel periodo analizzato non risultano check-up locali completi salvati.');
+    items.add(
+      'Nel periodo analizzato non risultano check-up locali completi salvati.',
+    );
   } else {
     final symptomLabels = <String, int>{};
     for (final entry in entries) {
@@ -1127,7 +1353,9 @@ List<String> _buildWindowObservations(
         );
       }
       if (entry.sleepHours != null) {
-        items.add('Sonno riportato ${entry.sleepHours!.toStringAsFixed(1)} ore.');
+        items.add(
+          'Sonno riportato ${entry.sleepHours!.toStringAsFixed(1)} ore.',
+        );
       }
     }
     if (symptomLabels.isNotEmpty) {
@@ -1149,7 +1377,9 @@ List<String> _buildWindowObservations(
       );
     }
     if (wearable.heartRateAvgBpm != null) {
-      items.add('Wearable: FC media ${wearable.heartRateAvgBpm!.toStringAsFixed(0)} bpm.');
+      items.add(
+        'Wearable: FC media ${wearable.heartRateAvgBpm!.toStringAsFixed(0)} bpm.',
+      );
     }
   }
 
@@ -1211,10 +1441,14 @@ List<String> _buildWindowMissingData({
     missing.add('Nessun check-up locale registrato nel periodo analizzato.');
   }
   if (relevantWearables.isEmpty) {
-    missing.add('Nessun dato wearable locale disponibile nel periodo analizzato.');
+    missing.add(
+      'Nessun dato wearable locale disponibile nel periodo analizzato.',
+    );
   }
   if (relevantLogs.isEmpty) {
-    missing.add('Nessun log terapia locale disponibile nel periodo analizzato.');
+    missing.add(
+      'Nessun log terapia locale disponibile nel periodo analizzato.',
+    );
   }
   return missing;
 }
@@ -1232,7 +1466,7 @@ class _ClinicalTextContext {
 }
 
 String _userPrompt(Map<String, Object?> payload) {
-  final serialized = const JsonEncoder.withIndent('  ').convert(payload);
+  final serialized = jsonEncode(payload);
   return "Genera un riepilogo clinico prudente usando ESCLUSIVAMENTE i dati presenti nel payload JSON.\n\n"
       "OBIETTIVO\n"
       "Produrre un riepilogo chiaro, prudente e utile per il paziente e per il medico, evidenziando:\n"
