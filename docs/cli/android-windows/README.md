@@ -127,3 +127,4 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 - Se usi `--prefer-lan`, aggiorna l'IP del PC nel comando manuale o nello script se cambia rete.
 - Per il solo backend, puoi aprire l'app sul telefono manualmente dopo l'avvio.
 - Per abilitare il login Google, imposta `GOOGLE_OAUTH_CLIENT_ID` nel `.env` backend: lo script Windows lo passa automaticamente a Flutter come `GOOGLE_AUTH_CLIENT_ID`.
+- Al primo avvio dell'APK, ClinDiary scarica automaticamente `gemma-4-E2B-it.litertlm` da Hugging Face e lo salva nella directory modello dell'app su Android.
