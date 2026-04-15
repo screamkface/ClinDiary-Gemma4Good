@@ -55,9 +55,10 @@ final localDatabaseProvider = Provider<LocalDatabase>((ref) {
   return database;
 });
 
-final sessionExpiryNotifierProvider = ChangeNotifierProvider<SessionExpiryNotifier>(
-  (ref) => SessionExpiryNotifier(),
-);
+final sessionExpiryNotifierProvider =
+    ChangeNotifierProvider<SessionExpiryNotifier>(
+      (ref) => SessionExpiryNotifier(),
+    );
 
 final apiClientProvider = Provider<ApiClient>(
   (ref) => ApiClient(
@@ -137,13 +138,19 @@ final gemmaCoachServiceProvider = Provider<GemmaCoachService>(
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
     onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
     documentsRepository: ref.watch(documentsRepositoryProvider),
+    profileRepository: ref.watch(profileRepositoryProvider),
+    dailyJournalRepository: ref.watch(dailyJournalRepositoryProvider),
+    alertsRepository: ref.watch(alertsRepositoryProvider),
+    medicationsRepository: ref.watch(medicationsRepositoryProvider),
+    timelineRepository: ref.watch(timelineRepositoryProvider),
+    wearablesRepository: ref.watch(wearablesRepositoryProvider),
+    dossierRepository: ref.watch(dossierRepositoryProvider),
   ),
 );
 
 final gemmaCenterHistoryStoreProvider = Provider<GemmaCenterHistoryStore>(
-  (ref) => GemmaCenterHistoryStore(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) =>
+      GemmaCenterHistoryStore(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final onDevicePromptBuilderProvider = Provider<OnDevicePromptBuilder>(

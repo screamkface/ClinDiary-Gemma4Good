@@ -24,7 +24,9 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
   Future<void> _requestAccess() async {
     setState(() => _requestingAccess = true);
     try {
-      final status = await ref.read(wearableHealthServiceProvider).requestAccess();
+      final status = await ref
+          .read(wearableHealthServiceProvider)
+          .requestAccess();
       ref.invalidate(wearableSyncStatusProvider);
       var syncedCount = 0;
       if (status.permissionGranted) {
@@ -38,9 +40,9 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
           content: Text(
             status.permissionGranted
                 ? (syncedCount > 0
-                      ? 'Accesso wearable attivato. Sincronizzate $syncedCount giornate.'
-                      : 'Accesso wearable attivato. Nessun nuovo dato da sincronizzare adesso.')
-                : (status.message ?? 'Permessi wearable non concessi.'),
+                      ? 'Wearable access enabled. Synced $syncedCount days.'
+                      : 'Wearable access enabled. No new data to sync right now.')
+                : (status.message ?? 'Wearable permissions not granted.'),
           ),
         ),
       );
@@ -48,7 +50,9 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _requestingAccess = false);
@@ -67,7 +71,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Apertura store per installare o aggiornare Health Connect.',
+            'Opening the store to install or update Health Connect.',
           ),
         ),
       );
@@ -81,7 +85,9 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
   Future<void> _openProviderSettings() async {
     setState(() => _openingProviderSettings = true);
     try {
-      final opened = await ref.read(wearableHealthServiceProvider).openProviderSettings();
+      final opened = await ref
+          .read(wearableHealthServiceProvider)
+          .openProviderSettings();
       if (!mounted) {
         return;
       }
@@ -89,8 +95,8 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
         SnackBar(
           content: Text(
             opened
-                ? 'Apertura impostazioni salute.'
-                : 'Impossibile aprire le impostazioni salute da ClinDiary.',
+                ? 'Health settings opened.'
+                : 'Unable to open health settings from ClinDiary.',
           ),
         ),
       );
@@ -104,26 +110,36 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
   Future<int> _syncWearables({bool showFeedback = true}) async {
     setState(() => _syncing = true);
     try {
-      final collected = await ref.read(wearableHealthServiceProvider).collectDailySummaries(days: 30);
-      final syncedCount = await ref.read(wearablesRepositoryProvider).syncDailySummaries(collected);
+      final collected = await ref
+          .read(wearableHealthServiceProvider)
+          .collectDailySummaries(days: 30);
+      final syncedCount = await ref
+          .read(wearablesRepositoryProvider)
+          .syncDailySummaries(collected);
       ref.invalidate(wearableSyncStatusProvider);
       ref.invalidate(wearableDailySummariesProvider);
       ref.invalidate(historyDayProvider);
       ref.invalidate(insightSummaryProvider);
       if (mounted && showFeedback) {
         final message = collected.isEmpty
-            ? 'Nessun dato wearable disponibile negli ultimi 30 giorni.'
-            : 'Sincronizzate $syncedCount giornate wearable.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+            ? 'No wearable data available in the last 30 days.'
+            : 'Synced $syncedCount wearable days.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
       return syncedCount;
     } on ApiException catch (error) {
       if (mounted && showFeedback) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted && showFeedback) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) {
@@ -143,7 +159,9 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Diagnostica wearable copiata negli appunti.')),
+      const SnackBar(
+        content: Text('Wearable diagnostics copied to clipboard.'),
+      ),
     );
   }
 
@@ -156,7 +174,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
       orElse: () => const <WearableDaySummary>[],
     );
     final partialDataWarning = _buildPartialDataWarning(recentSummaries);
-    final dateFormat = DateFormat('dd MMM', 'it_IT');
+    final dateFormat = DateFormat('dd MMM', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
@@ -178,7 +196,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
             data: (status) => Column(
               children: [
                 SectionCard(
-                  title: 'Connessione salute',
+                  title: 'Health connection',
                   subtitle: 'Collega il provider e sincronizza i riepiloghi.',
                   action: TextButton(
                     onPressed: _syncing ? null : _syncWearables,
@@ -200,12 +218,16 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                           Chip(label: Text(status.platformLabel.toUpperCase())),
                           Chip(
                             label: Text(
-                              status.isAvailable ? status.providerName : 'Provider assente',
+                              status.isAvailable
+                                  ? status.providerName
+                                  : 'Provider assente',
                             ),
                           ),
                           Chip(
                             label: Text(
-                              status.permissionGranted ? 'Permessi OK' : 'Permessi mancanti',
+                              status.permissionGranted
+                                  ? 'Permessi OK'
+                                  : 'Permessi mancanti',
                             ),
                           ),
                           if (status.isAndroid)
@@ -220,13 +242,15 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                             Chip(
                               label: Text(
                                 status.hasActivityRecognition
-                                    ? 'Attività fisica OK'
-                                    : 'Attività fisica negata',
+                                    ? 'Activity recognition OK'
+                                    : 'Activity recognition denied',
                               ),
                             ),
                           Chip(
                             label: Text(
-                              status.historyAccessGranted ? 'Storico OK' : 'Storico limitato',
+                              status.historyAccessGranted
+                                  ? 'History OK'
+                                  : 'History limited',
                             ),
                           ),
                         ],
@@ -238,8 +262,8 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                         const SizedBox(height: 12),
                         Text(
                           status.isSupported
-                              ? 'ClinDiary usa solo riepiloghi giornalieri aggregati.'
-                              : 'Sync wearable non disponibile su questa piattaforma.',
+                              ? 'ClinDiary only uses aggregated daily summaries.'
+                              : 'Wearable sync is not available on this platform.',
                         ),
                       ],
                       const SizedBox(height: 12),
@@ -249,19 +273,27 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                         children: [
                           if (status.needsProviderInstall)
                             FilledButton.tonalIcon(
-                              onPressed: _installingProvider ? null : _installProvider,
+                              onPressed: _installingProvider
+                                  ? null
+                                  : _installProvider,
                               icon: const Icon(Icons.download_outlined),
                               label: const Text('Installa provider'),
                             ),
                           if (status.needsPermission)
                             FilledButton.tonalIcon(
-                              onPressed: _requestingAccess ? null : _requestAccess,
-                              icon: const Icon(Icons.health_and_safety_outlined),
+                              onPressed: _requestingAccess
+                                  ? null
+                                  : _requestAccess,
+                              icon: const Icon(
+                                Icons.health_and_safety_outlined,
+                              ),
                               label: const Text('Connetti'),
                             ),
                           if (status.needsPermission)
                             OutlinedButton.icon(
-                              onPressed: _openingProviderSettings ? null : _openProviderSettings,
+                              onPressed: _openingProviderSettings
+                                  ? null
+                                  : _openProviderSettings,
                               icon: const Icon(Icons.settings_outlined),
                               label: const Text('Apri autorizzazioni'),
                             ),
@@ -281,8 +313,8 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                   const SizedBox(height: 12),
                 ],
                 SectionCard(
-                  title: 'Verifica rapida',
-                  subtitle: 'Ti dice dove si interrompe il collegamento.',
+                  title: 'Quick check',
+                  subtitle: 'Shows where the connection breaks down.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -310,7 +342,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                       if (_detectedSources(recentSummaries).isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Sorgenti rilevate',
+                          'Detected sources',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
@@ -318,14 +350,14 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: _detectedSources(recentSummaries)
-                              .map((source) => Chip(label: Text(source)))
-                              .toList(),
+                          children: _detectedSources(
+                            recentSummaries,
+                          ).map((source) => Chip(label: Text(source))).toList(),
                         ),
                       ],
                       const SizedBox(height: 12),
                       Text(
-                        'Metriche trovate di recente',
+                        'Recently found metrics',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -334,17 +366,16 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _availableMetricLabels(recentSummaries).isEmpty
-                            ? const [
-                                Chip(label: Text('Nessuna metrica recente')),
-                              ]
+                        children:
+                            _availableMetricLabels(recentSummaries).isEmpty
+                            ? const [Chip(label: Text('No recent metrics'))]
                             : _availableMetricLabels(recentSummaries)
                                   .map((label) => Chip(label: Text(label)))
                                   .toList(),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Metriche ancora assenti',
+                        'Metrics still missing',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -353,24 +384,24 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _missingMetricLabels(recentSummaries)
-                            .map((label) => Chip(label: Text(label)))
-                            .toList(),
+                        children: _missingMetricLabels(
+                          recentSummaries,
+                        ).map((label) => Chip(label: Text(label))).toList(),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Diagnostica wearable',
-                  subtitle: 'Utile solo per supporto e debug.',
+                  title: 'Wearable diagnostics',
+                  subtitle: 'Useful only for support and debugging.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (recentSummaries.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Ultimo sync: ${DateFormat('dd MMM yyyy', 'it_IT').format(recentSummaries.first.summaryDate)}',
+                          'Last sync: ${DateFormat('dd MMM yyyy', 'en_US').format(recentSummaries.first.summaryDate)}',
                         ),
                       ],
                       const SizedBox(height: 12),
@@ -382,7 +413,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                                 recentSummaries: recentSummaries,
                               ),
                         icon: const Icon(Icons.copy_outlined),
-                        label: const Text('Copia diagnostica'),
+                        label: const Text('Copy diagnostics'),
                       ),
                     ],
                   ),
@@ -390,24 +421,22 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
               ],
             ),
             loading: () => const SectionCard(
-              title: 'Connessione salute',
+              title: 'Health connection',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Connessione salute',
+              title: 'Health connection',
               child: Text(error.toString()),
             ),
           ),
           const SizedBox(height: 12),
           SectionCard(
-            title: 'Storico wearable',
-            subtitle: 'Ultimi riepiloghi giornalieri sincronizzati.',
+            title: 'Wearable history',
+            subtitle: 'Latest synced daily summaries.',
             child: summariesAsync.when(
               data: (summaries) {
                 if (summaries.isEmpty) {
-                  return const Text(
-                    'Ancora nessun dato sincronizzato.',
-                  );
+                  return const Text('No synced data yet.');
                 }
                 return Column(
                   children: summaries.take(10).map((summary) {
@@ -450,7 +479,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                             Text(
                               summary.stepsCount == null
                                   ? summary.sourcePlatform
-                                  : '${summary.stepsCount} passi',
+                                  : '${summary.stepsCount} steps',
                               style: Theme.of(context).textTheme.labelLarge,
                             ),
                           ],
@@ -473,7 +502,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
 String _metricsLine(WearableDaySummary summary) {
   final parts = <String>[];
   if (summary.sleepMinutes != null) {
-    parts.add('sonno ${(summary.sleepMinutes! / 60).toStringAsFixed(1)}h');
+    parts.add('sleep ${(summary.sleepMinutes! / 60).toStringAsFixed(1)}h');
   }
   if (summary.heartRateAvgBpm != null) {
     parts.add('FC ${summary.heartRateAvgBpm!.toStringAsFixed(0)} bpm');
@@ -485,26 +514,28 @@ String _metricsLine(WearableDaySummary summary) {
     parts.add('SpO2 ${summary.bloodOxygenAvgPct!.toStringAsFixed(0)}%');
   }
   if (summary.distanceMeters != null) {
-    parts.add('distanza ${(summary.distanceMeters! / 1000).toStringAsFixed(1)} km');
+    parts.add(
+      'distance ${(summary.distanceMeters! / 1000).toStringAsFixed(1)} km',
+    );
   }
   if (summary.exerciseMinutes != null) {
-    parts.add('attivita ${summary.exerciseMinutes!.toStringAsFixed(0)} min');
+    parts.add('activity ${summary.exerciseMinutes!.toStringAsFixed(0)} min');
   }
   if (parts.isEmpty) {
-    return _displaySourceName(summary.sourceName) ??
-        'Dati aggregati sincronizzati';
+    return _displaySourceName(summary.sourceName) ?? 'Synced aggregated data';
   }
   return parts.join(' | ');
 }
 
 List<String> _detectedSources(List<WearableDaySummary> summaries) {
-  final values = summaries
-      .map((summary) => _displaySourceName(summary.sourceName))
-      .whereType<String>()
-      .where((value) => value.isNotEmpty)
-      .toSet()
-      .toList()
-    ..sort();
+  final values =
+      summaries
+          .map((summary) => _displaySourceName(summary.sourceName))
+          .whereType<String>()
+          .where((value) => value.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
   return values;
 }
 
@@ -522,25 +553,25 @@ List<String> _availableMetricLabels(List<WearableDaySummary> summaries) {
   final hasHrv = summaries.any((item) => item.hrvSdnnMs != null);
 
   if (hasSteps) {
-    labels.add('Passi');
+    labels.add('Steps');
   }
   if (hasSleep) {
-    labels.add('Sonno');
+    labels.add('Sleep');
   }
   if (hasHeartRate) {
-    labels.add('Frequenza cardiaca');
+    labels.add('Heart rate');
   }
   if (hasRestingHeartRate) {
-    labels.add('FC a riposo');
+    labels.add('Resting HR');
   }
   if (hasOxygen) {
     labels.add('SpO2');
   }
   if (hasExercise) {
-    labels.add('Attività');
+    labels.add('Activity');
   }
   if (hasDistance) {
-    labels.add('Distanza');
+    labels.add('Distance');
   }
   if (hasHrv) {
     labels.add('HRV');
@@ -552,13 +583,13 @@ List<String> _availableMetricLabels(List<WearableDaySummary> summaries) {
 List<String> _missingMetricLabels(List<WearableDaySummary> summaries) {
   final available = _availableMetricLabels(summaries).toSet();
   const ordered = [
-    'Passi',
-    'Sonno',
-    'Frequenza cardiaca',
-    'FC a riposo',
+    'Steps',
+    'Sleep',
+    'Heart rate',
+    'Resting HR',
     'SpO2',
-    'Attività',
-    'Distanza',
+    'Activity',
+    'Distance',
     'HRV',
   ];
   return ordered.where((item) => !available.contains(item)).toList();
@@ -573,19 +604,19 @@ String? _buildPartialDataWarning(List<WearableDaySummary> summaries) {
   final sources = _detectedSources(summaries);
   final onlyActivityMetrics =
       available.isNotEmpty &&
-      available.difference({'Passi', 'Distanza', 'Attività'}).isEmpty;
+      available.difference({'Steps', 'Distance', 'Activity'}).isEmpty;
   final onlyGoogleFit =
       sources.isNotEmpty && sources.every((source) => source == 'Google Fit');
 
   if (onlyGoogleFit && onlyActivityMetrics) {
-    return 'Health Connect sta esponendo a ClinDiary solo dati attività da Google Fit '
-        '(passi, distanza o intensità). Sonno, frequenza cardiaca e SpO2 non '
-        'risultano disponibili nel repository salute del dispositivo.';
+    return 'Health Connect is exposing only activity data from Google Fit to ClinDiary '
+        '(steps, distance, or intensity). Sleep, heart rate, and SpO2 are not '
+        'available in the device health repository.';
   }
   if (onlyActivityMetrics) {
-    return 'I dati disponibili da Health Connect sono solo parziali. '
-        'ClinDiary sta ricevendo soprattutto metriche di attività, mentre '
-        'sonno, frequenza cardiaca e SpO2 non risultano ancora esposti.';
+    return 'The data available from Health Connect is only partial. '
+        'ClinDiary is receiving mostly activity metrics, while '
+        'sleep, heart rate, and SpO2 are still not exposed.';
   }
   return null;
 }

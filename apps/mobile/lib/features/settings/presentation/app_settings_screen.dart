@@ -15,15 +15,13 @@ class AppSettingsScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileBundleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Impostazioni')),
+      appBar: AppBar(title: const Text('Settings')),
       body: settingsAsync.when(
         data: (settings) => profileAsync.when(
           data: (bundle) {
             if (bundle == null) {
               return const Center(
-                child: Text(
-                  'Completa l\'autenticazione per gestire le impostazioni.',
-                ),
+                child: Text('Complete sign-in to manage settings.'),
               );
             }
 
@@ -34,8 +32,40 @@ class AppSettingsScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               children: [
                 SectionCard(
-                  title: 'Aspetto',
-                  subtitle: 'Scegli il tema dell\'app.',
+                  title: 'Language',
+                  subtitle: 'Choose the app language.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CompactSegmentedControl<AppLanguagePreference>(
+                        options: const [
+                          CompactSegmentOption(
+                            value: AppLanguagePreference.en,
+                            icon: Icons.language_outlined,
+                            label: 'English',
+                          ),
+                          CompactSegmentOption(
+                            value: AppLanguagePreference.it,
+                            icon: Icons.language_outlined,
+                            label: 'Italiano',
+                          ),
+                        ],
+                        selectedValue: settings.language,
+                        onChanged: (selection) {
+                          ref
+                              .read(
+                                appDisplaySettingsControllerProvider.notifier,
+                              )
+                              .setLanguage(selection);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SectionCard(
+                  title: 'Appearance',
+                  subtitle: 'Choose the app theme.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -44,17 +74,17 @@ class AppSettingsScreen extends ConsumerWidget {
                           CompactSegmentOption(
                             value: AppThemePreference.system,
                             icon: Icons.brightness_auto_outlined,
-                            label: 'Auto',
+                            label: 'System',
                           ),
                           CompactSegmentOption(
                             value: AppThemePreference.light,
                             icon: Icons.light_mode_outlined,
-                            label: 'Chiaro',
+                            label: 'Light',
                           ),
                           CompactSegmentOption(
                             value: AppThemePreference.dark,
                             icon: Icons.dark_mode_outlined,
-                            label: 'Scuro',
+                            label: 'Dark',
                           ),
                         ],
                         selectedValue: settings.themePreference,
@@ -71,13 +101,13 @@ class AppSettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 SectionCard(
-                  title: 'Testo',
-                  subtitle: 'Regola la leggibilità generale.',
+                  title: 'Text',
+                  subtitle: 'Adjust the overall readability.',
                   action: TextButton(
                     onPressed: () => ref
                         .read(appDisplaySettingsControllerProvider.notifier)
                         .reset(),
-                    child: const Text('Ripristina'),
+                    child: const Text('Reset'),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +118,7 @@ class AppSettingsScreen extends ConsumerWidget {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            'Dimensione',
+                            'Size',
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
@@ -109,11 +139,11 @@ class AppSettingsScreen extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Compatto',
+                            'Compact',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           Text(
-                            'Grande',
+                            'Large',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -123,8 +153,8 @@ class AppSettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 SectionCard(
-                  title: 'Privacy e AI',
-                  subtitle: 'Consenso, export e note legali beta.',
+                  title: 'Privacy and AI',
+                  subtitle: 'Consent, export and beta legal notes.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -135,14 +165,14 @@ class AppSettingsScreen extends ConsumerWidget {
                           Chip(
                             label: Text(
                               aiConsent
-                                  ? 'AI esterna attiva'
-                                  : 'AI esterna disattivata',
+                                  ? 'External AI enabled'
+                                  : 'External AI disabled',
                             ),
                           ),
                           if (aiConsent && aiConsentAt != null)
                             Chip(
                               label: Text(
-                                'Ultimo consenso ${_dateLabel(aiConsentAt.toLocal())}',
+                                'Last consent ${_dateLabel(aiConsentAt.toLocal())}',
                               ),
                             ),
                         ],
@@ -152,26 +182,28 @@ class AppSettingsScreen extends ConsumerWidget {
                         onPressed: () =>
                             context.push('/app/profile/settings/privacy-ai'),
                         icon: const Icon(Icons.privacy_tip_outlined),
-                        label: const Text('Apri Privacy AI'),
+                        label: const Text('Open AI Privacy'),
                       ),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
                         onPressed: () => context.push('/legal'),
                         icon: const Icon(Icons.gavel_outlined),
-                        label: const Text('Apri Centro legale'),
+                        label: const Text('Open Legal Center'),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 SectionCard(
-                  title: 'Anteprima',
-                  subtitle: 'Piccolo esempio del look attuale.',
+                  title: 'Preview',
+                  subtitle: 'A small example of the current look.',
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerLowest,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -187,9 +219,9 @@ class AppSettingsScreen extends ConsumerWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: const [
-                            Chip(label: Text('Passi')),
-                            Chip(label: Text('Sonno')),
-                            Chip(label: Text('Recap AI')),
+                            Chip(label: Text('Steps')),
+                            Chip(label: Text('Sleep')),
+                            Chip(label: Text('AI Recap')),
                           ],
                         ),
                       ],
@@ -220,10 +252,10 @@ String _dateLabel(DateTime value) {
 
 String _fontLabel(double scale) {
   if (scale <= 0.95) {
-    return 'Compatto';
+    return 'Compact';
   }
   if (scale >= 1.2) {
-    return 'Grande';
+    return 'Large';
   }
   return 'Standard';
 }

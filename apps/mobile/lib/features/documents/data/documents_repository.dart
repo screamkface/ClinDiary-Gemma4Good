@@ -21,8 +21,7 @@ class DocumentsRepository {
        _localDatabase = localDatabase,
        _billingRepository =
            billingRepository ?? BillingRepository(apiClient: apiClient),
-       _localVaultService =
-           localVaultService ?? LocalDocumentVaultService();
+       _localVaultService = localVaultService ?? LocalDocumentVaultService();
 
   static const _documentsCacheKey = 'documents_list';
   static const _documentStorageModeCacheKey = 'document_storage_mode';
@@ -176,7 +175,8 @@ class DocumentsRepository {
 
   Future<int> reindexDocument(String documentId) async {
     final storageMode = await _getStorageMode();
-    if (_isLocalDocumentId(documentId) || storageMode == _DocumentStorageMode.local) {
+    if (_isLocalDocumentId(documentId) ||
+        storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
             'Indicizzazione, OCR e parsing automatico sono disponibili solo per l archivio cloud AI Plus.',
@@ -188,10 +188,11 @@ class DocumentsRepository {
 
   Future<ClinicalDocumentDetail> processDocument(String documentId) async {
     final storageMode = await _getStorageMode();
-    if (_isLocalDocumentId(documentId) || storageMode == _DocumentStorageMode.local) {
+    if (_isLocalDocumentId(documentId) ||
+        storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'OCR, parsing e timeline documentale avanzata richiedono il salvataggio cloud AI Plus.',
+            'OCR, parsing, and advanced document timelines require AI Plus cloud storage.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -203,7 +204,8 @@ class DocumentsRepository {
     DocumentManualReviewInput input,
   ) async {
     final storageMode = await _getStorageMode();
-    if (_isLocalDocumentId(documentId) || storageMode == _DocumentStorageMode.local) {
+    if (_isLocalDocumentId(documentId) ||
+        storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
             'La revisione strutturata dei documenti fa parte dell archivio cloud AI Plus.',
@@ -230,7 +232,7 @@ class DocumentsRepository {
     if (storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Sul piano free i documenti cloud già caricati restano consultabili, ma modifiche e processing richiedono AI Plus.',
+            'On the free plan, already uploaded cloud documents remain viewable, but edits and processing require AI Plus.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -254,7 +256,7 @@ class DocumentsRepository {
     if (storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Sul piano free i documenti cloud già caricati restano consultabili, ma non eliminabili.',
+            'On the free plan, already uploaded cloud documents remain viewable, but they cannot be deleted.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -287,7 +289,10 @@ class DocumentsRepository {
 
   Future<String> prepareLocalViewerFile(String documentId) async {
     if (!_isLocalDocumentId(documentId)) {
-      throw ApiException('Il documento non usa il vault locale.', statusCode: 400);
+      throw ApiException(
+        'Il documento non usa il vault locale.',
+        statusCode: 400,
+      );
     }
     final scope = await _resolveLocalScope();
     return _localVaultService.prepareViewerFileForScope(
@@ -332,7 +337,8 @@ class DocumentsRepository {
     return _LocalVaultScope(userId: userId, profileId: profileId);
   }
 
-  bool _isLocalDocumentId(String documentId) => documentId.startsWith('local-doc-');
+  bool _isLocalDocumentId(String documentId) =>
+      documentId.startsWith('local-doc-');
 
   Future<List<ClinicalDocumentSummary>> _fetchReadOnlyCloudDocuments({
     String? query,
@@ -473,10 +479,7 @@ class DocumentsRepository {
     await _apiClient.flushPendingOperations();
     final response = await _apiClient.postJson(
       '/api/v1/documents/folders',
-      body: {
-        'name': name.trim(),
-        'parent_folder_id': parentFolderId,
-      },
+      body: {'name': name.trim(), 'parent_folder_id': parentFolderId},
     );
     return DocumentFolderItem.fromJson(response);
   }

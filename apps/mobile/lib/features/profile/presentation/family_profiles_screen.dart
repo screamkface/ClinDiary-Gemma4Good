@@ -19,11 +19,11 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
   Widget build(BuildContext context) {
     final bundleAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profili familiari'),
+        title: const Text('Family profiles'),
         actions: [
           IconButton(
             onPressed: () {
@@ -39,7 +39,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
             : FloatingActionButton.extended(
                 onPressed: () => _showCreateProfileDialog(context, bundle),
                 icon: const Icon(Icons.person_add_alt_1_outlined),
-                label: const Text('Nuovo profilo'),
+                label: const Text('New profile'),
               ),
         orElse: () => null,
       ),
@@ -47,7 +47,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
         data: (bundle) {
           if (bundle == null) {
             return const Center(
-              child: Text('Completa l\'onboarding per gestire i profili.'),
+              child: Text('Complete onboarding to manage profiles.'),
             );
           }
 
@@ -67,12 +67,12 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
                 SectionCard(
-                  title: 'Stato attivo',
+                  title: 'Active status',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ogni profilo ha dati, screening e recap separati. Seleziona quello da usare ora.',
+                        'Each profile has separate data, screenings, and recaps. Select the one to use now.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 12),
@@ -82,7 +82,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                         children: [
                           Chip(
                             label: Text(
-                              '${profiles.length} profili ${profiles.length == 1 ? 'totale' : 'totali'}',
+                              '${profiles.length} profiles ${profiles.length == 1 ? 'total' : 'total'}',
                             ),
                           ),
                           Chip(
@@ -90,8 +90,8 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                               profiles.any(
                                     (profile) => profile.id == selectedId,
                                   )
-                                  ? 'Profilo attivo pronto'
-                                  : 'Nessun profilo selezionato',
+                                  ? 'Active profile ready'
+                                  : 'No profile selected',
                             ),
                           ),
                         ],
@@ -101,7 +101,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Elenco profili',
+                  title: 'Profile list',
                   child: Column(
                     children: profiles.map((profile) {
                       final isSelected = profile.id == selectedId;
@@ -189,8 +189,11 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogBodyContext, dialogSetState) => AlertDialog(
           scrollable: true,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          title: const Text('Nuovo profilo'),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          title: const Text('New profile'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
@@ -198,21 +201,21 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
               children: [
                 TextFormField(
                   initialValue: firstName,
-                  decoration: const InputDecoration(labelText: 'Nome'),
+                  decoration: const InputDecoration(labelText: 'First name'),
                   onChanged: (value) => firstName = value,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   initialValue: lastName,
-                  decoration: const InputDecoration(labelText: 'Cognome'),
+                  decoration: const InputDecoration(labelText: 'Last name'),
                   onChanged: (value) => lastName = value,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   initialValue: relationshipLabel,
                   decoration: const InputDecoration(
-                    labelText: 'Relazione',
-                    hintText: 'Figlio, figlia, madre, padre...',
+                    labelText: 'Relationship',
+                    hintText: 'Son, daughter, mother, father...',
                   ),
                   onChanged: (value) => relationshipLabel = value,
                 ),
@@ -228,18 +231,21 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                           : fallbackBirthDate(),
                       firstDate: DateTime(1900, 1, 1),
                       lastDate: DateTime.now().add(const Duration(days: 1)),
-                      helpText: 'Seleziona data di nascita',
+                      helpText: 'Select date of birth',
                     );
                     if (picked != null && dialogBodyContext.mounted) {
                       dialogSetState(() {
-                        birthDateValue = picked.toIso8601String().split('T').first;
+                        birthDateValue = picked
+                            .toIso8601String()
+                            .split('T')
+                            .first;
                       });
                     }
                   },
                   child: InputDecorator(
                     decoration: const InputDecoration(
-                      labelText: 'Data di nascita',
-                      hintText: 'Tocca per scegliere',
+                      labelText: 'Date of birth',
+                      hintText: 'Tap to pick',
                       suffixIcon: Icon(Icons.calendar_today_outlined),
                     ),
                     child: Align(
@@ -247,7 +253,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                       child: Text(
                         birthDateValue?.trim().isNotEmpty == true
                             ? birthDateValue!
-                            : 'Tocca per scegliere',
+                            : 'Tap to pick',
                       ),
                     ),
                   ),
@@ -257,18 +263,18 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                   initialValue: biologicalSex,
                   isExpanded: true,
                   decoration: const InputDecoration(
-                    labelText: 'Sesso biologico',
+                    labelText: 'Biological sex',
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'female', child: Text('Femmina')),
-                    DropdownMenuItem(value: 'male', child: Text('Maschio')),
+                    DropdownMenuItem(value: 'female', child: Text('Female')),
+                    DropdownMenuItem(value: 'male', child: Text('Male')),
                     DropdownMenuItem(
                       value: 'intersex',
                       child: Text('Intersex'),
                     ),
                     DropdownMenuItem(
                       value: 'unknown',
-                      child: Text('Non indicato'),
+                      child: Text('Not specified'),
                     ),
                   ],
                   onChanged: (value) =>
@@ -278,7 +284,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                 DropdownButtonFormField<String>(
                   initialValue: regionCode,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Regione'),
+                  decoration: const InputDecoration(labelText: 'Region'),
                   items: italianRegionOptions
                       .map(
                         (option) => DropdownMenuItem<String>(
@@ -296,11 +302,9 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(
-                dialogContext,
-                rootNavigator: true,
-              ).maybePop(),
-              child: const Text('Annulla'),
+              onPressed: () =>
+                  Navigator.of(dialogContext, rootNavigator: true).maybePop(),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: submitting
@@ -332,9 +336,10 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                             : bundle.profile;
                         if (dialogContext.mounted) {
                           dialogClosed = true;
-                          Navigator.of(dialogContext, rootNavigator: true).pop(
-                            createdProfile.id,
-                          );
+                          Navigator.of(
+                            dialogContext,
+                            rootNavigator: true,
+                          ).pop(createdProfile.id);
                         }
                       } catch (error) {
                         if (!mounted) {
@@ -349,7 +354,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                         }
                       }
                     },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -383,14 +388,14 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
       parts.add(profile.relationshipLabel!);
     }
     if (profile.birthDate != null) {
-      parts.add('Nato/a il ${dateFormat.format(profile.birthDate!)}');
+      parts.add('Born ${dateFormat.format(profile.birthDate!)}');
     }
     if (profile.regionCode != null) {
       parts.add(italianRegionLabel(profile.regionCode));
     }
     if (profile.isPrimary) {
-      parts.add('Profilo principale');
+      parts.add('Primary profile');
     }
-    return parts.isEmpty ? 'Profilo clinico separato' : parts.join(' / ');
+    return parts.isEmpty ? 'Separate clinical profile' : parts.join(' / ');
   }
 }

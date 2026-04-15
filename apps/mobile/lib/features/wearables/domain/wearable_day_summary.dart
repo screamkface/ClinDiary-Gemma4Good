@@ -109,31 +109,31 @@ class WearableDaySummary {
   String toDiagnosticText() {
     final metrics = <String>[];
     if (stepsCount != null) {
-      metrics.add('${stepsCount!} passi');
+      metrics.add('${stepsCount!} steps');
     }
     if (sleepMinutes != null) {
-      metrics.add('sonno ${(sleepMinutes! / 60).toStringAsFixed(1)}h');
+      metrics.add('sleep ${(sleepMinutes! / 60).toStringAsFixed(1)}h');
     }
     if (heartRateAvgBpm != null) {
-      metrics.add('FC media ${heartRateAvgBpm!.toStringAsFixed(0)} bpm');
+      metrics.add('avg HR ${heartRateAvgBpm!.toStringAsFixed(0)} bpm');
     }
     if (restingHeartRateBpm != null) {
-      metrics.add('FC riposo ${restingHeartRateBpm!.toStringAsFixed(0)} bpm');
+      metrics.add('resting HR ${restingHeartRateBpm!.toStringAsFixed(0)} bpm');
     }
     if (bloodOxygenAvgPct != null) {
       metrics.add('SpO2 ${bloodOxygenAvgPct!.toStringAsFixed(0)}%');
     }
     if (distanceMeters != null) {
-      metrics.add('distanza ${(distanceMeters! / 1000).toStringAsFixed(1)} km');
+      metrics.add('distance ${(distanceMeters! / 1000).toStringAsFixed(1)} km');
     }
     if (exerciseMinutes != null) {
-      metrics.add('attivita ${exerciseMinutes!.toStringAsFixed(0)} min');
+      metrics.add('activity ${exerciseMinutes!.toStringAsFixed(0)} min');
     }
     if (activeEnergyKcal != null) {
-      metrics.add('energia ${activeEnergyKcal!.toStringAsFixed(0)} kcal');
+      metrics.add('energy ${activeEnergyKcal!.toStringAsFixed(0)} kcal');
     }
     if (recordCount > 0) {
-      metrics.add('record $recordCount');
+      metrics.add('records $recordCount');
     }
 
     final dateLabel = summaryDate.toIso8601String().split('T').first;
@@ -146,8 +146,12 @@ class WearableDaySummary {
     if (cleanedDeviceModel != null && cleanedDeviceModel.isNotEmpty) {
       sourceParts.add(cleanedDeviceModel);
     }
-    final sourceLabel = sourceParts.isEmpty ? '' : ' (${sourceParts.join(' - ')})';
-    final metricsLabel = metrics.isEmpty ? 'nessuna metrica disponibile' : metrics.join(', ');
+    final sourceLabel = sourceParts.isEmpty
+        ? ''
+        : ' (${sourceParts.join(' - ')})';
+    final metricsLabel = metrics.isEmpty
+        ? 'no metrics available'
+        : metrics.join(', ');
     return '$dateLabel$sourceLabel: $metricsLabel';
   }
 }

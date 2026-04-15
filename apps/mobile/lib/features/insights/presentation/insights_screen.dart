@@ -4,6 +4,7 @@ import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/local_ai_status.dart';
 import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/insights/presentation/on_device_model_screen.dart';
+import 'package:clindiary/shared/widgets/generation_phase_label.dart';
 import 'package:clindiary/shared/widgets/compact_segmented_control.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
 import 'package:clindiary/shared/widgets/feature_lock_card.dart';
@@ -35,6 +36,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
   DateTime _referenceDate = DateUtils.dateOnly(DateTime.now());
   late DateTime _focusedMonth;
   bool _isRegenerating = false;
+  DateTime? _regenerationStartedAt;
   bool _isInstallingOnDeviceModel = false;
 
   @override
@@ -69,7 +71,11 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       referenceDate: _referenceDate,
       mode: _summaryMode,
     );
-    setState(() => _isRegenerating = true);
+    final startedAt = DateTime.now();
+    setState(() {
+      _isRegenerating = true;
+      _regenerationStartedAt = startedAt;
+    });
     try {
       await ref.read(insightsRepositoryProvider).regenerateSummary(query);
       ref.invalidate(insightSummaryProvider(query));
@@ -106,7 +112,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isRegenerating = false);
+        setState(() {
+          _isRegenerating = false;
+          _regenerationStartedAt = null;
+        });
       }
     }
   }
@@ -137,8 +146,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         SnackBar(
           content: Text(
             installedPath == null
-                ? 'Importazione modello annullata.'
-                : 'Modello copiato in $installedPath',
+                ? 'Model import canceled.'
+                : 'Model copied to $installedPath',
           ),
         ),
       );
@@ -146,9 +155,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Importazione modello non riuscita: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Model import failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isInstallingOnDeviceModel = false);
@@ -211,8 +220,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     );
     final activityDates =
         activityDatesAsync.asData?.value ?? const <DateTime>[];
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
-    final dayFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
+    final dayFormat = DateFormat('dd MMM yyyy', 'en_US');
     final colorScheme = Theme.of(context).colorScheme;
     final requiredFeatureCode = _featureCodeForType(_summaryType);
     final proactiveLock =
@@ -225,21 +234,19 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         actions: [
           if (currentSummary != null)
             IconButton(
-              tooltip: 'Copia report',
+              tooltip: 'Copy report',
               onPressed: () => _copySummary(currentSummary.content),
               icon: const Icon(Icons.content_copy_outlined),
             ),
           if (currentSummary != null)
             TextButton.icon(
               onPressed: _isRegenerating ? null : _regenerateSummary,
-              icon: _isRegenerating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_awesome_outlined),
-              label: Text(_isRegenerating ? 'Rigenero...' : 'Rigenera'),
+              icon: const Icon(Icons.auto_awesome_outlined),
+              label: GenerationPhaseLabel(
+                isActive: _isRegenerating,
+                startedAt: _regenerationStartedAt,
+                idleLabel: 'Regenerate',
+              ),
             ),
           IconButton(
             onPressed: _pickReferenceDate,
@@ -268,7 +275,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Scegli periodo e data.',
+                  'Choose a period and a date.',
                   style: Theme.of(
                     context,
                   ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -279,22 +286,22 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   runSpacing: 8,
                   children: [
                     _TypeButton(
-                      label: 'Giorno',
+                      label: 'Day',
                       selected: _summaryType == 'daily',
                       onPressed: () => _setSummaryType('daily'),
                     ),
                     _TypeButton(
-                      label: 'Settimana',
+                      label: 'Week',
                       selected: _summaryType == 'weekly',
                       onPressed: () => _setSummaryType('weekly'),
                     ),
                     _TypeButton(
-                      label: 'Mese',
+                      label: 'Month',
                       selected: _summaryType == 'monthly',
                       onPressed: () => _setSummaryType('monthly'),
                     ),
                     _TypeButton(
-                      label: 'Pre-visita',
+                      label: 'Pre-visit',
                       selected: _summaryType == 'pre_visit',
                       onPressed: () => _setSummaryType('pre_visit'),
                     ),
@@ -308,7 +315,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                 if (_summaryType == 'daily') ...[
                   const SizedBox(height: 12),
                   Text(
-                    'Modalita recap',
+                    'Recap mode',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -323,12 +330,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       ),
                       CompactSegmentOption<InsightSummaryMode>(
                         value: InsightSummaryMode.privateLocal,
-                        label: 'Privata locale',
+                        label: 'Local private',
                         icon: Icons.shield_outlined,
                       ),
                       CompactSegmentOption<InsightSummaryMode>(
                         value: InsightSummaryMode.onDevice,
-                        label: 'Sul dispositivo',
+                        label: 'On device',
                         icon: Icons.smartphone_outlined,
                       ),
                     ],
@@ -362,9 +369,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           ),
           const SizedBox(height: 12),
           const ClinicalScopeNotice(
-            title: 'Uso prudente',
+            title: 'Cautious use',
             message:
-                'Il recap AI riordina i dati del diario e dei documenti recenti, ma non sostituisce medico, diagnosi o prescrizione.',
+                'The AI recap reorganizes diary and recent document data, but it does not replace a clinician, diagnosis, or prescription.',
             icon: Icons.health_and_safety_outlined,
           ),
           if (showLocalProof) ...[
@@ -386,10 +393,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           const SizedBox(height: 12),
           if (proactiveLock)
             FeatureLockCard(
-              title: 'AI Plus richiesto',
+              title: 'AI Plus required',
               featureLabel: _featureLabel(requiredFeatureCode),
               message:
-                  'I recap AI di questo periodo fanno parte di ClinDiary AI Plus. Il diario e lo storico restano accessibili anche senza piano.',
+                  'The AI recaps for this period are part of ClinDiary AI Plus. The diary and history remain accessible even without a plan.',
               onOpenBilling: () => _openBilling(requiredFeatureCode),
             )
           else
@@ -415,15 +422,21 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                     providerLabelOverride:
                         summary.providerName == 'local_gemma4'
                         ? localStatusAsync?.asData?.value.activeProviderLabel ??
-                              'Modalita privata locale'
+                              'Local private mode'
                         : summary.providerName == 'on_device_litertlm'
-                        ? onDeviceStatusAsync?.asData?.value.activeProviderLabel ??
-                              'On-device locale'
+                        ? onDeviceStatusAsync
+                                  ?.asData
+                                  ?.value
+                                  .activeProviderLabel ??
+                              'On-device local'
                         : null,
                   ),
                 ],
               ),
-              loading: () => const _LoadingState(),
+              loading: () => _LoadingState(
+                isActive: _isRegenerating,
+                startedAt: _regenerationStartedAt,
+              ),
               error: (error, _) {
                 final apiError = error is ApiException ? error : null;
                 if (apiError != null && apiError.isFeatureLocked) {
@@ -462,11 +475,11 @@ String _featureCodeForType(String summaryType) {
 String _featureLabel(String featureCode) {
   switch (featureCode) {
     case 'ai_daily_summary':
-      return 'Recap giornaliero';
+      return 'Daily recap';
     case 'ai_periodic_summaries':
-      return 'Recap settimana e mese';
+      return 'Weekly and monthly recaps';
     default:
-      return 'Recap pre-visita';
+      return 'Pre-visit recap';
   }
 }
 
@@ -495,7 +508,7 @@ class _InsightsCalendar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TableCalendar<String>(
-          locale: 'it_IT',
+          locale: 'en_US',
           firstDay: DateTime(2020),
           lastDay: DateTime.now().add(const Duration(days: 1)),
           focusedDay: focusedMonth,
@@ -553,7 +566,7 @@ class _InsightsCalendar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Pallino = giorno con attività',
+          'Dot = day with activity',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -589,7 +602,7 @@ class _PromptBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Richiesta',
+              'Request',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: colorScheme.onPrimary.withValues(alpha: 0.78),
                 fontWeight: FontWeight.w700,
@@ -607,7 +620,7 @@ class _PromptBubble extends StatelessWidget {
             if (summaryMode == InsightSummaryMode.privateLocal) ...[
               const SizedBox(height: 8),
               Text(
-                'Percorso privato locale attivo',
+                'Local private path active',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: colorScheme.onPrimary.withValues(alpha: 0.88),
                   fontWeight: FontWeight.w700,
@@ -616,7 +629,7 @@ class _PromptBubble extends StatelessWidget {
             ] else if (summaryMode == InsightSummaryMode.onDevice) ...[
               const SizedBox(height: 8),
               Text(
-                'Inferenza sul dispositivo attiva',
+                'On-device inference active',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: colorScheme.onPrimary.withValues(alpha: 0.88),
                   fontWeight: FontWeight.w700,
@@ -744,9 +757,7 @@ class _LocalModeNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.18)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -755,7 +766,7 @@ class _LocalModeNote extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'La modalita privata locale usa un runtime locale/privato per il recap giornaliero. Il testo puo essere piu corto della modalita cloud.',
+              'The local private mode uses a local/private runtime for the daily recap. The text can be shorter than the cloud mode.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -800,11 +811,10 @@ class _OnDeviceStatusSection extends StatelessWidget {
         isInstallingModel: isInstallingModel,
       ),
       loading: () => const _LocalProofCardLoading(
-        message: 'Verifica inferenza on-device in corso...',
+        message: 'Checking on-device inference...',
       ),
-      error: (error, _) => _LocalProofCardError(
-        error: 'Proof on-device non disponibile: $error',
-      ),
+      error: (error, _) =>
+          _LocalProofCardError(error: 'On-device proof not available: $error'),
     );
   }
 }
@@ -831,23 +841,25 @@ class LocalProofCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Proof locale',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            'Local proof',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetaChip(label: 'Provider attivo: ${status.activeProviderLabel}'),
+              _MetaChip(
+                label: 'Active provider: ${status.activeProviderLabel}',
+              ),
               _MetaChip(label: 'Runtime: ${status.runtimeMode}'),
               _MetaChip(label: 'Backend: ${status.backend ?? '-'}'),
-              _MetaChip(label: 'Modello: ${status.modelName ?? '-'}'),
+              _MetaChip(label: 'Model: ${status.modelName ?? '-'}'),
               _MetaChip(
                 label:
-                    'Cloud esterno usato: ${status.isCloudBypassedForThisRequest ? 'No' : 'Si'}',
+                    'External cloud used: ${status.isCloudBypassedForThisRequest ? 'No' : 'Yes'}',
               ),
             ],
           ),
@@ -858,9 +870,7 @@ class LocalProofCard extends StatelessWidget {
 }
 
 class _LocalProofCardLoading extends StatelessWidget {
-  const _LocalProofCardLoading({
-    this.message = 'Verifica runtime locale in corso...',
-  });
+  const _LocalProofCardLoading({this.message = 'Checking local runtime...'});
 
   final String message;
 
@@ -872,9 +882,9 @@ class _LocalProofCardLoading extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(
-            alpha: 0.85,
-          ),
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.85),
         ),
       ),
       child: Row(
@@ -908,7 +918,7 @@ class _LocalProofCardError extends StatelessWidget {
           color: Theme.of(context).colorScheme.error.withValues(alpha: 0.25),
         ),
       ),
-      child: Text('Proof locale non disponibile: $error'),
+      child: Text('Local proof not available: $error'),
     );
   }
 }
@@ -936,7 +946,7 @@ class _OnDeviceModeNote extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'La modalita sul dispositivo esegue il recap giornaliero direttamente su Android con LiteRT-LM. Riusa il prompt prudente di ClinDiary ma non invia il testo al provider AI cloud.',
+              'On-device mode runs the daily recap directly on Android with LiteRT-LM. It reuses the cautious ClinDiary prompt but does not send the text to the cloud AI provider.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -961,7 +971,7 @@ class OnDeviceProofCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final readiness = status.isReady ? 'Pronto' : 'Non pronto';
+    final readiness = status.isReady ? 'Ready' : 'Not ready';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -977,48 +987,55 @@ class OnDeviceProofCard extends StatelessWidget {
         children: [
           Text(
             'Proof on-device',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetaChip(label: 'Provider attivo: ${status.activeProviderLabel}'),
+              _MetaChip(
+                label: 'Active provider: ${status.activeProviderLabel}',
+              ),
               _MetaChip(label: 'Runtime: ${status.runtime}'),
-              _MetaChip(label: 'Backend preferito: ${status.backendPreference}'),
-              _MetaChip(label: 'Backend usato: ${status.backendResolved ?? '-'}'),
-              _MetaChip(label: 'Modello: ${status.modelName ?? '-'}'),
-              _MetaChip(label: 'Stato modello: $readiness'),
+              _MetaChip(
+                label: 'Preferred backend: ${status.backendPreference}',
+              ),
+              _MetaChip(
+                label: 'Backend used: ${status.backendResolved ?? '-'}',
+              ),
+              _MetaChip(label: 'Model: ${status.modelName ?? '-'}'),
+              _MetaChip(label: 'Model status: $readiness'),
               _MetaChip(
                 label:
-                    'Cloud esterno usato: ${status.isCloudBypassedForThisRequest ? 'No' : 'Si'}',
+                    'External cloud used: ${status.isCloudBypassedForThisRequest ? 'No' : 'Yes'}',
               ),
             ],
           ),
           if (status.defaultModelDirectory != null) ...[
             const SizedBox(height: 12),
             Text(
-              'Directory modelli attesa: ${status.defaultModelDirectory}',
+              'Expected model directory: ${status.defaultModelDirectory}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
           if (status.modelPath != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Modello rilevato: ${status.modelPath}',
+              'Detected model: ${status.modelPath}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
-          if (status.lastError != null && status.lastError!.trim().isNotEmpty) ...[
+          if (status.lastError != null &&
+              status.lastError!.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               status.lastError!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.error,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
             ),
           ],
           const SizedBox(height: 14),
@@ -1037,10 +1054,10 @@ class OnDeviceProofCard extends StatelessWidget {
                   ),
             label: Text(
               isInstallingModel
-                  ? 'Importo modello...'
+                  ? 'Importing model...'
                   : status.isReady
-                  ? 'Sostituisci modello'
-                  : 'Importa modello .litertlm',
+                  ? 'Replace model'
+                  : 'Import .litertlm model',
             ),
           ),
           const SizedBox(height: 10),
@@ -1053,7 +1070,7 @@ class OnDeviceProofCard extends StatelessWidget {
               );
             },
             icon: const Icon(Icons.tune_outlined),
-            label: const Text('Gestisci modello'),
+            label: const Text('Manage model'),
           ),
         ],
       ),
@@ -1090,14 +1107,36 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _LoadingState extends StatelessWidget {
-  const _LoadingState();
+  const _LoadingState({required this.isActive, this.startedAt});
+
+  final bool isActive;
+  final DateTime? startedAt;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
-        child: CircularProgressIndicator(),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GenerationPhaseLabel(
+              isActive: isActive,
+              startedAt: startedAt,
+              idleLabel: 'Loading report...',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              backgroundColor: colorScheme.surfaceContainerHighest,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1141,30 +1180,30 @@ class _TypeButton extends StatelessWidget {
 String _titleFor(String summaryType) {
   switch (summaryType) {
     case 'weekly':
-      return 'Riassunto settimanale';
+      return 'Weekly summary';
     case 'monthly':
-      return 'Riassunto mensile';
+      return 'Monthly summary';
     case 'pre_visit':
-      return 'Riassunto pre-visita';
+      return 'Pre-visit summary';
     default:
-      return 'Riassunto giornaliero';
+      return 'Daily summary';
   }
 }
 
 String _providerLabel(String? providerName) {
   switch ((providerName ?? '').trim()) {
     case 'on_device_litertlm':
-      return 'On-device locale';
+      return 'Local on-device';
     case 'local_gemma4':
-      return 'Modalita privata locale';
+      return 'Local private mode';
     case 'regolo_ai':
       return 'Regolo AI';
     case 'gemini_ai_studio':
       return 'Gemini AI Studio';
     case 'openai_compatible':
-      return 'Provider compatibile';
+      return 'Compatible provider';
     case 'rule_based':
-      return 'Fallback prudente';
+      return 'Cautious fallback';
     default:
       return 'Recap AI';
   }

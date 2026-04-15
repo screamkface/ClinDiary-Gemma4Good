@@ -70,6 +70,7 @@ def main() -> None:
         user.onboarding_status = onboarding
         db.add(user)
         db.flush()
+        billing_service.ensure_demo_ai_plus_subscription(user)
 
         profiles = [
             _build_profile(

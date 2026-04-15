@@ -9,15 +9,15 @@ class LegalCenterScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Centro legale')),
+      appBar: AppBar(title: const Text('Legal center')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const SectionCard(
-            title: 'Documenti beta',
-            subtitle: 'Testi interni in-app per privacy, AI e portabilità.',
+            title: 'Beta documents',
+            subtitle: 'In-app internal texts for privacy, AI, and portability.',
             child: Text(
-              'Questi documenti servono per rendere trasparente il comportamento attuale dell app. Prima del go-live vanno sostituiti con le versioni finali validate legalmente.',
+              'These documents make the current app behavior transparent. Before go-live they must be replaced with the final legally validated versions.',
             ),
           ),
           const SizedBox(height: 12),
@@ -29,7 +29,7 @@ class LegalCenterScreen extends StatelessWidget {
                 subtitle: document.description,
                 action: FilledButton.tonal(
                   onPressed: () => context.push('/legal/${document.slug}'),
-                  child: const Text('Apri'),
+                  child: const Text('Open'),
                 ),
                 child: const SizedBox.shrink(),
               ),

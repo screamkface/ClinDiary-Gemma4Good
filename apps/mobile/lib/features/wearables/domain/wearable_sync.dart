@@ -81,45 +81,43 @@ class WearableSyncStatus {
     List<WearableDaySummary> recentSummaries = const [],
   }) {
     if (!isSupported) {
-      return const [
-        'Wearable sync disponibile solo su Android e iPhone.',
-      ];
+      return const ['Wearable sync disponibile solo su Android e iPhone.'];
     }
     if (!isAvailable) {
       return const [
-        'Installa o aggiorna Health Connect prima di tentare la sincronizzazione.',
+        'Install or update Health Connect before attempting synchronization.',
       ];
     }
 
     final steps = <String>[];
     if (!hasHealthPermissions) {
       steps.add(
-        'Apri le autorizzazioni di Health Connect e abilita la lettura dati per ClinDiary.',
+        'Open Health Connect permissions and enable data access for ClinDiary.',
       );
     }
     if (!hasActivityRecognition) {
       steps.add(
-        'Concedi ad Android il permesso Attività fisica, altrimenti passi e movimento restano bloccati.',
+        'Grant Android activity recognition permission, otherwise steps and movement stay blocked.',
       );
     }
     if (hasHealthPermissions &&
         hasActivityRecognition &&
         recentSummaries.isEmpty) {
       steps.add(
-        'ClinDiary ha i permessi, ma non trova giornate recenti: verifica che Xiaomi Fitness/Mi Fitness scriva davvero in Health Connect.',
+        'ClinDiary has permissions, but no recent days are found: verify that Xiaomi Fitness / Mi Fitness is actually writing to Health Connect.',
       );
       steps.add(
-        'In Health Connect controlla App permissions e verifica che Xiaomi Fitness abbia accesso in scrittura per passi, sonno, frequenza cardiaca e SpO2.',
+        'In Health Connect, check App permissions and verify that Xiaomi Fitness has write access for steps, sleep, heart rate, and SpO2.',
       );
     }
     if (!historyAccessGranted) {
       steps.add(
-        'Lo storico potrebbe essere limitato: abilita anche l’accesso ai dati storici nelle autorizzazioni salute.',
+        'History access may be limited: also enable historical data access in health permissions.',
       );
     }
     if (steps.isEmpty) {
       steps.add(
-        'Connessione wearable pronta. Se manca ancora qualche metrica, controlla quali tipi dati Xiaomi Fitness sta esportando in Health Connect.',
+        'Wearable connection ready. If some metrics are still missing, check which data types Xiaomi Fitness is exporting to Health Connect.',
       );
     }
     return steps;
@@ -129,33 +127,33 @@ class WearableSyncStatus {
     List<WearableDaySummary> recentSummaries = const [],
   }) {
     final lines = <String>[
-      'Diagnostica wearable',
-      'Supportato: ${_boolLabel(isSupported)}',
-      'Piattaforma: $platformLabel',
+      'Wearable diagnostics',
+      'Supported: ${_boolLabel(isSupported)}',
+      'Platform: $platformLabel',
       'Provider: $providerName',
-      'Disponibile: ${_boolLabel(isAvailable)}',
-      'Permesso lettura: ${_boolLabel(permissionGranted)}',
-      'Provider installabile: ${_boolLabel(canInstallProvider)}',
-      'Storico accessibile: ${_boolLabel(historyAccessGranted)}',
+      'Available: ${_boolLabel(isAvailable)}',
+      'Read permission: ${_boolLabel(permissionGranted)}',
+      'Provider installable: ${_boolLabel(canInstallProvider)}',
+      'History accessible: ${_boolLabel(historyAccessGranted)}',
     ];
     if (isAndroid) {
-      lines.add('Permessi Health Connect: ${_boolLabel(hasHealthPermissions)}');
       lines.add(
-        'Permesso Attività fisica: ${_boolLabel(hasActivityRecognition)}',
+        'Health Connect permissions: ${_boolLabel(hasHealthPermissions)}',
+      );
+      lines.add(
+        'Activity recognition permission: ${_boolLabel(hasActivityRecognition)}',
       );
     }
 
     final cleanedMessage = message?.trim();
     if (cleanedMessage != null && cleanedMessage.isNotEmpty) {
-      lines.add('Messaggio: $cleanedMessage');
+      lines.add('Message: $cleanedMessage');
     }
 
     if (recentSummaries.isEmpty) {
-      lines.add('Sincronizzazione wearable: nessuna giornata recente salvata.');
+      lines.add('Wearable sync: no recent day saved.');
     } else {
-      lines.add(
-        'Sincronizzazione wearable: ${recentSummaries.length} giornate recenti.',
-      );
+      lines.add('Wearable sync: ${recentSummaries.length} recent days.');
       for (final summary in recentSummaries.take(3)) {
         lines.add(summary.toDiagnosticText());
       }
@@ -163,7 +161,7 @@ class WearableSyncStatus {
 
     final checklist = diagnosticChecklist(recentSummaries: recentSummaries);
     if (checklist.isNotEmpty) {
-      lines.add('Controlli consigliati:');
+      lines.add('Recommended checks:');
       for (var index = 0; index < checklist.length; index++) {
         lines.add('${index + 1}. ${checklist[index]}');
       }
@@ -172,7 +170,7 @@ class WearableSyncStatus {
     return lines.join('\n');
   }
 
-  static String _boolLabel(bool value) => value ? 'sì' : 'no';
+  static String _boolLabel(bool value) => value ? 'yes' : 'no';
 }
 
 class WearableSyncResult {

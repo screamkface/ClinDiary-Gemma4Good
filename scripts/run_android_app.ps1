@@ -10,6 +10,7 @@ $script:KeepBackground = $false
 $script:WithOcr = $false
 $script:PreferLan = $false
 $script:BackendOnly = $false
+$script:UseLocalGemma = $false
 $script:FlutterExtraArgs = @()
 
 $script:ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -50,6 +51,7 @@ Opzioni:
   --api-base-url URL    Forza un API_BASE_URL specifico per Flutter.
   --api-port PORT       Usa una porta backend diversa da 8000.
   --prefer-lan          Usa l'IP locale del PC invece di adb reverse.
+    --local-gemma         Applica l'overlay env generato da scripts/setup_local_gemma_ollama.sh.
   --backend-only        Avvia solo backend/worker/beat e non esegue flutter run.
   --skip-seed           Non eseguire il seed demo.
   --keep-background     Lascia attivi backend/worker/beat dopo l'uscita di Flutter.
@@ -100,6 +102,9 @@ function Parse-Args {
             }
             "--prefer-lan" {
                 $script:PreferLan = $true
+            }
+            "--local-gemma" {
+                $script:UseLocalGemma = $true
             }
             "--backend-only" {
                 $script:BackendOnly = $true
@@ -209,6 +214,17 @@ function Import-DotEnv {
 function Load-EnvFiles {
     Import-DotEnv (Join-Path $RootDir ".env")
     Import-DotEnv (Join-Path $BackendDir ".env")
+
+    if ($script:UseLocalGemma) {
+        $localGemmaOverlay = Join-Path $RootDir ".runtime\ollama-local\gemma-local.env"
+        if (Test-Path $localGemmaOverlay) {
+            Import-DotEnv $localGemmaOverlay
+            Write-Info "Overlay locale Gemma caricato da $localGemmaOverlay"
+        }
+        else {
+            Write-Info "Overlay locale Gemma non trovato in ${localGemmaOverlay}: uso solo i valori base del profilo."
+        }
+    }
 
     if (-not $env:APP_NAME) {
         $env:APP_NAME = "ClinDiary API"
@@ -734,13 +750,15 @@ try {
     Detect-AndroidDevice
 
     $apiBaseUrl = Configure-AndroidNetworking
+    $hackathonDemoMode = if ($env:HACKATHON_DEMO_MODE) { $env:HACKATHON_DEMO_MODE } else { "false" }
     Write-Info "API_BASE_URL usato da Flutter: $apiBaseUrl"
+    Write-Info "Hackathon demo mode: $hackathonDemoMode"
     Write-Info "Credenziali demo: demo@clindiary.app / ChangeMe123!"
     $googleAuthClientId = if ($env:GOOGLE_OAUTH_CLIENT_ID) { $env:GOOGLE_OAUTH_CLIENT_ID } else { "" }
 
     Push-Location $MobileDir
     try {
-        & flutter run -d $DeviceId --dart-define="API_BASE_URL=$apiBaseUrl" --dart-define="GOOGLE_AUTH_CLIENT_ID=$googleAuthClientId" @FlutterExtraArgs
+        & flutter run -d $DeviceId --dart-define="API_BASE_URL=$apiBaseUrl" --dart-define="HACKATHON_DEMO_MODE=$hackathonDemoMode" --dart-define="GOOGLE_AUTH_CLIENT_ID=$googleAuthClientId" @FlutterExtraArgs
         if ($LASTEXITCODE -ne 0) {
             Fail "flutter run non riuscito."
         }

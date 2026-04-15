@@ -10,9 +10,9 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 const _medicationReminderChannelId = 'clindiary_medication_reminders';
-const _medicationReminderChannelName = 'Promemoria farmaci';
+const _medicationReminderChannelName = 'Medication reminders';
 const _medicationReminderChannelDescription =
-    'Promemoria locali generati dal dispositivo per la terapia.';
+    'Local reminders generated on the device for medication therapy.';
 
 @immutable
 class LocalMedicationReminderStatus {
@@ -117,7 +117,7 @@ class LocalMedicationReminderService {
         permissionGranted: false,
         scheduledCount: 0,
         lastSyncedAt: null,
-        message: 'Promemoria locali disponibili su Android e iOS.',
+        message: 'Local reminders are available on Android and iOS.',
       );
     }
 
@@ -211,7 +211,7 @@ class LocalMedicationReminderService {
         permissionGranted: await _isPermissionGranted(),
         scheduledCount: 0,
         lastSyncedAt: _lastSyncedAt,
-        message: 'Promemoria farmaci disattivati nelle preferenze.',
+        message: 'Medication reminders are disabled in preferences.',
       );
     }
 
@@ -223,8 +223,7 @@ class LocalMedicationReminderService {
           permissionGranted: false,
           scheduledCount: 0,
           lastSyncedAt: _lastSyncedAt,
-          message:
-              'Attiva prima le notifiche del dispositivo per generare i promemoria.',
+          message: 'Enable device notifications first to generate reminders.',
         );
       }
       final permissionStatus = await requestPermission();
@@ -259,8 +258,8 @@ class LocalMedicationReminderService {
       scheduledCount: plan.length,
       lastSyncedAt: _lastSyncedAt,
       message: plan.isEmpty
-          ? 'Nessun promemoria pianificabile con i dati correnti.'
-          : 'Promemoria locali sincronizzati sul dispositivo.',
+          ? 'No reminders can be scheduled with the current data.'
+          : 'Local reminders synchronized on the device.',
     );
   }
 
@@ -328,14 +327,9 @@ class LocalMedicationReminderService {
           if (!scheduledAt.isAfter(minimumAllowed)) {
             continue;
           }
-          if (
-            completedOccurrences.contains(
-              _occurrenceKey(
-                medicationId: medication.id,
-                occurrenceDate: day,
-              ),
-            )
-          ) {
+          if (completedOccurrences.contains(
+            _occurrenceKey(medicationId: medication.id, occurrenceDate: day),
+          )) {
             continue;
           }
 

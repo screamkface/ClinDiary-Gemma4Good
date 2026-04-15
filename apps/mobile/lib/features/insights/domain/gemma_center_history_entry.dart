@@ -31,7 +31,9 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('question'),
       kind: 'question',
-      title: normalizedQuestion.isEmpty ? 'Domanda clinica' : normalizedQuestion,
+      title: normalizedQuestion.isEmpty
+          ? 'Clinical question'
+          : normalizedQuestion,
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       prompt: normalizedQuestion,
@@ -47,7 +49,7 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('trend'),
       kind: 'trend',
-      title: 'Spiegazione andamento',
+      title: 'Trend analysis',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       referenceDate: referenceDate.toUtc(),
@@ -62,7 +64,7 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('pre_visit'),
       kind: 'pre_visit',
-      title: 'Scheda pre-visita',
+      title: 'Pre-visit brief',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       referenceDate: referenceDate.toUtc(),
@@ -80,8 +82,8 @@ class GemmaCenterHistoryEntry {
       id: _buildId('document_summary'),
       kind: 'document_summary',
       title: documentTitle.trim().isEmpty
-          ? 'Riassunto documento'
-          : 'Riassunto: ${documentTitle.trim()}',
+          ? 'Document summary'
+          : 'Summary: ${documentTitle.trim()}',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       referenceDate: referenceDate.toUtc(),
@@ -93,13 +95,13 @@ class GemmaCenterHistoryEntry {
   String get kindLabel {
     switch (kind) {
       case 'question':
-        return 'Domanda';
+        return 'Question';
       case 'trend':
-        return 'Andamento';
+        return 'Trend';
       case 'pre_visit':
-        return 'Pre-visita';
+        return 'Pre-visit';
       case 'document_summary':
-        return 'Documento';
+        return 'Document';
       default:
         return 'Gemma';
     }
@@ -118,7 +120,10 @@ class GemmaCenterHistoryEntry {
   }
 
   String get responsePreview {
-    final normalized = response.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final normalized = response
+        .replaceAll('\n', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     if (normalized.length <= 180) {
       return normalized;
     }
@@ -140,13 +145,16 @@ class GemmaCenterHistoryEntry {
   }
 
   factory GemmaCenterHistoryEntry.fromJson(Map<String, dynamic> json) {
+    final normalizedKind = _normalizeKind(json['kind']?.toString());
+    final rawTitle = json['title']?.toString() ?? '';
     return GemmaCenterHistoryEntry(
       id: json['id']?.toString() ?? _buildId('legacy'),
-      kind: json['kind']?.toString() ?? 'question',
-      title: json['title']?.toString() ?? 'Gemma',
+      kind: normalizedKind,
+      title: _normalizeTitle(normalizedKind, rawTitle),
       response: json['response']?.toString() ?? '',
       createdAt: DateTime.parse(
-        json['created_at']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+        json['created_at']?.toString() ??
+            DateTime.now().toUtc().toIso8601String(),
       ).toUtc(),
       prompt: json['prompt']?.toString(),
       referenceDate: json['reference_date'] == null
@@ -155,6 +163,77 @@ class GemmaCenterHistoryEntry {
       documentId: json['document_id']?.toString(),
       documentTitle: json['document_title']?.toString(),
     );
+  }
+
+  static bool needsEnglishMigration(Map<String, dynamic> json) {
+    final kind = _normalizeKind(json['kind']?.toString());
+    final title = json['title']?.toString() ?? '';
+    return kind != (json['kind']?.toString() ?? 'question') ||
+        _normalizeTitle(kind, title) != title;
+  }
+
+  static String _normalizeKind(String? rawKind) {
+    switch (rawKind?.trim().toLowerCase()) {
+      case 'question':
+      case 'domanda':
+      case 'domanda clinica':
+        return 'question';
+      case 'trend':
+      case 'andamento':
+      case 'trend_explanation':
+      case 'spiegazione andamento':
+        return 'trend';
+      case 'pre_visit':
+      case 'pre-visit':
+      case 'pre_visit_brief':
+      case 'scheda pre-visita':
+        return 'pre_visit';
+      case 'document_summary':
+      case 'document':
+      case 'riassunto documento':
+        return 'document_summary';
+      default:
+        return rawKind?.trim().isNotEmpty == true
+            ? rawKind!.trim()
+            : 'question';
+    }
+  }
+
+  static String _normalizeTitle(String kind, String rawTitle) {
+    final title = rawTitle.trim();
+    if (title.isEmpty) {
+      switch (kind) {
+        case 'question':
+          return 'Clinical question';
+        case 'trend':
+          return 'Trend analysis';
+        case 'pre_visit':
+          return 'Pre-visit brief';
+        case 'document_summary':
+          return 'Document summary';
+        default:
+          return 'Gemma';
+      }
+    }
+
+    if (kind == 'question' && title == 'Domanda clinica') {
+      return 'Clinical question';
+    }
+    if (kind == 'trend' && title == 'Spiegazione andamento') {
+      return 'Trend analysis';
+    }
+    if (kind == 'pre_visit' && title == 'Scheda pre-visita') {
+      return 'Pre-visit brief';
+    }
+    if (kind == 'document_summary') {
+      if (title == 'Riassunto documento') {
+        return 'Document summary';
+      }
+      if (title.startsWith('Riassunto: ')) {
+        return 'Summary: ${title.substring('Riassunto: '.length)}';
+      }
+    }
+    return title;
   }
 
   static String _buildId(String kind) {

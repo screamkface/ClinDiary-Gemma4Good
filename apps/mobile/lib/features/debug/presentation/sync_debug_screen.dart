@@ -25,9 +25,9 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       ref.invalidate(pendingOperationsProvider);
       ref.invalidate(requestTracesProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Operazioni sincronizzate: $synced')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Synced operations: $synced')));
     } finally {
       if (mounted) {
         setState(() => _flushing = false);
@@ -45,7 +45,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       ref.invalidate(requestTracesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coda e trace locali cancellate.')),
+        const SnackBar(content: Text('Local queue and traces cleared.')),
       );
     } finally {
       if (mounted) {
@@ -58,18 +58,18 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
   Widget build(BuildContext context) {
     final pendingAsync = ref.watch(pendingOperationsProvider);
     final tracesAsync = ref.watch(requestTracesProvider);
-    final formatter = DateFormat('dd MMM HH:mm', 'it_IT');
+    final formatter = DateFormat('dd MMM HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sync locale'),
+        title: const Text('Local sync'),
         actions: [
-          IconButton(
+                  title: 'Queued operations',
             onPressed: () {
-              ref.invalidate(pendingOperationsProvider);
-              ref.invalidate(requestTracesProvider);
+                      ? 'No operations pending.'
+                      : 'Latest ${items.length} local operations.',
             },
-            icon: const Icon(Icons.refresh),
+                      ? const Text('No pending operations.')
           ),
         ],
       ),
@@ -77,8 +77,8 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           SectionCard(
-            title: 'Azioni',
-            subtitle: 'Usa queste azioni solo per debug locale.',
+                                    'Attempts ${item.attempts} • ${formatter.format(item.createdAt.toLocal())}'
+            subtitle: 'Use these actions only for local debugging.',
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -86,23 +86,23 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                 FilledButton.icon(
                   onPressed: _flushing ? null : _flushQueue,
                   icon: const Icon(Icons.sync_outlined),
-                  label: Text(_flushing ? 'Sync...' : 'Sincronizza'),
+              title: 'Queued operations',
                 ),
                 OutlinedButton.icon(
                   onPressed: _clearing ? null : _clearLocalDebugData,
-                  icon: const Icon(Icons.delete_sweep_outlined),
-                  label: Text(_clearing ? 'Pulizia...' : 'Pulisci debug'),
+              title: 'Queued operations',
+                  label: Text(_clearing ? 'Cleaning...' : 'Clear debug'),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          pendingAsync.when(
+              title: 'Recent network traces',
             data: (items) => Column(
-              children: [
-                SectionCard(
-                  title: 'Riepilogo coda',
-                  subtitle: 'Stato rapido delle operazioni offline.',
+                  ? 'No traces recorded.'
+                  : 'Latest ${items.take(20).length} local requests.',
+                  title: 'Queue summary',
+                  ? const Text('No traces recorded.')
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,

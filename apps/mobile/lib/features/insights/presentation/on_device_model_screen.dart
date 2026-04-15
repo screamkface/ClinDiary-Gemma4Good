@@ -8,7 +8,8 @@ class OnDeviceModelScreen extends ConsumerStatefulWidget {
   const OnDeviceModelScreen({super.key});
 
   @override
-  ConsumerState<OnDeviceModelScreen> createState() => _OnDeviceModelScreenState();
+  ConsumerState<OnDeviceModelScreen> createState() =>
+      _OnDeviceModelScreenState();
 }
 
 class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
@@ -63,16 +64,16 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Modello on-device rimosso.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('On-device model removed.')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rimozione modello non riuscita: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Model removal failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isRemoving = false);
@@ -91,16 +92,16 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Runtime on-device resettato.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('On-device runtime reset.')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reset runtime non riuscito: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Runtime reset failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isResetting = false);
@@ -113,12 +114,12 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
     final statusAsync = ref.watch(onDeviceAiStatusProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Modello on-device')),
+      appBar: AppBar(title: const Text('On-device model')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Gestisci il modello LiteRT-LM usato per il recap sul dispositivo.',
+            'Manage the LiteRT-LM model used for on-device recaps.',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 16),
@@ -156,7 +157,7 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final fileSizeLabel = status.modelFileSizeBytes == null
         ? '-'
         : _formatBytes(status.modelFileSizeBytes!);
@@ -172,9 +173,9 @@ class _StatusCard extends StatelessWidget {
           children: [
             Text(
               'Stato runtime',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -183,26 +184,31 @@ class _StatusCard extends StatelessWidget {
               children: [
                 _StatusChip(label: 'Provider: ${status.activeProviderLabel}'),
                 _StatusChip(label: 'Runtime: ${status.runtime}'),
-                _StatusChip(label: 'Backend usato: ${status.backendResolved ?? '-'}'),
-                _StatusChip(label: 'Stato: ${status.isReady ? 'Pronto' : 'Non pronto'}'),
+                _StatusChip(
+                  label: 'Backend used: ${status.backendResolved ?? '-'}',
+                ),
+                _StatusChip(
+                  label: 'Status: ${status.isReady ? 'Ready' : 'Not ready'}',
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            _InfoLine(label: 'Modello', value: status.modelName ?? '-'),
-            _InfoLine(label: 'Percorso', value: status.modelPath ?? '-'),
+            _InfoLine(label: 'Model', value: status.modelName ?? '-'),
+            _InfoLine(label: 'Path', value: status.modelPath ?? '-'),
             _InfoLine(
-              label: 'Directory attesa',
+              label: 'Expected directory',
               value: status.defaultModelDirectory ?? '-',
             ),
-            _InfoLine(label: 'Dimensione file', value: fileSizeLabel),
-            _InfoLine(label: 'Ultima modifica', value: updatedAtLabel),
-            if (status.lastError != null && status.lastError!.trim().isNotEmpty) ...[
+            _InfoLine(label: 'File size', value: fileSizeLabel),
+            _InfoLine(label: 'Last modified', value: updatedAtLabel),
+            if (status.lastError != null &&
+                status.lastError!.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 status.lastError!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.error,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
               ),
             ],
           ],
@@ -240,10 +246,10 @@ class _ActionsCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Azioni',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              'Actions',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
@@ -261,10 +267,10 @@ class _ActionsCard extends StatelessWidget {
                     ),
               label: Text(
                 isImporting
-                    ? 'Importo modello...'
+                    ? 'Importing model...'
                     : status.isReady
-                    ? 'Sostituisci modello'
-                    : 'Importa modello .litertlm',
+                    ? 'Replace model'
+                    : 'Import .litertlm model',
               ),
             ),
             const SizedBox(height: 10),
@@ -279,9 +285,7 @@ class _ActionsCard extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.delete_outline),
-              label: Text(
-                isRemoving ? 'Rimuovo modello...' : 'Rimuovi modello',
-              ),
+              label: Text(isRemoving ? 'Removing model...' : 'Remove model'),
             ),
             const SizedBox(height: 10),
             TextButton.icon(
@@ -294,7 +298,7 @@ class _ActionsCard extends StatelessWidget {
                     )
                   : const Icon(Icons.restart_alt_outlined),
               label: Text(
-                isResetting ? 'Reset runtime...' : 'Resetta runtime',
+                isResetting ? 'Resetting runtime...' : 'Reset runtime',
               ),
             ),
           ],
@@ -315,14 +319,14 @@ class _HintCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
-            Text('Note pratiche'),
+            Text('Practical notes'),
             SizedBox(height: 10),
             Text(
-              'Usa un file .litertlm compatibile con LiteRT-LM Android. Per la demo del recap on-device il target resta Gemma 4 E2B.',
+              'Use a .litertlm file compatible with LiteRT-LM on Android. For the on-device recap demo, the target remains Gemma 4 E2B.',
             ),
             SizedBox(height: 8),
             Text(
-              'Se importi un nuovo modello, ClinDiary resetta il runtime e rilegge il file dalla cartella modelli dell’app.',
+              'If you import a new model, ClinDiary resets the runtime and rereads the file from the app models folder.',
             ),
           ],
         ),
@@ -365,7 +369,7 @@ class _ErrorCard extends StatelessWidget {
     return Card.outlined(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text('Errore caricamento stato modello: $error'),
+        child: Text('Model status load error: $error'),
       ),
     );
   }

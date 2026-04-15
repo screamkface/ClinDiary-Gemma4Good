@@ -26,7 +26,7 @@ class ClinDiaryApp extends ConsumerWidget {
       scrollBehavior: const _MinimalScrollBehavior(),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
-      locale: const Locale('en'),
+      locale: displaySettings.locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,

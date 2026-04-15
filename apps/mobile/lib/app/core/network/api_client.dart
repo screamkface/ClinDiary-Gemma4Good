@@ -226,7 +226,9 @@ class ApiClient {
     if (_localDatabase == null) {
       return;
     }
-    final activeProfileId = await _localDatabase.readCache(activeProfileIdCacheKey);
+    final activeProfileId = await _localDatabase.readCache(
+      activeProfileIdCacheKey,
+    );
     await _localDatabase.enqueuePendingOperation(
       method: method,
       path: path,
@@ -309,10 +311,7 @@ class ApiClient {
       now.add(const Duration(seconds: 30)),
     )) {
       await _handleExpiredSession();
-      throw ApiException(
-        'Sessione scaduta. Accedi di nuovo.',
-        statusCode: 401,
-      );
+      throw ApiException('Session expired. Sign in again.', statusCode: 401);
     }
 
     if (session.accessTokenExpiresAt.isAfter(
@@ -323,13 +322,13 @@ class ApiClient {
 
     try {
       final response = await _client.post(
-      _uri('/api/v1/auth/refresh'),
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({'refresh_token': session.refreshToken}),
-    );
+        _uri('/api/v1/auth/refresh'),
+        headers: const {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'refresh_token': session.refreshToken}),
+      );
 
       final decoded = _decodeMap(response);
       final refreshed = AuthSession.fromJson(decoded);
@@ -340,10 +339,7 @@ class ApiClient {
         rethrow;
       }
       await _handleExpiredSession();
-      throw ApiException(
-        'Sessione scaduta. Accedi di nuovo.',
-        statusCode: 401,
-      );
+      throw ApiException('Session expired. Sign in again.', statusCode: 401);
     }
   }
 
@@ -410,7 +406,10 @@ class ApiClient {
   }
 
   List<dynamic> _decodeList(http.Response response) {
-    final dynamic decoded = _decodeBodySafely(response.body, fallbackList: true);
+    final dynamic decoded = _decodeBodySafely(
+      response.body,
+      fallbackList: true,
+    );
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded as List<dynamic>;
     }
@@ -434,7 +433,8 @@ class ApiClient {
     } on FormatException {
       return {
         'detail': {
-          'message': 'Il server ha risposto con un errore non leggibile. Controlla i log backend.',
+          'message':
+              'The server returned an unreadable error. Check the backend logs.',
           'raw_body': body,
         },
       };

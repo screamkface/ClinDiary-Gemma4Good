@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
 import 'package:clindiary/features/documents/data/documents_repository.dart';
@@ -21,6 +22,7 @@ class FakeApiClient extends ApiClient {
         client: _client,
         config: defaultAppConfig,
         tokenStorage: SecureTokenStorage(const FlutterSecureStorage()),
+        sessionExpiryNotifier: SessionExpiryNotifier(),
         localDatabase: localDatabase,
       );
 

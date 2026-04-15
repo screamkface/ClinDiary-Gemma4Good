@@ -82,7 +82,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final activeProfileId = ref.watch(activeProfileIdProvider).asData?.value;
     final billingStatusAsync = ref.watch(billingStatusProvider);
     final requiresAiPlan = _reportType != 'screening_status_report';
@@ -121,51 +121,55 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 const ClinicalScopeNotice(
-                  title: 'Report informativo',
+                  title: 'Informational report',
                   message:
-                      'I report AI servono per organizzare informazioni e andamento clinico. Non equivalgono a una valutazione medica o a una prescrizione.',
+                      'AI reports are used to organize information and clinical trends. They are not equivalent to a medical assessment or prescription.',
                   icon: Icons.description_outlined,
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Genera report',
-                  subtitle: 'Scegli il periodo e crea un report ordinato.',
+                  title: 'Generate report',
+                  subtitle: 'Choose the period and create an ordered report.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: _reportType,
-                        decoration: const InputDecoration(labelText: 'Tipo report'),
+                        decoration: const InputDecoration(
+                          labelText: 'Report type',
+                        ),
                         items: const [
                           DropdownMenuItem(
                             value: 'weekly_summary',
-                            child: Text('Recap settimanale'),
+                            child: Text('Weekly recap'),
                           ),
                           DropdownMenuItem(
                             value: 'monthly_summary',
-                            child: Text('Recap mensile'),
+                            child: Text('Monthly recap'),
                           ),
                           DropdownMenuItem(
                             value: 'pre_visit_report',
-                            child: Text('Preparazione visita'),
+                            child: Text('Visit preparation'),
                           ),
                           DropdownMenuItem(
                             value: 'screening_status_report',
-                            child: Text('Stato prevenzione'),
+                            child: Text('Prevention status'),
                           ),
                         ],
                         onChanged: (value) {
-                          setState(() => _reportType = value ?? 'weekly_summary');
+                          setState(
+                            () => _reportType = value ?? 'weekly_summary',
+                          );
                         },
                       ),
                       const SizedBox(height: 16),
                       if (proactiveLock)
                         FeatureLockCard(
-                          title: 'AI Plus richiesto',
+                          title: 'AI Plus required',
                           compact: true,
-                          featureLabel: 'Report AI',
+                          featureLabel: 'AI reports',
                           message:
-                              'I report narrativi AI fanno parte di ClinDiary AI Plus. Il report prevenzione deterministico resta disponibile anche nel piano Free.',
+                              'Narrative AI reports are part of ClinDiary AI Plus. The deterministic prevention report remains available on the Free plan.',
                           onOpenBilling: () => context.push(
                             '/app/home/billing?feature=ai_report_generation',
                           ),
@@ -175,7 +179,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           onPressed: _isGenerating ? null : _generateReport,
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: Text(
-                            _isGenerating ? 'Generazione...' : 'Rigenera report',
+                            _isGenerating
+                                ? 'Generating...'
+                                : 'Regenerate report',
                           ),
                         ),
                     ],
@@ -189,13 +195,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 if (_latestReport != null)
                   SectionCard(
                     title: _latestReport!.title,
-                    subtitle: 'Ultimo report disponibile per il profilo attivo.',
+                    subtitle: 'Latest report available for the active profile.',
                     action: FilledButton.tonalIcon(
                       onPressed: _latestReport!.downloadUrl == null
                           ? null
                           : () => _openReport(_latestReport!),
                       icon: const Icon(Icons.open_in_new),
-                      label: const Text('Apri PDF'),
+                      label: const Text('Open PDF'),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +210,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            Chip(label: Text(_labelFor(_latestReport!.reportType))),
+                            Chip(
+                              label: Text(_labelFor(_latestReport!.reportType)),
+                            ),
                             Chip(
                               label: Text(
                                 '${_latestReport!.periodStart.toIso8601String().split('T').first} - ${_latestReport!.periodEnd.toIso8601String().split('T').first}',
@@ -238,9 +246,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   )
                 else
                   const SectionCard(
-                    title: 'Ultimo report',
+                    title: 'Latest report',
                     child: Text(
-                      'Non hai ancora generato report per questo profilo.',
+                      'You have not generated a report for this profile yet.',
                     ),
                   ),
               ],
@@ -255,12 +263,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 String _labelFor(String reportType) {
   switch (reportType) {
     case 'monthly_summary':
-      return 'Recap mensile';
+      return 'Monthly recap';
     case 'pre_visit_report':
-      return 'Preparazione visita';
+      return 'Visit preparation';
     case 'screening_status_report':
-      return 'Stato prevenzione';
+      return 'Prevention status';
     default:
-      return 'Recap settimanale';
+      return 'Weekly recap';
   }
 }

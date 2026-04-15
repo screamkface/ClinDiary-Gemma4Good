@@ -114,6 +114,9 @@ def test_hackathon_demo_mode_unlocks_ai_for_demo_user(client, monkeypatch):
         assert status_response.status_code == 200
         body = status_response.json()
         assert body["hackathon_demo_mode"] is True
+        assert body["current_plan"]["code"] == "ai_plus_yearly"
+        assert body["has_active_paid_subscription"] is True
+        assert body["active_subscription"]["plan"]["code"] == "ai_plus_yearly"
         assert "ai_daily_summary" in body["entitlement_codes"]
 
         insight_response = client.get("/api/v1/insights/daily", headers=headers)

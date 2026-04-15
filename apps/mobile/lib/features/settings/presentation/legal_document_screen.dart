@@ -5,19 +5,19 @@ import 'package:flutter/services.dart';
 
 enum LegalDocumentType {
   privacy(
-    title: 'Informativa privacy beta',
+    title: 'Beta privacy notice',
     assetPath: 'assets/legal/privacy-notice-beta.md',
-    description: 'Trattamento dati e struttura del prodotto.',
+    description: 'Data handling and product structure.',
   ),
   ai(
-    title: 'Nota AI beta',
+    title: 'Beta AI note',
     assetPath: 'assets/legal/ai-notice-beta.md',
-    description: 'Uso prudente dell AI e provider esterni.',
+    description: 'Prudent AI use and external providers.',
   ),
   portability(
-    title: 'Portabilità e retention beta',
+    title: 'Beta portability and retention',
     assetPath: 'assets/legal/portability-retention-beta.md',
-    description: 'Export, account deletion e lifecycle dati.',
+    description: 'Export, account deletion, and data lifecycle.',
   );
 
   const LegalDocumentType({

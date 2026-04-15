@@ -1,35 +1,35 @@
-# Informativa privacy beta
+# Beta privacy notice
 
-ClinDiary tratta dati sanitari e dati personali per offrire diario clinico, storico, prevenzione, documenti e funzioni di supporto prudente.
+ClinDiary processes health and personal data to provide a clinical diary, history, prevention, documents, and cautious support features.
 
-## Cosa raccogliamo
+## What we collect
 
-- dati anagrafici e di profilo
-- diario giornaliero, sintomi e parametri
-- documenti caricati
-- farmaci, screening e follow-up
-- wearable, se collegati
+- identity and profile data
+- daily diary, symptoms, and measurements
+- uploaded documents
+- medications, screenings, and follow-up
+- wearables, if connected
 
-## Come usiamo i dati
+## How we use the data
 
-- per mostrare il tuo storico clinico personale
-- per generare timeline, promemoria e prevenzione personalizzata
-- per produrre recap prudenti e report, se la funzione e abilitata
+- to show your personal clinical history
+- to generate timeline, reminders, and personalized prevention
+- to produce cautious recaps and reports, if the feature is enabled
 
-## Archiviazione
+## Storage
 
-- piano free: i documenti nuovi restano sul dispositivo
-- piano AI Plus: i documenti possono essere salvati nel cloud ClinDiary
+- free plan: new documents stay on the device
+- AI Plus plan: documents can be saved in the ClinDiary cloud
 
-## Diritti dell'utente
+## User rights
 
-Da ClinDiary puoi gia:
+From ClinDiary you can already:
 
-- esportare dossier PDF
-- esportare backup JSON
-- revocare il consenso all'AI esterna
-- eliminare l'account
+- export a PDF dossier
+- export a JSON backup
+- revoke consent for external AI
+- delete the account
 
-## Stato del documento
+## Document status
 
-Questa e una informativa beta interna al prodotto. Prima del go-live pubblico deve essere sostituita dal testo finale validato legalmente.
+This is an internal beta privacy notice. Before public go-live it must be replaced by the final legally validated text.

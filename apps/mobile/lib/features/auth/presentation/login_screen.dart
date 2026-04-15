@@ -19,7 +19,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _passwordController = TextEditingController(text: 'ChangeMe123!');
   bool _isSubmitting = false;
   bool _isGoogleSubmitting = false;
 
@@ -50,14 +50,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.signInFailed(error.message))),
-      );
-    } catch (error) {
-      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(
+      ).showSnackBar(SnackBar(content: Text(l10n.signInFailed(error.message))));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.signInFailed(error.toString()))),
       );
     } finally {
@@ -71,9 +69,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l10n = AppLocalizations.of(context)!;
     final clientId = ref.read(appConfigProvider).googleAuthClientId.trim();
     if (clientId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.googleAuthNotConfigured)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.googleAuthNotConfigured)));
       return;
     }
 
@@ -134,9 +132,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _requestPasswordReset() async {
     final l10n = AppLocalizations.of(context)!;
     if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.passwordResetPrompt)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.passwordResetPrompt)));
       return;
     }
 
@@ -158,9 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.passwordResetFailed(error.toString()))),
       );
     }
@@ -168,7 +164,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final googleAuthClientId = ref.watch(appConfigProvider).googleAuthClientId.trim();
+    final googleAuthClientId = ref
+        .watch(appConfigProvider)
+        .googleAuthClientId
+        .trim();
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -204,13 +203,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 children: [
                                   Text(
                                     l10n.appTitle,
-                                    style: Theme.of(context).textTheme.headlineMedium
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
                                         ?.copyWith(fontWeight: FontWeight.w900),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     l10n.appSubtitle,
-                                    style: Theme.of(context).textTheme.bodyLarge,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyLarge,
                                   ),
                                 ],
                               ),
@@ -221,7 +224,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(labelText: l10n.emailLabel),
+                          decoration: InputDecoration(
+                            labelText: l10n.emailLabel,
+                          ),
                           validator: (value) {
                             if (value == null || !value.contains('@')) {
                               return l10n.emailInvalid;

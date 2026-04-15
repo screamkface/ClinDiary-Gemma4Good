@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
 import 'package:clindiary/features/prevention_center/data/prevention_center_repository.dart';
@@ -20,6 +21,7 @@ class FakeApiClient extends ApiClient {
         client: _client,
         config: defaultAppConfig,
         tokenStorage: SecureTokenStorage(const FlutterSecureStorage()),
+        sessionExpiryNotifier: SessionExpiryNotifier(),
         localDatabase: localDatabase,
       );
 
@@ -117,121 +119,130 @@ void main() {
       expect(cached, isNotNull);
     });
 
-    test('screenings repository falls back to legacy cache for Italy', () async {
-      final database = LocalDatabase.forTesting(NativeDatabase.memory());
-      final apiClient = FakeApiClient(localDatabase: database);
-      addTearDown(database.close);
-      addTearDown(apiClient.dispose);
+    test(
+      'screenings repository falls back to legacy cache for Italy',
+      () async {
+        final database = LocalDatabase.forTesting(NativeDatabase.memory());
+        final apiClient = FakeApiClient(localDatabase: database);
+        addTearDown(database.close);
+        addTearDown(apiClient.dispose);
 
-      await database.putCache(
-        key: 'screenings_catalog',
-        payload: jsonEncode([
-          {
-            'id': 'program-legacy',
-            'code': 'blood_pressure_adults',
-            'name': 'Controllo pressione arteriosa',
-            'description': 'Screening periodico',
-            'min_age': 18,
-            'max_age': null,
-            'target_sex': null,
-            'interval_months': 12,
-            'public_coverage_flag': false,
-            'category': 'cardiometabolico',
-            'care_pathway': 'discuss_with_doctor',
-            'recommendation_level': 'routine',
-            'cadence_label': 'Periodico',
-            'catalog_only': false,
-            'explanation': null,
-            'active': true,
-            'regional_availability': const [],
-          },
-        ]),
-      );
+        await database.putCache(
+          key: 'screenings_catalog',
+          payload: jsonEncode([
+            {
+              'id': 'program-legacy',
+              'code': 'blood_pressure_adults',
+              'name': 'Controllo pressione arteriosa',
+              'description': 'Screening periodico',
+              'min_age': 18,
+              'max_age': null,
+              'target_sex': null,
+              'interval_months': 12,
+              'public_coverage_flag': false,
+              'category': 'cardiometabolico',
+              'care_pathway': 'discuss_with_doctor',
+              'recommendation_level': 'routine',
+              'cadence_label': 'Periodico',
+              'catalog_only': false,
+              'explanation': null,
+              'active': true,
+              'regional_availability': const [],
+            },
+          ]),
+        );
 
-      final repository = ScreeningsRepository(
-        apiClient: apiClient,
-        localDatabase: database,
-      );
+        final repository = ScreeningsRepository(
+          apiClient: apiClient,
+          localDatabase: database,
+        );
 
-      final items = await repository.fetchCatalog(regionCode: 'IT');
-      expect(items, hasLength(1));
-      expect(items.single.code, 'blood_pressure_adults');
-    });
+        final items = await repository.fetchCatalog(regionCode: 'IT');
+        expect(items, hasLength(1));
+        expect(items.single.code, 'blood_pressure_adults');
+      },
+    );
 
-    test('prevention center repository uses region-specific cache keys', () async {
-      final database = LocalDatabase.forTesting(NativeDatabase.memory());
-      final apiClient = FakeApiClient(localDatabase: database);
-      apiClient.mapResponse = {
-        'generated_at': '2026-03-25T15:45:00Z',
-        'display_name': 'Anna Bianchi',
-        'age': 34,
-        'biological_sex': 'female',
-        'region_code': 'IT-LOM',
-        'region_name': 'Lombardia',
-        'overview': {
-          'actionable_screenings': 2,
-          'vaccine_reviews': 3,
-          'seasonal_checks': 1,
-          'follow_up_items': 1,
-        },
-        'annual_visit': null,
-        'visits_and_controls': <Map<String, dynamic>>[],
-        'vaccines': <Map<String, dynamic>>[],
-        'seasonal_checks': <Map<String, dynamic>>[],
-        'follow_up_reminders': <Map<String, dynamic>>[],
-      };
-      addTearDown(database.close);
-      addTearDown(apiClient.dispose);
-
-      final repository = PreventionCenterRepository(
-        apiClient: apiClient,
-        localDatabase: database,
-      );
-
-      final center = await repository.fetchCenter(regionCode: 'IT-LOM');
-      final cached = await database.readCache('prevention_center::IT-LOM');
-
-      expect(apiClient.lastGetJsonPath, contains('region_code=IT-LOM'));
-      expect(center.regionCode, 'IT-LOM');
-      expect(center.regionName, 'Lombardia');
-      expect(cached, isNotNull);
-    });
-
-    test('prevention center repository falls back to legacy cache for Italy', () async {
-      final database = LocalDatabase.forTesting(NativeDatabase.memory());
-      final apiClient = FakeApiClient(localDatabase: database);
-      addTearDown(database.close);
-      addTearDown(apiClient.dispose);
-
-      await database.putCache(
-        key: 'prevention_center',
-        payload: jsonEncode({
+    test(
+      'prevention center repository uses region-specific cache keys',
+      () async {
+        final database = LocalDatabase.forTesting(NativeDatabase.memory());
+        final apiClient = FakeApiClient(localDatabase: database);
+        apiClient.mapResponse = {
           'generated_at': '2026-03-25T15:45:00Z',
           'display_name': 'Anna Bianchi',
           'age': 34,
           'biological_sex': 'female',
+          'region_code': 'IT-LOM',
+          'region_name': 'Lombardia',
           'overview': {
-            'actionable_screenings': 1,
-            'vaccine_reviews': 2,
+            'actionable_screenings': 2,
+            'vaccine_reviews': 3,
             'seasonal_checks': 1,
-            'follow_up_items': 0,
+            'follow_up_items': 1,
           },
           'annual_visit': null,
           'visits_and_controls': <Map<String, dynamic>>[],
           'vaccines': <Map<String, dynamic>>[],
           'seasonal_checks': <Map<String, dynamic>>[],
           'follow_up_reminders': <Map<String, dynamic>>[],
-        }),
-      );
+        };
+        addTearDown(database.close);
+        addTearDown(apiClient.dispose);
 
-      final repository = PreventionCenterRepository(
-        apiClient: apiClient,
-        localDatabase: database,
-      );
+        final repository = PreventionCenterRepository(
+          apiClient: apiClient,
+          localDatabase: database,
+        );
 
-      final center = await repository.fetchCenter(regionCode: 'IT');
-      expect(center.displayName, 'Anna Bianchi');
-      expect(center.overview.actionableScreenings, 1);
-    });
+        final center = await repository.fetchCenter(regionCode: 'IT-LOM');
+        final cached = await database.readCache('prevention_center::IT-LOM');
+
+        expect(apiClient.lastGetJsonPath, contains('region_code=IT-LOM'));
+        expect(center.regionCode, 'IT-LOM');
+        expect(center.regionName, 'Lombardia');
+        expect(cached, isNotNull);
+      },
+    );
+
+    test(
+      'prevention center repository falls back to legacy cache for Italy',
+      () async {
+        final database = LocalDatabase.forTesting(NativeDatabase.memory());
+        final apiClient = FakeApiClient(localDatabase: database);
+        addTearDown(database.close);
+        addTearDown(apiClient.dispose);
+
+        await database.putCache(
+          key: 'prevention_center',
+          payload: jsonEncode({
+            'generated_at': '2026-03-25T15:45:00Z',
+            'display_name': 'Anna Bianchi',
+            'age': 34,
+            'biological_sex': 'female',
+            'overview': {
+              'actionable_screenings': 1,
+              'vaccine_reviews': 2,
+              'seasonal_checks': 1,
+              'follow_up_items': 0,
+            },
+            'annual_visit': null,
+            'visits_and_controls': <Map<String, dynamic>>[],
+            'vaccines': <Map<String, dynamic>>[],
+            'seasonal_checks': <Map<String, dynamic>>[],
+            'follow_up_reminders': <Map<String, dynamic>>[],
+          }),
+        );
+
+        final repository = PreventionCenterRepository(
+          apiClient: apiClient,
+          localDatabase: database,
+        );
+
+        final center = await repository.fetchCenter(regionCode: 'IT');
+        expect(center.displayName, 'Anna Bianchi');
+        expect(center.overview.actionableScreenings, 1);
+      },
+    );
   });
 }

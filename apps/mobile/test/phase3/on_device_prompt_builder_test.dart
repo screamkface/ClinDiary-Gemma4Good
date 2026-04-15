@@ -10,7 +10,7 @@ class MockLocalDatabase extends Mock implements LocalDatabase {}
 
 void main() {
   test(
-    'on-device prompt builder usa la cache locale quando disponibile',
+    'on-device prompt builder uses the local cache when available',
     () async {
       final database = MockLocalDatabase();
 
@@ -246,16 +246,13 @@ void main() {
 
       expect(prompt, isNotNull);
       expect(prompt!.suggestedModelFamily, 'Gemma 4');
-      expect(
-        prompt.systemPrompt,
-        contains('Usa esclusivamente i dati presenti'),
-      );
+      expect(prompt.systemPrompt, contains('Use only the data present'));
       expect(prompt.userPrompt, contains('Giulia Rossi'));
       expect(prompt.userPrompt, contains('Salbutamolo'));
-      expect(prompt.userPrompt, contains('4200 passi'));
-      expect(prompt.userPrompt, contains('"general_note_tags":["tosse"]'));
-      expect(prompt.userPrompt, contains('"general_notes":"tags: tosse"'));
-      expect(prompt.userPrompt, contains('"note_tags":["stress_lavoro"]'));
+      expect(prompt.userPrompt, contains('4200 steps'));
+      expect(prompt.userPrompt, contains('"general_note_tags":["cough"]'));
+      expect(prompt.userPrompt, contains('"general_notes":"tags: cough"'));
+      expect(prompt.userPrompt, contains('"note_tags":["work_stress"]'));
       expect(prompt.userPrompt, isNot(contains('Tosse leggera al mattino.')));
       expect(
         prompt.userPrompt,

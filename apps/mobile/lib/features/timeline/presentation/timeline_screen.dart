@@ -18,7 +18,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final timelineAsync = ref.watch(timelineEventsProvider);
-    final dateTimeFormat = DateFormat('dd MMM · HH:mm', 'it_IT');
+    final dateTimeFormat = DateFormat('dd MMM · HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
@@ -33,7 +33,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
       body: timelineAsync.when(
         data: (events) {
           if (events.isEmpty) {
-            return const Center(child: Text('Timeline vuota.'));
+            return const Center(child: Text('Timeline is empty.'));
           }
           final filteredEvents = events
               .where((event) => _matchesFilter(event, _selectedFilter))
@@ -44,13 +44,13 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: 'Eventi',
-                subtitle: 'Organizzati per giorno.',
+                title: 'Events',
+                subtitle: 'Organized by day.',
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    Chip(label: Text('${filteredEvents.length} eventi')),
+                    Chip(label: Text('${filteredEvents.length} events')),
                     Chip(label: Text('${groups.length} giorni')),
                     Chip(
                       label: Text(
@@ -114,8 +114,8 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               const SizedBox(height: 12),
               if (filteredEvents.isEmpty)
                 const SectionCard(
-                  title: 'Risultato',
-                  child: Text('Nessun evento per questo filtro.'),
+                  title: 'Result',
+                  child: Text('No events for this filter.'),
                 )
               else
                 ...groups.map(
@@ -163,7 +163,7 @@ class _TimelineDaySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final dayFormat = DateFormat('EEEE dd MMMM', 'it_IT');
+    final dayFormat = DateFormat('EEEE dd MMMM', 'en_US');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,7 +228,7 @@ class _TimelineEventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final timeFormat = DateFormat('HH:mm', 'it_IT');
+    final timeFormat = DateFormat('HH:mm', 'en_US');
 
     return Container(
       width: double.infinity,
@@ -349,10 +349,10 @@ String _timelineDayLabel(DateTime day, DateFormat formatter) {
   final yesterday = today.subtract(const Duration(days: 1));
 
   if (day == today) {
-    return 'Oggi';
+    return 'Today';
   }
   if (day == yesterday) {
-    return 'Ieri';
+    return 'Yesterday';
   }
   return formatter.format(day);
 }

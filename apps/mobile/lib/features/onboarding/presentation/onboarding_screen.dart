@@ -109,6 +109,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ref.invalidate(preventionCenterProvider);
       ref.invalidate(notificationsProvider);
       ref.invalidate(timelineEventsProvider);
+      ref.invalidate(billingStatusProvider);
       if (!mounted) return;
       context.go('/app/home');
     } on ApiException catch (error) {
@@ -223,7 +224,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               decimal: true,
                             ),
                             decoration: const InputDecoration(
-                              labelText: 'Peso (kg)',
+                              labelText: 'Weight (kg)',
                             ),
                           ),
                         ),
@@ -234,34 +235,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       value: _smoker,
                       onChanged: (value) => setState(() => _smoker = value),
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Fumatore'),
+                      title: const Text('Smoker'),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: _activityLevel,
                       decoration: const InputDecoration(
-                        labelText: 'Livello di attivita',
+                        labelText: 'Activity level',
                       ),
                       items: const [
                         DropdownMenuItem(
                           value: 'sedentary',
-                          child: Text('Sedentario'),
+                          child: Text('Sedentary'),
                         ),
-                        DropdownMenuItem(
-                          value: 'light',
-                          child: Text('Leggero'),
-                        ),
+                        DropdownMenuItem(value: 'light', child: Text('Light')),
                         DropdownMenuItem(
                           value: 'moderate',
-                          child: Text('Moderato'),
+                          child: Text('Moderate'),
                         ),
                         DropdownMenuItem(
                           value: 'active',
-                          child: Text('Attivo'),
+                          child: Text('Active'),
                         ),
                         DropdownMenuItem(
                           value: 'very_active',
-                          child: Text('Molto attivo'),
+                          child: Text('Very active'),
                         ),
                       ],
                       onChanged: (value) =>
@@ -271,9 +269,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _regionCode,
                       decoration: const InputDecoration(
-                        labelText: 'Regione di screening',
+                        labelText: 'Screening region',
                         helperText:
-                            'Serve per adattare screening e prevenzione alla tua area.',
+                            'Used to adapt screenings and prevention to your area.',
                       ),
                       items: italianRegionOptions
                           .map(
@@ -290,19 +288,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _alcoholUse,
                       decoration: const InputDecoration(
-                        labelText: 'Consumo di alcol',
+                        labelText: 'Alcohol use',
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'none', child: Text('Nullo')),
+                        DropdownMenuItem(value: 'none', child: Text('None')),
                         DropdownMenuItem(
                           value: 'occasional',
-                          child: Text('Occasionale'),
+                          child: Text('Occasional'),
                         ),
                         DropdownMenuItem(
                           value: 'moderate',
-                          child: Text('Moderato'),
+                          child: Text('Moderate'),
                         ),
-                        DropdownMenuItem(value: 'high', child: Text('Elevato')),
+                        DropdownMenuItem(value: 'high', child: Text('High')),
                       ],
                       onChanged: (value) => setState(() => _alcoholUse = value),
                     ),
@@ -310,8 +308,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     TextFormField(
                       controller: _exerciseHabitsController,
                       decoration: const InputDecoration(
-                        labelText: 'Sport o attivita fisica abituale',
-                        hintText: 'Es. corsa 3 volte a settimana',
+                        labelText: 'Usual exercise or physical activity',
+                        hintText: 'E.g. running 3 times a week',
                       ),
                       maxLines: 2,
                     ),
@@ -319,8 +317,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     TextFormField(
                       controller: _sleepPatternController,
                       decoration: const InputDecoration(
-                        labelText: 'Sonno abituale',
-                        hintText: 'Es. sonno irregolare per turni',
+                        labelText: 'Usual sleep pattern',
+                        hintText: 'E.g. irregular sleep due to shifts',
                       ),
                       maxLines: 2,
                     ),
@@ -328,8 +326,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     TextFormField(
                       controller: _occupationController,
                       decoration: const InputDecoration(
-                        labelText: 'Lavoro o contesto quotidiano',
-                        hintText: 'Es. lavoro sedentario / turni notturni',
+                        labelText: 'Work or daily context',
+                        hintText: 'E.g. sedentary job / night shifts',
                       ),
                       maxLines: 2,
                     ),
@@ -337,8 +335,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     TextFormField(
                       controller: _symptomTriggersController,
                       decoration: const InputDecoration(
-                        labelText: 'Trigger noti dei sintomi',
-                        hintText: 'Es. stress, poco sonno, sforzi intensi',
+                        labelText: 'Known symptom triggers',
+                        hintText: 'E.g. stress, little sleep, intense exertion',
                       ),
                       maxLines: 2,
                     ),
@@ -346,8 +344,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     TextFormField(
                       controller: _functionalLimitationsController,
                       decoration: const InputDecoration(
-                        labelText: 'Limitazioni funzionali',
-                        hintText: 'Es. fatica a fare scale o lavorare a lungo',
+                        labelText: 'Functional limitations',
+                        hintText: 'E.g. trouble with stairs or prolonged work',
                       ),
                       maxLines: 2,
                     ),
@@ -357,16 +355,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           setState(() => _consent = value ?? false),
                       contentPadding: EdgeInsets.zero,
                       title: const Text(
-                        'Acconsento al trattamento dei dati sanitari',
+                        'I consent to the processing of health data',
                       ),
-                      subtitle: const Text('Richiesto per usare ClinDiary.'),
+                      subtitle: const Text('Required to use ClinDiary.'),
                     ),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: () => context.push('/legal/privacy'),
                         icon: const Icon(Icons.description_outlined),
-                        label: const Text('Leggi la privacy beta'),
+                        label: const Text('Read the beta privacy notice'),
                       ),
                     ),
                     CheckboxListTile(
@@ -375,10 +373,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           setState(() => _aiConsent = value ?? false),
                       contentPadding: EdgeInsets.zero,
                       title: const Text(
-                        'Consento all\'uso di provider AI esterni',
+                        'I consent to the use of external AI providers',
                       ),
                       subtitle: const Text(
-                        'Se attivo, i recap possono usare provider AI esterni configurati dal backend. Se disattivi, ClinDiary resta sul motore prudente locale.',
+                        'If enabled, recaps can use external AI providers configured by the backend. If disabled, ClinDiary stays on the local cautious engine.',
                       ),
                     ),
                     Align(
@@ -386,7 +384,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: TextButton.icon(
                         onPressed: () => context.push('/legal/ai'),
                         icon: const Icon(Icons.psychology_alt_outlined),
-                        label: const Text('Leggi la nota AI beta'),
+                        label: const Text('Read the beta AI note'),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -395,9 +393,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: FilledButton(
                         onPressed: _isSubmitting ? null : _submit,
                         child: Text(
-                          _isSubmitting
-                              ? 'Salvataggio...'
-                              : 'Completa onboarding',
+                          _isSubmitting ? 'Saving...' : 'Complete onboarding',
                         ),
                       ),
                     ),

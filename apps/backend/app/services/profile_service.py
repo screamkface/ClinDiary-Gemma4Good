@@ -18,6 +18,7 @@ from app.models.user import User
 from app.repositories.profile_repository import ProfileRepository
 from app.repositories.timeline_repository import TimelineRepository
 from app.services.audit_service import AuditService
+from app.services.billing_service import BillingService
 from app.services.notification_service import NotificationService
 
 
@@ -88,6 +89,7 @@ class ProfileService:
         self.db.refresh(profile)
         self.db.refresh(onboarding)
         self._refresh_profile_dependent_rules(profile.id)
+        BillingService(self.db).ensure_demo_ai_plus_subscription(user)
         return self.get_bundle(user)
 
     def update_ai_privacy(self, user: User, payload):

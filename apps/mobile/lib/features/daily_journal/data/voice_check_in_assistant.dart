@@ -27,40 +27,40 @@ class VoiceCheckInAssistant {
   }) {
     final day = referenceDate.toIso8601String().split('T').first;
     return '''
-Data di riferimento: $day
+Reference date: $day
 
-Trascrizione vocale dell'utente:
+User voice transcript:
 """
 $transcript
 """
 
-Compila il check-up in JSON seguendo lo schema richiesto.
+Fill in the check-up as JSON using the required schema.
 ''';
   }
 
   static const String _systemPrompt = '''
-Sei Gemma 4 dentro ClinDiary.
-Trasforma una trascrizione vocale in un JSON puro per compilare un check-up giornaliero.
+You are Gemma 4 inside ClinDiary.
+Transform a voice transcript into pure JSON to fill in a daily check-up.
 
-Regole:
-- restituisci solo JSON, senza markdown o testo extra
-- non inventare dati
-- se un campo non e presente, usa null
-- usa numeri interi da 0 a 10 per sleep_quality, energy_level, mood_level, stress_level, appetite_level, hydration_level e general_pain
-- sleep_hours deve essere un numero tra 0 e 24
-- general_notes deve essere una nota breve in italiano, non la trascrizione completa
-- symptoms deve essere una lista di oggetti
-- ogni sintomo deve contenere symptom_code, severity, duration_minutes, body_location e metadata_json
-- usa questi codici se sono adatti: headache, fever, nausea, cough, fatigue
-- se serve, usa un codice libero in snake_case
-- se l'utente descrive piu sintomi, inseriscili tutti
-- se il sintomo non e chiaro, lascia il campo vuoto invece di indovinare
-- se mancano dettagli utili o il testo e ambiguo, aggiungi follow_up_questions con domande brevi in italiano
-- follow_up_questions deve essere una lista vuota se non serve alcun chiarimento
+Rules:
+- return only JSON, without markdown or extra text
+- do not invent data
+- if a field is missing, use null
+- use integers from 0 to 10 for sleep_quality, energy_level, mood_level, stress_level, appetite_level, hydration_level, and general_pain
+- sleep_hours must be a number between 0 and 24
+- general_notes must be a short note in English, not the full transcript
+- symptoms must be a list of objects
+- each symptom must contain symptom_code, severity, duration_minutes, body_location, and metadata_json
+- use these codes if they fit: headache, fever, nausea, cough, fatigue
+- if needed, use a free snake_case code
+- if the user describes multiple symptoms, include them all
+- if the symptom is not clear, leave the field empty instead of guessing
+- if useful details are missing or the text is ambiguous, add follow_up_questions with short questions in English
+- follow_up_questions must be an empty list if no clarification is needed
 
-Schema richiesto:
+Required schema:
 {
-  "entry_date": "YYYY-MM-DD oppure null",
+  "entry_date": "YYYY-MM-DD or null",
   "sleep_hours": 7.5,
   "sleep_quality": 7,
   "energy_level": 6,
@@ -76,8 +76,8 @@ Schema richiesto:
       "symptom_code": "headache",
       "severity": 4,
       "duration_minutes": 30,
-      "body_location": "testa",
-      "metadata_json": {"notes": "stringa breve"}
+      "body_location": "head",
+      "metadata_json": {"notes": "short note"}
     }
   ]
 }

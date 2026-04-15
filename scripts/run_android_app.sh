@@ -410,18 +410,22 @@ main() {
   detect_android_device
 
   local api_base_url
+  local hackathon_demo_mode
   api_base_url="$(configure_android_networking)"
+  hackathon_demo_mode="${HACKATHON_DEMO_MODE:-false}"
   info "API_BASE_URL usato da Flutter: $api_base_url"
-  info "Credenziali demo: demo@clindiary.local / ChangeMe123!"
+  info "Hackathon demo mode: $hackathon_demo_mode"
+  info "Credenziali demo: demo@clindiary.app / ChangeMe123!"
 
   (
     cd "$MOBILE_DIR"
     flutter run \
         -d "$DEVICE_ID" \
         --dart-define="API_BASE_URL=$api_base_url" \
+        --dart-define="HACKATHON_DEMO_MODE=$hackathon_demo_mode" \
         --dart-define="GOOGLE_AUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}" \
         "${FLUTTER_EXTRA_ARGS[@]}"
-    )
+  )
 }
 
 main "$@"

@@ -88,7 +88,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         SnackBar(
           content: Text(
             status.message ??
-                'Promemoria farmaci sincronizzati (${status.scheduledCount}).',
+                'Medication reminders synced (${status.scheduledCount}).',
           ),
         ),
       );
@@ -114,7 +114,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Attiva almeno push o email per eseguire il test.'),
+            content: Text('Enable at least push or email to run the test.'),
           ),
         );
         return;
@@ -163,8 +163,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         SnackBar(
           content: Text(
             status.permissionGranted
-                ? 'Permesso notifiche abilitato.'
-                : (status.message ?? 'Permesso notifiche non concesso.'),
+                ? 'Notification permission enabled.'
+                : (status.message ?? 'Notification permission not granted.'),
           ),
         ),
       );
@@ -183,11 +183,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       localMedicationReminderStatusProvider,
     );
     final profileAsync = ref.watch(profileBundleProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifiche'),
+        title: const Text('Notifications'),
         actions: [
           IconButton(
             onPressed: () {
@@ -204,10 +204,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         children: [
           notificationsAsync.when(
             data: (items) => SectionCard(
-              title: 'Panoramica',
-              subtitle: 'Stato notifiche e promemoria.',
+              title: 'Overview',
+              subtitle: 'Notification and reminder status.',
               action: Tooltip(
-                message: 'Invia test notifiche',
+                message: 'Send test notifications',
                 child: FilledButton.tonalIcon(
                   onPressed: _sendingTestDelivery ? null : _sendTestDelivery,
                   icon: _sendingTestDelivery
@@ -217,7 +217,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.send_outlined),
-                  label: const Text('Test notifiche'),
+                  label: const Text('Test notifications'),
                 ),
               ),
               child: Column(
@@ -227,17 +227,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      Chip(label: Text('${items.length} totali')),
+                      Chip(label: Text('${items.length} total')),
                       Chip(
                         label: Text(
-                          '${items.where((item) => item.isUnread).length} non lette',
+                          '${items.where((item) => item.isUnread).length} unread',
                         ),
                       ),
                       Chip(
                         label: Text(
                           items.any((item) => item.isUnread)
-                              ? 'Richiedono attenzione'
-                              : 'Tutto letto',
+                              ? 'Need attention'
+                              : 'All read',
                         ),
                       ),
                     ],
@@ -246,17 +246,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               ),
             ),
             loading: () => const SectionCard(
-              title: 'Panoramica',
+              title: 'Overview',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) =>
-                SectionCard(title: 'Panoramica', child: Text(error.toString())),
+                SectionCard(title: 'Overview', child: Text(error.toString())),
           ),
           const SizedBox(height: 16),
           preferencesAsync.when(
             data: (preferences) => SectionCard(
-              title: 'Preferenze reminder',
-              subtitle: 'Attiva solo quello che ti serve.',
+              title: 'Reminder preferences',
+              subtitle: 'Enable only what you need.',
               child: Column(
                 children: [
                   if (_savingPreferences)
@@ -266,7 +266,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     value: preferences.inAppEnabled,
                     onChanged: (value) =>
                         _updatePreference('in_app_enabled', value),
-                    title: const Text('Notifiche attive'),
+                    title: const Text('Notifications enabled'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -275,7 +275,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         ? (value) =>
                               _updatePreference('daily_checkin_enabled', value)
                         : null,
-                    title: const Text('Reminder check-up'),
+                    title: const Text('Check-in reminders'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -286,7 +286,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             value,
                           )
                         : null,
-                    title: const Text('Reminder farmaci'),
+                    title: const Text('Medication reminders'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -297,7 +297,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             value,
                           )
                         : null,
-                    title: const Text('Reminder screening'),
+                    title: const Text('Screening reminders'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -308,7 +308,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             value,
                           )
                         : null,
-                    title: const Text('Follow-up documenti'),
+                    title: const Text('Document follow-up'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -317,7 +317,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         ? (value) =>
                               _updatePreference('report_ready_enabled', value)
                         : null,
-                    title: const Text('Report pronti'),
+                    title: const Text('Reports ready'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -328,7 +328,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             value,
                           )
                         : null,
-                    title: const Text('Alert clinici nelle notifiche'),
+                    title: const Text('Clinical alerts in notifications'),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
@@ -339,30 +339,30 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             value,
                           )
                         : null,
-                    title: const Text('Suggerimenti prevenzione'),
+                    title: const Text('Prevention tips'),
                   ),
                 ],
               ),
             ),
             loading: () => const SectionCard(
-              title: 'Preferenze reminder',
+              title: 'Reminder preferences',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Preferenze reminder',
+              title: 'Reminder preferences',
               child: Text(error.toString()),
             ),
           ),
           const SizedBox(height: 16),
           localRemindersAsync.when(
             data: (status) => SectionCard(
-              title: 'Promemoria locali farmaci',
-              subtitle: 'Creati sul dispositivo.',
+              title: 'Local medication reminders',
+              subtitle: 'Created on the device.',
               action: TextButton(
                 onPressed: _syncingLocalReminders
                     ? null
                     : () => _syncLocalMedicationReminders(),
-                child: Text(_syncingLocalReminders ? '...' : 'Sincronizza'),
+                child: Text(_syncingLocalReminders ? '...' : 'Sync'),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,11 +376,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       Chip(
                         label: Text(
                           status.permissionGranted
-                              ? 'Permesso OK'
-                              : 'Permesso da abilitare',
+                              ? 'Permission granted'
+                              : 'Permission needs to be enabled',
                         ),
                       ),
-                      Chip(label: Text('${status.scheduledCount} promemoria')),
+                      Chip(label: Text('${status.scheduledCount} reminders')),
                       if (status.lastSyncedAt != null)
                         Chip(
                           label: Text(
@@ -403,18 +403,18 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ? null
                           : _requestLocalPermission,
                       icon: const Icon(Icons.notifications_active_outlined),
-                      label: const Text('Abilita notifiche'),
+                      label: const Text('Enable notifications'),
                     ),
                   ],
                 ],
               ),
             ),
             loading: () => const SectionCard(
-              title: 'Promemoria locali farmaci',
+              title: 'Local medication reminders',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Promemoria locali farmaci',
+              title: 'Local medication reminders',
               child: Text(error.toString()),
             ),
           ),
@@ -427,14 +427,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
               if (items.isEmpty) {
                 return const SectionCard(
-                  title: 'Notifiche',
-                  child: Text('Nessuna notifica attiva.'),
+                  title: 'Notifications',
+                  child: Text('No active notifications.'),
                 );
               }
 
               return SectionCard(
-                title: 'Ultime notifiche',
-                subtitle: 'Le più recenti.',
+                title: 'Latest notifications',
+                subtitle: 'Most recent first.',
                 child: Column(
                   children: items.take(12).map((item) {
                     return Padding(
@@ -484,7 +484,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                   ),
                                   Chip(
                                     label: Text(
-                                      item.isUnread ? 'Non letta' : 'Letta',
+                                      item.isUnread ? 'Unread' : 'Read',
                                     ),
                                   ),
                                 ],
@@ -499,7 +499,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                   child: Text(
                                     _markingReadId == item.id
                                         ? '...'
-                                        : 'Segna letta',
+                                        : 'Mark as read',
                                   ),
                                 )
                               : null,
@@ -539,13 +539,13 @@ IconData _iconFor(String notificationType) {
 String _priorityLabel(String priority) {
   switch (priority) {
     case 'urgent':
-      return 'Urgente';
+      return 'Urgent';
     case 'high':
-      return 'Alta';
+      return 'High';
     case 'low':
-      return 'Bassa';
+      return 'Low';
     default:
-      return 'Normale';
+      return 'Normal';
   }
 }
 
@@ -566,7 +566,7 @@ String _profileLabel(PatientProfile profile) {
     parts.add(profile.relationshipLabel!);
   }
   if (profile.isPrimary) {
-    parts.add('principale');
+    parts.add('primary');
   }
   return parts.join(' · ');
 }
@@ -577,7 +577,7 @@ String _formatDeliveryReport(NotificationDeliveryReport report) {
     if (result == null) {
       return;
     }
-    final status = result.delivered ? 'ok' : 'errore';
+    final status = result.delivered ? 'ok' : 'error';
     final chunk = '${result.channel}: $status (${result.provider})';
     if (result.error != null && result.error!.isNotEmpty) {
       parts.add('$chunk - ${result.error}');

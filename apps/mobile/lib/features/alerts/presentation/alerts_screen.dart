@@ -37,7 +37,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     final alertsAsync = ref.watch(alertsProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
@@ -56,7 +56,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'Nessun alert clinico aperto.',
+                  'No open clinical alerts.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -104,9 +104,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                             ),
                           ),
                           Chip(
-                            label: Text(
-                              alert.isResolved ? 'Risolto' : 'Aperto',
-                            ),
+                            label: Text(alert.isResolved ? 'Resolved' : 'Open'),
                           ),
                         ],
                       ),
@@ -121,7 +119,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                           child: Text(
                             _resolvingAlertId == alert.id
                                 ? '...'
-                                : 'Segna risolto',
+                                : 'Mark resolved',
                           ),
                         ),
                 ),

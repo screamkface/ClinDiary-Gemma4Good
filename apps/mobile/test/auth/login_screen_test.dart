@@ -1,6 +1,8 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/auth/presentation/login_screen.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -31,15 +33,34 @@ void main() {
         overrides: [
           authControllerProvider.overrideWith(FakeAuthController.new),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('it'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'patient@example.com',
+    await tester.pumpAndSettle();
+
+    final textFields = find.byType(TextFormField);
+    final passwordField = textFields.at(1);
+
+    expect(
+      tester.widget<TextFormField>(passwordField).controller?.text,
+      'ChangeMe123!',
     );
-    await tester.enterText(find.byType(TextFormField).at(1), 'StrongPass123!');
+
+    final emailField = textFields.at(0);
+
+    await tester.enterText(emailField, 'patient@example.com');
+    await tester.enterText(passwordField, 'StrongPass123!');
     await tester.tap(find.text('Accedi'));
     await tester.pumpAndSettle();
 

@@ -104,17 +104,17 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             ),
             const SizedBox(height: 12),
             SectionCard(
-              title: 'Cosa include',
+              title: 'What it includes',
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: const [
-                  Chip(label: Text('Archivio documenti cloud')),
-                  Chip(label: Text('Recap giornaliero AI')),
-                  Chip(label: Text('Recap settimana e mese')),
-                  Chip(label: Text('Pre-visita prudente')),
-                  Chip(label: Text('Chiedi ai documenti')),
-                  Chip(label: Text('Report AI')),
+                  Chip(label: Text('Cloud document archive')),
+                  Chip(label: Text('Daily AI recap')),
+                  Chip(label: Text('Weekly and monthly recaps')),
+                  Chip(label: Text('Cautious pre-visit')),
+                  Chip(label: Text('Ask documents')),
+                  Chip(label: Text('AI report')),
                 ],
               ),
             ),
@@ -149,20 +149,20 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                 child: LinearProgressIndicator(),
               ),
               error: (error, _) =>
-                  SectionCard(title: 'Piani', child: Text(error.toString())),
+                  SectionCard(title: 'Plans', child: Text(error.toString())),
             ),
             const SizedBox(height: 12),
             SectionCard(
               title: 'Checkout',
               subtitle:
-                  'StoreKit e Google Play Billing arrivano nel passo successivo. Qui il paywall e gia pronto lato prodotto e backend.',
+                  'StoreKit and Google Play Billing come next. Here the paywall is already ready on the product and backend side.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     kDebugMode
-                        ? 'In debug puoi attivare AI Plus in demo per testare il gating server-side.'
-                        : 'Checkout nativo in preparazione.',
+                        ? 'In debug you can enable AI Plus in demo to test server-side gating.'
+                        : 'Native checkout in preparation.',
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -172,12 +172,12 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                       OutlinedButton.icon(
                         onPressed: () => context.push('/legal/ai'),
                         icon: const Icon(Icons.psychology_alt_outlined),
-                        label: const Text('Nota AI beta'),
+                        label: const Text('AI beta note'),
                       ),
                       OutlinedButton.icon(
                         onPressed: () => context.push('/legal/privacy'),
                         icon: const Icon(Icons.description_outlined),
-                        label: const Text('Privacy beta'),
+                        label: const Text('Beta privacy notice'),
                       ),
                     ],
                   ),
@@ -217,7 +217,9 @@ class _CurrentPlanBlock extends StatelessWidget {
             Chip(label: Text(currentPlan.formattedPrice)),
             Chip(
               label: Text(
-                status.hasActivePaidSubscription ? 'AI attiva' : 'Solo core free',
+                status.hasActivePaidSubscription
+                    ? 'AI active'
+                    : 'Free core only',
               ),
             ),
           ],
@@ -225,7 +227,7 @@ class _CurrentPlanBlock extends StatelessWidget {
         if (status.activeSubscription?.currentPeriodEnd != null) ...[
           const SizedBox(height: 12),
           Text(
-            'Attivo fino al ${_shortDate(status.activeSubscription!.currentPeriodEnd!)}',
+            'Active until ${_shortDate(status.activeSubscription!.currentPeriodEnd!)}',
           ),
         ],
         if (kDebugMode && status.hasActivePaidSubscription) ...[
@@ -233,7 +235,7 @@ class _CurrentPlanBlock extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: isUpdatingPlan ? null : onCancel,
             icon: const Icon(Icons.lock_open_outlined),
-            label: const Text('Torna al piano Free'),
+            label: const Text('Back to Free plan'),
           ),
         ],
       ],
@@ -264,12 +266,12 @@ class _PlanCard extends StatelessWidget {
       action: isCurrent
           ? const Chip(label: Text('Attuale'))
           : (kDebugMode && !plan.isFree)
-                ? FilledButton.tonalIcon(
-                    onPressed: isUpdatingPlan ? null : () => onActivate(plan.code),
-                    icon: const Icon(Icons.bolt_outlined),
-                    label: const Text('Attiva demo'),
-                  )
-                : null,
+          ? FilledButton.tonalIcon(
+              onPressed: isUpdatingPlan ? null : () => onActivate(plan.code),
+              icon: const Icon(Icons.bolt_outlined),
+              label: const Text('Attiva demo'),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -278,22 +280,27 @@ class _PlanCard extends StatelessWidget {
             runSpacing: 8,
             children: [
               Chip(label: Text(plan.formattedPrice)),
-              if (plan.highlightLabel != null && plan.highlightLabel!.isNotEmpty)
+              if (plan.highlightLabel != null &&
+                  plan.highlightLabel!.isNotEmpty)
                 Chip(label: Text(plan.highlightLabel!)),
             ],
           ),
           if (plan.featureCodes.isNotEmpty) ...[
             const SizedBox(height: 12),
-            ...plan.featureCodes.map((featureCode) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(_featureLabel(featureCode) ?? featureCode)),
-                ],
+            ...plan.featureCodes.map(
+              (featureCode) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_featureLabel(featureCode) ?? featureCode),
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         ],
       ),
@@ -304,17 +311,17 @@ class _PlanCard extends StatelessWidget {
 String? _featureLabel(String? featureCode) {
   switch (featureCode) {
     case 'ai_daily_summary':
-      return 'Recap giornaliero';
+      return 'Daily recap';
     case 'cloud_document_storage':
-      return 'Archivio documenti cloud';
+      return 'Cloud document archive';
     case 'ai_periodic_summaries':
-      return 'Recap settimana e mese';
+      return 'Weekly and monthly recaps';
     case 'ai_previsit_summary':
-      return 'Recap pre-visita';
+      return 'Pre-visit recap';
     case 'ai_document_query':
-      return 'Domande ai documenti';
+      return 'Ask documents';
     case 'ai_report_generation':
-      return 'Report AI';
+      return 'AI report';
     default:
       return null;
   }

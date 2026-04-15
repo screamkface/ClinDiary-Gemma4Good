@@ -191,7 +191,11 @@ class BillingService:
 
     def activate_manual_subscription(self, user: User, plan_code: str) -> BillingStatusSnapshot:
         self.ensure_catalog_seeded()
-        if not self.settings.debug and self.settings.environment not in {"development", "test"}:
+        if (
+            not self.settings.debug
+            and self.settings.environment not in {"development", "test"}
+            and not self.settings.hackathon_demo_mode
+        ):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Debug billing disabled")
 
         plan = self._require_plan(plan_code)
@@ -217,12 +221,26 @@ class BillingService:
         return self.get_status(user)
 
     def cancel_manual_subscription(self, user: User) -> BillingStatusSnapshot:
-        if not self.settings.debug and self.settings.environment not in {"development", "test"}:
+        if (
+            not self.settings.debug
+            and self.settings.environment not in {"development", "test"}
+            and not self.settings.hackathon_demo_mode
+        ):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Debug billing disabled")
         self.ensure_catalog_seeded()
         self.repository.deactivate_subscriptions_for_user(user.id, at_time=utcnow())
         self.db.commit()
         return self.get_status(user)
+
+    def ensure_demo_ai_plus_subscription(self, user: User) -> BillingStatusSnapshot | None:
+        if not self._is_hackathon_demo_user(user):
+            return None
+
+        status = self.get_status(user)
+        if status.current_plan.code != "free":
+            return status
+
+        return self.activate_manual_subscription(user, "ai_plus_yearly")
 
     def report_feature_code(self, report_type) -> str | None:
         value = getattr(report_type, "value", str(report_type))

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 ThemeData buildClinDiaryTheme({required Brightness brightness}) {
   final isDark = brightness == Brightness.dark;
@@ -30,9 +29,10 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
         ),
   );
 
-  final textTheme = GoogleFonts.manropeTextTheme(
-    baseTheme.textTheme,
-  ).apply(bodyColor: ink, displayColor: ink);
+  final textTheme = baseTheme.textTheme.apply(
+    bodyColor: ink,
+    displayColor: ink,
+  );
 
   return baseTheme.copyWith(
     scaffoldBackgroundColor: background,
@@ -78,7 +78,6 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
       ),
       splashFactory: NoSplash.splashFactory,
       overlayColor: WidgetStateProperty.all(Colors.transparent),
-      tabAlignment: TabAlignment.start,
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(

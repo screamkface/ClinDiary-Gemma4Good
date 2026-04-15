@@ -33,14 +33,27 @@ class GemmaCenterHistoryStore {
       return const [];
     }
 
-    return decoded
+    final rawItems = decoded
         .whereType<Map>()
         .map(
-          (item) => GemmaCenterHistoryEntry.fromJson(
-            item.map((key, value) => MapEntry(key.toString(), value)),
-          ),
+          (item) => item.map((key, value) => MapEntry(key.toString(), value)),
         )
         .toList(growable: false);
+    final entries = rawItems
+        .map((item) => GemmaCenterHistoryEntry.fromJson(item))
+        .toList(growable: false);
+
+    final needsMigration = rawItems.any(
+      GemmaCenterHistoryEntry.needsEnglishMigration,
+    );
+    if (needsMigration) {
+      await _localDatabase.putCache(
+        key: scopedCacheKey(_cacheKey, scope),
+        payload: jsonEncode(entries.map((item) => item.toJson()).toList()),
+      );
+    }
+
+    return entries;
   }
 
   Future<void> appendEntry(

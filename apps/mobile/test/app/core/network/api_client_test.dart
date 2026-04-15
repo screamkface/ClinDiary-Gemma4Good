@@ -12,8 +12,8 @@ import 'package:http/http.dart' as http;
 
 class _InMemoryTokenStorage extends SecureTokenStorage {
   _InMemoryTokenStorage(AuthSession? session)
-      : _session = session,
-        super(const FlutterSecureStorage());
+    : _session = session,
+      super(const FlutterSecureStorage());
 
   AuthSession? _session;
 
@@ -35,7 +35,7 @@ class _TestClient extends http.BaseClient {
   _TestClient(this._handler);
 
   final Future<http.StreamedResponse> Function(http.BaseRequest request)
-      _handler;
+  _handler;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
@@ -97,30 +97,30 @@ void main() {
           if (refreshCalls == 1 && !refreshRelease.isCompleted) {
             await refreshRelease.future;
           }
-          return _jsonResponse(
-            {
-              'access_token': 'fresh-access',
-              'refresh_token': 'fresh-refresh',
-              'access_token_expires_at': '2099-01-01T00:00:00.000Z',
-              'refresh_token_expires_at': '2099-01-02T00:00:00.000Z',
-              'user': {
-                'id': 'user-1',
-                'email': 'patient@example.com',
-                'role': 'patient',
-                'onboarding_completed': true,
-                'health_data_consent': true,
-                'auth_provider': 'password',
-              },
+          return _jsonResponse({
+            'access_token': 'fresh-access',
+            'refresh_token': 'fresh-refresh',
+            'access_token_expires_at': '2099-01-01T00:00:00.000Z',
+            'refresh_token_expires_at': '2099-01-02T00:00:00.000Z',
+            'user': {
+              'id': 'user-1',
+              'email': 'patient@example.com',
+              'role': 'patient',
+              'onboarding_completed': true,
+              'health_data_consent': true,
+              'auth_provider': 'password',
             },
-            200,
-          );
+          }, 200);
         }
 
         if (request.url.path == '/api/v1/documents') {
           final authorization =
-              request.headers['authorization'] ?? request.headers['Authorization'];
+              request.headers['authorization'] ??
+              request.headers['Authorization'];
           expect(authorization, 'Bearer fresh-access');
-          return _jsonResponse([{'id': 'doc-1'}], 200);
+          return _jsonResponse([
+            {'id': 'doc-1'},
+          ], 200);
         }
 
         throw StateError('Unexpected request ${request.method} ${request.url}');
@@ -128,7 +128,10 @@ void main() {
 
       final apiClient = ApiClient(
         client: client,
-        config: const AppConfig(apiBaseUrl: 'http://example.com'),
+        config: const AppConfig(
+          apiBaseUrl: 'http://example.com',
+          hackathonDemoMode: false,
+        ),
         tokenStorage: storage,
         sessionExpiryNotifier: sessionExpiryNotifier,
       );
@@ -171,12 +174,17 @@ void main() {
     var networkCalls = 0;
     final client = _TestClient((request) async {
       networkCalls += 1;
-      throw StateError('Unexpected network call ${request.method} ${request.url}');
+      throw StateError(
+        'Unexpected network call ${request.method} ${request.url}',
+      );
     });
 
     final apiClient = ApiClient(
       client: client,
-      config: const AppConfig(apiBaseUrl: 'http://example.com'),
+      config: const AppConfig(
+        apiBaseUrl: 'http://example.com',
+        hackathonDemoMode: false,
+      ),
       tokenStorage: storage,
       sessionExpiryNotifier: sessionExpiryNotifier,
     );

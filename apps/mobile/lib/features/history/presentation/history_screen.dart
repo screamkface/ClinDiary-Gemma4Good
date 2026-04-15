@@ -50,7 +50,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Report giornaliero rigenerato per ${DateFormat('dd/MM/yyyy').format(targetDate)}.',
+            'Daily report regenerated for ${DateFormat('dd/MM/yyyy').format(targetDate)}.',
           ),
         ),
       );
@@ -58,9 +58,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rigenerazione non riuscita: $error')),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Regeneration failed: $error')),
+        );
     } finally {
       if (mounted) {
         setState(() => _isRegeneratingDailyReport = false);
@@ -74,7 +74,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Report copiato negli appunti.')),
+      const SnackBar(content: Text('Report copied to clipboard.')),
     );
   }
 
@@ -92,7 +92,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final activityDatesAsync = ref.watch(
       historyActivityDatesProvider(_focusedMonth),
     );
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
     Future<void> refreshHistory() async {
       ref.invalidate(historyDayProvider(_selectedDate));
       ref.invalidate(historyActivityDatesProvider(_focusedMonth));
@@ -102,12 +102,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Storico'),
+          title: const Text('History'),
           actions: [
             TextButton.icon(
               onPressed: _goToToday,
               icon: const Icon(Icons.today_outlined),
-              label: const Text('Oggi'),
+              label: const Text('Today'),
               style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -241,7 +241,7 @@ class _HistoryCalendar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TableCalendar<String>(
-          locale: 'it_IT',
+          locale: 'en_US',
           firstDay: DateTime(2020),
           lastDay: DateTime.now().add(const Duration(days: 1)),
           focusedDay: focusedMonth,
@@ -297,7 +297,7 @@ class _HistoryCalendar extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Pallino = attività registrata',
+          'Dot = recorded activity',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -327,20 +327,20 @@ class _HistoryContent extends StatelessWidget {
     return Column(
       children: [
         SectionCard(
-          title: 'Giornata selezionata',
-          subtitle: 'Riepilogo rapido.',
+          title: 'Selected day',
+          subtitle: 'Quick summary.',
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               _SummaryChip(label: dateFormat.format(history.targetDate)),
               _SummaryChip(
-                label: entry == null ? 'Nessun check-up' : 'Check-up',
+                label: entry == null ? 'No check-up' : 'Check-up',
               ),
               _SummaryChip(label: '${history.timelineEvents.length} eventi'),
               _SummaryChip(label: '${history.documents.length} documenti'),
               if (history.dailySummary != null)
-                const _SummaryChip(label: 'Recap disponibile'),
+                const _SummaryChip(label: 'Recap available'),
               if (history.wearableSummary != null)
                 const _SummaryChip(label: 'Wearable'),
             ],
@@ -391,8 +391,8 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionCard(
-          title: 'Dettagli del giorno',
-          subtitle: 'Apri solo il blocco che ti serve.',
+          title: 'Day details',
+          subtitle: 'Open only the section you need.',
           child: CompactSegmentedControl<_HistoryDetailTab>(
             options: const [
               CompactSegmentOption(
@@ -428,7 +428,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
         const SizedBox(height: 12),
         switch (_selected) {
           _HistoryDetailTab.recap => SectionCard(
-            title: 'Recap giornaliero',
+            title: 'Daily recap',
             action: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -442,22 +442,24 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                   onPressed: widget.isRegeneratingDailyReport
                       ? null
                       : widget.onRegenerateDailyReport,
-                  icon: widget.isRegeneratingDailyReport
-                      ? const SizedBox(
-                          width: 16,
+                    widget.isRegeneratingDailyReport
+                        ? 'Regenerating...'
+                        : 'Regenerate',
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.auto_awesome_outlined),
-                  label: Text(
-                    widget.isRegeneratingDailyReport ? 'Rigenero...' : 'Rigenera',
+                ? const Text('No recap available.')
+                    widget.isRegeneratingDailyReport
+                        ? 'Rigenero...'
+                        : 'Rigenera',
                   ),
                 ),
               ],
             ),
-            child: widget.history.dailySummary == null
+            subtitle: 'Data recorded for the day.',
                 ? const Text('Nessun recap disponibile.')
-                : SummaryContentView(
+                ? const Text('No check-up recorded on this day.')
                     content: widget.history.dailySummary!.content,
                     maxHeightFactor: 0.48,
                   ),
@@ -475,13 +477,19 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                         runSpacing: 8,
                         children: [
                           if (entry.energyLevel != null)
-                            _SummaryChip(label: 'Energia ${entry.energyLevel}/10'),
+                            _SummaryChip(
+                              label: 'Energia ${entry.energyLevel}/10',
+                            ),
                           if (entry.moodLevel != null)
                             _SummaryChip(label: 'Umore ${entry.moodLevel}/10'),
                           if (entry.stressLevel != null)
-                            _SummaryChip(label: 'Stress ${entry.stressLevel}/10'),
+                            _SummaryChip(
+                              label: 'Stress ${entry.stressLevel}/10',
+                            ),
                           if (entry.generalPain != null)
-                            _SummaryChip(label: 'Dolore ${entry.generalPain}/10'),
+                            _SummaryChip(
+                              label: 'Dolore ${entry.generalPain}/10',
+                            ),
                         ],
                       ),
                       if (entry.generalNotes != null &&
@@ -546,10 +554,10 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                   ),
           ),
           _HistoryDetailTab.events => SectionCard(
-            title: 'Eventi',
-            subtitle: 'Timeline del giorno.',
+            title: 'Events',
+            subtitle: 'Day timeline.',
             child: widget.history.timelineEvents.isEmpty
-                ? const Text('Nessun evento registrato in questa giornata.')
+                ? const Text('No events recorded on this day.')
                 : Column(
                     children: widget.history.timelineEvents
                         .map((event) => _HistoryEventCard(event: event))
@@ -557,10 +565,10 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                   ),
           ),
           _HistoryDetailTab.documents => SectionCard(
-            title: 'Documenti del giorno',
-            subtitle: 'Caricati o collegati a questa data.',
+            title: 'Documents for the day',
+            subtitle: 'Uploaded or linked to this date.',
             child: widget.history.documents.isEmpty
-                ? const Text('Nessun documento collegato a questa giornata.')
+                ? const Text('No documents linked to this day.')
                 : Column(
                     children: widget.history.documents
                         .map(
@@ -580,10 +588,10 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                   ),
           ),
           _HistoryDetailTab.wearable => SectionCard(
-            title: 'Dati wearable',
-            subtitle: 'Sintesi del giorno.',
+            title: 'Wearable data',
+            subtitle: 'Day summary.',
             child: widget.history.wearableSummary == null
-                ? const Text('Nessun dato wearable per questa giornata.')
+                ? const Text('No wearable data for this day.')
                 : Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -591,7 +599,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                       if (widget.history.wearableSummary!.stepsCount != null)
                         _SummaryChip(
                           label:
-                              '${widget.history.wearableSummary!.stepsCount} passi',
+                          '${widget.history.wearableSummary!.stepsCount} steps',
                         ),
                       if (widget.history.wearableSummary!.sleepMinutes != null)
                         _SummaryChip(
@@ -632,7 +640,7 @@ class _HistoryEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('HH:mm', 'it_IT');
+    final dateFormat = DateFormat('HH:mm', 'en_US');
 
     return Card.outlined(
       margin: const EdgeInsets.only(bottom: 8),

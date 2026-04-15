@@ -33,8 +33,8 @@ class ProfileScreen extends ConsumerWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Sintesi'),
-              Tab(text: 'Contesto'),
+              Tab(text: 'Summary'),
+              Tab(text: 'Context'),
               Tab(text: 'Clinico'),
             ],
           ),
@@ -46,7 +46,8 @@ class ProfileScreen extends ConsumerWidget {
                 child: Text('Completa l’autenticazione per vedere il profilo.'),
               );
             }
-            final pendingCount = pendingOperationsAsync.asData?.value.length ?? 0;
+            final pendingCount =
+                pendingOperationsAsync.asData?.value.length ?? 0;
             return TabBarView(
               children: [
                 _ProfileTabList(
@@ -57,7 +58,7 @@ class ProfileScreen extends ConsumerWidget {
                         onPressed: () =>
                             _showEditProfileDialog(context, ref, bundle),
                         icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Modifica'),
+                        label: const Text('Edit'),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,14 +74,16 @@ class ProfileScreen extends ConsumerWidget {
                                       style: Theme.of(context)
                                           .textTheme
                                           .headlineSmall
-                                          ?.copyWith(fontWeight: FontWeight.w900),
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w900,
+                                          ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'Tutto il profilo clinico parte da qui.',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
                                     ),
                                   ],
                                 ),
@@ -98,20 +101,20 @@ class ProfileScreen extends ConsumerWidget {
                             runSpacing: 8,
                             children: [
                               _ProfileMetricCard(
-                                label: 'Allergie',
+                                label: 'Allergies',
                                 value: bundle.allergies.length.toString(),
                               ),
                               _ProfileMetricCard(
-                                label: 'Patologie',
-                                value:
-                                    bundle.medicalConditions.length.toString(),
+                                label: 'Conditions',
+                                value: bundle.medicalConditions.length
+                                    .toString(),
                               ),
                               _ProfileMetricCard(
-                                label: 'Farmaci',
+                                label: 'Medications',
                                 value: bundle.medications.length.toString(),
                               ),
                               _ProfileMetricCard(
-                                label: 'Familiarità',
+                                label: 'Family history',
                                 value: bundle.familyHistory.length.toString(),
                               ),
                             ],
@@ -141,19 +144,19 @@ class ProfileScreen extends ConsumerWidget {
                                 onPressed: () =>
                                     context.push('/app/profile/problems'),
                                 icon: const Icon(Icons.topic_outlined),
-                                label: 'Problemi',
+                                label: 'Issues',
                               ),
                               _ProfileActionChip(
                                 onPressed: () =>
                                     context.push('/app/profile/settings'),
                                 icon: const Icon(Icons.tune_outlined),
-                                label: 'Impostazioni',
+                                label: 'Settings',
                               ),
                               _ProfileActionChip(
                                 onPressed: () =>
                                     context.push('/app/profile/family'),
                                 icon: const Icon(Icons.groups_outlined),
-                                label: 'Profili',
+                                label: 'Profiles',
                               ),
                             ],
                           ),
@@ -162,8 +165,8 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     SectionCard(
-                      title: 'Dati rapidi',
-                      subtitle: 'Valori e impostazioni usati nei recap.',
+                      title: 'Quick facts',
+                      subtitle: 'Values and settings used in recaps.',
                       child: _ProfileQuickFactsSection(
                         bundle: bundle,
                         pendingOperations: pendingCount,
@@ -175,13 +178,13 @@ class ProfileScreen extends ConsumerWidget {
                 _ProfileTabList(
                   children: [
                     SectionCard(
-                      title: 'Contesto',
+                      title: 'Context',
                       subtitle:
-                          'Abitudini, trigger e limiti utili a contestualizzare.',
+                          'Habits, triggers, and limits used to add context.',
                       action: TextButton(
                         onPressed: () =>
                             _showEditProfileDialog(context, ref, bundle),
-                        child: const Text('Modifica'),
+                        child: const Text('Edit'),
                       ),
                       child: _ProfileContextSection(profile: bundle.profile),
                     ),
@@ -196,8 +199,7 @@ class ProfileScreen extends ConsumerWidget {
                               id: item.id,
                               title: item.allergen,
                               subtitle: [
-                                if (item.pendingSync)
-                                  'In attesa di sincronizzazione',
+                                if (item.pendingSync) 'Pending sync',
                                 if (item.severity != null) item.severity!,
                                 if (item.notes != null &&
                                     item.notes!.isNotEmpty)
@@ -213,12 +215,12 @@ class ProfileScreen extends ConsumerWidget {
                               id: item.id,
                               title: item.name,
                               subtitle: [
-                                if (item.pendingSync)
-                                  'In attesa di sincronizzazione',
+                                if (item.pendingSync) 'Pending sync',
                                 if (item.status != null) item.status!,
                                 if (item.diagnosisDate != null)
                                   dateFormat.format(item.diagnosisDate!),
-                                if (item.notes != null && item.notes!.isNotEmpty)
+                                if (item.notes != null &&
+                                    item.notes!.isNotEmpty)
                                   item.notes!,
                               ].join(' • '),
                               pendingSync: item.pendingSync,
@@ -233,8 +235,7 @@ class ProfileScreen extends ConsumerWidget {
                           id: item.id,
                           title: item.name,
                           subtitle: [
-                            if (item.pendingSync)
-                              'In attesa di sincronizzazione',
+                            if (item.pendingSync) 'Pending sync',
                             if (item.dosage != null && item.dosage!.isNotEmpty)
                               item.dosage!,
                             if (item.frequency != null &&
@@ -251,8 +252,7 @@ class ProfileScreen extends ConsumerWidget {
                               id: item.id,
                               title: item.conditionName,
                               subtitle: [
-                                if (item.pendingSync)
-                                  'In attesa di sincronizzazione',
+                                if (item.pendingSync) 'Pending sync',
                                 item.relation,
                                 if (item.notes != null &&
                                     item.notes!.isNotEmpty)
@@ -262,7 +262,8 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                           )
                           .toList(),
-                      onAddAllergy: () => _showCreateAllergyDialog(context, ref),
+                      onAddAllergy: () =>
+                          _showCreateAllergyDialog(context, ref),
                       onDeleteAllergy: (itemId) =>
                           _deleteAllergy(context, ref, allergyId: itemId),
                       onAddCondition: () =>
@@ -300,8 +301,8 @@ class ProfileScreen extends ConsumerWidget {
   }) async {
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Rimuovere allergia?',
-      message: 'La voce verra rimossa dal profilo clinico.',
+      title: 'Remove allergy?',
+      message: 'The item will be removed from the clinical profile.',
     );
     if (!confirmed) {
       return;
@@ -324,8 +325,8 @@ class ProfileScreen extends ConsumerWidget {
   }) async {
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Rimuovere patologia?',
-      message: 'La voce verra rimossa dal profilo clinico.',
+      title: 'Remove condition?',
+      message: 'The item will be removed from the clinical profile.',
     );
     if (!confirmed) {
       return;
@@ -348,8 +349,8 @@ class ProfileScreen extends ConsumerWidget {
   }) async {
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Rimuovere farmaco?',
-      message: 'Terapia e orari locali collegati verranno rimossi.',
+      title: 'Remove medication?',
+      message: 'The medication and its linked local schedules will be removed.',
     );
     if (!confirmed) {
       return;
@@ -391,8 +392,8 @@ class ProfileScreen extends ConsumerWidget {
   }) async {
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Rimuovere familiarità?',
-      message: 'La voce verra rimossa dal profilo clinico.',
+      title: 'Remove family history?',
+      message: 'The item will be removed from the clinical profile.',
     );
     if (!confirmed) {
       return;
@@ -423,11 +424,11 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Rimuovi'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -518,7 +519,7 @@ class ProfileScreen extends ConsumerWidget {
             horizontal: 16,
             vertical: 24,
           ),
-          title: const Text('Aggiorna profilo'),
+          title: const Text('Update profile'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
@@ -526,20 +527,20 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 TextField(
                   controller: firstNameController,
-                  decoration: const InputDecoration(labelText: 'Nome'),
+                  decoration: const InputDecoration(labelText: 'First name'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: lastNameController,
-                  decoration: const InputDecoration(labelText: 'Cognome'),
+                  decoration: const InputDecoration(labelText: 'Last name'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: birthDateController,
                   readOnly: true,
                   decoration: const InputDecoration(
-                    labelText: 'Data di nascita',
-                    hintText: 'Tocca per scegliere',
+                    labelText: 'Date of birth',
+                    hintText: 'Tap to pick',
                     suffixIcon: Icon(Icons.calendar_today_outlined),
                   ),
                   onTap: () async {
@@ -553,7 +554,7 @@ class ProfileScreen extends ConsumerWidget {
                           : fallbackBirthDate(),
                       firstDate: DateTime(1900, 1, 1),
                       lastDate: DateTime.now().add(const Duration(days: 1)),
-                      helpText: 'Seleziona data di nascita',
+                      helpText: 'Select date of birth',
                     );
                     if (picked != null) {
                       setState(() {
@@ -569,18 +570,18 @@ class ProfileScreen extends ConsumerWidget {
                 DropdownButtonFormField<String>(
                   initialValue: biologicalSex,
                   decoration: const InputDecoration(
-                    labelText: 'Sesso biologico',
+                    labelText: 'Biological sex',
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'female', child: Text('Femmina')),
-                    DropdownMenuItem(value: 'male', child: Text('Maschio')),
+                    DropdownMenuItem(value: 'female', child: Text('Female')),
+                    DropdownMenuItem(value: 'male', child: Text('Male')),
                     DropdownMenuItem(
                       value: 'intersex',
                       child: Text('Intersex'),
                     ),
                     DropdownMenuItem(
                       value: 'unknown',
-                      child: Text('Non indicato'),
+                      child: Text('Not specified'),
                     ),
                   ],
                   onChanged: (value) => setState(() => biologicalSex = value),
@@ -588,7 +589,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: heightController,
-                  decoration: const InputDecoration(labelText: 'Altezza cm'),
+                  decoration: const InputDecoration(labelText: 'Height cm'),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -596,7 +597,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: weightController,
-                  decoration: const InputDecoration(labelText: 'Peso kg'),
+                  decoration: const InputDecoration(labelText: 'Weight kg'),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -612,7 +613,7 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Fumatore'),
+                  title: const Text('Smoker'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -626,15 +627,15 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Ex fumatore'),
+                  title: const Text('Former smoker'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: smokingPackYearsController,
                   decoration: const InputDecoration(
-                    labelText: 'Pack-years tabacco',
+                    labelText: 'Tobacco pack-years',
                     helperText:
-                        'Utile per screening polmone e aneurisma aorta.',
+                        'Useful for lung and aortic aneurysm screening.',
                   ),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -644,8 +645,9 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: yearsSinceQuittingController,
                   decoration: const InputDecoration(
-                    labelText: 'Anni dalla cessazione',
-                    helperText: 'Lascia vuoto se fumi ancora o non applicabile.',
+                    labelText: 'Years since quitting',
+                    helperText:
+                        'Leave blank if still smoking or not applicable.',
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -653,22 +655,22 @@ class ProfileScreen extends ConsumerWidget {
                 DropdownButtonFormField<String>(
                   initialValue: activityLevel,
                   decoration: const InputDecoration(
-                    labelText: 'Livello di attivita',
+                    labelText: 'Activity level',
                   ),
                   items: const [
                     DropdownMenuItem(
                       value: 'sedentary',
-                      child: Text('Sedentario'),
+                      child: Text('Sedentary'),
                     ),
-                    DropdownMenuItem(value: 'light', child: Text('Leggero')),
+                    DropdownMenuItem(value: 'light', child: Text('Light')),
                     DropdownMenuItem(
                       value: 'moderate',
-                      child: Text('Moderato'),
+                      child: Text('Moderate'),
                     ),
-                    DropdownMenuItem(value: 'active', child: Text('Attivo')),
+                    DropdownMenuItem(value: 'active', child: Text('Active')),
                     DropdownMenuItem(
                       value: 'very_active',
-                      child: Text('Molto attivo'),
+                      child: Text('Very active'),
                     ),
                   ],
                   onChanged: (value) => setState(() => activityLevel = value),
@@ -676,20 +678,18 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: alcoholUse,
-                  decoration: const InputDecoration(
-                    labelText: 'Consumo di alcol',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Alcohol use'),
                   items: const [
-                    DropdownMenuItem(value: 'none', child: Text('Nullo')),
+                    DropdownMenuItem(value: 'none', child: Text('None')),
                     DropdownMenuItem(
                       value: 'occasional',
-                      child: Text('Occasionale'),
+                      child: Text('Occasional'),
                     ),
                     DropdownMenuItem(
                       value: 'moderate',
-                      child: Text('Moderato'),
+                      child: Text('Moderate'),
                     ),
-                    DropdownMenuItem(value: 'high', child: Text('Elevato')),
+                    DropdownMenuItem(value: 'high', child: Text('High')),
                   ],
                   onChanged: (value) => setState(() => alcoholUse = value),
                 ),
@@ -697,9 +697,9 @@ class ProfileScreen extends ConsumerWidget {
                 DropdownButtonFormField<String>(
                   initialValue: regionCode,
                   decoration: const InputDecoration(
-                    labelText: 'Regione di screening',
+                    labelText: 'Screening region',
                     helperText:
-                        'Serve per mostrare screening, prevenzione e notifiche locali.',
+                        'Used to show screening, prevention, and local notifications.',
                   ),
                   items: italianRegionOptions
                       .map(
@@ -716,7 +716,7 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: exerciseHabitsController,
                   decoration: const InputDecoration(
-                    labelText: 'Sport o attivita fisica abituale',
+                    labelText: 'Usual exercise or physical activity',
                   ),
                   maxLines: 2,
                 ),
@@ -724,7 +724,7 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: sleepPatternController,
                   decoration: const InputDecoration(
-                    labelText: 'Sonno abituale',
+                    labelText: 'Usual sleep pattern',
                   ),
                   maxLines: 2,
                 ),
@@ -732,7 +732,7 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: occupationController,
                   decoration: const InputDecoration(
-                    labelText: 'Lavoro o contesto quotidiano',
+                    labelText: 'Work or daily context',
                   ),
                   maxLines: 2,
                 ),
@@ -740,7 +740,7 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: symptomTriggersController,
                   decoration: const InputDecoration(
-                    labelText: 'Trigger noti dei sintomi',
+                    labelText: 'Known symptom triggers',
                   ),
                   maxLines: 2,
                 ),
@@ -748,7 +748,7 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: functionalLimitationsController,
                   decoration: const InputDecoration(
-                    labelText: 'Limitazioni funzionali',
+                    labelText: 'Functional limitations',
                   ),
                   maxLines: 2,
                 ),
@@ -756,7 +756,7 @@ class ProfileScreen extends ConsumerWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Prevenzione avanzata',
+                    'Advanced prevention',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -767,7 +767,7 @@ class ProfileScreen extends ConsumerWidget {
                   value: postmenopausal,
                   onChanged: (value) => setState(() => postmenopausal = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Post-menopausa'),
+                  title: const Text('Post-menopause'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -779,7 +779,7 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Sto cercando una gravidanza'),
+                  title: const Text('Trying to conceive'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -791,15 +791,14 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Gravidanza in corso'),
+                  title: const Text('Current pregnancy'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   value: takingFolicAcid,
-                  onChanged: (value) =>
-                      setState(() => takingFolicAcid = value),
+                  onChanged: (value) => setState(() => takingFolicAcid = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Assumo folati / acido folico'),
+                  title: const Text('I take folate / folic acid'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -807,15 +806,14 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (value) =>
                       setState(() => fragilityFractureHistory = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Frattura da fragilità pregressa'),
+                  title: const Text('Previous fragility fracture'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: fallsLastYearController,
                   decoration: const InputDecoration(
-                    labelText: "Cadute nell'ultimo anno",
-                    helperText:
-                        'Serve per il rischio cadute e la prevenzione funzionale.',
+                    labelText: "Falls in the last year",
+                    helperText: 'Used for fall risk and functional prevention.',
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -824,23 +822,23 @@ class ProfileScreen extends ConsumerWidget {
                   value: feelsUnsteady,
                   onChanged: (value) => setState(() => feelsUnsteady = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Instabilità o paura di cadere'),
+                  title: const Text('Instability or fear of falling'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: sexualActivity,
                   decoration: const InputDecoration(
-                    labelText: 'Attività sessuale',
+                    labelText: 'Sexual activity',
                     helperText:
-                        'Dato opzionale usato solo per prevenzione MST personalizzata.',
+                        'Optional data used only for personalized STI prevention.',
                   ),
                   items: const [
                     DropdownMenuItem(
                       value: 'unknown',
-                      child: Text('Preferisco non indicarlo'),
+                      child: Text('Prefer not to say'),
                     ),
-                    DropdownMenuItem(value: 'yes', child: Text('Attiva')),
-                    DropdownMenuItem(value: 'no', child: Text('Non attiva')),
+                    DropdownMenuItem(value: 'yes', child: Text('Active')),
+                    DropdownMenuItem(value: 'no', child: Text('Not active')),
                   ],
                   onChanged: (value) =>
                       setState(() => sexualActivity = value ?? 'unknown'),
@@ -851,22 +849,21 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (value) =>
                       setState(() => newOrMultiplePartners = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Nuovi o multipli partner'),
+                  title: const Text('New or multiple partners'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   value: partnerWithSti,
-                  onChanged: (value) =>
-                      setState(() => partnerWithSti = value),
+                  onChanged: (value) => setState(() => partnerWithSti = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Partner con STI/MST nota'),
+                  title: const Text('Partner with known STI'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   value: sexWithMen,
                   onChanged: (value) => setState(() => sexWithMen = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Contesto MSM / rapporti tra uomini'),
+                  title: const Text('MSM context / sex between men'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -874,7 +871,7 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (value) =>
                       setState(() => stiOrExposureConcerns = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Sintomi o esposizioni MST da discutere'),
+                  title: const Text('Symptoms or STI exposures to discuss'),
                 ),
               ],
             ),
@@ -883,7 +880,7 @@ class ProfileScreen extends ConsumerWidget {
             TextButton(
               onPressed: () =>
                   Navigator.of(context, rootNavigator: true).maybePop(),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
@@ -967,7 +964,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.message)));
                 }
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -986,26 +983,26 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Nuova allergia'),
+          title: const Text('New allergy'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: allergenController,
-                  decoration: const InputDecoration(labelText: 'Allergene'),
+                  decoration: const InputDecoration(labelText: 'Allergen'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: severity,
-                  decoration: const InputDecoration(labelText: 'Severità'),
+                  decoration: const InputDecoration(labelText: 'Severity'),
                   items: const [
-                    DropdownMenuItem(value: 'mild', child: Text('Lieve')),
+                    DropdownMenuItem(value: 'mild', child: Text('Mild')),
                     DropdownMenuItem(
                       value: 'moderate',
-                      child: Text('Moderata'),
+                      child: Text('Moderate'),
                     ),
-                    DropdownMenuItem(value: 'severe', child: Text('Severa')),
+                    DropdownMenuItem(value: 'severe', child: Text('Severe')),
                   ],
                   onChanged: (value) =>
                       setState(() => severity = value ?? 'moderate'),
@@ -1016,7 +1013,7 @@ class ProfileScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
@@ -1034,7 +1031,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.message)));
                 }
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -1053,7 +1050,7 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Nuova patologia'),
+          title: const Text('New condition'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1061,20 +1058,23 @@ class ProfileScreen extends ConsumerWidget {
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(
-                    labelText: 'Nome patologia',
+                    labelText: 'Condition name',
                   ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: status,
-                  decoration: const InputDecoration(labelText: 'Stato'),
+                  decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
-                    DropdownMenuItem(value: 'active', child: Text('Attiva')),
+                    DropdownMenuItem(value: 'active', child: Text('Active')),
                     DropdownMenuItem(
                       value: 'monitoring',
-                      child: Text('In monitoraggio'),
+                      child: Text('Monitoring'),
                     ),
-                    DropdownMenuItem(value: 'resolved', child: Text('Risolta')),
+                    DropdownMenuItem(
+                      value: 'resolved',
+                      child: Text('Resolved'),
+                    ),
                   ],
                   onChanged: (value) =>
                       setState(() => status = value ?? 'active'),
@@ -1085,7 +1085,7 @@ class ProfileScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
@@ -1103,7 +1103,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.message)));
                 }
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -1125,7 +1125,7 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Nuovo farmaco'),
+          title: const Text('New medication'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1133,22 +1133,24 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nome farmaco'),
+                  decoration: const InputDecoration(
+                    labelText: 'Medication name',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: dosageController,
-                  decoration: const InputDecoration(labelText: 'Dosaggio'),
+                  decoration: const InputDecoration(labelText: 'Dosage'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: frequencyController,
-                  decoration: const InputDecoration(labelText: 'Frequenza'),
+                  decoration: const InputDecoration(labelText: 'Frequency'),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Orario promemoria'),
+                  title: const Text('Reminder time'),
                   subtitle: Text(_formatTimeOfDay(reminderTime)),
                   trailing: const Icon(Icons.schedule_outlined),
                   onTap: () async {
@@ -1162,7 +1164,7 @@ class ProfileScreen extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 8),
-                Text('Giorni', style: Theme.of(context).textTheme.labelLarge),
+                Text('Days', style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -1187,8 +1189,8 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   selectedDays.isEmpty
-                      ? 'Nessun giorno selezionato: ClinDiary considera il promemoria come giornaliero.'
-                      : 'Selezionati: ${selectedDays.map((item) => _weekdayLabels[item]).join(', ')}',
+                      ? 'No day selected: ClinDiary treats the reminder as daily.'
+                      : 'Selected: ${selectedDays.map((item) => _weekdayLabels[item]).join(', ')}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -1197,7 +1199,7 @@ class ProfileScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
@@ -1216,7 +1218,7 @@ class ProfileScreen extends ConsumerWidget {
                           {
                             'scheduled_time':
                                 '${reminderTime.hour.toString().padLeft(2, '0')}:${reminderTime.minute.toString().padLeft(2, '0')}:00',
-                            'instructions': 'Promemoria locale ClinDiary',
+                            'instructions': 'ClinDiary local reminder',
                             'days_of_week': selectedDays.toList()..sort(),
                           },
                         ],
@@ -1244,7 +1246,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.message)));
                 }
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -1262,19 +1264,19 @@ class ProfileScreen extends ConsumerWidget {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nuova familiarità'),
+        title: const Text('New family history'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: relationController,
-                decoration: const InputDecoration(labelText: 'Relazione'),
+                decoration: const InputDecoration(labelText: 'Relationship'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: conditionController,
-                decoration: const InputDecoration(labelText: 'Condizione'),
+                decoration: const InputDecoration(labelText: 'Condition'),
               ),
             ],
           ),
@@ -1282,7 +1284,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () async {
@@ -1300,7 +1302,7 @@ class ProfileScreen extends ConsumerWidget {
                 ).showSnackBar(SnackBar(content: Text(error.message)));
               }
             },
-            child: const Text('Salva'),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -1315,10 +1317,7 @@ class _ProfileTabList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: children,
-    );
+    return ListView(padding: const EdgeInsets.all(16), children: children);
   }
 }
 
@@ -1367,28 +1366,28 @@ class _ProfileClinicalSwitcherState extends State<_ProfileClinicalSwitcher> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionCard(
-          title: 'Area clinica',
-          subtitle: 'Apri solo il blocco che ti serve.',
+          title: 'Clinical area',
+          subtitle: 'Open only the section you need.',
           child: CompactSegmentedControl<_ProfileClinicalTab>(
             options: const [
               CompactSegmentOption(
                 value: _ProfileClinicalTab.medications,
-                label: 'Farmaci',
+                label: 'Medications',
                 icon: Icons.medication_outlined,
               ),
               CompactSegmentOption(
                 value: _ProfileClinicalTab.conditions,
-                label: 'Patologie',
+                label: 'Conditions',
                 icon: Icons.health_and_safety_outlined,
               ),
               CompactSegmentOption(
                 value: _ProfileClinicalTab.allergies,
-                label: 'Allergie',
+                label: 'Allergies',
                 icon: Icons.warning_amber_outlined,
               ),
               CompactSegmentOption(
                 value: _ProfileClinicalTab.familyHistory,
-                label: 'Familiarità',
+                label: 'Family history',
                 icon: Icons.family_restroom_outlined,
               ),
             ],
@@ -1399,29 +1398,29 @@ class _ProfileClinicalSwitcherState extends State<_ProfileClinicalSwitcher> {
         const SizedBox(height: 16),
         switch (_selected) {
           _ProfileClinicalTab.medications => _ResourceSection(
-            title: 'Farmaci',
-            emptyText: 'Nessun farmaco cronico registrato.',
+            title: 'Medications',
+            emptyText: 'No chronic medication recorded.',
             items: widget.medications,
             onAdd: widget.onAddMedication,
             onDelete: widget.onDeleteMedication,
           ),
           _ProfileClinicalTab.conditions => _ResourceSection(
-            title: 'Patologie note',
-            emptyText: 'Nessuna patologia registrata.',
+            title: 'Known conditions',
+            emptyText: 'No condition recorded.',
             items: widget.conditions,
             onAdd: widget.onAddCondition,
             onDelete: widget.onDeleteCondition,
           ),
           _ProfileClinicalTab.allergies => _ResourceSection(
-            title: 'Allergie',
-            emptyText: 'Nessuna allergia registrata.',
+            title: 'Allergies',
+            emptyText: 'No allergy recorded.',
             items: widget.allergies,
             onAdd: widget.onAddAllergy,
             onDelete: widget.onDeleteAllergy,
           ),
           _ProfileClinicalTab.familyHistory => _ResourceSection(
-            title: 'Familiarità',
-            emptyText: 'Nessuna familiarità registrata.',
+            title: 'Family history',
+            emptyText: 'No family history recorded.',
             items: widget.familyHistory,
             onAdd: widget.onAddFamilyHistory,
             onDelete: widget.onDeleteFamilyHistory,
@@ -1532,7 +1531,7 @@ class _ResourceSection extends StatelessWidget {
                                   ] else if (item.pendingSync) ...[
                                     const SizedBox(height: 4),
                                     Text(
-                                      'In attesa di sincronizzazione',
+                                      'Pending sync',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -1544,8 +1543,8 @@ class _ResourceSection extends StatelessWidget {
                             const SizedBox(width: 8),
                             IconButton(
                               tooltip: item.pendingSync
-                                  ? 'In attesa di sincronizzazione'
-                                  : 'Rimuovi',
+                                  ? 'Pending sync'
+                                  : 'Remove',
                               onPressed: item.pendingSync
                                   ? null
                                   : () => onDelete(item.id),
@@ -1637,11 +1636,7 @@ class _ProfileHeaderAvatar extends StatelessWidget {
                   color: colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.star,
-                  size: 12,
-                  color: colorScheme.onPrimary,
-                ),
+                child: Icon(Icons.star, size: 12, color: colorScheme.onPrimary),
               ),
             ),
         ],
@@ -1672,9 +1667,9 @@ class _ProfileMetricCard extends StatelessWidget {
         children: [
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 2),
           Text(label, style: Theme.of(context).textTheme.bodySmall),
@@ -1719,17 +1714,17 @@ class _ProfileContextSection extends StatelessWidget {
     final entries =
         [
               ('Sport', profile.exerciseHabits),
-              ('Sonno', profile.sleepPattern),
-              ('Lavoro', profile.occupation),
+              ('Sleep', profile.sleepPattern),
+              ('Work', profile.occupation),
               ('Trigger', profile.symptomTriggers),
-              ('Limiti', profile.functionalLimitations),
+              ('Limitations', profile.functionalLimitations),
             ]
             .where((entry) => entry.$2 != null && entry.$2!.trim().isNotEmpty)
             .toList();
 
     if (entries.isEmpty) {
       return const _EmptyResourceState(
-        message: 'Aggiungi i dettagli utili per contestualizzare i recap.',
+        message: 'Add useful details to give recaps more context.',
       );
     }
 
@@ -1773,41 +1768,41 @@ class _ProfileQuickFactsSection extends StatelessWidget {
     final profile = bundle.profile;
     final facts = <(String, String)>[
       if (profile.birthDate != null)
-        ('Nascita', dateFormat.format(profile.birthDate!)),
+        ('Birth', dateFormat.format(profile.birthDate!)),
       if (profile.biologicalSex != null && profile.biologicalSex!.isNotEmpty)
-        ('Sesso', profile.biologicalSex!),
+        ('Sex', profile.biologicalSex!),
       if (profile.regionCode != null)
-        ('Regione', italianRegionLabel(profile.regionCode)),
+        ('Region', italianRegionLabel(profile.regionCode)),
       if (profile.heightCm != null)
-        ('Altezza', '${profile.heightCm!.toStringAsFixed(0)} cm'),
+        ('Height', '${profile.heightCm!.toStringAsFixed(0)} cm'),
       if (profile.weightKg != null)
-        ('Peso', '${profile.weightKg!.toStringAsFixed(0)} kg'),
+        ('Weight', '${profile.weightKg!.toStringAsFixed(0)} kg'),
       if (profile.smokingPackYears != null)
         ('Pack-years', profile.smokingPackYears!.toStringAsFixed(0)),
       if (profile.activityLevel != null)
-        ('Attivita', _activityLevelLabel(profile.activityLevel!)),
+        ('Activity', _activityLevelLabel(profile.activityLevel!)),
       if (profile.alcoholUse != null)
-        ('Alcol', _alcoholUseLabel(profile.alcoholUse!)),
-      ('Fumo', profile.smoker ? 'Si' : 'No'),
-      if (profile.formerSmoker) ('Ex fumo', 'Si'),
-      if (profile.postmenopausal) ('Post-menopausa', 'Si'),
-      if (profile.tryingToConceive) ('Preconcezione', 'Attiva'),
-      if (profile.currentlyPregnant) ('Gravidanza', 'In corso'),
-      if (profile.takingFolicAcid) ('Folati', 'Assunti'),
-      if (profile.fragilityFractureHistory) ('Fratture', 'Pregressa'),
+        ('Alcohol', _alcoholUseLabel(profile.alcoholUse!)),
+      ('Smoking', profile.smoker ? 'Yes' : 'No'),
+      if (profile.formerSmoker) ('Former smoking', 'Yes'),
+      if (profile.postmenopausal) ('Post-menopause', 'Yes'),
+      if (profile.tryingToConceive) ('Preconception', 'Active'),
+      if (profile.currentlyPregnant) ('Pregnancy', 'Ongoing'),
+      if (profile.takingFolicAcid) ('Folate', 'Taking'),
+      if (profile.fragilityFractureHistory) ('Fractures', 'Previous'),
       if (profile.fallsLastYear != null)
-        ('Cadute anno', profile.fallsLastYear.toString()),
-      if (profile.feelsUnsteady) ('Instabilita', 'Da rivedere'),
+        ('Falls last year', profile.fallsLastYear.toString()),
+      if (profile.feelsUnsteady) ('Instability', 'To review'),
       (
-        'AI esterna',
-        bundle.onboarding.aiExternalConsent ? 'Attiva' : 'Disattivata',
+        'External AI',
+        bundle.onboarding.aiExternalConsent ? 'Enabled' : 'Disabled',
       ),
-      if (pendingOperations > 0) ('Sync', '$pendingOperations in attesa'),
+      if (pendingOperations > 0) ('Sync', '$pendingOperations pending'),
     ];
 
     if (facts.isEmpty) {
       return const _EmptyResourceState(
-        message: 'Aggiungi i dati essenziali del profilo.',
+        message: 'Add the essential profile data.',
       );
     }
 
@@ -1844,7 +1839,7 @@ class _ProfileContextLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = value == null || value!.trim().isEmpty
-        ? 'Non indicato'
+        ? 'Not specified'
         : value!;
     return Container(
       width: double.infinity,
@@ -1884,9 +1879,7 @@ class _QuickFactTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerLowest,
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: Theme.of(
@@ -1940,21 +1933,21 @@ String _formatTimeOfDay(TimeOfDay value) {
 
 String _activityLevelLabel(String value) {
   return switch (value) {
-    'sedentary' => 'sedentaria',
-    'light' => 'leggera',
-    'moderate' => 'moderata',
-    'active' => 'attiva',
-    'very_active' => 'molto attiva',
+    'sedentary' => 'sedentary',
+    'light' => 'light',
+    'moderate' => 'moderate',
+    'active' => 'active',
+    'very_active' => 'very active',
     _ => value,
   };
 }
 
 String _alcoholUseLabel(String value) {
   return switch (value) {
-    'none' => 'assente',
-    'occasional' => 'occasionale',
-    'moderate' => 'moderato',
-    'high' => 'elevato',
+    'none' => 'none',
+    'occasional' => 'occasional',
+    'moderate' => 'moderate',
+    'high' => 'high',
     _ => value,
   };
 }
@@ -1967,14 +1960,14 @@ List<String> _summaryFacts(
   final facts = <String>[];
   final birthDate = bundle.profile.birthDate;
   if (birthDate != null) {
-    facts.add('Nato il ${dateFormat.format(birthDate)}');
+    facts.add('Born ${dateFormat.format(birthDate)}');
   }
   if (bundle.profile.biologicalSex != null &&
       bundle.profile.biologicalSex!.trim().isNotEmpty) {
-    facts.add('Sesso ${bundle.profile.biologicalSex}');
+    facts.add('Sex ${bundle.profile.biologicalSex}');
   }
   if (bundle.profile.regionCode != null) {
-    facts.add('Regione ${italianRegionLabel(bundle.profile.regionCode)}');
+    facts.add('Region ${italianRegionLabel(bundle.profile.regionCode)}');
   }
   if (bundle.profile.heightCm != null || bundle.profile.weightKg != null) {
     final details = [
@@ -1988,37 +1981,39 @@ List<String> _summaryFacts(
     }
   }
   if (bundle.profile.smoker) {
-    facts.add('Fumatore');
+    facts.add('Smoker');
   }
   if (bundle.profile.formerSmoker) {
-    facts.add('Ex fumatore');
+    facts.add('Former smoker');
   }
   if (bundle.profile.smokingPackYears != null) {
-    facts.add('Pack-years ${bundle.profile.smokingPackYears!.toStringAsFixed(0)}');
+    facts.add(
+      'Pack-years ${bundle.profile.smokingPackYears!.toStringAsFixed(0)}',
+    );
   }
   if (bundle.profile.activityLevel != null) {
-    facts.add('Attivita ${_activityLevelLabel(bundle.profile.activityLevel!)}');
+    facts.add('Activity ${_activityLevelLabel(bundle.profile.activityLevel!)}');
   }
   if (bundle.profile.alcoholUse != null) {
-    facts.add('Alcol ${_alcoholUseLabel(bundle.profile.alcoholUse!)}');
+    facts.add('Alcohol ${_alcoholUseLabel(bundle.profile.alcoholUse!)}');
   }
   if (bundle.profile.fallsLastYear != null &&
       bundle.profile.fallsLastYear! > 0) {
-    facts.add('Cadute ${bundle.profile.fallsLastYear}');
+    facts.add('Falls ${bundle.profile.fallsLastYear}');
   }
   if (bundle.profile.tryingToConceive) {
-    facts.add('Preconcezione attiva');
+    facts.add('Preconception active');
   }
   if (bundle.profile.currentlyPregnant) {
-    facts.add('Gravidanza in corso');
+    facts.add('Pregnancy ongoing');
   }
   facts.add(
     bundle.onboarding.aiExternalConsent
-        ? 'AI esterna attiva'
-        : 'AI esterna disattivata',
+        ? 'External AI enabled'
+        : 'External AI disabled',
   );
   if (pendingOperations > 0) {
-    facts.add('Sync in attesa');
+    facts.add('Sync pending');
   }
   return facts.take(6).toList();
 }

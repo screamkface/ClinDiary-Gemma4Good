@@ -44,22 +44,18 @@ class _ClinicalEpisodesScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rimuovere problema clinico?'),
-        content: const Text('La voce verra rimossa dal dossier.'),
+        title: const Text('Remove clinical issue?'),
+        content: const Text('The item will be removed from the dossier.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(
-              dialogContext,
-              rootNavigator: true,
-            ).pop(false),
-            child: const Text('Annulla'),
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(false),
+            child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(
-              dialogContext,
-              rootNavigator: true,
-            ).pop(true),
-            child: const Text('Rimuovi'),
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(true),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -103,9 +99,7 @@ class _ClinicalEpisodesScreenState
             vertical: 24,
           ),
           title: Text(
-            initial == null
-                ? 'Nuovo problema clinico'
-                : 'Modifica problema clinico',
+            initial == null ? 'New clinical issue' : 'Edit clinical issue',
           ),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
@@ -114,29 +108,32 @@ class _ClinicalEpisodesScreenState
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Titolo'),
+                  decoration: const InputDecoration(labelText: 'Title'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: status,
-                  decoration: const InputDecoration(labelText: 'Stato'),
+                  decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
-                    DropdownMenuItem(value: 'active', child: Text('Attivo')),
+                    DropdownMenuItem(value: 'active', child: Text('Active')),
                     DropdownMenuItem(
                       value: 'monitoring',
-                      child: Text('Monitoraggio'),
+                      child: Text('Monitoring'),
                     ),
-                    DropdownMenuItem(value: 'resolved', child: Text('Risolto')),
+                    DropdownMenuItem(
+                      value: 'resolved',
+                      child: Text('Resolved'),
+                    ),
                   ],
                   onChanged: (value) => setState(() => status = value),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Data inizio'),
+                  title: const Text('Start date'),
                   subtitle: Text(
                     onsetDate == null
-                        ? 'Non impostata'
+                        ? 'Not set'
                         : DateFormat('dd/MM/yyyy').format(onsetDate!),
                   ),
                   trailing: const Icon(Icons.event_outlined),
@@ -146,7 +143,7 @@ class _ClinicalEpisodesScreenState
                       initialDate: onsetDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Seleziona data inizio',
+                      helpText: 'Select start date',
                     );
                     if (picked != null) {
                       setState(() => onsetDate = picked);
@@ -156,10 +153,10 @@ class _ClinicalEpisodesScreenState
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Data risoluzione'),
+                  title: const Text('Resolution date'),
                   subtitle: Text(
                     resolvedDate == null
-                        ? 'Non impostata'
+                        ? 'Not set'
                         : DateFormat('dd/MM/yyyy').format(resolvedDate!),
                   ),
                   trailing: const Icon(Icons.check_circle_outline),
@@ -169,7 +166,7 @@ class _ClinicalEpisodesScreenState
                       initialDate: resolvedDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Seleziona data risoluzione',
+                      helpText: 'Select resolution date',
                     );
                     if (picked != null) {
                       setState(() => resolvedDate = picked);
@@ -179,10 +176,10 @@ class _ClinicalEpisodesScreenState
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Prossimo controllo'),
+                  title: const Text('Next review'),
                   subtitle: Text(
                     nextReviewDate == null
-                        ? 'Non impostato'
+                        ? 'Not set'
                         : DateFormat('dd/MM/yyyy').format(nextReviewDate!),
                   ),
                   trailing: const Icon(Icons.schedule_outlined),
@@ -192,7 +189,7 @@ class _ClinicalEpisodesScreenState
                       initialDate: nextReviewDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Seleziona prossimo controllo',
+                      helpText: 'Select next review',
                     );
                     if (picked != null) {
                       setState(() => nextReviewDate = picked);
@@ -203,7 +200,7 @@ class _ClinicalEpisodesScreenState
                 TextField(
                   controller: summaryController,
                   decoration: const InputDecoration(
-                    labelText: 'Sintesi/descrizione',
+                    labelText: 'Summary / description',
                   ),
                   maxLines: 3,
                 ),
@@ -218,11 +215,9 @@ class _ClinicalEpisodesScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(
-                dialogContext,
-                rootNavigator: true,
-              ).maybePop(),
-              child: const Text('Annulla'),
+              onPressed: () =>
+                  Navigator.of(dialogContext, rootNavigator: true).maybePop(),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
@@ -230,9 +225,7 @@ class _ClinicalEpisodesScreenState
                 if (title.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Inserisci un titolo per il problema clinico.',
-                      ),
+                      content: Text('Enter a title for the clinical issue.'),
                     ),
                   );
                   return;
@@ -257,7 +250,7 @@ class _ClinicalEpisodesScreenState
                       : notesController.text.trim(),
                 });
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -273,11 +266,11 @@ class _ClinicalEpisodesScreenState
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Problemi clinici'),
+        title: const Text('Clinical issues'),
         actions: [
           IconButton(
             onPressed: () => ref.invalidate(profileBundleProvider),
@@ -289,9 +282,7 @@ class _ClinicalEpisodesScreenState
         data: (bundle) {
           if (bundle == null) {
             return const Center(
-              child: Text(
-                'Completa il profilo per gestire i problemi clinici.',
-              ),
+              child: Text('Complete the profile to manage clinical issues.'),
             );
           }
 
@@ -304,14 +295,14 @@ class _ClinicalEpisodesScreenState
               padding: const EdgeInsets.all(16),
               children: [
                 SectionCard(
-                  title: 'Problemi ed episodi',
+                  title: 'Issues and episodes',
                   action: FilledButton.tonalIcon(
                     onPressed: () => _saveEpisode(),
                     icon: const Icon(Icons.add),
-                    label: const Text('Aggiungi'),
+                    label: const Text('Add'),
                   ),
                   child: bundle.clinicalEpisodes.isEmpty
-                      ? const Text('Nessun problema clinico registrato.')
+                      ? const Text('No clinical issue recorded.')
                       : Column(
                           children: bundle.clinicalEpisodes
                               .map(
@@ -323,15 +314,14 @@ class _ClinicalEpisodesScreenState
                                       title: Text(item.title),
                                       subtitle: Text(
                                         [
-                                          if (item.pendingSync)
-                                            'In attesa di sincronizzazione',
+                                          if (item.pendingSync) 'Pending sync',
                                           if (item.status != null) item.status!,
                                           if (item.onsetDate != null)
-                                            'Inizio ${dateFormat.format(item.onsetDate!)}',
+                                            'Start ${dateFormat.format(item.onsetDate!)}',
                                           if (item.resolvedDate != null)
-                                            'Risolto ${dateFormat.format(item.resolvedDate!)}',
+                                            'Resolved ${dateFormat.format(item.resolvedDate!)}',
                                           if (item.nextReviewDate != null)
-                                            'Controllo ${dateFormat.format(item.nextReviewDate!)}',
+                                            'Review ${dateFormat.format(item.nextReviewDate!)}',
                                           if (item.summary?.isNotEmpty == true)
                                             item.summary!,
                                           if (item.notes?.isNotEmpty == true)
@@ -345,7 +335,7 @@ class _ClinicalEpisodesScreenState
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
-                                              tooltip: 'Modifica',
+                                              tooltip: 'Edit',
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _saveEpisode(
@@ -357,8 +347,8 @@ class _ClinicalEpisodesScreenState
                                             ),
                                             IconButton(
                                               tooltip: item.pendingSync
-                                                  ? 'In attesa di sincronizzazione'
-                                                  : 'Rimuovi',
+                                                  ? 'Pending sync'
+                                                  : 'Remove',
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _deleteEpisode(item),

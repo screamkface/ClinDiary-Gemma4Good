@@ -1,32 +1,32 @@
-# Nota AI beta
+# Beta AI note
 
-ClinDiary usa AI in modo prudente e non diagnostico.
+ClinDiary uses AI in a cautious, non-diagnostic way.
 
-## Principi
+## Principles
 
-- il recap non sostituisce medico, diagnosi o prescrizione
-- le regole deterministiche restano separate dalla parte AI
-- gli alert aperti e i dati fuori range vengono riportati con linguaggio prudente
+- the recap does not replace a doctor, diagnosis, or prescription
+- deterministic rules stay separate from the AI part
+- open alerts and out-of-range data are reported with cautious wording
 
-## Provider esterni
+## External providers
 
-Se attivi il consenso dedicato, ClinDiary puo usare un provider AI esterno configurato dal backend.
+If you enable the dedicated consent, ClinDiary can use a backend-configured external AI provider.
 
-## Minimizzazione
+## Minimization
 
-I recap non inviano sempre tutto:
+Recaps do not always send everything:
 
 - giorno
 - settimana
 - mese
 - pre-visita
 
-usano payload distinti e limitati allo scopo.
+they use distinct payloads limited to the purpose.
 
-## Minori
+## Minors
 
-I profili minorenni restano sul motore prudente locale finche la policy non viene rivalutata.
+Minor profiles stay on the local cautious engine until the policy is reviewed again.
 
-## Stato del documento
+## Document status
 
-Questa nota e una versione beta informativa. Prima del go-live pubblico va sostituita dalla nota AI finale validata legalmente.
+This note is an informational beta version. Before public go-live it must be replaced by the final legally validated AI note.
