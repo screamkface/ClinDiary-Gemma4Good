@@ -167,7 +167,7 @@ class DocumentsRepository {
     if (storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Indicizzazione, OCR e parsing automatico sono disponibili solo per l archivio cloud AI Plus.',
+            'Indexing, OCR, and automatic parsing are available only for the AI Plus cloud archive.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -179,7 +179,7 @@ class DocumentsRepository {
     if (_isLocalDocumentId(documentId) || storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Indicizzazione, OCR e parsing automatico sono disponibili solo per l archivio cloud AI Plus.',
+            'Indexing, OCR, and automatic parsing are available only for the AI Plus cloud archive.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -191,7 +191,7 @@ class DocumentsRepository {
     if (_isLocalDocumentId(documentId) || storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'OCR, parsing e timeline documentale avanzata richiedono il salvataggio cloud AI Plus.',
+            'OCR, parsing, and the advanced document timeline require AI Plus cloud storage.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -206,7 +206,7 @@ class DocumentsRepository {
     if (_isLocalDocumentId(documentId) || storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'La revisione strutturata dei documenti fa parte dell archivio cloud AI Plus.',
+          'Structured document review is part of the AI Plus cloud archive.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -230,7 +230,7 @@ class DocumentsRepository {
     if (storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Sul piano free i documenti cloud già caricati restano consultabili, ma modifiche e processing richiedono AI Plus.',
+          'On the free plan, already uploaded cloud documents remain viewable, but edits and processing require AI Plus.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -254,7 +254,7 @@ class DocumentsRepository {
     if (storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Sul piano free i documenti cloud già caricati restano consultabili, ma non eliminabili.',
+          'On the free plan, already uploaded cloud documents remain viewable but cannot be deleted.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -278,7 +278,7 @@ class DocumentsRepository {
     if (storageMode == _DocumentStorageMode.local) {
       throw _featureLocked(
         message:
-            'Sul piano free i documenti cloud restano in sola lettura. Per spostarli serve AI Plus.',
+          'On the Free plan, cloud documents are read-only. Moving them requires AI Plus.',
         featureCode: 'cloud_document_storage',
       );
     }
@@ -287,7 +287,7 @@ class DocumentsRepository {
 
   Future<String> prepareLocalViewerFile(String documentId) async {
     if (!_isLocalDocumentId(documentId)) {
-      throw ApiException('Il documento non usa il vault locale.', statusCode: 400);
+      throw ApiException('The document does not use the local vault.', statusCode: 400);
     }
     final scope = await _resolveLocalScope();
     return _localVaultService.prepareViewerFileForScope(
@@ -708,12 +708,12 @@ class DocumentsRepository {
 
     final fallback = _buildFallbackDetailJson({
       'id': documentId,
-      'title': 'Documento',
+      'title': 'Document',
       'document_type': 'generic_document',
       'upload_date': DateTime.now().toUtc().toIso8601String(),
       'exam_date': null,
       'source': null,
-      'original_filename': 'documento',
+      'original_filename': 'document',
       'mime_type': 'application/pdf',
       'file_size_bytes': 0,
       'parsed_status': 'pending',
@@ -793,14 +793,14 @@ class DocumentsRepository {
   ) {
     return {
       'id': base['id'].toString(),
-      'title': base['title']?.toString() ?? 'Documento',
+      'title': base['title']?.toString() ?? 'Document',
       'document_type': base['document_type']?.toString() ?? 'generic_document',
       'upload_date':
           base['upload_date']?.toString() ??
           DateTime.now().toUtc().toIso8601String(),
       'exam_date': base['exam_date'],
       'source': base['source'],
-      'original_filename': base['original_filename']?.toString() ?? 'documento',
+      'original_filename': base['original_filename']?.toString() ?? 'document',
       'mime_type': base['mime_type']?.toString() ?? 'application/pdf',
       'file_size_bytes': base['file_size_bytes'] ?? 0,
       'parsed_status': base['parsed_status']?.toString() ?? 'pending',

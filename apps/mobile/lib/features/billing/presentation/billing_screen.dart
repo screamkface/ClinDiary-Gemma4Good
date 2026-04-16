@@ -28,7 +28,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Accesso AI Plus attivato in demo.')),
+        const SnackBar(content: Text('AI Plus access enabled in demo.')),
       );
     } catch (error) {
       if (!mounted) {
@@ -54,7 +54,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI Plus demo disattivato.')),
+        const SnackBar(content: Text('AI Plus demo disabled.')),
       );
     } catch (error) {
       if (!mounted) {
@@ -83,14 +83,14 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             SectionCard(
-              title: 'Piano attuale',
+                title: 'Current plan',
               subtitle: featureLabel == null
-                  ? 'Il core clinico resta gratuito. Le funzioni AI si sbloccano con AI Plus.'
-                  : 'Per usare "$featureLabel" serve AI Plus.',
+                  ? 'The clinical core stays free. AI features unlock with AI Plus.'
+                  : 'AI Plus is required to use "$featureLabel".',
               child: billingAsync.when(
                 data: (status) {
                   if (status == null) {
-                    return const Text('Accedi per vedere il tuo piano.');
+                    return const Text('Sign in to view your plan.');
                   }
                   return _CurrentPlanBlock(
                     status: status,
@@ -104,17 +104,17 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             ),
             const SizedBox(height: 12),
             SectionCard(
-              title: 'Cosa include',
+              title: 'What it includes',
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: const [
-                  Chip(label: Text('Archivio documenti cloud')),
-                  Chip(label: Text('Recap giornaliero AI')),
-                  Chip(label: Text('Recap settimana e mese')),
-                  Chip(label: Text('Pre-visita prudente')),
-                  Chip(label: Text('Chiedi ai documenti')),
-                  Chip(label: Text('Report AI')),
+                  Chip(label: Text('Cloud document archive')),
+                  Chip(label: Text('Daily AI recap')),
+                  Chip(label: Text('Weekly and monthly recap')),
+                  Chip(label: Text('Cautious pre-visit')),
+                  Chip(label: Text('Ask the documents')),
+                  Chip(label: Text('AI reports')),
                 ],
               ),
             ),
@@ -122,9 +122,9 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             billingAsync.when(
               data: (status) {
                 if (status == null) {
-                  return const SectionCard(
-                    title: 'Piani',
-                    child: Text('Accedi per caricare i piani disponibili.'),
+                    return const SectionCard(
+                    title: 'Plans',
+                    child: Text('Sign in to load the available plans.'),
                   );
                 }
                 return Column(
@@ -145,7 +145,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                 );
               },
               loading: () => const SectionCard(
-                title: 'Piani',
+                title: 'Plans',
                 child: LinearProgressIndicator(),
               ),
               error: (error, _) =>
@@ -153,15 +153,15 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             ),
             const SizedBox(height: 12),
             SectionCard(
-              title: 'Checkout',
+                title: 'Checkout',
               subtitle:
-                  'StoreKit e Google Play Billing arrivano nel passo successivo. Qui il paywall e gia pronto lato prodotto e backend.',
+                  'StoreKit and Google Play Billing arrive in the next step. The paywall is already ready here on the product and backend side.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     kDebugMode
-                        ? 'In debug puoi attivare AI Plus in demo per testare il gating server-side.'
+                        ? 'In debug, you can enable AI Plus in the demo to test server-side gating.'
                         : 'Checkout nativo in preparazione.',
                   ),
                   const SizedBox(height: 12),
@@ -172,12 +172,12 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                       OutlinedButton.icon(
                         onPressed: () => context.push('/legal/ai'),
                         icon: const Icon(Icons.psychology_alt_outlined),
-                        label: const Text('Nota AI beta'),
+                        label: const Text('Beta AI note'),
                       ),
                       OutlinedButton.icon(
                         onPressed: () => context.push('/legal/privacy'),
                         icon: const Icon(Icons.description_outlined),
-                        label: const Text('Privacy beta'),
+                        label: const Text('Beta privacy notice'),
                       ),
                     ],
                   ),
@@ -216,8 +216,8 @@ class _CurrentPlanBlock extends StatelessWidget {
             Chip(label: Text(currentPlan.name)),
             Chip(label: Text(currentPlan.formattedPrice)),
             Chip(
-              label: Text(
-                status.hasActivePaidSubscription ? 'AI attiva' : 'Solo core free',
+                label: Text(
+                status.hasActivePaidSubscription ? 'AI enabled' : 'Free core only',
               ),
             ),
           ],
@@ -225,7 +225,7 @@ class _CurrentPlanBlock extends StatelessWidget {
         if (status.activeSubscription?.currentPeriodEnd != null) ...[
           const SizedBox(height: 12),
           Text(
-            'Attivo fino al ${_shortDate(status.activeSubscription!.currentPeriodEnd!)}',
+            'Active until ${_shortDate(status.activeSubscription!.currentPeriodEnd!)}',
           ),
         ],
         if (kDebugMode && status.hasActivePaidSubscription) ...[
@@ -233,7 +233,7 @@ class _CurrentPlanBlock extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: isUpdatingPlan ? null : onCancel,
             icon: const Icon(Icons.lock_open_outlined),
-            label: const Text('Torna al piano Free'),
+            label: const Text('Switch back to Free'),
           ),
         ],
       ],
@@ -262,12 +262,12 @@ class _PlanCard extends StatelessWidget {
       title: plan.name,
       subtitle: plan.description,
       action: isCurrent
-          ? const Chip(label: Text('Attuale'))
+          ? const Chip(label: Text('Current'))
           : (kDebugMode && !plan.isFree)
                 ? FilledButton.tonalIcon(
                     onPressed: isUpdatingPlan ? null : () => onActivate(plan.code),
                     icon: const Icon(Icons.bolt_outlined),
-                    label: const Text('Attiva demo'),
+                    label: const Text('Enable demo'),
                   )
                 : null,
       child: Column(
@@ -304,17 +304,17 @@ class _PlanCard extends StatelessWidget {
 String? _featureLabel(String? featureCode) {
   switch (featureCode) {
     case 'ai_daily_summary':
-      return 'Recap giornaliero';
+      return 'Daily recap';
     case 'cloud_document_storage':
-      return 'Archivio documenti cloud';
+      return 'Cloud document archive';
     case 'ai_periodic_summaries':
-      return 'Recap settimana e mese';
+      return 'Weekly and monthly recap';
     case 'ai_previsit_summary':
-      return 'Recap pre-visita';
+      return 'Pre-visit recap';
     case 'ai_document_query':
-      return 'Domande ai documenti';
+      return 'Ask the documents';
     case 'ai_report_generation':
-      return 'Report AI';
+      return 'AI reports';
     default:
       return null;
   }

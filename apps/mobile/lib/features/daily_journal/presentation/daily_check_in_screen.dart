@@ -242,7 +242,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Check-up compilato con Gemma 4')),
+        const SnackBar(content: Text('Check-up completed with Gemma 4')),
       );
     } catch (error) {
       if (!mounted) {
@@ -253,7 +253,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
         _voiceError = message;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dettatura non compilata: $message')),
+        SnackBar(content: Text('Dictation not completed: $message')),
       );
     } finally {
       if (mounted) {
@@ -299,7 +299,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
         ref.invalidate(timelineEventsProvider);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Check-up e sintomi vocali salvati')),
+          const SnackBar(content: Text('Check-up and voice symptoms saved')),
         );
         context.pop();
         return;
@@ -311,16 +311,16 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
       final addSymptom = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Check-up salvato'),
-          content: const Text('Aggiungere un sintomo adesso?'),
+          title: const Text('Check-up saved'),
+          content: const Text('Add a symptom now?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Più tardi'),
+              child: const Text('Later'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Aggiungi ora'),
+              child: const Text('Add now'),
             ),
           ],
         ),
@@ -346,7 +346,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuovo check-up')),
+      appBar: AppBar(title: const Text('New check-up')),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -354,12 +354,12 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: 'Dettatura vocale Gemma 4',
+                title: 'Gemma 4 voice dictation',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Parla in italiano: ClinDiary trascrive la voce, Gemma 4 compila il check-up e puo aggiungere sintomi riconosciuti.',
+                      'Speak naturally: ClinDiary transcribes the voice, Gemma 4 fills out the check-up, and can add recognized symptoms.',
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -375,7 +375,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                                 ? Icons.stop_circle_outlined
                                 : Icons.mic_none_outlined,
                           ),
-                          label: Text(_listening ? 'Ferma e compila' : 'Parla'),
+                          label: Text(_listening ? 'Stop and fill' : 'Speak'),
                         ),
                         OutlinedButton.icon(
                           onPressed:
@@ -387,7 +387,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                               ? null
                               : _clearVoiceDraft,
                           icon: const Icon(Icons.delete_outline),
-                          label: const Text('Azzera'),
+                          label: const Text('Clear'),
                         ),
                       ],
                     ),
@@ -404,18 +404,18 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                       const SizedBox(height: 12),
                       const LinearProgressIndicator(),
                       const SizedBox(height: 8),
-                      const Text('Sto ascoltando...'),
+                      const Text('Listening...'),
                     ],
                     if (_parsingVoice) ...[
                       const SizedBox(height: 12),
                       const LinearProgressIndicator(),
                       const SizedBox(height: 8),
-                      const Text('Gemma sta compilando i campi...'),
+                      const Text('Gemma is filling in the fields...'),
                     ],
                     if (_voiceTranscript.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Text(
-                        'Trascrizione',
+                        'Transcript',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
                       const SizedBox(height: 6),
@@ -433,13 +433,13 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _voiceDraft!.hasSymptoms
-                            ? 'Gemma ha compilato i campi e ${_voiceDraft!.symptoms.length} sintomi.'
-                            : 'Gemma ha compilato i campi principali.',
+                            ? 'Gemma filled in the fields and ${_voiceDraft!.symptoms.length} symptoms.'
+                            : 'Gemma filled in the main fields.',
                       ),
                       if (_voiceDraft!.hasFollowUpQuestions) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Gemma chiede un chiarimento prima di chiudere il check-up.',
+                          'Gemma asks for clarification before closing the check-up.',
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
                         const SizedBox(height: 8),
@@ -456,7 +456,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Aggiungi un altro messaggio vocale o compila i campi manualmente se serve.',
+                          'Add another voice message or fill in the fields manually if needed.',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -479,17 +479,17 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Base del check-up',
+                title: 'Check-up basics',
                 child: Column(
                   children: [
                     TextFormField(
                       controller: _dateController,
                       decoration: const InputDecoration(
-                        labelText: 'Data (YYYY-MM-DD)',
+                        labelText: 'Date (YYYY-MM-DD)',
                       ),
                       validator: (value) {
                         if (value == null || DateTime.tryParse(value) == null) {
-                          return 'Data non valida';
+                          return 'Invalid date';
                         }
                         return null;
                       },
@@ -501,7 +501,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                         decimal: true,
                       ),
                       decoration: const InputDecoration(
-                        labelText: 'Ore di sonno',
+                        labelText: 'Hours of sleep',
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -509,7 +509,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                       controller: _notesController,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                        labelText: 'Note generali',
+                        labelText: 'General notes',
                       ),
                     ),
                   ],
@@ -517,21 +517,21 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Metriche rapide',
+                title: 'Quick metrics',
                 child: Column(
                   children: [
                     MetricSlider(
-                      label: 'Qualità del sonno',
+                      label: 'Sleep quality',
                       value: _sleepQuality,
                       onChanged: (v) => setState(() => _sleepQuality = v),
                     ),
                     MetricSlider(
-                      label: 'Energia',
+                      label: 'Energy',
                       value: _energy,
                       onChanged: (v) => setState(() => _energy = v),
                     ),
                     MetricSlider(
-                      label: 'Umore',
+                      label: 'Mood',
                       value: _mood,
                       onChanged: (v) => setState(() => _mood = v),
                     ),
@@ -541,17 +541,17 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                       onChanged: (v) => setState(() => _stress = v),
                     ),
                     MetricSlider(
-                      label: 'Appetito',
+                      label: 'Appetite',
                       value: _appetite,
                       onChanged: (v) => setState(() => _appetite = v),
                     ),
                     MetricSlider(
-                      label: 'Idratazione',
+                      label: 'Hydration',
                       value: _hydration,
                       onChanged: (v) => setState(() => _hydration = v),
                     ),
                     MetricSlider(
-                      label: 'Dolore generale',
+                      label: 'General pain',
                       value: _pain,
                       onChanged: (v) => setState(() => _pain = v),
                     ),
@@ -561,7 +561,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: _saving ? null : _submit,
-                child: Text(_saving ? 'Salvataggio...' : 'Salva check-up'),
+                child: Text(_saving ? 'Saving...' : 'Save check-up'),
               ),
             ],
           ),

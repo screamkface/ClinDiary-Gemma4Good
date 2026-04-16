@@ -29,8 +29,8 @@ class HealthDossierScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dossierAsync = ref.watch(healthDossierProvider);
     final shareLinksAsync = ref.watch(dossierShareLinksProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
-    final dateTimeFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final dateTimeFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
     Future<void> sharePdfDossier() async {
       try {
@@ -43,8 +43,8 @@ class HealthDossierScreen extends ConsumerWidget {
         await SharePlus.instance.share(
           ShareParams(
             files: [XFile(file.path, mimeType: 'application/pdf')],
-            text: 'Dossier salute ClinDiary',
-            subject: 'Dossier salute ClinDiary',
+            text: 'ClinDiary health dossier',
+            subject: 'ClinDiary health dossier',
           ),
         );
       } on ApiException catch (error) {
@@ -73,8 +73,8 @@ class HealthDossierScreen extends ConsumerWidget {
         await SharePlus.instance.share(
           ShareParams(
             files: [XFile(file.path, mimeType: 'application/json')],
-            text: 'Backup strutturato ClinDiary',
-            subject: 'Backup strutturato ClinDiary',
+            text: 'Structured ClinDiary backup',
+            subject: 'Structured ClinDiary backup',
           ),
         );
       } on ApiException catch (error) {
@@ -103,8 +103,8 @@ class HealthDossierScreen extends ConsumerWidget {
         await SharePlus.instance.share(
           ShareParams(
             files: [XFile(file.path, mimeType: 'application/pdf')],
-            text: 'Scheda emergenza ClinDiary',
-            subject: 'Scheda emergenza ClinDiary',
+            text: 'ClinDiary emergency sheet',
+            subject: 'ClinDiary emergency sheet',
           ),
         );
       } on ApiException catch (error) {
@@ -134,7 +134,7 @@ class HealthDossierScreen extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'NFC non disponibile su questo dispositivo. Uso il PDF della scheda emergenza.',
+                'NFC is not available on this device. Using the emergency sheet PDF.',
               ),
             ),
           );
@@ -146,22 +146,22 @@ class HealthDossierScreen extends ConsumerWidget {
             .read(dossierRepositoryProvider)
             .createShareLink(
               scope: 'emergency',
-              label: 'Scheda emergenza NFC',
+              label: 'Emergency sheet NFC',
               expiresInDays: 7,
             );
         ref.invalidate(dossierShareLinksProvider);
 
         final shareUrl = createdLink.shareUrl;
         if (shareUrl == null || shareUrl.isEmpty) {
-          throw StateError('Link emergenza non disponibile.');
+          throw StateError('Emergency link unavailable.');
         }
 
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Avvicina un tag NFC o una card compatibile.'),
+            content: const Text('Move a compatible NFC tag or card nearby.'),
             action: SnackBarAction(
-              label: 'Annulla',
+              label: 'Cancel',
               onPressed: () => unawaited(NfcManager.instance.stopSession()),
             ),
           ),
@@ -175,7 +175,7 @@ class HealthDossierScreen extends ConsumerWidget {
             await NfcManager.instance.stopSession();
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Scheda emergenza scritta su NFC.')),
+              const SnackBar(content: Text('Emergency sheet written to NFC.')),
             );
           } catch (error) {
             try {
@@ -225,7 +225,7 @@ class HealthDossierScreen extends ConsumerWidget {
         }
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('NFC non disponibile o non riuscito: $error')),
+          SnackBar(content: Text('NFC unavailable or failed: $error')),
         );
         await shareEmergencyPdf();
       }
@@ -241,7 +241,7 @@ class HealthDossierScreen extends ConsumerWidget {
         if (result == null || result.files.isEmpty) {
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Importazione annullata.')),
+            const SnackBar(content: Text('Import canceled.')),
           );
           return;
         }
@@ -267,7 +267,7 @@ class HealthDossierScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Backup JSON importato.')));
+        ).showSnackBar(const SnackBar(content: Text('JSON backup imported.')));
       } on ApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -290,7 +290,7 @@ class HealthDossierScreen extends ConsumerWidget {
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scheda emergenza copiata.')),
+        const SnackBar(content: Text('Emergency sheet copied.')),
       );
     }
 
@@ -301,7 +301,7 @@ class HealthDossierScreen extends ConsumerWidget {
       await SharePlus.instance.share(
         ShareParams(
           text: summary.toShareText(displayName: displayName),
-          subject: 'Scheda emergenza ClinDiary',
+          subject: 'ClinDiary emergency sheet',
         ),
       );
     }
@@ -312,16 +312,16 @@ class HealthDossierScreen extends ConsumerWidget {
             .read(dossierRepositoryProvider)
             .createShareLink(
               scope: scope,
-              label: scope == 'full' ? 'Dossier completo' : 'Scheda emergenza',
+              label: scope == 'full' ? 'Full dossier' : 'Emergency sheet',
             );
         if (link.shareUrl != null && link.shareUrl!.isNotEmpty) {
           await Clipboard.setData(ClipboardData(text: link.shareUrl!));
           await SharePlus.instance.share(
             ShareParams(
               text: link.shareUrl!,
-              subject: scope == 'full'
-                  ? 'Dossier completo ClinDiary'
-                  : 'Scheda emergenza ClinDiary',
+                subject: scope == 'full'
+                  ? 'ClinDiary full dossier'
+                  : 'ClinDiary emergency sheet',
             ),
           );
         }
@@ -329,7 +329,7 @@ class HealthDossierScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Link sicuro creato.')));
+        ).showSnackBar(const SnackBar(content: Text('Secure link created.')));
       } on ApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -347,18 +347,18 @@ class HealthDossierScreen extends ConsumerWidget {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Revocare il link?'),
-          content: const Text('Il link non sara piu utilizzabile.'),
+          title: const Text('Revoke the link?'),
+          content: const Text('The link will no longer be usable.'),
           actions: [
             TextButton(
               onPressed: () =>
                   Navigator.of(dialogContext, rootNavigator: true).pop(false),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () =>
                   Navigator.of(dialogContext, rootNavigator: true).pop(true),
-              child: const Text('Revoca'),
+              child: const Text('Revoke'),
             ),
           ],
         ),
@@ -372,7 +372,7 @@ class HealthDossierScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Link revocato.')));
+        ).showSnackBar(const SnackBar(content: Text('Link revoked.')));
       } on ApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -393,16 +393,16 @@ class HealthDossierScreen extends ConsumerWidget {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Dossier salute'),
+          title: const Text('Health dossier'),
           actions: [
             IconButton(
               onPressed: sharePdfDossier,
               icon: const Icon(Icons.ios_share_outlined),
-              tooltip: 'Esporta e condividi',
+              tooltip: 'Export and share',
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
-              tooltip: 'Altre azioni',
+              tooltip: 'More actions',
               onSelected: (value) async {
                 switch (value) {
                   case 'json':
@@ -424,14 +424,14 @@ class HealthDossierScreen extends ConsumerWidget {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'json', child: Text('Backup JSON')),
+                PopupMenuItem(value: 'json', child: Text('JSON backup')),
                 PopupMenuItem(
                   value: 'import-json',
-                  child: Text('Importa backup JSON'),
+                  child: Text('Import JSON backup'),
                 ),
                 PopupMenuItem(
                   value: 'copy-emergency',
-                  child: Text('Copia scheda emergenza'),
+                  child: Text('Copy emergency sheet'),
                 ),
               ],
             ),
@@ -444,11 +444,11 @@ class HealthDossierScreen extends ConsumerWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Sintesi'),
-              Tab(text: 'Clinico'),
-              Tab(text: 'Referti'),
-              Tab(text: 'Diario'),
-              Tab(text: 'Condividi'),
+              Tab(text: 'Summary'),
+              Tab(text: 'Clinical'),
+              Tab(text: 'Reports'),
+              Tab(text: 'Diary'),
+              Tab(text: 'Share'),
             ],
           ),
         ),
@@ -459,8 +459,8 @@ class HealthDossierScreen extends ConsumerWidget {
                 onRefresh: refreshDossier,
                 children: [
                   SectionCard(
-                    title: 'Profilo',
-                    subtitle: 'Riepilogo rapido del dossier attivo.',
+                    title: 'Profile',
+                    subtitle: 'Quick summary of the active dossier.',
                     action: Text(
                       dateTimeFormat.format(dossier.generatedAt.toLocal()),
                       style: Theme.of(context).textTheme.bodySmall,
@@ -485,14 +485,14 @@ class HealthDossierScreen extends ConsumerWidget {
                                   Text(
                                     [
                                           if (dossier.age != null)
-                                            '${dossier.age} anni',
+                                            '${dossier.age} years',
                                           if (dossier.biologicalSex != null)
                                             _sexLabel(dossier.biologicalSex!),
                                         ].join(' • ').isEmpty
-                                        ? 'Cartella personale ordinata'
+                                        ? 'Well-organized personal record'
                                         : [
                                             if (dossier.age != null)
-                                              '${dossier.age} anni',
+                                              '${dossier.age} years',
                                             if (dossier.biologicalSex != null)
                                               _sexLabel(dossier.biologicalSex!),
                                           ].join(' • '),
@@ -510,20 +510,20 @@ class HealthDossierScreen extends ConsumerWidget {
                           runSpacing: 8,
                           children: [
                             _DossierMetricPill(
-                              label: 'Problemi',
+                              label: 'Problems',
                               value:
                                   '${dossier.medicalConditions.length + dossier.clinicalEpisodes.length}',
                             ),
                             _DossierMetricPill(
-                              label: 'Farmaci',
+                              label: 'Medications',
                               value: '${dossier.medications.length}',
                             ),
                             _DossierMetricPill(
-                              label: 'Documenti',
+                              label: 'Documents',
                               value: '${dossier.recentDocuments.length}',
                             ),
                             _DossierMetricPill(
-                              label: 'Alert',
+                              label: 'Alerts',
                               value: '${dossier.alerts.length}',
                             ),
                             if (dossier.deviceMeasurementSummaries.isNotEmpty)
@@ -536,7 +536,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         if (dossier.profileFacts.isEmpty)
-                          const Text('Nessun dettaglio profilo disponibile.')
+                          const Text('No profile details available.')
                         else
                           Wrap(
                             spacing: 8,
@@ -555,8 +555,8 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Scheda emergenza',
-                    subtitle: 'Versione rapida da copiare o condividere.',
+                    title: 'Emergency sheet',
+                    subtitle: 'Quick version to copy or share.',
                     action: Wrap(
                       spacing: 8,
                       children: [
@@ -566,7 +566,7 @@ class HealthDossierScreen extends ConsumerWidget {
                             dossier.displayName,
                           ),
                           icon: const Icon(Icons.copy_outlined),
-                          label: const Text('Copia'),
+                          label: const Text('Copy'),
                         ),
                         TextButton.icon(
                           onPressed: () => shareEmergencySummary(
@@ -574,7 +574,7 @@ class HealthDossierScreen extends ConsumerWidget {
                             dossier.displayName,
                           ),
                           icon: const Icon(Icons.ios_share_outlined),
-                          label: const Text('Condividi'),
+                          label: const Text('Share'),
                         ),
                         TextButton.icon(
                           key: const ValueKey('dossier-emergency-nfc'),
@@ -599,7 +599,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Aggiornata ${dateTimeFormat.format(dossier.emergencySummary.generatedAt.toLocal())}',
+                          'Updated ${dateTimeFormat.format(dossier.emergencySummary.generatedAt.toLocal())}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: 12),
@@ -615,7 +615,7 @@ class HealthDossierScreen extends ConsumerWidget {
                             .isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Problemi attivi',
+                            'Active problems',
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                           const SizedBox(height: 8),
@@ -631,7 +631,7 @@ class HealthDossierScreen extends ConsumerWidget {
                             .isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Report recente',
+                            'Recent report',
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                           const SizedBox(height: 4),
@@ -654,7 +654,7 @@ class HealthDossierScreen extends ConsumerWidget {
                             .isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Farmaci attivi',
+                            'Active medications',
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                           const SizedBox(height: 8),
@@ -669,7 +669,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         if (dossier.emergencySummary.allergies.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Allergie',
+                            'Allergies',
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                           const SizedBox(height: 8),
@@ -684,7 +684,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         if (dossier.emergencySummary.conditions.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Patologie note',
+                            'Known conditions',
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                           const SizedBox(height: 8),
@@ -699,7 +699,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         if (dossier.emergencySummary.openAlerts.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Alert aperti',
+                            'Open alerts',
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                           const SizedBox(height: 8),
@@ -716,10 +716,10 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Provenienza dati',
-                    subtitle: 'Origine e aggiornamento dei dati aggregati.',
+                    title: 'Data provenance',
+                    subtitle: 'Origin and refresh state of aggregated data.',
                     child: dossier.provenanceFacts.isEmpty
-                        ? const Text('Nessuna provenienza disponibile.')
+                        ? const Text('No provenance available.')
                         : Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -739,7 +739,7 @@ class HealthDossierScreen extends ConsumerWidget {
                 onRefresh: refreshDossier,
                 children: [
                   _SimpleListSection(
-                    title: 'Patologie, allergie e familiarita',
+                    title: 'Conditions, allergies, and family history',
                     items: [
                       ...dossier.medicalConditions.map(
                         (item) =>
@@ -753,21 +753,21 @@ class HealthDossierScreen extends ConsumerWidget {
                         (item) => '${item.relation}: ${item.conditionName}',
                       ),
                     ],
-                    emptyLabel: 'Nessun elemento registrato.',
+                    emptyLabel: 'No items recorded.',
                     action: TextButton(
                       onPressed: () => context.go('/app/profile'),
-                      child: const Text('Apri profilo'),
+                      child: const Text('Open profile'),
                     ),
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Problemi clinici',
+                    title: 'Clinical problems',
                     action: TextButton(
                       onPressed: () => context.push('/app/profile/problems'),
-                      child: const Text('Apri'),
+                      child: const Text('Open'),
                     ),
                     child: dossier.clinicalEpisodes.isEmpty
-                        ? const Text('Nessun problema clinico registrato.')
+                      ? const Text('No clinical problems recorded.')
                         : Column(
                             children: dossier.clinicalEpisodes
                                 .map(
@@ -777,14 +777,14 @@ class HealthDossierScreen extends ConsumerWidget {
                                     subtitle: Text(
                                       [
                                         if (item.pendingSync)
-                                          'In attesa di sincronizzazione',
+                                          'Waiting for synchronization',
                                         if (item.status != null) item.status!,
                                         if (item.onsetDate != null)
-                                          'Inizio ${dateFormat.format(item.onsetDate!)}',
+                                          'Start ${dateFormat.format(item.onsetDate!)}',
                                         if (item.resolvedDate != null)
-                                          'Risolto ${dateFormat.format(item.resolvedDate!)}',
+                                          'Resolved ${dateFormat.format(item.resolvedDate!)}',
                                         if (item.nextReviewDate != null)
-                                          'Controllo ${dateFormat.format(item.nextReviewDate!)}',
+                                          'Review ${dateFormat.format(item.nextReviewDate!)}',
                                         if ((item.summary ?? '').isNotEmpty)
                                           item.summary!,
                                         if ((item.notes ?? '').isNotEmpty)
@@ -798,13 +798,13 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Farmaci attuali',
+                    title: 'Current medications',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/medications'),
-                      child: const Text('Apri'),
+                      child: const Text('Open'),
                     ),
                     child: dossier.medications.isEmpty
-                        ? const Text('Nessuna terapia registrata.')
+                      ? const Text('No medication recorded.')
                         : Column(
                             children: dossier.medications
                                 .map(
@@ -822,7 +822,7 @@ class HealthDossierScreen extends ConsumerWidget {
                                       ].join(' • '),
                                     ),
                                     trailing: Text(
-                                      item.active ? 'Attivo' : 'Stop',
+                                      item.active ? 'Active' : 'Stopped',
                                     ),
                                   ),
                                 )
@@ -831,16 +831,16 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Dispositivi clinici',
+                    title: 'Clinical devices',
                     subtitle:
-                        'Sintesi compatta delle misure recenti dai connettori collegati.',
+                      'Compact summary of recent measurements from connected sources.',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/devices'),
-                      child: const Text('Apri'),
+                      child: const Text('Open'),
                     ),
                     child: dossier.deviceMeasurementSummaries.isEmpty
                         ? const Text(
-                            'Nessuna misura da dispositivi clinici nel dossier.',
+                            'No clinical device measurements in the dossier.',
                           )
                         : Column(
                             children: dossier.deviceMeasurementSummaries
@@ -855,14 +855,14 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Storico vaccinale',
+                    title: 'Vaccination history',
                     action: TextButton(
                       onPressed: () =>
                           context.push('/app/profile/vaccinations'),
-                      child: const Text('Gestisci'),
+                      child: const Text('Manage'),
                     ),
                     child: dossier.vaccinations.isEmpty
-                        ? const Text('Nessun vaccino nel dossier.')
+                      ? const Text('No vaccine in the dossier.')
                         : Column(
                             children: dossier.vaccinations
                                 .map(
@@ -872,11 +872,11 @@ class HealthDossierScreen extends ConsumerWidget {
                                     subtitle: Text(
                                       [
                                         if (item.administeredOn != null)
-                                          'Somministrato ${dateFormat.format(item.administeredOn!)}',
+                                          'Administered ${dateFormat.format(item.administeredOn!)}',
                                         if (item.doseNumber != null)
                                           'Dose ${item.doseNumber}',
                                         if (item.nextDueDate != null)
-                                          'Richiamo ${dateFormat.format(item.nextDueDate!)}',
+                                          'Booster ${dateFormat.format(item.nextDueDate!)}',
                                         if (item.providerName != null &&
                                             item.providerName!.isNotEmpty)
                                           item.providerName!,
@@ -893,16 +893,16 @@ class HealthDossierScreen extends ConsumerWidget {
                 onRefresh: refreshDossier,
                 children: [
                   SectionCard(
-                    title: 'Documenti e referti',
+                    title: 'Documents and reports',
                     action: TextButton(
                       onPressed: () => context.go('/app/documents'),
-                      child: const Text('Apri'),
+                      child: const Text('Open'),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (dossier.recentDocuments.isEmpty)
-                          const Text('Nessun documento nel dossier.')
+                          const Text('No documents in the dossier.')
                         else
                           ...dossier.recentDocuments.map(
                             (item) => ListTile(
@@ -923,7 +923,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         if (dossier.recentLabPanels.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Esami del sangue recenti',
+                            'Recent blood tests',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
@@ -960,7 +960,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         if (dossier.recentImagingReports.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Imaging recente',
+                            'Recent imaging',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
@@ -993,13 +993,13 @@ class HealthDossierScreen extends ConsumerWidget {
                 onRefresh: refreshDossier,
                 children: [
                   SectionCard(
-                    title: 'Diario recente',
+                    title: 'Recent diary',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/history'),
-                      child: const Text('Storico'),
+                      child: const Text('History'),
                     ),
                     child: dossier.recentDailyEntries.isEmpty
-                        ? const Text('Nessun check-up recente.')
+                        ? const Text('No recent check-up.')
                         : Column(
                             children: dossier.recentDailyEntries
                                 .map(
@@ -1028,19 +1028,19 @@ class HealthDossierScreen extends ConsumerWidget {
                                               if (entry.energyLevel != null)
                                                 Chip(
                                                   label: Text(
-                                                    'Energia ${entry.energyLevel}/10',
+                                                    'Energy ${entry.energyLevel}/10',
                                                   ),
                                                 ),
                                               if (entry.moodLevel != null)
                                                 Chip(
                                                   label: Text(
-                                                    'Umore ${entry.moodLevel}/10',
+                                                    'Mood ${entry.moodLevel}/10',
                                                   ),
                                                 ),
                                               if (entry.generalPain != null)
                                                 Chip(
                                                   label: Text(
-                                                    'Dolore ${entry.generalPain}/10',
+                                                    'Pain ${entry.generalPain}/10',
                                                   ),
                                                 ),
                                             ],
@@ -1063,13 +1063,13 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Insight, report e alert',
+                    title: 'Insights, reports, and alerts',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (dossier.recentInsights.isNotEmpty) ...[
                           Text(
-                            'Insight recenti',
+                            'Recent insights',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
@@ -1089,7 +1089,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         ],
                         if (dossier.recentReports.isNotEmpty) ...[
                           Text(
-                            'Report recenti',
+                            'Recent reports',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
@@ -1106,10 +1106,10 @@ class HealthDossierScreen extends ConsumerWidget {
                           const SizedBox(height: 12),
                         ],
                         if (dossier.alerts.isEmpty)
-                          const Text('Nessun alert aperto.')
+                          const Text('No open alerts.')
                         else ...[
                           Text(
-                            'Alert aperti',
+                            'Open alerts',
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
@@ -1134,13 +1134,13 @@ class HealthDossierScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Dati smartwatch',
+                    title: 'Smartwatch data',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/wearables'),
-                      child: const Text('Apri'),
+                      child: const Text('Open'),
                     ),
                     child: dossier.wearableSummaries.isEmpty
-                        ? const Text('Nessun dato wearable nel dossier.')
+                        ? const Text('No wearable data in the dossier.')
                         : Column(
                             children: dossier.wearableSummaries
                                 .take(4)
@@ -1153,11 +1153,11 @@ class HealthDossierScreen extends ConsumerWidget {
                                     subtitle: Text(
                                       [
                                         if (item.stepsCount != null)
-                                          '${item.stepsCount} passi',
+                                          '${item.stepsCount} steps',
                                         if (item.sleepMinutes != null)
-                                          '${item.sleepMinutes!.round()} min sonno',
+                                          '${item.sleepMinutes!.round()} min sleep',
                                         if (item.heartRateAvgBpm != null)
-                                          '${item.heartRateAvgBpm!.round()} bpm medi',
+                                          '${item.heartRateAvgBpm!.round()} average bpm',
                                       ].join(' • '),
                                     ),
                                   ),
@@ -1171,16 +1171,16 @@ class HealthDossierScreen extends ConsumerWidget {
                 onRefresh: refreshDossier,
                 children: [
                   SectionCard(
-                    title: 'Condivisioni sicure',
+                    title: 'Secure shares',
                     subtitle:
-                        'Link revocabili e temporanei, massimo 30 giorni.',
+                      'Revocable and temporary links, maximum 30 days.',
                     action: Wrap(
                       spacing: 8,
                       children: [
                         TextButton.icon(
                           onPressed: () => createShareLink('emergency'),
                           icon: const Icon(Icons.shield_outlined),
-                          label: const Text('Emergenza'),
+                          label: const Text('Emergency'),
                         ),
                         TextButton.icon(
                           onPressed: () => createShareLink('full'),
@@ -1191,7 +1191,7 @@ class HealthDossierScreen extends ConsumerWidget {
                     ),
                     child: shareLinksAsync.when(
                       data: (links) => links.isEmpty
-                          ? const Text('Nessun link sicuro attivo.')
+                          ? const Text('No secure link active.')
                           : Column(
                               children: links
                                   .map(
@@ -1201,23 +1201,23 @@ class HealthDossierScreen extends ConsumerWidget {
                                         title: Text(
                                           [
                                             link.label ?? link.scope,
-                                            if (!link.isActive) 'Scaduto',
+                                            if (!link.isActive) 'Expired',
                                           ].join(' • '),
                                         ),
                                         subtitle: Text(
                                           [
                                             link.filename,
                                             link.mimeType,
-                                            'Scade ${dateTimeFormat.format(link.expiresAt.toLocal())}',
+                                            'Expires ${dateTimeFormat.format(link.expiresAt.toLocal())}',
                                             if (link.lastAccessedAt != null)
-                                              'Ultimo accesso ${dateTimeFormat.format(link.lastAccessedAt!.toLocal())}',
+                                              'Last accessed ${dateTimeFormat.format(link.lastAccessedAt!.toLocal())}',
                                           ].join(' • '),
                                         ),
                                         trailing: Wrap(
                                           spacing: 4,
                                           children: [
                                             IconButton(
-                                              tooltip: 'Copia link',
+                                              tooltip: 'Copy link',
                                               onPressed: link.shareUrl == null
                                                   ? null
                                                   : () async {
@@ -1234,7 +1234,7 @@ class HealthDossierScreen extends ConsumerWidget {
                                                       ).showSnackBar(
                                                         const SnackBar(
                                                           content: Text(
-                                                            'Link copiato.',
+                                                            'Link copied.',
                                                           ),
                                                         ),
                                                       );
@@ -1244,7 +1244,7 @@ class HealthDossierScreen extends ConsumerWidget {
                                               ),
                                             ),
                                             IconButton(
-                                              tooltip: 'Revoca',
+                                              tooltip: 'Revoke',
                                               onPressed: link.isActive
                                                   ? () => revokeShareLink(link)
                                                   : null,
@@ -1454,7 +1454,7 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 Chip(
-                  label: Text('Ultima ${item.latestValue}'),
+                  label: Text('Latest ${item.latestValue}'),
                   visualDensity: VisualDensity.compact,
                 ),
                 if ((item.trendLabel ?? '').isNotEmpty)
@@ -1465,9 +1465,9 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
                 if ((item.concernLevel ?? '').isNotEmpty)
                   Chip(
                     label: Text(
-                      item.concernLevel == 'high'
-                          ? 'Attenzione alta'
-                          : 'Da monitorare',
+                        item.concernLevel == 'high'
+                          ? 'High concern'
+                          : 'Monitor',
                     ),
                     visualDensity: VisualDensity.compact,
                     backgroundColor: concernColor?.withValues(alpha: 0.12),
@@ -1491,7 +1491,7 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
             ],
             const SizedBox(height: 8),
             Text(
-              'Ultima misura ${dateFormat.format(item.latestMeasuredAt.toLocal())} • ${item.measurementCount} registrazioni',
+              'Latest measure ${dateFormat.format(item.latestMeasuredAt.toLocal())} • ${item.measurementCount} records',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -1504,26 +1504,26 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
 String _sexLabel(String value) {
   switch (value) {
     case 'female':
-      return 'Femmina';
+      return 'Female';
     case 'male':
-      return 'Maschio';
+      return 'Male';
     case 'intersex':
       return 'Intersex';
     default:
-      return 'Non specificato';
+      return 'Not specified';
   }
 }
 
 String _insightLabel(String type) {
   switch (type) {
     case 'daily':
-      return 'Report giornaliero';
+      return 'Daily report';
     case 'weekly':
-      return 'Report settimanale';
+      return 'Weekly report';
     case 'monthly':
-      return 'Report mensile';
+      return 'Monthly report';
     default:
-      return 'Report pre-visita';
+      return 'Pre-visit report';
   }
 }
 
@@ -1532,11 +1532,11 @@ Future<void> _writeEmergencyLinkToTag(NfcTag tag, String url) async {
   final ndef = NdefAndroid.from(tag);
   if (ndef != null) {
     if (!ndef.isWritable) {
-      throw StateError('Questo tag NFC non e scrivibile.');
+      throw StateError('This NFC tag is not writable.');
     }
     if (ndef.maxSize < message.byteLength) {
       throw StateError(
-        'Questo tag NFC e troppo piccolo per la scheda emergenza.',
+        'This NFC tag is too small for the emergency sheet.',
       );
     }
     await ndef.writeNdefMessage(message);
@@ -1549,7 +1549,7 @@ Future<void> _writeEmergencyLinkToTag(NfcTag tag, String url) async {
     return;
   }
 
-  throw StateError('Questo tag NFC non supporta NDEF.');
+  throw StateError('This NFC tag does not support NDEF.');
 }
 
 NdefMessage _buildEmergencyLinkMessage(String url) {

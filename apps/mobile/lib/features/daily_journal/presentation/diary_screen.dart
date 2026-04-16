@@ -11,16 +11,16 @@ class DiaryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entriesAsync = ref.watch(dailyEntriesProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diario'),
+        title: const Text('Diary'),
         actions: [
           TextButton.icon(
             onPressed: () => context.push('/app/home/history'),
             icon: const Icon(Icons.event_note_outlined),
-            label: const Text('Storico'),
+            label: const Text('History'),
             style: TextButton.styleFrom(
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -38,8 +38,8 @@ class DiaryScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             SectionCard(
-              title: 'Oggi',
-              subtitle: 'Salva un check-up o apri lo storico.',
+              title: 'Today',
+              subtitle: 'Save a check-up or open the history.',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -50,8 +50,8 @@ class DiaryScreen extends ConsumerWidget {
                       Chip(
                         label: Text(
                           entries.isEmpty
-                              ? 'Nessun check-up'
-                              : '${entries.length} check-up',
+                              ? 'No check-ups'
+                              : '${entries.length} check-ups',
                         ),
                       ),
                       FilledButton.icon(
@@ -62,7 +62,7 @@ class DiaryScreen extends ConsumerWidget {
                       FilledButton.tonalIcon(
                         onPressed: () => context.push('/app/home/history'),
                         icon: const Icon(Icons.event_note_outlined),
-                        label: const Text('Storico'),
+                        label: const Text('History'),
                       ),
                     ],
                   ),
@@ -71,9 +71,9 @@ class DiaryScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             SectionCard(
-              title: 'Ultimi check-up',
-              child: entries.isEmpty
-                  ? const Text('Non hai ancora registrato nulla.')
+                title: 'Latest check-ups',
+                child: entries.isEmpty
+                  ? const Text('You have not recorded anything yet.')
                   : Column(
                       children: entries
                           .map(
@@ -85,7 +85,7 @@ class DiaryScreen extends ConsumerWidget {
                                     dateFormat.format(entry.entryDate),
                                   ),
                                   subtitle: Text(
-                                    entry.generalNotes ?? 'Nessuna nota',
+                                    entry.generalNotes ?? 'No notes',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -93,7 +93,7 @@ class DiaryScreen extends ConsumerWidget {
                                     onPressed: () => context.push(
                                       '/app/diary/${entry.id}/symptom',
                                     ),
-                                    child: const Text('Sintomo'),
+                                    child: const Text('Symptom'),
                                   ),
                                 ),
                               ),

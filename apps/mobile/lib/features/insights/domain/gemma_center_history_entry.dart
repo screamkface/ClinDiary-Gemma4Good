@@ -31,7 +31,7 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('question'),
       kind: 'question',
-      title: normalizedQuestion.isEmpty ? 'Domanda clinica' : normalizedQuestion,
+      title: normalizedQuestion.isEmpty ? 'Clinical question' : normalizedQuestion,
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       prompt: normalizedQuestion,
@@ -47,7 +47,7 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('trend'),
       kind: 'trend',
-      title: 'Spiegazione andamento',
+      title: 'Trend explanation',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       referenceDate: referenceDate.toUtc(),
@@ -62,7 +62,7 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('pre_visit'),
       kind: 'pre_visit',
-      title: 'Scheda pre-visita',
+      title: 'Pre-visit brief',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       referenceDate: referenceDate.toUtc(),
@@ -79,9 +79,9 @@ class GemmaCenterHistoryEntry {
     return GemmaCenterHistoryEntry(
       id: _buildId('document_summary'),
       kind: 'document_summary',
-      title: documentTitle.trim().isEmpty
-          ? 'Riassunto documento'
-          : 'Riassunto: ${documentTitle.trim()}',
+        title: documentTitle.trim().isEmpty
+          ? 'Document summary'
+          : 'Summary: ${documentTitle.trim()}',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
       referenceDate: referenceDate.toUtc(),
@@ -93,13 +93,13 @@ class GemmaCenterHistoryEntry {
   String get kindLabel {
     switch (kind) {
       case 'question':
-        return 'Domanda';
+        return 'Question';
       case 'trend':
-        return 'Andamento';
+        return 'Trend';
       case 'pre_visit':
-        return 'Pre-visita';
+        return 'Pre-visit';
       case 'document_summary':
-        return 'Documento';
+        return 'Document';
       default:
         return 'Gemma';
     }

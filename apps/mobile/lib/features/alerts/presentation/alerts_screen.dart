@@ -56,7 +56,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'Nessun alert clinico aperto.',
+                  'No open clinical alerts.',
                   textAlign: TextAlign.center,
                 ),
               ),

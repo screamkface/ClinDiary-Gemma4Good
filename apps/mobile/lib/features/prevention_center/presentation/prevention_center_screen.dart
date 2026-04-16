@@ -13,7 +13,7 @@ class PreventionCenterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final preventionAsync = ref.watch(preventionCenterProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     Future<void> refreshAll() async {
       ref.invalidate(preventionCenterProvider);
       ref.invalidate(myScreeningsProvider);
@@ -24,7 +24,7 @@ class PreventionCenterScreen extends ConsumerWidget {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Centro prevenzione'),
+          title: const Text('Prevention Center'),
           actions: [
             IconButton(
               onPressed: () => ref.invalidate(preventionCenterProvider),
@@ -35,10 +35,10 @@ class PreventionCenterScreen extends ConsumerWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Sintesi'),
-              Tab(text: 'Controlli'),
-              Tab(text: 'Vaccini'),
-              Tab(text: 'Percorsi'),
+              Tab(text: 'Summary'),
+              Tab(text: 'Checkups'),
+              Tab(text: 'Vaccines'),
+              Tab(text: 'Paths'),
               Tab(text: 'Follow-up'),
             ],
           ),
@@ -50,15 +50,15 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   const ClinicalScopeNotice(
-                    title: 'Prevenzione personale',
+                    title: 'Personal prevention',
                     message:
-                        'Queste indicazioni aiutano a organizzare controlli e follow-up. Non sono una prescrizione automatica e vanno contestualizzate con il medico.',
+                      'These recommendations help organize checkups and follow-up. They are not an automatic prescription and should be reviewed with a clinician.',
                     icon: Icons.health_and_safety_outlined,
                   ),
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Sintesi personale',
-                    subtitle: 'Priorità rapide.',
+                    title: 'Personal summary',
+                    subtitle: 'Quick priorities.',
                     action: Text(
                       dateFormat.format(center.generatedAt.toLocal()),
                       style: Theme.of(context).textTheme.bodySmall,
@@ -74,13 +74,13 @@ class PreventionCenterScreen extends ConsumerWidget {
                         const SizedBox(height: 6),
                         Text(
                           [
-                                if (center.age != null) '${center.age} anni',
+                                if (center.age != null) '${center.age} years',
                                 if (center.biologicalSex != null)
                                   _sexLabel(center.biologicalSex!),
                               ].join(' • ').isEmpty
-                              ? 'Profilo prevenzione personale'
+                              ? 'Personal prevention profile'
                               : [
-                                  if (center.age != null) '${center.age} anni',
+                                  if (center.age != null) '${center.age} years',
                                   if (center.biologicalSex != null)
                                     _sexLabel(center.biologicalSex!),
                                 ].join(' • '),
@@ -91,39 +91,39 @@ class PreventionCenterScreen extends ConsumerWidget {
                           runSpacing: 8,
                           children: [
                             _OverviewChip(
-                              label:
-                                  'Regione ${center.regionName ?? 'Italia (generale)'}',
+                                label:
+                                  'Region ${center.regionName ?? 'Italy (general)'}',
                               icon: Icons.place_outlined,
                             ),
                             _OverviewChip(
-                              label:
-                                  '${center.overview.actionableScreenings} controlli',
+                                label:
+                                  '${center.overview.actionableScreenings} checkups',
                               icon: Icons.health_and_safety_outlined,
                             ),
                             _OverviewChip(
-                              label: '${center.overview.vaccineReviews} vaccini',
+                              label: '${center.overview.vaccineReviews} vaccines',
                               icon: Icons.vaccines_outlined,
                             ),
                             _OverviewChip(
-                              label:
-                                  '${center.overview.vaccineRegistryItems} registro',
+                                label:
+                                  '${center.overview.vaccineRegistryItems} registry',
                               icon: Icons.fact_check_outlined,
                             ),
                             if (center.overview.pregnancyItems > 0)
                               _OverviewChip(
                                 label:
-                                    '${center.overview.pregnancyItems} gravidanza',
+                                  '${center.overview.pregnancyItems} pregnancy',
                                 icon: Icons.pregnant_woman_outlined,
                               ),
                             if (center.overview.sharedDecisionItems > 0)
                               _OverviewChip(
                                 label:
-                                    '${center.overview.sharedDecisionItems} condivise',
+                                  '${center.overview.sharedDecisionItems} shared',
                                 icon: Icons.balance_outlined,
                               ),
                             _OverviewChip(
-                              label:
-                                  '${center.overview.seasonalChecks} stagionali',
+                                label:
+                                  '${center.overview.seasonalChecks} seasonal',
                               icon: Icons.wb_sunny_outlined,
                             ),
                             _OverviewChip(
@@ -139,8 +139,8 @@ class PreventionCenterScreen extends ConsumerWidget {
                   if (center.annualVisit != null) ...[
                     const SizedBox(height: 12),
                     _RecommendationSection(
-                      title: 'Visita annuale consigliata',
-                      subtitle: 'Controllo generale.',
+                      title: 'Recommended annual visit',
+                      subtitle: 'General checkup.',
                       items: [center.annualVisit!],
                     ),
                   ],
@@ -150,14 +150,14 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   _RecommendationSection(
-                    title: 'Visite e controlli per il tuo profilo',
-                    subtitle: 'Guidati dal profilo.',
+                    title: 'Visits and checkups for your profile',
+                    subtitle: 'Guided by your profile.',
                     items: center.visitsAndControls,
                     emptyLabel:
-                        'Nessun controllo periodico aggiuntivo da mostrare.',
+                        'No additional periodic checkups to show.',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/screenings'),
-                      child: const Text('Apri screening'),
+                      child: const Text('Open screenings'),
                     ),
                   ),
                 ],
@@ -166,21 +166,21 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   _RecommendationSection(
-                    title: 'Vaccini consigliati',
-                    subtitle: 'Da verificare con il tuo storico.',
+                    title: 'Recommended vaccines',
+                    subtitle: 'Review against your history.',
                     items: center.vaccines,
                     emptyLabel:
-                        'Nessun vaccino da evidenziare con i dati attuali.',
+                      'No vaccines to highlight with the current data.',
                   ),
                   const SizedBox(height: 12),
                   _RecommendationSection(
-                    title: 'Registro vaccinale',
-                    subtitle: 'Stato sintetico del tuo storico.',
+                    title: 'Vaccine registry',
+                    subtitle: 'Compact status of your history.',
                     items: center.vaccineRegistry,
-                    emptyLabel: 'Nessun riepilogo vaccinale disponibile.',
+                    emptyLabel: 'No vaccine summary available.',
                     action: TextButton(
                       onPressed: () => context.push('/app/profile/vaccinations'),
-                      child: const Text('Apri storico'),
+                      child: const Text('Open history'),
                     ),
                   ),
                 ],
@@ -189,19 +189,19 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   _RecommendationSection(
-                    title: 'Gravidanza e preconcezione',
-                    subtitle: 'Solo se il profilo lo richiede.',
+                    title: 'Pregnancy and preconception',
+                    subtitle: 'Only when the profile requires it.',
                     items: center.pregnancyAndPreconception,
                     emptyLabel:
-                        'Nessun percorso preconcezionale o gravidanza attivo nel profilo.',
+                      'No active preconception or pregnancy pathway in the profile.',
                   ),
                   const SizedBox(height: 12),
                   _RecommendationSection(
-                    title: 'Decisioni condivise',
-                    subtitle: 'Aree dove ClinDiary resta prudente.',
+                    title: 'Shared decisions',
+                    subtitle: 'Areas where ClinDiary stays cautious.',
                     items: center.sharedDecisions,
                     emptyLabel:
-                        'Nessuna decisione condivisa specifica da mostrare con i dati attuali.',
+                      'No specific shared decisions to show with the current data.',
                   ),
                 ],
               ),
@@ -209,21 +209,21 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   _RecommendationSection(
-                    title: 'Controlli stagionali',
-                    subtitle: 'Promemoria stagionali.',
+                    title: 'Seasonal checkups',
+                    subtitle: 'Seasonal reminders.',
                     items: center.seasonalChecks,
                     emptyLabel:
-                        'Nessun controllo stagionale attivo in questo momento.',
+                      'No seasonal checkups active at the moment.',
                   ),
                   const SizedBox(height: 12),
                   _RecommendationSection(
-                    title: 'Reminder di follow-up',
-                    subtitle: 'Cose da chiudere.',
+                    title: 'Follow-up reminders',
+                    subtitle: 'Items to close out.',
                     items: center.followUpReminders,
-                    emptyLabel: 'Nessun follow-up aperto.',
+                    emptyLabel: 'No open follow-up items.',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/notifications'),
-                      child: const Text('Apri notifiche'),
+                      child: const Text('Open notifications'),
                     ),
                   ),
                 ],
@@ -282,7 +282,7 @@ class _RecommendationSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (items.isEmpty)
-            Text(emptyLabel ?? 'Nessun elemento disponibile.')
+            Text(emptyLabel ?? 'No items available.')
           else
             ...items.map(
               (item) => Padding(
@@ -418,50 +418,50 @@ Color _toneForPriority(String priority, ColorScheme colorScheme) {
 String _statusLabel(String status) {
   switch (status) {
     case 'recommended':
-      return 'Consigliato';
+      return 'Recommended';
     case 'overdue':
-      return 'In ritardo';
+      return 'Overdue';
     case 'attention':
-      return 'Attenzione';
+      return 'Attention';
     case 'ready':
-      return 'Pronto';
+      return 'Ready';
     case 'seasonal':
-      return 'Stagionale';
+      return 'Seasonal';
     case 'up_to_date':
-      return 'In regola';
+      return 'Up to date';
     case 'shared_decision':
-      return 'Condivisa';
+      return 'Shared';
     default:
-      return 'Da rivedere';
+      return 'To review';
   }
 }
 
 String _kindLabel(String kind) {
   switch (kind) {
     case 'vaccine':
-      return 'Vaccino';
+      return 'Vaccine';
     case 'vaccine_registry':
-      return 'Registro';
+      return 'Registry';
     case 'pregnancy':
-      return 'Gravidanza';
+      return 'Pregnancy';
     case 'seasonal_check':
-      return 'Stagionale';
+      return 'Seasonal';
     case 'follow_up':
       return 'Follow-up';
     default:
-      return 'Controllo';
+      return 'Checkup';
   }
 }
 
 String _sexLabel(String value) {
   switch (value) {
     case 'female':
-      return 'Femmina';
+      return 'Female';
     case 'male':
-      return 'Maschio';
+      return 'Male';
     case 'intersex':
       return 'Intersex';
     default:
-      return 'Non specificato';
+      return 'Not specified';
   }
 }

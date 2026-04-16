@@ -107,11 +107,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Report clinici'),
+          title: const Text('Clinical reports'),
           bottom: const TabBar(
             tabs: [
-              Tab(text: 'Genera'),
-              Tab(text: 'Ultimo report'),
+              Tab(text: 'Generate'),
+              Tab(text: 'Latest report'),
             ],
           ),
         ),
@@ -121,37 +121,37 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 const ClinicalScopeNotice(
-                  title: 'Report informativo',
+                    title: 'Informational report',
                   message:
-                      'I report AI servono per organizzare informazioni e andamento clinico. Non equivalgono a una valutazione medica o a una prescrizione.',
+                      'AI reports are used to organize information and clinical trend. They are not equivalent to a medical assessment or prescription.',
                   icon: Icons.description_outlined,
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Genera report',
-                  subtitle: 'Scegli il periodo e crea un report ordinato.',
+                  title: 'Generate report',
+                  subtitle: 'Choose the period and create an organized report.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: _reportType,
-                        decoration: const InputDecoration(labelText: 'Tipo report'),
+                        decoration: const InputDecoration(labelText: 'Report type'),
                         items: const [
                           DropdownMenuItem(
                             value: 'weekly_summary',
-                            child: Text('Recap settimanale'),
+                            child: Text('Weekly recap'),
                           ),
                           DropdownMenuItem(
                             value: 'monthly_summary',
-                            child: Text('Recap mensile'),
+                            child: Text('Monthly recap'),
                           ),
                           DropdownMenuItem(
                             value: 'pre_visit_report',
-                            child: Text('Preparazione visita'),
+                            child: Text('Pre-visit prep'),
                           ),
                           DropdownMenuItem(
                             value: 'screening_status_report',
-                            child: Text('Stato prevenzione'),
+                            child: Text('Prevention status'),
                           ),
                         ],
                         onChanged: (value) {
@@ -161,11 +161,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       const SizedBox(height: 16),
                       if (proactiveLock)
                         FeatureLockCard(
-                          title: 'AI Plus richiesto',
+                          title: 'AI Plus required',
                           compact: true,
-                          featureLabel: 'Report AI',
+                          featureLabel: 'AI report',
                           message:
-                              'I report narrativi AI fanno parte di ClinDiary AI Plus. Il report prevenzione deterministico resta disponibile anche nel piano Free.',
+                              'Narrative AI reports are part of ClinDiary AI Plus. The deterministic prevention report remains available even on the Free plan.',
                           onOpenBilling: () => context.push(
                             '/app/home/billing?feature=ai_report_generation',
                           ),
@@ -175,7 +175,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           onPressed: _isGenerating ? null : _generateReport,
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: Text(
-                            _isGenerating ? 'Generazione...' : 'Rigenera report',
+                            _isGenerating ? 'Generating...' : 'Regenerate report',
                           ),
                         ),
                     ],
@@ -189,13 +189,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 if (_latestReport != null)
                   SectionCard(
                     title: _latestReport!.title,
-                    subtitle: 'Ultimo report disponibile per il profilo attivo.',
+                    subtitle: 'Latest report available for the active profile.',
                     action: FilledButton.tonalIcon(
                       onPressed: _latestReport!.downloadUrl == null
                           ? null
                           : () => _openReport(_latestReport!),
                       icon: const Icon(Icons.open_in_new),
-                      label: const Text('Apri PDF'),
+                      label: const Text('Open PDF'),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,9 +238,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   )
                 else
                   const SectionCard(
-                    title: 'Ultimo report',
+                      title: 'Latest report',
                     child: Text(
-                      'Non hai ancora generato report per questo profilo.',
+                        'You have not generated any reports for this profile yet.',
                     ),
                   ),
               ],
@@ -255,12 +255,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 String _labelFor(String reportType) {
   switch (reportType) {
     case 'monthly_summary':
-      return 'Recap mensile';
+      return 'Monthly recap';
     case 'pre_visit_report':
-      return 'Preparazione visita';
+      return 'Pre-visit prep';
     case 'screening_status_report':
-      return 'Stato prevenzione';
+      return 'Prevention status';
     default:
-      return 'Recap settimanale';
+      return 'Weekly recap';
   }
 }

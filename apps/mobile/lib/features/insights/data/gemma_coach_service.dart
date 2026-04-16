@@ -23,7 +23,7 @@ class GemmaCoachService {
   }) async {
     final normalizedQuestion = question.trim();
     if (normalizedQuestion.isEmpty) {
-      throw Exception('Scrivi una domanda piu precisa.');
+      throw Exception('Write a more specific question.');
     }
 
     final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(

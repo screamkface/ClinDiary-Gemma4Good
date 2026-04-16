@@ -5,7 +5,7 @@ class AsyncView<T> extends StatelessWidget {
   const AsyncView({
     required this.value,
     required this.builder,
-    this.loadingMessage = 'Caricamento in corso...',
+    this.loadingMessage = 'Loading...',
     super.key,
   });
 

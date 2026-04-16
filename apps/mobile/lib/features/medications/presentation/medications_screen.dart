@@ -69,7 +69,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Salvato offline. ClinDiary sincronizzera appena torna la rete.',
+              'Saved offline. ClinDiary will sync as soon as the network is back.',
             ),
           ),
         );
@@ -104,7 +104,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Orario aggiornato.')));
+      ).showSnackBar(const SnackBar(content: Text('Schedule updated.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -127,7 +127,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       initialDate: schedule.pausedUntil ?? now,
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 365)),
-      locale: const Locale('it', 'IT'),
+      locale: const Locale('en', 'US'),
     );
     if (picked == null) {
       return;
@@ -146,7 +146,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Promemoria in pausa fino al ${DateFormat('dd/MM/yyyy').format(picked)}.',
+            'Reminder paused until ${DateFormat('dd/MM/yyyy').format(picked)}.',
           ),
         ),
       );
@@ -175,7 +175,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Promemoria riattivato.')));
+      ).showSnackBar(const SnackBar(content: Text('Reminder resumed.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -193,8 +193,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
     MedicationScheduleItem schedule,
   ) async {
     final confirmed = await _confirmRemoval(
-      title: 'Rimuovere orario?',
-      message: 'L’orario ${schedule.compactLabel} verra eliminato.',
+      title: 'Delete schedule?',
+      message: 'The ${schedule.compactLabel} schedule will be removed.',
     );
     if (!confirmed) {
       return;
@@ -209,7 +209,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Orario rimosso.')));
+      ).showSnackBar(const SnackBar(content: Text('Schedule removed.')));
     } on ApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -224,9 +224,9 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 
   Future<void> _deleteMedication(MedicationItem medication) async {
     final confirmed = await _confirmRemoval(
-      title: 'Rimuovere farmaco?',
-      message:
-          'La terapia ${medication.name} e i relativi promemoria verranno rimossi.',
+        title: 'Delete medication?',
+        message:
+          'The ${medication.name} treatment and its reminders will be removed.',
     );
     if (!confirmed) {
       return;
@@ -241,7 +241,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${medication.name} rimosso dal profilo.')),
+        SnackBar(content: Text('${medication.name} removed from the profile.')),
       );
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -274,7 +274,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             horizontal: 16,
             vertical: 24,
           ),
-          title: Text('Orario ${medication.name}'),
+          title: Text('${medication.name} schedule'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
             child: Column(
@@ -283,7 +283,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Orario'),
+                  title: const Text('Time'),
                   subtitle: Text(selectedTime.format(context)),
                   trailing: const Icon(Icons.schedule_outlined),
                   onTap: () async {
@@ -299,8 +299,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                 TextField(
                   controller: instructionsController,
                   decoration: const InputDecoration(
-                    labelText: 'Istruzioni',
-                    hintText: 'Es. dopo cena',
+                    labelText: 'Instructions',
+                    hintText: 'e.g. after dinner',
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -308,7 +308,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: active,
                   onChanged: (value) => setModalState(() => active = value),
-                  title: const Text('Schedule attiva'),
+                  title: const Text('Schedule active'),
                 ),
               ],
             ),
@@ -317,7 +317,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             TextButton(
               onPressed: () =>
                   Navigator.of(dialogContext, rootNavigator: true).maybePop(),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
@@ -333,7 +333,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                   Navigator.of(dialogContext, rootNavigator: true).maybePop();
                 }
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -353,7 +353,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         scrollable: true,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: Text(
-          status == 'taken' ? 'Conferma assunzione' : 'Registra dose saltata',
+          status == 'taken' ? 'Confirm dose taken' : 'Record skipped dose',
         ),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -362,8 +362,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             maxLines: 3,
             decoration: InputDecoration(
               labelText: status == 'taken'
-                  ? 'Note opzionali'
-                  : 'Motivo o note opzionali',
+                  ? 'Optional notes'
+                  : 'Reason or optional notes',
             ),
           ),
         ),
@@ -371,7 +371,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).maybePop(),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () async {
@@ -386,7 +386,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                 Navigator.of(dialogContext, rootNavigator: true).maybePop();
               }
             },
-            child: const Text('Salva'),
+              child: const Text('Save'),
           ),
         ],
       ),
@@ -406,12 +406,12 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            child: const Text('Rimuovi'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -423,12 +423,12 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
     final logsAsync = ref.watch(medicationLogsProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final recentLogs = logsAsync.asData?.value ?? const <MedicationLogItem>[];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Farmaci'),
+        title: const Text('Medications'),
         actions: [
           IconButton(
             onPressed: () {
@@ -446,10 +446,10 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         children: [
           profileAsync.when(
             data: (bundle) => SectionCard(
-              title: 'Terapia',
-              subtitle: 'Farmaci attivi e promemoria.',
-              child: bundle == null || bundle.medications.isEmpty
-                  ? const Text('Nessuna terapia attiva registrata.')
+                title: 'Treatment',
+                subtitle: 'Active medications and reminders.',
+                child: bundle == null || bundle.medications.isEmpty
+                  ? const Text('No active treatment recorded.')
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -459,11 +459,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                           children: [
                             Chip(
                               label: Text(
-                                '${bundle.medications.where((item) => item.active).length} attivi',
+                                '${bundle.medications.where((item) => item.active).length} active',
                               ),
                             ),
                             Chip(
-                              label: Text('${recentLogs.length} registrazioni'),
+                              label: Text('${recentLogs.length} logs'),
                             ),
                           ],
                         ),
@@ -484,7 +484,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                             if (item.route != null && item.route!.isNotEmpty)
                               item.route!,
                             if (item.pendingSync)
-                              'In attesa di sincronizzazione',
+                              'Pending sync',
                           ];
 
                           return Card.outlined(
@@ -517,7 +517,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                         itemBuilder: (context) => const [
                                           PopupMenuItem(
                                             value: 'delete',
-                                            child: Text('Rimuovi farmaco'),
+                                            child: Text('Delete medication'),
                                           ),
                                         ],
                                       ),
@@ -533,7 +533,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                       if (todayLog != null)
                                         Chip(
                                           label: Text(
-                                            'Oggi ${_adherenceLabel(todayLog.status)}',
+                                            'Today ${_adherenceLabel(todayLog.status)}',
                                           ),
                                         ),
                                     ],
@@ -566,8 +566,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                                   schedule.instructions ??
                                                       (schedule.pausedUntil ==
                                                               null
-                                                          ? 'Attivo'
-                                                          : 'In pausa'),
+                                                          ? 'Active'
+                                                          : 'Paused'),
                                                   maxLines: 2,
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -605,7 +605,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                                   itemBuilder: (context) => [
                                                     const PopupMenuItem(
                                                       value: 'edit',
-                                                      child: Text('Modifica'),
+                                                      child: Text('Edit'),
                                                     ),
                                                     PopupMenuItem(
                                                       value:
@@ -616,14 +616,14 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                                       child: Text(
                                                         schedule.pausedUntil !=
                                                                 null
-                                                            ? 'Riprendi'
-                                                            : 'Metti in pausa',
+                                                            ? 'Resume'
+                                                            : 'Pause',
                                                       ),
                                                     ),
                                                     const PopupMenuItem(
                                                       value: 'delete',
                                                       child: Text(
-                                                        'Rimuovi orario',
+                                                        'Delete schedule',
                                                       ),
                                                     ),
                                                   ],
@@ -654,10 +654,10 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                         ),
                                         label: Text(
                                           _busyMedicationId == item.id
-                                              ? '...'
-                                              : (todayLog == null
-                                                    ? 'Segna assunta'
-                                                    : 'Già registrata'),
+                                                  ? '...'
+                                                  : (todayLog == null
+                                                    ? 'Mark taken'
+                                                    : 'Already logged'),
                                         ),
                                       ),
                                       OutlinedButton.icon(
@@ -673,7 +673,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                         icon: const Icon(
                                           Icons.event_busy_outlined,
                                         ),
-                                        label: const Text('Saltata'),
+                                        label: const Text('Skipped'),
                                       ),
                                     ],
                                   ),
@@ -686,19 +686,19 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                     ),
             ),
             loading: () => const SectionCard(
-              title: 'Terapia',
+              title: 'Treatment',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) =>
-                SectionCard(title: 'Terapia', child: Text(error.toString())),
+                SectionCard(title: 'Treatment', child: Text(error.toString())),
           ),
           const SizedBox(height: 16),
           logsAsync.when(
             data: (logs) => SectionCard(
-              title: 'Storico aderenza',
-              subtitle: 'Ultime conferme.',
-              child: logs.isEmpty
-                  ? const Text('Ancora nessuna conferma di assunzione.')
+                title: 'Adherence history',
+                subtitle: 'Latest confirmations.',
+                child: logs.isEmpty
+                  ? const Text('No dose confirmations yet.')
                   : Column(
                       children: logs.take(6).map((log) {
                         return Card.outlined(
@@ -707,7 +707,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                             dense: true,
                             title: Text(log.medicationName),
                             subtitle: Text(
-                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • In attesa sync' : ''} • ${dateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
+                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • Pending sync' : ''} • ${dateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
                             ),
                             trailing: Text(
                               log.medicationDosage ?? '',
@@ -719,11 +719,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                     ),
             ),
             loading: () => const SectionCard(
-              title: 'Storico aderenza',
+              title: 'Adherence history',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Storico aderenza',
+              title: 'Adherence history',
               child: Text(error.toString()),
             ),
           ),
@@ -736,11 +736,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 String _adherenceLabel(String status) {
   switch (status) {
     case 'taken':
-      return 'Assunta';
+      return 'Taken';
     case 'skipped':
-      return 'Saltata';
+      return 'Skipped';
     case 'missed':
-      return 'Non confermata';
+      return 'Missed';
     default:
       return status;
   }

@@ -10,9 +10,9 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 const _medicationReminderChannelId = 'clindiary_medication_reminders';
-const _medicationReminderChannelName = 'Promemoria farmaci';
+const _medicationReminderChannelName = 'Medication reminders';
 const _medicationReminderChannelDescription =
-    'Promemoria locali generati dal dispositivo per la terapia.';
+    'Local medication reminders generated on the device.';
 
 @immutable
 class LocalMedicationReminderStatus {
@@ -117,7 +117,7 @@ class LocalMedicationReminderService {
         permissionGranted: false,
         scheduledCount: 0,
         lastSyncedAt: null,
-        message: 'Promemoria locali disponibili su Android e iOS.',
+        message: 'Local reminders are available on Android and iOS.',
       );
     }
 
@@ -132,7 +132,7 @@ class LocalMedicationReminderService {
       lastSyncedAt: _lastSyncedAt,
       message: permissionGranted
           ? null
-          : 'Permesso notifiche non ancora concesso sul dispositivo.',
+          : 'Notification permission has not yet been granted on the device.',
     );
   }
 
@@ -186,7 +186,7 @@ class LocalMedicationReminderService {
       lastSyncedAt: status.lastSyncedAt,
       message: granted
           ? status.message
-          : 'Permesso notifiche negato dal dispositivo.',
+          : 'Notification permission denied by the device.',
     );
   }
 
@@ -211,7 +211,7 @@ class LocalMedicationReminderService {
         permissionGranted: await _isPermissionGranted(),
         scheduledCount: 0,
         lastSyncedAt: _lastSyncedAt,
-        message: 'Promemoria farmaci disattivati nelle preferenze.',
+        message: 'Medication reminders are disabled in preferences.',
       );
     }
 
@@ -224,7 +224,7 @@ class LocalMedicationReminderService {
           scheduledCount: 0,
           lastSyncedAt: _lastSyncedAt,
           message:
-              'Attiva prima le notifiche del dispositivo per generare i promemoria.',
+              'Enable device notifications first to generate reminders.',
         );
       }
       final permissionStatus = await requestPermission();
@@ -259,8 +259,8 @@ class LocalMedicationReminderService {
       scheduledCount: plan.length,
       lastSyncedAt: _lastSyncedAt,
       message: plan.isEmpty
-          ? 'Nessun promemoria pianificabile con i dati correnti.'
-          : 'Promemoria locali sincronizzati sul dispositivo.',
+          ? 'No reminders can be scheduled with the current data.'
+          : 'Local reminders synced on the device.',
     );
   }
 

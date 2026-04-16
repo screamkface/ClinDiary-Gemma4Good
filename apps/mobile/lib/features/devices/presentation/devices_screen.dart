@@ -95,19 +95,19 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rimuovere il connettore?'),
+        title: const Text('Remove the connector?'),
         content: Text(
-          'Il collegamento ${connection.providerName} verra` rimosso da questo profilo. '
-          'Le misure gia` importate restano nello storico clinico.',
+          'The connection to ${connection.providerName} will be removed from this profile. '
+          'Already imported measurements will remain in the clinical history.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Rimuovi'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -127,7 +127,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Connettore rimosso.')));
+      ).showSnackBar(const SnackBar(content: Text('Connector removed.')));
     } catch (error) {
       if (!mounted) {
         return;
@@ -221,9 +221,9 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 child: SectionCard(
-                  title: 'Wave 1 clinica',
+                  title: 'Clinical Wave 1',
                   subtitle:
-                      'OMRON, Withings, iHealth, A&D e Dexcom in un modulo unico.',
+                      'OMRON, Withings, iHealth, A&D, and Dexcom in one module.',
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -234,16 +234,16 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
                       ),
                       _SummaryChip(
                         icon: Icons.link_outlined,
-                        label: '${overview.connectedCount} connessi',
+                        label: '${overview.connectedCount} connected',
                       ),
                       _SummaryChip(
                         icon: Icons.pending_actions_outlined,
-                        label: '${overview.pendingCount} in setup',
+                        label: '${overview.pendingCount} setting up',
                       ),
                       _SummaryChip(
                         icon: Icons.monitor_heart_outlined,
                         label:
-                            '${overview.recentMeasurements.length} misure recenti',
+                            '${overview.recentMeasurements.length} recent measurements',
                       ),
                     ],
                   ),
@@ -333,7 +333,7 @@ class _ProvidersTab extends StatelessWidget {
           subtitle: provider.summary,
           action: FilledButton.tonal(
             onPressed: () => onConfigure(provider, connection),
-            child: Text(connection == null ? 'Configura' : 'Aggiorna'),
+            child: Text(connection == null ? 'Set up' : 'Update'),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,8 +348,8 @@ class _ProvidersTab extends StatelessWidget {
                   ),
                   _ProviderBadge(
                     label: provider.providerConfigured
-                        ? 'Server pronto'
-                        : 'Server da configurare',
+                      ? 'Server ready'
+                      : 'Server needs setup',
                     tone: provider.providerConfigured
                         ? _BadgeTone.positive
                         : _BadgeTone.warning,
@@ -368,7 +368,7 @@ class _ProvidersTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Metriche chiave',
+                'Key metrics',
                 style: Theme.of(
                   context,
                 ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -385,8 +385,8 @@ class _ProvidersTab extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   connection.isConnected
-                      ? 'Connesso a questo profilo'
-                      : 'Connettore salvato per questo profilo',
+                      ? 'Connected to this profile'
+                      : 'Connector saved for this profile',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -423,8 +423,8 @@ class _ConnectionsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (connections.isEmpty) {
       return const _EmptyState(
-        title: 'Nessun connettore ancora salvato',
-        message: 'Apri la tab Provider e configura il primo device clinico.',
+        title: 'No connector saved yet',
+        message: 'Open the Provider tab and set up the first clinical device.',
       );
     }
 
@@ -457,13 +457,13 @@ class _ConnectionsTab extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'configure', child: Text('Configura')),
+              const PopupMenuItem(value: 'configure', child: Text('Set up')),
               PopupMenuItem(
                 value: 'sync',
                 enabled: connection.supportsLiveSync,
-                child: const Text('Sincronizza'),
+                child: const Text('Sync'),
               ),
-              const PopupMenuItem(value: 'remove', child: Text('Rimuovi')),
+              const PopupMenuItem(value: 'remove', child: Text('Remove')),
             ],
           ),
           child: Column(
@@ -481,15 +481,15 @@ class _ConnectionsTab extends StatelessWidget {
                   ),
                   _ProviderBadge(
                     label: connection.supportsLiveSync
-                        ? 'Sync live'
-                        : 'Sync live non pronto',
+                      ? 'Live sync'
+                      : 'Live sync not ready',
                     tone: connection.supportsLiveSync
                         ? _BadgeTone.info
                         : _BadgeTone.neutral,
                   ),
                   if (connection.supportsManualIngest)
                     const _ProviderBadge(
-                      label: 'Pronto per SDK',
+                      label: 'Ready for SDK',
                       tone: _BadgeTone.info,
                     ),
                 ],
@@ -515,7 +515,7 @@ class _ConnectionsTab extends StatelessWidget {
                 )
               else
                 Text(
-                  'Ancora nessuna misura importata per questo connettore.',
+                  'No measurements imported yet for this connector.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               if (connection.supportsManualIngest) ...[
@@ -523,7 +523,7 @@ class _ConnectionsTab extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: () => onManualIngest(connection),
                   icon: const Icon(Icons.add_chart_outlined),
-                  label: const Text('Registra misura'),
+                  label: const Text('Record measurement'),
                 ),
               ],
               if (connection.lastError != null &&
@@ -554,9 +554,9 @@ class _MeasurementsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (measurements.isEmpty) {
       return const _EmptyState(
-        title: 'Nessuna misura device ancora disponibile',
+        title: 'No device measurements available yet',
         message:
-            'Le misure importate dai provider Wave 1 compariranno qui in ordine cronologico.',
+          'Measurements imported from Wave 1 providers will appear here in chronological order.',
       );
     }
 
@@ -611,9 +611,9 @@ class _JobsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (jobs.isEmpty) {
       return const _EmptyState(
-        title: 'Nessun import recente',
+        title: 'No recent imports',
         message:
-            'Gli import, sync e bootstrap dei provider Wave 1 compariranno qui con il loro esito.',
+          'Imports, syncs, and provider bootstrap tasks will appear here with their outcome.',
       );
     }
 
@@ -642,7 +642,7 @@ class _JobsTab extends StatelessWidget {
                     tone: _jobBadgeTone(job.status),
                   ),
                   _ProviderBadge(
-                    label: '${job.itemCount} elementi',
+                    label: '${job.itemCount} items',
                     tone: _BadgeTone.neutral,
                   ),
                 ],
@@ -828,7 +828,7 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Registra misura',
+                  'Record measurement',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -895,7 +895,7 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
                 TextField(
                   controller: _deviceModelController,
                   decoration: const InputDecoration(
-                    labelText: 'Modello device (opzionale)',
+                    labelText: 'Device model (optional)',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -904,12 +904,12 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
                   minLines: 2,
                   maxLines: 4,
                   decoration: const InputDecoration(
-                    labelText: 'Note (opzionale)',
+                    labelText: 'Notes (optional)',
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'La misura viene salvata con l orario attuale del dispositivo.',
+                  'The measurement is saved with the current device time.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
@@ -917,12 +917,12 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      child: const Text('Annulla'),
+                      child: const Text('Cancel'),
                     ),
                     const Spacer(),
                     FilledButton(
                       onPressed: _submitting ? null : _submit,
-                      child: const Text('Salva misura'),
+                      child: const Text('Save measurement'),
                     ),
                   ],
                 ),
@@ -998,8 +998,8 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
   Widget build(BuildContext context) {
     final provider = widget.provider;
     final title = widget.existingConnection == null
-        ? 'Configura ${provider.displayName}'
-        : 'Aggiorna ${provider.displayName}';
+        ? 'Set up ${provider.displayName}'
+        : 'Update ${provider.displayName}';
     return Material(
       child: SafeArea(
         child: Padding(
@@ -1040,7 +1040,7 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
                 TextField(
                   controller: _accountLabelController,
                   decoration: const InputDecoration(
-                    labelText: 'Etichetta account o device',
+                    labelText: 'Account or device label',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1048,16 +1048,16 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
                   TextField(
                     controller: _externalUserIdController,
                     decoration: const InputDecoration(
-                      labelText: 'User ID esterno (opzionale)',
+                      labelText: 'External user ID (optional)',
                     ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _accessTokenController,
                     decoration: const InputDecoration(
-                      labelText: 'Access token manuale',
+                      labelText: 'Manual access token',
                       hintText:
-                          'Incolla qui il token se lo ottieni dal partner portal',
+                          'Paste the token here if you obtained it from the partner portal',
                     ),
                     minLines: 2,
                     maxLines: 3,
@@ -1066,7 +1066,7 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
                   TextField(
                     controller: _refreshTokenController,
                     decoration: const InputDecoration(
-                      labelText: 'Refresh token (opzionale)',
+                      labelText: 'Refresh token (optional)',
                     ),
                     minLines: 2,
                     maxLines: 3,
@@ -1076,7 +1076,7 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
                   TextField(
                     controller: _apiKeyController,
                     decoration: const InputDecoration(
-                      labelText: 'API key vendor',
+                      labelText: 'Vendor API key',
                     ),
                     minLines: 2,
                     maxLines: 3,
@@ -1088,18 +1088,18 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
                     TextButton.icon(
                       onPressed: _openDocs,
                       icon: const Icon(Icons.open_in_new_rounded),
-                      label: const Text('Documentazione'),
+                      label: const Text('Documentation'),
                     ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      child: const Text('Annulla'),
+                      child: const Text('Cancel'),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
                       onPressed: _submitting ? null : _submit,
                       child: Text(
-                        provider.isPartnerSetup ? 'Salva setup' : 'Salva',
+                        provider.isPartnerSetup ? 'Save setup' : 'Save',
                       ),
                     ),
                   ],
@@ -1251,9 +1251,9 @@ class _EmptyState extends StatelessWidget {
 String _categoryLabel(String value) {
   switch (value) {
     case 'clinical_device':
-      return 'Device clinico';
+      return 'Clinical device';
     case 'diabetes':
-      return 'Diabete';
+      return 'Diabetes';
     default:
       return value.replaceAll('_', ' ');
   }
@@ -1277,13 +1277,13 @@ String _integrationLabel(String value) {
 String _connectionStatusLabel(DeviceConnectionItem connection) {
   switch (connection.status) {
     case 'connected':
-      return 'Connesso';
+      return 'Connected';
     case 'pending':
-      return 'In setup';
+      return 'Setting up';
     case 'error':
-      return 'Errore';
+      return 'Error';
     case 'disconnected':
-      return 'Disconnesso';
+      return 'Disconnected';
     default:
       return connection.status;
   }
@@ -1292,13 +1292,13 @@ String _connectionStatusLabel(DeviceConnectionItem connection) {
 String _jobStatusLabel(String status) {
   switch (status) {
     case 'running':
-      return 'In corso';
+      return 'Running';
     case 'succeeded':
-      return 'Completato';
+      return 'Completed';
     case 'failed':
-      return 'Fallito';
+      return 'Failed';
     case 'pending':
-      return 'In attesa';
+      return 'Pending';
     default:
       return status;
   }

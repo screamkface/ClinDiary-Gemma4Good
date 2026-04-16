@@ -52,8 +52,8 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
         SnackBar(
           content: Text(
             enabled
-                ? 'Consenso per AI esterna aggiornato.'
-                : 'Consenso per AI esterna revocato.',
+                ? 'External AI consent updated.'
+                : 'External AI consent revoked.',
           ),
         ),
       );
@@ -138,16 +138,16 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setModalState) => AlertDialog(
-            title: const Text('Elimina account'),
+            title: const Text('Delete account'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Questa azione elimina account, profili, recap AI, share link e dati cloud associati. Sul dispositivo verranno rimossi anche cache e documenti locali del tuo account.',
+                  'This action deletes the account, profiles, AI recaps, share links, and associated cloud data. On the device, cache and local documents for your account will also be removed.',
                 ),
                 const SizedBox(height: 12),
-                const Text('Per confermare scrivi ELIMINA.'),
+                const Text('To confirm, type DELETE.'),
                 const SizedBox(height: 8),
                 TextField(
                   autofocus: true,
@@ -156,7 +156,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                     () => confirmationInput = value.trim().toUpperCase(),
                   ),
                   decoration: const InputDecoration(
-                    hintText: 'ELIMINA',
+                    hintText: 'DELETE',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -168,16 +168,16 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                   dialogContext,
                   rootNavigator: true,
                 ).pop(false),
-                child: const Text('Annulla'),
+                child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: confirmationInput == 'ELIMINA'
+                onPressed: confirmationInput == 'DELETE'
                     ? () => Navigator.of(
                         dialogContext,
                         rootNavigator: true,
                       ).pop(true)
                     : null,
-                child: const Text('Elimina account'),
+                child: const Text('Delete account'),
               ),
             ],
           ),
@@ -191,9 +191,9 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
 
     setState(() => _deletingAccount = true);
     try {
-      await ref
+          await ref
           .read(authControllerProvider.notifier)
-          .deleteAccount(confirmationText: 'ELIMINA');
+          .deleteAccount(confirmationText: 'DELETE');
       invalidatePatientScopedProviders(ref);
       ref.invalidate(billingStatusProvider);
       if (!mounted) {
@@ -226,12 +226,12 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
     final profileAsync = ref.watch(profileBundleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Privacy AI')),
+      appBar: AppBar(title: const Text('AI Privacy')),
       body: profileAsync.when(
         data: (bundle) {
           if (bundle == null) {
             return const Center(
-              child: Text('Completa l\'autenticazione per gestire la privacy.'),
+              child: Text('Complete sign-in to manage privacy.'),
             );
           }
 
@@ -242,8 +242,8 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: 'Consenso AI esterna',
-                subtitle: 'Qui controlli se i recap possono usare provider esterni.',
+                title: 'External AI consent',
+                subtitle: 'Control whether recaps can use external providers here.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -254,14 +254,14 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                         Chip(
                           label: Text(
                             consentEnabled
-                                ? 'AI esterna attiva'
-                                : 'AI esterna disattivata',
+                                ? 'External AI enabled'
+                                : 'External AI disabled',
                           ),
                         ),
                         if (consentEnabled && consentAt != null)
                           Chip(
                             label: Text(
-                              'Ultimo consenso ${_dateLabel(consentAt.toLocal())}',
+                              'Last consent ${_dateLabel(consentAt.toLocal())}',
                             ),
                           ),
                       ],
@@ -274,12 +274,12 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                         OutlinedButton.icon(
                           onPressed: () => context.push('/legal/privacy'),
                           icon: const Icon(Icons.description_outlined),
-                          label: const Text('Privacy beta'),
+                          label: const Text('Beta privacy notice'),
                         ),
                         OutlinedButton.icon(
                           onPressed: () => context.push('/legal/ai'),
                           icon: const Icon(Icons.psychology_alt_outlined),
-                          label: const Text('Nota AI beta'),
+                          label: const Text('Beta AI note'),
                         ),
                       ],
                     ),
@@ -288,11 +288,11 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       contentPadding: EdgeInsets.zero,
                       value: consentEnabled,
                       onChanged: _savingAiPrivacy ? null : _updateAiPrivacy,
-                      title: const Text('Usa AI esterna per i recap'),
+                      title: const Text('Use external AI for recaps'),
                       subtitle: Text(
                         consentEnabled
-                            ? 'Il backend può usare un provider esterno configurato.'
-                            : 'I recap restano sul motore prudente locale.',
+                            ? 'The backend may use a configured external provider.'
+                            : 'Recaps stay on the local cautious engine.',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -301,15 +301,15 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                           ? () => _updateAiPrivacy(false)
                           : null,
                       icon: const Icon(Icons.block_outlined),
-                      label: const Text('Revoca consenso AI'),
+                      label: const Text('Revoke AI consent'),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Cosa può vedere l\'AI',
-                subtitle: 'Invia solo il contesto minimo utile al recap.',
+                title: 'What AI can see',
+                subtitle: 'Only the minimum context needed for a recap is sent.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -317,33 +317,33 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: const [
-                        Chip(label: Text('Contesto clinico')),
-                        Chip(label: Text('Diario e sintomi')),
+                        Chip(label: Text('Clinical context')),
+                        Chip(label: Text('Diary and symptoms')),
                         Chip(label: Text('Wearable')),
-                        Chip(label: Text('Esami recenti')),
+                        Chip(label: Text('Recent tests')),
                         Chip(label: Text('Alert')),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Text(
                       consentEnabled
-                          ? 'Per i recap usiamo payload distinti per giorno, settimana, mese e pre-visita. I profili minorenni restano sul motore prudente locale.'
-                          : 'Senza consenso AI esterna i recap restano sul motore prudente locale.',
+                          ? 'For recaps we use separate payloads for day, week, month, and pre-visit. Minor profiles remain on the local cautious engine.'
+                          : 'Without external AI consent, recaps stay on the local cautious engine.',
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Portabilità dei dati',
-                subtitle: 'Esporta dossier, emergenza e backup strutturato.',
+                title: 'Data portability',
+                subtitle: 'Export dossier, emergency sheet, and structured backups.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     OutlinedButton.icon(
                       onPressed: () => context.push('/legal/portability'),
                       icon: const Icon(Icons.inventory_2_outlined),
-                      label: const Text('Leggi portabilità e retention'),
+                      label: const Text('Read portability and retention'),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -359,10 +359,10 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-dossier',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
-                                  shareText: 'Dossier salute ClinDiary',
-                                  shareSubject: 'Dossier salute ClinDiary',
-                                  successMessage:
-                                      'Dossier PDF esportato e condiviso.',
+                                    shareText: 'ClinDiary health dossier',
+                                    shareSubject: 'ClinDiary health dossier',
+                                    successMessage:
+                                      'Dossier PDF exported and shared.',
                                 ),
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: const Text('Dossier PDF'),
@@ -376,13 +376,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-dossier-backup',
                                   filenameExtension: 'json',
                                   mimeType: 'application/json',
-                                  shareText: 'Backup strutturato ClinDiary',
-                                  shareSubject: 'Backup strutturato ClinDiary',
-                                  successMessage:
-                                      'Backup JSON esportato e condiviso.',
+                                    shareText: 'Structured ClinDiary backup',
+                                    shareSubject: 'Structured ClinDiary backup',
+                                    successMessage:
+                                      'JSON backup exported and shared.',
                                 ),
                           icon: const Icon(Icons.data_object_outlined),
-                          label: const Text('Backup JSON'),
+                          label: const Text('JSON backup'),
                         ),
                         FilledButton.icon(
                           onPressed: _exporting
@@ -393,13 +393,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-scheda-emergenza',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
-                                  shareText: 'Scheda emergenza ClinDiary',
-                                  shareSubject: 'Scheda emergenza ClinDiary',
-                                  successMessage:
-                                      'Scheda emergenza esportata e condivisa.',
+                                    shareText: 'ClinDiary emergency sheet',
+                                    shareSubject: 'ClinDiary emergency sheet',
+                                    successMessage:
+                                      'Emergency sheet exported and shared.',
                                 ),
                           icon: const Icon(Icons.emergency_outlined),
-                          label: const Text('Scheda emergenza'),
+                          label: const Text('Emergency sheet'),
                         ),
                       ],
                     ),
@@ -408,13 +408,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Controllo account',
-                subtitle: 'Gestisci il lifecycle dei tuoi dati.',
+                title: 'Account control',
+                subtitle: 'Manage the lifecycle of your data.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Se elimini l\'account rimuoviamo dati cloud, token, recap e share link. Sul dispositivo cancelliamo anche cache, reminder locali e documenti free salvati in locale per questo account.',
+                      'If you delete the account, we remove cloud data, tokens, recaps, and share links. On the device we also delete cache, local reminders, and free local documents for this account.',
                     ),
                     const SizedBox(height: 12),
                     FilledButton.tonalIcon(
@@ -422,8 +422,8 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       icon: const Icon(Icons.delete_forever_outlined),
                       label: Text(
                         _deletingAccount
-                            ? 'Eliminazione in corso...'
-                            : 'Elimina account',
+                            ? 'Deleting...'
+                            : 'Delete account',
                       ),
                     ),
                   ],
@@ -431,10 +431,10 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Nota operativa',
-                subtitle: 'Promemoria per l\'uso in produzione.',
+                title: 'Operational note',
+                subtitle: 'Reminder for production use.',
                 child: const Text(
-                  'Prima della produzione serve comunque una revisione legale completa su privacy, DPIA, DPA e trasferimenti extra UE.',
+                  'Before production, a full legal review is still required for privacy, DPIA, DPA, and non-EU transfers.',
                 ),
               ),
             ],

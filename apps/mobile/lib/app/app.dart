@@ -27,7 +27,7 @@ class ClinDiaryApp extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       locale: const Locale('en'),
-      supportedLocales: AppLocalizations.supportedLocales,
+      supportedLocales: const [Locale('en')],
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

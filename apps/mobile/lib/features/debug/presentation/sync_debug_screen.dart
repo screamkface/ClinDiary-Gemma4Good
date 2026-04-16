@@ -26,7 +26,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       ref.invalidate(requestTracesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Operazioni sincronizzate: $synced')),
+        SnackBar(content: Text('Operations synced: $synced')),
       );
     } finally {
       if (mounted) {
@@ -45,7 +45,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       ref.invalidate(requestTracesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coda e trace locali cancellate.')),
+        const SnackBar(content: Text('Local queue and traces cleared.')),
       );
     } finally {
       if (mounted) {
@@ -58,11 +58,11 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
   Widget build(BuildContext context) {
     final pendingAsync = ref.watch(pendingOperationsProvider);
     final tracesAsync = ref.watch(requestTracesProvider);
-    final formatter = DateFormat('dd MMM HH:mm', 'it_IT');
+    final formatter = DateFormat('dd MMM HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sync locale'),
+        title: const Text('Local sync'),
         actions: [
           IconButton(
             onPressed: () {
@@ -77,8 +77,8 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           SectionCard(
-            title: 'Azioni',
-            subtitle: 'Usa queste azioni solo per debug locale.',
+            title: 'Actions',
+            subtitle: 'Use these actions only for local debug.',
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -86,12 +86,12 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                 FilledButton.icon(
                   onPressed: _flushing ? null : _flushQueue,
                   icon: const Icon(Icons.sync_outlined),
-                  label: Text(_flushing ? 'Sync...' : 'Sincronizza'),
+                  label: Text(_flushing ? 'Sync...' : 'Sync'),
                 ),
                 OutlinedButton.icon(
                   onPressed: _clearing ? null : _clearLocalDebugData,
                   icon: const Icon(Icons.delete_sweep_outlined),
-                  label: Text(_clearing ? 'Pulizia...' : 'Pulisci debug'),
+                  label: Text(_clearing ? 'Cleaning...' : 'Clear debug'),
                 ),
               ],
             ),
@@ -101,34 +101,34 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
             data: (items) => Column(
               children: [
                 SectionCard(
-                  title: 'Riepilogo coda',
-                  subtitle: 'Stato rapido delle operazioni offline.',
+                  title: 'Queue summary',
+                  subtitle: 'Quick status of offline operations.',
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _SyncSummaryChip(
-                        label: 'Totale',
+                        label: 'Total',
                         value: items.length.toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Profilo',
+                        label: 'Profile',
                         value: _bucketCount(items, 'profile').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Notifiche',
+                        label: 'Notifications',
                         value: _bucketCount(items, 'notifications').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Farmaci',
+                        label: 'Medications',
                         value: _bucketCount(items, 'medications').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Documenti',
+                        label: 'Documents',
                         value: _bucketCount(items, 'documents').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Altro',
+                        label: 'Other',
                         value: _bucketCount(items, 'other').toString(),
                       ),
                     ],
@@ -136,12 +136,12 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Operazioni in coda',
-                  subtitle: items.isEmpty
-                      ? 'Nessuna operazione in attesa.'
-                      : 'Ultime ${items.length} operazioni locali.',
+                    title: 'Queued operations',
+                    subtitle: items.isEmpty
+                      ? 'No pending operations.'
+                      : 'Latest ${items.length} local operations.',
                   child: items.isEmpty
-                      ? const Text('Nessuna operazione pendente.')
+                      ? const Text('No pending operations.')
                       : Column(
                           children: items.map((item) {
                             return Padding(
@@ -159,7 +159,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
               ],
             ),
             loading: () => const SectionCard(
-              title: 'Operazioni in coda',
+              title: 'Queued operations',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
@@ -170,12 +170,12 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
           const SizedBox(height: 12),
           tracesAsync.when(
             data: (items) => SectionCard(
-              title: 'Trace rete recenti',
+              title: 'Recent network traces',
               subtitle: items.isEmpty
-                  ? 'Nessuna trace registrata.'
-                  : 'Ultime ${items.take(20).length} richieste locali.',
+                    ? 'No traces recorded.'
+                    : 'Latest ${items.take(20).length} local requests.',
               child: items.isEmpty
-                  ? const Text('Nessuna trace registrata.')
+                    ? const Text('No traces recorded.')
                   : Column(
                       children: items.take(20).map((item) {
                         return Padding(

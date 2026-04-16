@@ -145,8 +145,8 @@ class NotificationsRepository {
       orElse: () => AppNotificationItem(
         id: notificationId,
         notificationType: 'queued',
-        title: 'Notifica aggiornata',
-        body: 'Segnata come letta offline.',
+        title: 'Notification updated',
+        body: 'Marked as read offline.',
         priority: 'normal',
         readStatus: true,
         readAt: now,

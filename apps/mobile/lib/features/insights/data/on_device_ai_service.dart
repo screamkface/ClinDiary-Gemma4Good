@@ -35,7 +35,7 @@ class OnDeviceAiService {
         isReady: false,
         runtime: 'LiteRT-LM Android',
         provider: 'on_device_litertlm',
-        activeProviderLabel: 'On-device non disponibile',
+        activeProviderLabel: 'On-device unavailable',
         backendPreference: 'GPU',
         isCloudBypassedForThisRequest: true,
       );
@@ -45,7 +45,7 @@ class OnDeviceAiService {
         isReady: false,
         runtime: 'LiteRT-LM Android',
         provider: 'on_device_litertlm',
-        activeProviderLabel: 'On-device non pronto',
+        activeProviderLabel: 'On-device not ready',
         backendPreference: 'GPU',
         lastError: error.message,
         isCloudBypassedForThisRequest: true,
@@ -65,7 +65,7 @@ class OnDeviceAiService {
         },
       );
       if (response == null) {
-        throw Exception('Il runtime on-device non ha restituito una risposta.');
+        throw Exception('The on-device runtime did not return a response.');
       }
       return InsightSummary(
         id:
@@ -84,9 +84,9 @@ class OnDeviceAiService {
         ),
       );
     } on MissingPluginException {
-      throw Exception('Inferenza on-device disponibile solo su Android.');
+      throw Exception('On-device inference is available on Android only.');
     } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'Generazione on-device non riuscita.');
+      throw Exception(error.message ?? 'On-device generation failed.');
     }
   }
 
@@ -102,25 +102,25 @@ class OnDeviceAiService {
         if (modelPath != null) 'modelPath': modelPath,
       });
       if (response == null) {
-        throw Exception('Il runtime on-device non ha restituito una risposta.');
+        throw Exception('The on-device runtime did not return a response.');
       }
       final content = response['content']?.toString().trim() ?? '';
       if (content.isEmpty) {
         throw Exception(
-          'Il runtime on-device ha restituito un contenuto vuoto.',
+          'The on-device runtime returned empty content.',
         );
       }
       return content;
     } on MissingPluginException {
-      throw Exception('Inferenza on-device disponibile solo su Android.');
+      throw Exception('On-device inference is available on Android only.');
     } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'Generazione on-device non riuscita.');
+      throw Exception(error.message ?? 'On-device generation failed.');
     }
   }
 
   Future<String?> importModelFromPicker() async {
     if (!Platform.isAndroid) {
-      throw Exception('Importazione modello disponibile solo su Android.');
+      throw Exception('Model import is available on Android only.');
     }
 
     final result = await FilePicker.platform.pickFiles(
@@ -157,7 +157,7 @@ class OnDeviceAiService {
     void Function(int receivedBytes, int? totalBytes)? onProgress,
   }) async {
     if (!Platform.isAndroid) {
-      throw Exception('Download modello disponibile solo su Android.');
+      throw Exception('Model download is available on Android only.');
     }
 
     final targetDirectory = await _resolveModelDirectory();
@@ -179,7 +179,7 @@ class OnDeviceAiService {
       final response = await client.send(request);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(
-          'Download modello fallito: HTTP ${response.statusCode}',
+          'Model download failed: HTTP ${response.statusCode}',
         );
       }
 
@@ -246,7 +246,7 @@ class OnDeviceAiService {
       return Directory(p.join(externalDirectory.path, 'models'));
     }
 
-    throw Exception('Directory modelli Android non disponibile.');
+    throw Exception('Android model directory unavailable.');
   }
 
   Future<void> _removeExistingModelFiles(

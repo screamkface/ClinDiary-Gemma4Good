@@ -188,7 +188,7 @@ class LocalDocumentVaultService {
   }) async {
     if (file.bytes.length > maxSingleFileBytes) {
       throw ApiException(
-        'Nel piano free i file locali possono pesare al massimo 10 MB.',
+        'On the free plan, local files can be at most 10 MB.',
         statusCode: 413,
       );
     }
@@ -199,7 +199,7 @@ class LocalDocumentVaultService {
     );
     if (state.documents.length >= maxDocumentCount) {
       throw ApiException(
-        'Hai raggiunto il limite locale di 80 documenti. Per archivio cloud e sincronizzazione serve AI Plus.',
+        'You have reached the local limit of 80 documents. Cloud storage and sync require AI Plus.',
         statusCode: 402,
         code: 'feature_locked',
         details: const {
@@ -211,7 +211,7 @@ class LocalDocumentVaultService {
     final totalBytes = state.documents.fold<int>(0, (sum, item) => sum + item.fileSizeBytes);
     if (totalBytes + file.bytes.length > maxTotalBytes) {
       throw ApiException(
-        'Hai raggiunto il limite locale di 200 MB. Per piu spazio e backup cloud serve AI Plus.',
+        'You have reached the local limit of 200 MB. More space and cloud backup require AI Plus.',
         statusCode: 402,
         code: 'feature_locked',
         details: const {
@@ -364,7 +364,7 @@ class LocalDocumentVaultService {
     }).toList();
 
     if (!updatedDocuments.any((item) => item.id == documentId)) {
-      throw ApiException('Documento non trovato.', statusCode: 404);
+      throw ApiException('Document not found.', statusCode: 404);
     }
 
     final nextState = state.copyWith(documents: updatedDocuments);
@@ -393,7 +393,7 @@ class LocalDocumentVaultService {
   }) async {
     final normalizedStatus = contextStatus.trim().toLowerCase();
     if (normalizedStatus != 'active' && normalizedStatus != 'old') {
-      throw ApiException('Stato documento non valido.', statusCode: 422);
+      throw ApiException('Invalid document status.', statusCode: 422);
     }
 
     final state = await _loadState(
@@ -407,7 +407,7 @@ class LocalDocumentVaultService {
       return item.copyWith(contextStatus: normalizedStatus);
     }).toList();
     if (!updatedDocuments.any((item) => item.id == documentId)) {
-      throw ApiException('Documento non trovato.', statusCode: 404);
+      throw ApiException('Document not found.', statusCode: 404);
     }
 
     final nextState = state.copyWith(documents: updatedDocuments);
@@ -484,7 +484,7 @@ class LocalDocumentVaultService {
     final document = _requireDocument(state, documentId);
     final sourceFile = File(document.localFilePath);
     if (!await sourceFile.exists()) {
-      throw ApiException('File locale non trovato.', statusCode: 404);
+      throw ApiException('Local file not found.', statusCode: 404);
     }
     final encryptedBytes = await sourceFile.readAsBytes();
     final clearBytes = await _cipher.decryptDocument(
@@ -682,7 +682,7 @@ class LocalDocumentVaultService {
   _StoredDocument _requireDocument(_LocalVaultState state, String documentId) {
     return state.documents.firstWhere(
       (document) => document.id == documentId,
-      orElse: () => throw ApiException('Documento non trovato.', statusCode: 404),
+      orElse: () => throw ApiException('Document not found.', statusCode: 404),
     );
   }
 
@@ -951,7 +951,7 @@ class _StoredDocument {
       uploadDateIso: json['upload_date']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
       examDateIso: json['exam_date'] as String?,
       source: json['source'] as String?,
-      originalFilename: json['original_filename']?.toString() ?? 'documento',
+      originalFilename: json['original_filename']?.toString() ?? 'document',
       mimeType: json['mime_type']?.toString() ?? 'application/octet-stream',
       fileSizeBytes: json['file_size_bytes'] as int? ?? 0,
       parsedStatus: json['parsed_status']?.toString() ?? 'local_only',

@@ -1,63 +1,63 @@
 {
   "@@locale": "it",
   "appTitle": "ClinDiary",
-  "appSubtitle": "Diario clinico personale.",
-  "signInTitle": "Accedi",
-  "signInSubtitle": "Diario clinico personale.",
+  "appSubtitle": "Personal health diary.",
+  "signInTitle": "Sign in",
+  "signInSubtitle": "Personal health diary.",
   "emailLabel": "Email",
   "passwordLabel": "Password",
-  "confirmPasswordLabel": "Conferma password",
-  "passwordsDoNotMatch": "Le password non coincidono",
-  "emailInvalid": "Inserisci una email valida",
-  "passwordMinLength": "Minimo 8 caratteri",
-  "signIn": "Accedi",
-  "signingIn": "Accesso...",
-  "signInWithGoogle": "Accedi con Google",
-  "signingInWithGoogle": "Accesso Google...",
-  "googleAuthNotConfigured": "Google auth non configurato in questa build.",
-  "googleIdTokenInvalid": "Google non ha restituito un id token valido.",
-  "signInFailed": "Accesso non riuscito: {error}",
+  "confirmPasswordLabel": "Confirm password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "emailInvalid": "Enter a valid email",
+  "passwordMinLength": "Minimum 8 characters",
+  "signIn": "Sign in",
+  "signingIn": "Signing in...",
+  "signInWithGoogle": "Sign in with Google",
+  "signingInWithGoogle": "Signing in with Google...",
+  "googleAuthNotConfigured": "Google auth is not configured in this build.",
+  "googleIdTokenInvalid": "Google did not return a valid ID token.",
+  "signInFailed": "Sign-in failed: {error}",
   "@signInFailed": {
     "placeholders": {
       "error": {}
     }
   },
-  "googleSignInFailed": "Accesso Google non riuscito: {error}",
+  "googleSignInFailed": "Google sign-in failed: {error}",
   "@googleSignInFailed": {
     "placeholders": {
       "error": {}
     }
   },
-  "resetPassword": "Avvia reset password",
-  "passwordResetPrompt": "Inserisci prima l’email per avviare il reset.",
-  "passwordResetStarted": "Reset avviato. Controlla il canale previsto.",
-  "passwordResetStartedToken": "Reset avviato. Token sviluppo: {token}",
+  "resetPassword": "Reset password",
+  "passwordResetPrompt": "Enter your email first to start the reset.",
+  "passwordResetStarted": "Reset started. Check the expected channel.",
+  "passwordResetStartedToken": "Reset started. Development token: {token}",
   "@passwordResetStartedToken": {
     "placeholders": {
       "token": {}
     }
   },
-  "passwordResetFailed": "Reset non riuscito: {error}",
+  "passwordResetFailed": "Password reset failed: {error}",
   "@passwordResetFailed": {
     "placeholders": {
       "error": {}
     }
   },
-  "noAccountPrompt": "Non hai un account?",
-  "register": "Registrati",
-  "createAccount": "Crea account",
-  "completeProfileNext": "Completerai il profilo nel passo successivo.",
-  "creatingAccount": "Creazione account...",
-  "continueButton": "Continua",
-  "alreadyHaveAccountSignIn": "Hai già un account? Accedi",
-  "registrationFailed": "Registrazione non riuscita: {error}",
+  "noAccountPrompt": "Don't have an account?",
+  "register": "Register",
+  "createAccount": "Create account",
+  "completeProfileNext": "You will complete your profile in the next step.",
+  "creatingAccount": "Creating account...",
+  "continueButton": "Continue",
+  "alreadyHaveAccountSignIn": "Already have an account? Sign in",
+  "registrationFailed": "Registration failed: {error}",
   "@registrationFailed": {
     "placeholders": {
       "error": {}
     }
   },
-  "verifyingSession": "Verifico la sessione...",
-  "startingApp": "Avvio ClinDiary...",
-  "redirectingToLogin": "Reindirizzo al login...",
-  "discoverAiPlus": "Scopri AI Plus"
+  "verifyingSession": "Verifying session...",
+  "startingApp": "Starting ClinDiary...",
+  "redirectingToLogin": "Redirecting to sign in...",
+  "discoverAiPlus": "Discover AI Plus"
 }

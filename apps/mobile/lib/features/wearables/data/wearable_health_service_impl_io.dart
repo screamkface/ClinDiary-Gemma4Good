@@ -105,8 +105,8 @@ class IoWearableHealthService extends WearableHealthService {
         message =
             sdkStatus ==
                 HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired
-            ? 'Health Connect va installato o aggiornato prima della sincronizzazione.'
-            : 'Installa Health Connect per importare i dati smartwatch.';
+            ? 'Health Connect must be installed or updated before syncing.'
+            : 'Install Health Connect to import smartwatch data.';
       }
     }
 
@@ -125,17 +125,17 @@ class IoWearableHealthService extends WearableHealthService {
 
       if (!permissionGranted && message == null) {
         if (!healthGranted && !activityGranted) {
-          message =
-              'Mancano sia le autorizzazioni Health Connect sia il permesso Attività fisica.';
+            message =
+              'Both Health Connect permissions and the Activity recognition permission are missing.';
         } else if (!healthGranted) {
-          message =
-              'Autorizza ClinDiary in Health Connect a leggere i dati salute.';
+            message =
+              'Authorize ClinDiary in Health Connect to read health data.';
         } else if (!activityGranted) {
-          message =
-              'Serve anche il permesso Attività fisica per leggere passi e movimento.';
+            message =
+              'The Activity recognition permission is also required to read steps and movement.';
         } else {
-          message =
-              'Autorizza ClinDiary a leggere i dati salute dal dispositivo.';
+            message =
+              'Authorize ClinDiary to read health data from the device.';
         }
       }
     }
@@ -201,8 +201,8 @@ class IoWearableHealthService extends WearableHealthService {
       if (!activityStatus.isGranted) {
         return status.copyWith(
           permissionGranted: false,
-          message:
-              'Serve il permesso Attivita fisica per leggere passi e movimento.',
+            message:
+              'The Activity recognition permission is required to read steps and movement.',
         );
       }
     }
@@ -222,8 +222,8 @@ class IoWearableHealthService extends WearableHealthService {
         message:
             refreshed.message ??
             (Platform.isAndroid
-                ? 'Permessi wearable non concessi. Se il prompt non compare, apri direttamente le impostazioni salute.'
-                : 'Permessi wearable non concessi.'),
+                ? 'Wearable permissions were not granted. If the prompt does not appear, open health settings directly.'
+                : 'Wearable permissions were not granted.'),
       );
     }
 
@@ -231,7 +231,7 @@ class IoWearableHealthService extends WearableHealthService {
       return refreshed.copyWith(
         historyAccessGranted: false,
         message:
-            'Sync attiva, ma l’accesso storico potrebbe restare limitato agli ultimi 30 giorni autorizzati.',
+            'Sync is active, but historical access may still be limited to the last 30 authorized days.',
       );
     }
     return refreshed;
@@ -245,17 +245,17 @@ class IoWearableHealthService extends WearableHealthService {
     final status = await requestAccess();
     if (!status.isSupported) {
       throw WearableSyncException(
-        status.message ?? 'Wearable sync non supportato.',
+        status.message ?? 'Wearable sync is not supported.',
       );
     }
     if (!status.isAvailable) {
       throw WearableSyncException(
-        status.message ?? 'Provider salute non disponibile.',
+        status.message ?? 'Health provider not available.',
       );
     }
     if (!status.permissionGranted) {
       throw WearableSyncException(
-        status.message ?? 'Permessi wearable non concessi.',
+        status.message ?? 'Wearable permissions not granted.',
       );
     }
 

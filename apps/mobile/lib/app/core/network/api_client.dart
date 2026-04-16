@@ -285,7 +285,7 @@ class ApiClient {
   Future<AuthSession> _ensureValidSession() async {
     final session = await _tokenStorage.readSession();
     if (session == null) {
-      throw ApiException('Sessione non disponibile', statusCode: 401);
+        throw ApiException('Session unavailable', statusCode: 401);
     }
 
     final now = DateTime.now().toUtc();
@@ -301,7 +301,7 @@ class ApiClient {
   Future<AuthSession> _refreshSessionInternal() async {
     final session = await _tokenStorage.readSession();
     if (session == null) {
-      throw ApiException('Sessione non disponibile', statusCode: 401);
+        throw ApiException('Session unavailable', statusCode: 401);
     }
 
     final now = DateTime.now().toUtc();
@@ -309,10 +309,10 @@ class ApiClient {
       now.add(const Duration(seconds: 30)),
     )) {
       await _handleExpiredSession();
-      throw ApiException(
-        'Sessione scaduta. Accedi di nuovo.',
-        statusCode: 401,
-      );
+        throw ApiException(
+          'Session expired. Sign in again.',
+          statusCode: 401,
+        );
     }
 
     if (session.accessTokenExpiresAt.isAfter(
@@ -340,10 +340,10 @@ class ApiClient {
         rethrow;
       }
       await _handleExpiredSession();
-      throw ApiException(
-        'Sessione scaduta. Accedi di nuovo.',
-        statusCode: 401,
-      );
+        throw ApiException(
+          'Session expired. Sign in again.',
+          statusCode: 401,
+        );
     }
   }
 
@@ -434,7 +434,7 @@ class ApiClient {
     } on FormatException {
       return {
         'detail': {
-          'message': 'Il server ha risposto con un errore non leggibile. Controlla i log backend.',
+           'message': 'The server returned an unreadable error. Check the backend logs.',
           'raw_body': body,
         },
       };
@@ -454,7 +454,7 @@ class ApiClient {
         return detail.toString();
       }
     }
-    return 'Richiesta non riuscita';
+      return 'Request failed';
   }
 
   ApiException _buildApiException(dynamic decoded, int statusCode) {

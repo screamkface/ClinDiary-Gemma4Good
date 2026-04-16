@@ -76,7 +76,7 @@ class PatientProfile {
       firstName,
       lastName,
     ].whereType<String>().where((value) => value.isNotEmpty).toList();
-    return parts.isEmpty ? 'Profilo clinico' : parts.join(' ');
+    return parts.isEmpty ? 'Clinical profile' : parts.join(' ');
   }
 
   factory PatientProfile.fromJson(Map<String, dynamic> json) {

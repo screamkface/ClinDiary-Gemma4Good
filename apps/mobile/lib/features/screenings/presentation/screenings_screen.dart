@@ -106,7 +106,7 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Prevenzione'),
+        title: const Text('Prevention'),
         actions: [
           IconButton(
             onPressed: () {
@@ -122,14 +122,14 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           SectionCard(
-            title: 'Catalogo prevenzione',
-            subtitle: 'Visita annuale, controlli e note utili.',
+            title: 'Prevention catalog',
+            subtitle: 'Annual visits, checkups, and useful notes.',
             action: FilledButton.tonalIcon(
               onPressed: _isRecomputing ? null : _recompute,
               icon: const Icon(Icons.autorenew),
-              label: Text(_isRecomputing ? 'Aggiorno...' : 'Ricalcola'),
+              label: Text(_isRecomputing ? 'Updating...' : 'Recompute'),
             ),
-            child: const Text('Controlli adattati al profilo e alla regione.'),
+            child: const Text('Checkups adapted to the profile and region.'),
           ),
           const SizedBox(height: 12),
           myScreeningsAsync.when(
@@ -141,11 +141,11 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
               onToggleChecklist: _toggleCurrentYearChecklist,
             ),
             loading: () => const SectionCard(
-              title: 'Per il tuo profilo',
+              title: 'For your profile',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Per il tuo profilo',
+              title: 'For your profile',
               child: Text(error.toString()),
             ),
           ),
@@ -153,11 +153,11 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
           catalogAsync.when(
             data: (items) => _CatalogSection(items: items),
             loading: () => const SectionCard(
-              title: 'Catalogo completo',
+              title: 'Full catalog',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Catalogo completo',
+              title: 'Full catalog',
               child: Text(error.toString()),
             ),
           ),
@@ -170,17 +170,17 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
 String _statusLabel(String status) {
   switch (status) {
     case 'completed':
-      return 'Completato';
+      return 'Completed';
     case 'overdue':
-      return 'In ritardo';
+      return 'Overdue';
     case 'scheduled':
-      return 'Programmato';
+      return 'Scheduled';
     case 'recommended':
-      return 'Consigliato';
+      return 'Recommended';
     case 'skipped':
-      return 'Saltato';
+      return 'Skipped';
     default:
-      return 'Mai eseguito';
+      return 'Never done';
   }
 }
 
@@ -204,8 +204,8 @@ class _MyScreeningsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return const SectionCard(
-        title: 'Per il tuo profilo',
-        child: Text('Nessun controllo personalizzato da mostrare.'),
+        title: 'For your profile',
+        child: Text('No personalized checkups to show.'),
       );
     }
 
@@ -237,7 +237,7 @@ class _MyScreeningsSection extends StatelessWidget {
         .toList();
 
     return SectionCard(
-      title: 'Per il tuo profilo',
+      title: 'For your profile',
       subtitle: 'Quello che conta adesso.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,8 +266,8 @@ class _MyScreeningsSection extends StatelessWidget {
           const SizedBox(height: 16),
           if (annualVisitItems.isNotEmpty) ...[
             _SubsectionHeader(
-              title: 'Visita annuale consigliata',
-              subtitle: 'Controllo generale.',
+              title: 'Recommended annual visit',
+              subtitle: 'General checkup.',
             ),
             const SizedBox(height: 8),
             ...annualVisitItems.map(
@@ -285,8 +285,8 @@ class _MyScreeningsSection extends StatelessWidget {
           ],
           if (discussItems.isNotEmpty) ...[
             _SubsectionHeader(
-              title: 'Esami e controlli da discutere col medico',
-              subtitle: 'Da valutare insieme.',
+              title: 'Tests and checkups to discuss with the clinician',
+              subtitle: 'To review together.',
             ),
             const SizedBox(height: 8),
           ],
@@ -304,7 +304,7 @@ class _MyScreeningsSection extends StatelessWidget {
           if (upToDateDiscuss.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              'Gia registrati',
+              'Already recorded',
               style: Theme.of(
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -325,8 +325,8 @@ class _MyScreeningsSection extends StatelessWidget {
           if (sharedDecisionItems.isNotEmpty) ...[
             const SizedBox(height: 8),
             _SubsectionHeader(
-              title: 'Decisioni condivise',
-              subtitle: 'Aree dove conta il confronto col medico.',
+              title: 'Shared decisions',
+              subtitle: 'Areas where the clinician discussion matters.',
             ),
             const SizedBox(height: 8),
             ...sharedDecisionItems.map(
@@ -375,7 +375,7 @@ class _CurrentYearChecklist extends StatelessWidget {
         }
         return a.screeningName.compareTo(b.screeningName);
       });
-    final compactDateFormat = DateFormat('dd MMM', 'it_IT');
+    final compactDateFormat = DateFormat('dd MMM', 'en_US');
 
     String? currentSection;
 
@@ -383,7 +383,7 @@ class _CurrentYearChecklist extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Checklist personale $year',
+          'Personal checklist $year',
           style: Theme.of(
             context,
           ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -398,7 +398,7 @@ class _CurrentYearChecklist extends StatelessWidget {
             final item = sortedItems[index];
             final isBusy = busyScreeningId == item.id;
             final subtitle = item.currentYearLastCompletedOn != null
-                ? 'Segnato il ${compactDateFormat.format(item.currentYearLastCompletedOn!.toLocal())}'
+                ? 'Marked on ${compactDateFormat.format(item.currentYearLastCompletedOn!.toLocal())}'
                 : (item.cadenceLabel ??
                       _recommendationLevelLabel(item.recommendationLevel));
             final sectionTitle = _carePathwaySectionTitle(item.carePathway);
@@ -466,7 +466,7 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dueText = item.nextDueDate == null
-        ? 'Da definire'
+        ? 'To be defined'
         : dateFormat.format(item.nextDueDate!.toLocal());
     final availability = item.regionalAvailability.isEmpty
         ? null
@@ -528,7 +528,7 @@ class _StatusCard extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: isSaving ? null : onMarkDone,
                 icon: const Icon(Icons.verified_outlined),
-                label: Text(isSaving ? 'Salvataggio...' : 'Segna completato'),
+                label: Text(isSaving ? 'Saving...' : 'Mark completed'),
               ),
             ],
           ],
@@ -556,8 +556,8 @@ class _CatalogSection extends StatelessWidget {
     }
 
     return SectionCard(
-      title: 'Catalogo completo',
-      subtitle: 'Tutto il catalogo disponibile.',
+      title: 'Full catalog',
+      subtitle: 'All available catalog items.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -643,7 +643,7 @@ class _CatalogCard extends StatelessWidget {
                   _ToneChip(label: item.cadenceLabel!, tone: Colors.blueGrey),
                 _ToneChip(label: item.category, tone: Colors.brown),
                 if (item.catalogOnly)
-                  const _ToneChip(label: 'Solo informativo', tone: Colors.grey),
+                  const _ToneChip(label: 'Informational only', tone: Colors.grey),
                 if (availability != null && item.publicCoverageFlag)
                   _ToneChip(label: availability.regionName, tone: Colors.teal),
               ],
@@ -735,11 +735,11 @@ Color _recommendationTone(String recommendationLevel) {
 String _recommendationLevelLabel(String recommendationLevel) {
   switch (recommendationLevel) {
     case 'risk_based':
-      return 'Da valutare';
+      return 'To review';
     case 'not_routine':
-      return 'Non di routine';
+      return 'Not routine';
     default:
-      return 'Di routine';
+      return 'Routine';
   }
 }
 
@@ -761,25 +761,25 @@ int _carePathwayRank(String carePathway) {
 String _carePathwaySectionTitle(String carePathway) {
   switch (carePathway) {
     case 'annual_visit':
-      return 'Visita annuale consigliata';
+      return 'Recommended annual visit';
     case 'shared_decision':
-      return 'Decisioni condivise';
+      return 'Shared decisions';
     case 'not_routine':
-      return 'Non di routine';
+      return 'Not routine';
     default:
-      return 'Esami e controlli da discutere col medico';
+      return 'Tests and checkups to discuss with the clinician';
   }
 }
 
 String _carePathwaySectionSubtitle(String carePathway) {
   switch (carePathway) {
     case 'annual_visit':
-      return 'Il controllo generale annuale aiuta a mettere in ordine prevenzione, stile di vita e priorita cliniche.';
+      return 'The annual general checkup helps organize prevention, lifestyle, and clinical priorities.';
     case 'shared_decision':
-      return 'Qui ClinDiary resta prudente: il senso del controllo dipende da una decisione condivisa, non da un reminder automatico forte.';
+      return 'Here ClinDiary stays cautious: the value of the checkup depends on shared decision-making, not on a strong automatic reminder.';
     case 'not_routine':
-      return 'Queste voci restano informative e non vanno proposte come routine negli asintomatici.';
+      return 'These items remain informational and should not be presented as routine for asymptomatic people.';
     default:
-      return 'Qui trovi esami e controlli specifici da valutare insieme al medico in base al profilo.';
+      return 'Here you will find specific tests and checkups to review with the clinician based on the profile.';
   }
 }

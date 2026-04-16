@@ -19,7 +19,7 @@ class RootShell extends StatelessWidget {
       selectedIcon: Icons.home_rounded,
     ),
     _ShellDestination(
-      label: 'Diario',
+      label: 'Diary',
       icon: Icons.edit_note_outlined,
       selectedIcon: Icons.edit_note_rounded,
     ),
@@ -30,12 +30,12 @@ class RootShell extends StatelessWidget {
       isCenterAction: true,
     ),
     _ShellDestination(
-      label: 'Documenti',
+      label: 'Documents',
       icon: Icons.folder_open_outlined,
       selectedIcon: Icons.folder_open_rounded,
     ),
     _ShellDestination(
-      label: 'Profilo',
+      label: 'Profile',
       icon: Icons.person_outline_rounded,
       selectedIcon: Icons.person_rounded,
     ),

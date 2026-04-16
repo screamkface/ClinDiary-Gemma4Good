@@ -45,22 +45,22 @@ class _VaccinationHistoryScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rimuovere vaccino?'),
-        content: const Text('La voce verra rimossa dallo storico vaccinale.'),
+        title: const Text('Remove vaccine?'),
+        content: const Text('This entry will be removed from the vaccination history.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(
               dialogContext,
               rootNavigator: true,
             ).pop(false),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(
               dialogContext,
               rootNavigator: true,
             ).pop(true),
-            child: const Text('Rimuovi'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -107,7 +107,7 @@ class _VaccinationHistoryScreenState
             horizontal: 16,
             vertical: 24,
           ),
-          title: Text(initial == null ? 'Nuovo vaccino' : 'Modifica vaccino'),
+          title: Text(initial == null ? 'New vaccine' : 'Edit vaccine'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
@@ -115,21 +115,21 @@ class _VaccinationHistoryScreenState
               children: [
                 TextField(
                   controller: vaccineNameController,
-                  decoration: const InputDecoration(labelText: 'Nome vaccino'),
+                  decoration: const InputDecoration(labelText: 'Vaccine name'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: doseNumberController,
-                  decoration: const InputDecoration(labelText: 'Numero dose'),
+                  decoration: const InputDecoration(labelText: 'Dose number'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Data somministrazione'),
+                  title: const Text('Administration date'),
                   subtitle: Text(
                     administeredOn == null
-                        ? 'Non impostata'
+                        ? 'Not set'
                         : DateFormat('dd/MM/yyyy').format(administeredOn!),
                   ),
                   trailing: const Icon(Icons.event_outlined),
@@ -139,7 +139,7 @@ class _VaccinationHistoryScreenState
                       initialDate: administeredOn ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Seleziona data somministrazione',
+                      helpText: 'Select administration date',
                     );
                     if (picked != null) {
                       setState(() => administeredOn = picked);
@@ -149,10 +149,10 @@ class _VaccinationHistoryScreenState
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Prossimo richiamo'),
+                  title: const Text('Next booster'),
                   subtitle: Text(
                     nextDueDate == null
-                        ? 'Non impostato'
+                        ? 'Not set'
                         : DateFormat('dd/MM/yyyy').format(nextDueDate!),
                   ),
                   trailing: const Icon(Icons.schedule_outlined),
@@ -162,7 +162,7 @@ class _VaccinationHistoryScreenState
                       initialDate: nextDueDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Seleziona prossimo richiamo',
+                      helpText: 'Select next booster date',
                     );
                     if (picked != null) {
                       setState(() => nextDueDate = picked);
@@ -173,7 +173,7 @@ class _VaccinationHistoryScreenState
                 TextField(
                   controller: providerController,
                   decoration: const InputDecoration(
-                    labelText: 'Struttura / operatore',
+                    labelText: 'Facility / provider',
                   ),
                   maxLines: 2,
                 ),
@@ -192,7 +192,7 @@ class _VaccinationHistoryScreenState
                 dialogContext,
                 rootNavigator: true,
               ).pop(null),
-              child: const Text('Annulla'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
@@ -200,7 +200,7 @@ class _VaccinationHistoryScreenState
                 if (name.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Inserisci il nome del vaccino.'),
+                      content: Text('Enter the vaccine name.'),
                     ),
                   );
                   return;
@@ -226,7 +226,7 @@ class _VaccinationHistoryScreenState
                       : notesController.text.trim(),
                 });
               },
-              child: const Text('Salva'),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -244,11 +244,11 @@ class _VaccinationHistoryScreenState
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
     final preventionAsync = ref.watch(preventionCenterProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Storico vaccinale'),
+        title: const Text('Vaccination history'),
         actions: [
           IconButton(
             onPressed: () => ref.invalidate(profileBundleProvider),
@@ -260,7 +260,7 @@ class _VaccinationHistoryScreenState
         data: (bundle) {
           if (bundle == null) {
             return const Center(
-              child: Text('Completa il profilo per gestire i vaccini.'),
+              child: Text('Complete the profile to manage vaccines.'),
             );
           }
 
@@ -275,10 +275,10 @@ class _VaccinationHistoryScreenState
               children: [
                 preventionAsync.when(
                   data: (center) => SectionCard(
-                    title: 'Registro vaccinale',
-                    subtitle: 'Stato sintetico ricavato dallo storico.',
+                    title: 'Vaccination registry',
+                    subtitle: 'Summary status derived from the history.',
                     child: center.vaccineRegistry.isEmpty
-                        ? const Text('Nessun riepilogo vaccinale disponibile.')
+                        ? const Text('No vaccination summary available.')
                         : Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -297,14 +297,14 @@ class _VaccinationHistoryScreenState
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Vaccini registrati',
+                  title: 'Recorded vaccines',
                   action: FilledButton.tonalIcon(
                     onPressed: () => _saveVaccination(),
                     icon: const Icon(Icons.add),
-                    label: const Text('Aggiungi'),
+                    label: const Text('Add'),
                   ),
                   child: bundle.vaccinations.isEmpty
-                      ? const Text('Nessun vaccino registrato.')
+                      ? const Text('No vaccine recorded.')
                       : Column(
                           children: bundle.vaccinations
                               .map(
@@ -317,13 +317,13 @@ class _VaccinationHistoryScreenState
                                       subtitle: Text(
                                         [
                                           if (item.pendingSync)
-                                            'In attesa di sincronizzazione',
+                                            'Pending sync',
                                           if (item.administeredOn != null)
-                                            'Somministrato ${dateFormat.format(item.administeredOn!)}',
+                                            'Administered ${dateFormat.format(item.administeredOn!)}',
                                           if (item.doseNumber != null)
                                             'Dose ${item.doseNumber}',
                                           if (item.nextDueDate != null)
-                                            'Richiamo ${dateFormat.format(item.nextDueDate!)}',
+                                            'Booster ${dateFormat.format(item.nextDueDate!)}',
                                           if (item.providerName?.isNotEmpty ==
                                               true)
                                             item.providerName!,
@@ -338,7 +338,7 @@ class _VaccinationHistoryScreenState
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
-                                              tooltip: 'Modifica',
+                                              tooltip: 'Edit',
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _saveVaccination(
@@ -350,8 +350,8 @@ class _VaccinationHistoryScreenState
                                             ),
                                             IconButton(
                                               tooltip: item.pendingSync
-                                                  ? 'In attesa di sincronizzazione'
-                                                  : 'Rimuovi',
+                                                  ? 'Pending sync'
+                                                  : 'Remove',
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _deleteVaccination(
