@@ -1,4 +1,4 @@
-import 'package:clindiary/app/providers.dart';
+﻿import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/history/domain/history_day.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
@@ -58,9 +58,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       if (!mounted) {
         return;
       }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Regeneration failed: $error')),
-        );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Regeneration failed: $error')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isRegeneratingDailyReport = false);
@@ -120,9 +120,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             ),
           ],
           bottom: const TabBar(
+            tabAlignment: TabAlignment.fill,
             tabs: [
-              Tab(text: 'Giorno'),
-              Tab(text: 'Calendario'),
+              Tab(text: 'Day'),
+              Tab(text: 'Calendar'),
             ],
           ),
         ),
@@ -142,11 +143,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     onRegenerateDailyReport: _regenerateDailyReport,
                   ),
                   loading: () => const SectionCard(
-                    title: 'Giornata',
+                    title: 'Day',
                     child: Center(child: CircularProgressIndicator()),
                   ),
                   error: (error, _) => SectionCard(
-                    title: 'Giornata',
+                    title: 'Day',
                     child: Text(error.toString()),
                   ),
                 ),
@@ -156,8 +157,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               onRefresh: refreshHistory,
               children: [
                 SectionCard(
-                  title: 'Calendario',
-                  subtitle: 'Scegli un giorno.',
+                  title: 'Calendar',
+                  subtitle: 'Choose a day.',
                   child: activityDatesAsync.when(
                     data: (activityDates) => _HistoryCalendar(
                       focusedMonth: _focusedMonth,
@@ -246,6 +247,8 @@ class _HistoryCalendar extends StatelessWidget {
           lastDay: DateTime.now().add(const Duration(days: 1)),
           focusedDay: focusedMonth,
           startingDayOfWeek: StartingDayOfWeek.monday,
+          availableGestures: AvailableGestures.horizontalSwipe,
+          rowHeight: 48,
           selectedDayPredicate: (day) => isSameDay(day, selectedDate),
           eventLoader: (day) =>
               normalizedActivityDates.contains(DateUtils.dateOnly(day))
@@ -258,21 +261,23 @@ class _HistoryCalendar extends StatelessWidget {
             formatButtonVisible: false,
           ),
           calendarStyle: CalendarStyle(
-            outsideDaysVisible: false,
             todayDecoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.18),
+              color: Theme.of(context).colorScheme.primaryContainer,
               shape: BoxShape.circle,
+            ),
+            todayTextStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
             ),
             selectedDecoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary,
               shape: BoxShape.circle,
             ),
-            markerDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.tertiary,
-              shape: BoxShape.circle,
+            selectedTextStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
             ),
+            markerDecoration: const BoxDecoration(),
             markersMaxCount: 1,
           ),
           calendarBuilders: CalendarBuilders(
@@ -328,7 +333,7 @@ class _HistoryContent extends StatelessWidget {
       children: [
         SectionCard(
           title: 'Selected day',
-          subtitle: 'Quick summary.',
+          subtitle: 'Quick overview.',
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -407,12 +412,12 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
               ),
               CompactSegmentOption(
                 value: _HistoryDetailTab.events,
-                label: 'Eventi',
+                label: 'Events',
                 icon: Icons.timeline_outlined,
               ),
               CompactSegmentOption(
                 value: _HistoryDetailTab.documents,
-                label: 'Documenti',
+                label: 'Documents',
                 icon: Icons.description_outlined,
               ),
               CompactSegmentOption(
@@ -434,7 +439,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
               children: [
                 if (widget.onCopyDailyReport != null)
                   IconButton(
-                    tooltip: 'Copia report',
+                    tooltip: 'Copy report',
                     onPressed: widget.onCopyDailyReport,
                     icon: const Icon(Icons.content_copy_outlined),
                   ),
@@ -442,33 +447,31 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                   onPressed: widget.isRegeneratingDailyReport
                       ? null
                       : widget.onRegenerateDailyReport,
-                    widget.isRegeneratingDailyReport
-                        ? 'Regenerating...'
-                        : 'Regenerate',
+                  icon: widget.isRegeneratingDailyReport
+                      ? const SizedBox(
+                          width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.auto_awesome_outlined),
-                ? const Text('No recap available.')
-                    widget.isRegeneratingDailyReport
-                        ? 'Rigenero...'
-                        : 'Rigenera',
+                    label: Text(
+                    widget.isRegeneratingDailyReport ? 'Regenerating...' : 'Regenerate',
                   ),
                 ),
               ],
             ),
-            subtitle: 'Data recorded for the day.',
-                ? const Text('Nessun recap disponibile.')
-                ? const Text('No check-up recorded on this day.')
+            child: widget.history.dailySummary == null
+                ? const Text('No recap available.')
+                : SummaryContentView(
                     content: widget.history.dailySummary!.content,
                     maxHeightFactor: 0.48,
                   ),
           ),
           _HistoryDetailTab.checkup => SectionCard(
             title: 'Check-up',
-            subtitle: 'Dati registrati nel giorno.',
+            subtitle: 'Data recorded on the day.',
             child: entry == null
-                ? const Text('Nessun check-up registrato in questa giornata.')
+                ? const Text('No check-up recorded for this day.')
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -477,19 +480,13 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                         runSpacing: 8,
                         children: [
                           if (entry.energyLevel != null)
-                            _SummaryChip(
-                              label: 'Energia ${entry.energyLevel}/10',
-                            ),
+                            _SummaryChip(label: 'Energy ${entry.energyLevel}/10'),
                           if (entry.moodLevel != null)
-                            _SummaryChip(label: 'Umore ${entry.moodLevel}/10'),
+                            _SummaryChip(label: 'Mood ${entry.moodLevel}/10'),
                           if (entry.stressLevel != null)
-                            _SummaryChip(
-                              label: 'Stress ${entry.stressLevel}/10',
-                            ),
+                            _SummaryChip(label: 'Stress ${entry.stressLevel}/10'),
                           if (entry.generalPain != null)
-                            _SummaryChip(
-                              label: 'Dolore ${entry.generalPain}/10',
-                            ),
+                            _SummaryChip(label: 'Pain ${entry.generalPain}/10'),
                         ],
                       ),
                       if (entry.generalNotes != null &&
@@ -506,7 +503,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                       if (entry.symptoms.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _MiniSection(
-                          title: 'Sintomi',
+                          title: 'Symptoms',
                           child: Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -525,7 +522,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                       if (entry.vitals.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _MiniSection(
-                          title: 'Parametri',
+                          title: 'Vitals',
                           child: Column(
                             children: entry.vitals
                                 .map(
@@ -557,7 +554,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
             title: 'Events',
             subtitle: 'Day timeline.',
             child: widget.history.timelineEvents.isEmpty
-                ? const Text('No events recorded on this day.')
+                ? const Text('No events recorded for this day.')
                 : Column(
                     children: widget.history.timelineEvents
                         .map((event) => _HistoryEventCard(event: event))
@@ -565,7 +562,7 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                   ),
           ),
           _HistoryDetailTab.documents => SectionCard(
-            title: 'Documents for the day',
+            title: 'Day documents',
             subtitle: 'Uploaded or linked to this date.',
             child: widget.history.documents.isEmpty
                 ? const Text('No documents linked to this day.')
@@ -599,24 +596,24 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                       if (widget.history.wearableSummary!.stepsCount != null)
                         _SummaryChip(
                           label:
-                          '${widget.history.wearableSummary!.stepsCount} steps',
+                              '${widget.history.wearableSummary!.stepsCount} steps',
                         ),
                       if (widget.history.wearableSummary!.sleepMinutes != null)
                         _SummaryChip(
                           label:
-                              'Sonno ${(widget.history.wearableSummary!.sleepMinutes! / 60).toStringAsFixed(1)} h',
+                              'Sleep ${(widget.history.wearableSummary!.sleepMinutes! / 60).toStringAsFixed(1)} h',
                         ),
                       if (widget.history.wearableSummary!.heartRateAvgBpm !=
                           null)
                         _SummaryChip(
                           label:
-                              'FC ${widget.history.wearableSummary!.heartRateAvgBpm!.toStringAsFixed(0)} bpm',
+                              'HR ${widget.history.wearableSummary!.heartRateAvgBpm!.toStringAsFixed(0)} bpm',
                         ),
                       if (widget.history.wearableSummary!.restingHeartRateBpm !=
                           null)
                         _SummaryChip(
                           label:
-                              'Riposo ${widget.history.wearableSummary!.restingHeartRateBpm!.toStringAsFixed(0)} bpm',
+                              'Resting ${widget.history.wearableSummary!.restingHeartRateBpm!.toStringAsFixed(0)} bpm',
                         ),
                       if (widget.history.wearableSummary!.bloodOxygenAvgPct !=
                           null)
@@ -640,7 +637,7 @@ class _HistoryEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('HH:mm', 'en_US');
+    final dateFormat = DateFormat('HH:mm', 'it_IT');
 
     return Card.outlined(
       margin: const EdgeInsets.only(bottom: 8),

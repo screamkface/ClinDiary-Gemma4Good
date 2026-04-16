@@ -1,4 +1,4 @@
-import 'package:clindiary/app/providers.dart';
+﻿import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
@@ -25,9 +25,9 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       ref.invalidate(pendingOperationsProvider);
       ref.invalidate(requestTracesProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Synced operations: $synced')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Operations synced: $synced')),
+      );
     } finally {
       if (mounted) {
         setState(() => _flushing = false);
@@ -64,12 +64,12 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       appBar: AppBar(
         title: const Text('Local sync'),
         actions: [
-                  title: 'Queued operations',
+          IconButton(
             onPressed: () {
-                      ? 'No operations pending.'
-                      : 'Latest ${items.length} local operations.',
+              ref.invalidate(pendingOperationsProvider);
+              ref.invalidate(requestTracesProvider);
             },
-                      ? const Text('No pending operations.')
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
@@ -77,8 +77,8 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           SectionCard(
-                                    'Attempts ${item.attempts} • ${formatter.format(item.createdAt.toLocal())}'
-            subtitle: 'Use these actions only for local debugging.',
+            title: 'Actions',
+            subtitle: 'Use these actions only for local debug.',
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -86,49 +86,49 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                 FilledButton.icon(
                   onPressed: _flushing ? null : _flushQueue,
                   icon: const Icon(Icons.sync_outlined),
-              title: 'Queued operations',
+                  label: Text(_flushing ? 'Sync...' : 'Sync'),
                 ),
                 OutlinedButton.icon(
                   onPressed: _clearing ? null : _clearLocalDebugData,
-              title: 'Queued operations',
+                  icon: const Icon(Icons.delete_sweep_outlined),
                   label: Text(_clearing ? 'Cleaning...' : 'Clear debug'),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-              title: 'Recent network traces',
+          pendingAsync.when(
             data: (items) => Column(
-                  ? 'No traces recorded.'
-                  : 'Latest ${items.take(20).length} local requests.',
+              children: [
+                SectionCard(
                   title: 'Queue summary',
-                  ? const Text('No traces recorded.')
+                  subtitle: 'Quick status of offline operations.',
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _SyncSummaryChip(
-                        label: 'Totale',
+                        label: 'Total',
                         value: items.length.toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Profilo',
+                        label: 'Profile',
                         value: _bucketCount(items, 'profile').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Notifiche',
+                        label: 'Notifications',
                         value: _bucketCount(items, 'notifications').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Farmaci',
+                        label: 'Medications',
                         value: _bucketCount(items, 'medications').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Documenti',
+                        label: 'Documents',
                         value: _bucketCount(items, 'documents').toString(),
                       ),
                       _SyncSummaryChip(
-                        label: 'Altro',
+                        label: 'Other',
                         value: _bucketCount(items, 'other').toString(),
                       ),
                     ],
@@ -136,12 +136,12 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Operazioni in coda',
-                  subtitle: items.isEmpty
-                      ? 'Nessuna operazione in attesa.'
-                      : 'Ultime ${items.length} operazioni locali.',
+                    title: 'Queued operations',
+                    subtitle: items.isEmpty
+                      ? 'No pending operations.'
+                      : 'Latest ${items.length} local operations.',
                   child: items.isEmpty
-                      ? const Text('Nessuna operazione pendente.')
+                      ? const Text('No pending operations.')
                       : Column(
                           children: items.map((item) {
                             return Padding(
@@ -149,7 +149,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                               child: _DebugRowCard(
                                 title: '${item.method} ${item.path}',
                                 subtitle:
-                                    'Tentativi ${item.attempts} • ${formatter.format(item.createdAt.toLocal())}'
+                                    'Tentativi ${item.attempts} ÔÇó ${formatter.format(item.createdAt.toLocal())}'
                                     '${item.lastError == null || item.lastError!.isEmpty ? '' : '\n${item.lastError}'}',
                               ),
                             );
@@ -159,7 +159,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
               ],
             ),
             loading: () => const SectionCard(
-              title: 'Operazioni in coda',
+              title: 'Queued operations',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
@@ -170,12 +170,12 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
           const SizedBox(height: 12),
           tracesAsync.when(
             data: (items) => SectionCard(
-              title: 'Trace rete recenti',
+              title: 'Recent network traces',
               subtitle: items.isEmpty
-                  ? 'Nessuna trace registrata.'
-                  : 'Ultime ${items.take(20).length} richieste locali.',
+                    ? 'No traces recorded.'
+                    : 'Latest ${items.take(20).length} local requests.',
               child: items.isEmpty
-                  ? const Text('Nessuna trace registrata.')
+                    ? const Text('No traces recorded.')
                   : Column(
                       children: items.take(20).map((item) {
                         return Padding(
@@ -183,7 +183,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                           child: _DebugRowCard(
                             title: '${item.method} ${item.path}',
                             subtitle:
-                                '${item.statusCode} • ${formatter.format(item.createdAt.toLocal())}'
+                                '${item.statusCode} ÔÇó ${formatter.format(item.createdAt.toLocal())}'
                                 '${item.requestId == null ? '' : '\n${item.requestId}'}',
                             trailing: item.responseTimeMs == null
                                 ? '-'

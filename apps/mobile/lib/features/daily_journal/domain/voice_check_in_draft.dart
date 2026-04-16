@@ -75,12 +75,12 @@ class VoiceCheckInDraft {
   static Map<String, dynamic> _decodeResponsePayload(String response) {
     final trimmed = response.trim();
     if (trimmed.isEmpty) {
-      throw const FormatException('Risposta vuota dal modello.');
+      throw const FormatException('Empty response from the model.');
     }
 
     final startIndex = trimmed.indexOf('{');
     if (startIndex < 0) {
-      throw FormatException('Risposta non JSON: $trimmed');
+      throw FormatException('Response is not JSON: $trimmed');
     }
 
     var depth = 0;
@@ -97,14 +97,14 @@ class VoiceCheckInDraft {
             return decoded;
           }
           throw const FormatException(
-            'Il modello non ha restituito un oggetto JSON.',
+            'The model did not return a JSON object.',
           );
         }
       }
     }
 
     throw const FormatException(
-      'JSON non completo nella risposta del modello.',
+      'Incomplete JSON in the model response.',
     );
   }
 

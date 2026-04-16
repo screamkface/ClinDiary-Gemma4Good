@@ -69,7 +69,7 @@ class PreventionRecommendationItem {
       cadenceLabel: json['cadence_label'] as String?,
       status: json['status']?.toString() ?? 'review',
       priority: json['priority']?.toString() ?? 'normal',
-      category: json['category']?.toString() ?? 'prevenzione',
+      category: json['category']?.toString() ?? 'prevention',
       kind: json['kind']?.toString() ?? 'screening',
       sourceType: json['source_type'] as String?,
       sourceId: json['source_id']?.toString(),
@@ -115,7 +115,7 @@ class PreventionCenterData {
   factory PreventionCenterData.fromJson(Map<String, dynamic> json) {
     return PreventionCenterData(
       generatedAt: DateTime.parse(json['generated_at'].toString()),
-      displayName: json['display_name']?.toString() ?? 'Profilo clinico',
+      displayName: json['display_name']?.toString() ?? 'Clinical profile',
       age: json['age'] as int?,
       biologicalSex: json['biological_sex'] as String?,
       regionCode: json['region_code'] as String?,

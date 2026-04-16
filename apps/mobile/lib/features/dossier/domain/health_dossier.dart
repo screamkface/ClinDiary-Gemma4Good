@@ -425,7 +425,7 @@ class HealthDossier {
   factory HealthDossier.fromJson(Map<String, dynamic> json) {
     return HealthDossier(
       generatedAt: DateTime.parse(json['generated_at'].toString()),
-      displayName: json['display_name']?.toString() ?? 'Profilo clinico',
+      displayName: json['display_name']?.toString() ?? 'Clinical profile',
       age: json['age'] as int?,
       biologicalSex: json['biological_sex'] as String?,
       profileFacts: (json['profile_facts'] as List<dynamic>? ?? [])
