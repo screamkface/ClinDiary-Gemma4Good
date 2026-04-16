@@ -120,6 +120,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             ),
           ],
           bottom: const TabBar(
+            tabAlignment: TabAlignment.fill,
             tabs: [
               Tab(text: 'Day'),
               Tab(text: 'Calendar'),
@@ -246,6 +247,8 @@ class _HistoryCalendar extends StatelessWidget {
           lastDay: DateTime.now().add(const Duration(days: 1)),
           focusedDay: focusedMonth,
           startingDayOfWeek: StartingDayOfWeek.monday,
+          availableGestures: AvailableGestures.horizontalSwipe,
+          rowHeight: 48,
           selectedDayPredicate: (day) => isSameDay(day, selectedDate),
           eventLoader: (day) =>
               normalizedActivityDates.contains(DateUtils.dateOnly(day))
@@ -258,21 +261,23 @@ class _HistoryCalendar extends StatelessWidget {
             formatButtonVisible: false,
           ),
           calendarStyle: CalendarStyle(
-            outsideDaysVisible: false,
             todayDecoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.18),
+              color: Theme.of(context).colorScheme.primaryContainer,
               shape: BoxShape.circle,
+            ),
+            todayTextStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
             ),
             selectedDecoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary,
               shape: BoxShape.circle,
             ),
-            markerDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.tertiary,
-              shape: BoxShape.circle,
+            selectedTextStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
             ),
+            markerDecoration: const BoxDecoration(),
             markersMaxCount: 1,
           ),
           calendarBuilders: CalendarBuilders(

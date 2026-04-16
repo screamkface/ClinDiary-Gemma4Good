@@ -500,6 +500,7 @@ class _InsightsCalendar extends StatelessWidget {
           lastDay: DateTime.now().add(const Duration(days: 1)),
           focusedDay: focusedMonth,
           startingDayOfWeek: StartingDayOfWeek.monday,
+          availableGestures: AvailableGestures.horizontalSwipe,
           selectedDayPredicate: (day) => isSameDay(day, selectedDate),
           eventLoader: (day) =>
               normalizedActivityDates.contains(DateUtils.dateOnly(day))

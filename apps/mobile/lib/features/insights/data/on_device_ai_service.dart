@@ -206,7 +206,7 @@ class OnDeviceAiService {
       await tempFile.rename(targetFile.path);
       await _removeExistingModelFiles(
         targetDirectory,
-        keepFileName: targetFile.name,
+        keepFileName: p.basename(targetFile.path),
       );
       await resetRuntime();
       return targetFile.path;

@@ -5,5 +5,5 @@ output-class: AppLocalizations
 preferred-supported-locales:
   - en
   - it
-synthetic-package: true
+nullable-getter: false
 use-escaping: true
