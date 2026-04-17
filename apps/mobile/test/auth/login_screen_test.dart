@@ -61,7 +61,7 @@ void main() {
 
     await tester.enterText(emailField, 'patient@example.com');
     await tester.enterText(passwordField, 'StrongPass123!');
-    await tester.tap(find.text('Accedi'));
+    await tester.tap(find.byType(FilledButton).first);
     await tester.pumpAndSettle();
 
     expect(find.text('Home reached'), findsOneWidget);

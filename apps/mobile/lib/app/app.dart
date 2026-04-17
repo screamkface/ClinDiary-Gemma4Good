@@ -19,7 +19,7 @@ class ClinDiaryApp extends ConsumerWidget {
         ref.watch(appDisplaySettingsControllerProvider).valueOrNull ??
         const AppDisplaySettings();
     return MaterialApp.router(
-      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       theme: buildClinDiaryTheme(brightness: Brightness.light),
       darkTheme: buildClinDiaryTheme(brightness: Brightness.dark),
       themeMode: displaySettings.themeMode,

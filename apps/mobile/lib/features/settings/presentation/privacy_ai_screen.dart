@@ -21,6 +21,8 @@ class PrivacyAiScreen extends ConsumerStatefulWidget {
 class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
   bool _savingAiPrivacy = false;
   bool _exporting = false;
+  bool _uploadingEncryptedBackup = false;
+  bool _restoringEncryptedBackup = false;
   bool _deletingAccount = false;
 
   Future<void> _updateAiPrivacy(bool enabled) async {
@@ -52,8 +54,8 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
         SnackBar(
           content: Text(
             enabled
-                ? 'Consenso per AI esterna aggiornato.'
-                : 'Consenso per AI esterna revocato.',
+                ? 'External AI consent updated.'
+                : 'External AI consent revoked.',
           ),
         ),
       );
@@ -193,7 +195,6 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
           .read(authControllerProvider.notifier)
           .deleteAccount(confirmationText: 'ELIMINA');
       invalidatePatientScopedProviders(ref);
-      ref.invalidate(billingStatusProvider);
       if (!mounted) {
         return;
       }
@@ -219,9 +220,129 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
     }
   }
 
+  Future<void> _uploadEncryptedBackupToDrive() async {
+    if (_uploadingEncryptedBackup) {
+      return;
+    }
+
+    setState(() => _uploadingEncryptedBackup = true);
+    try {
+      final result = await ref
+          .read(encryptedBackupServiceProvider)
+          .uploadEncryptedSnapshotToDrive();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Encrypted backup uploaded: ${result.fileName} (${result.encryptedBytes} bytes).',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingEncryptedBackup = false);
+      }
+    }
+  }
+
+  Future<void> _restoreEncryptedBackupFromDrive() async {
+    if (_restoringEncryptedBackup) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore encrypted backup?'),
+        content: const Text(
+          'The latest encrypted backup from Google Drive app data will replace the local dossier snapshot for this profile.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() => _restoringEncryptedBackup = true);
+    try {
+      final result = await ref
+          .read(encryptedBackupServiceProvider)
+          .restoreLatestEncryptedSnapshotFromDrive(replaceExisting: true);
+
+      ref.invalidate(healthDossierProvider);
+      ref.invalidate(profileBundleProvider);
+      ref.invalidate(screeningCatalogProvider);
+      ref.invalidate(myScreeningsProvider);
+      ref.invalidate(preventionCenterProvider);
+      ref.invalidate(notificationsProvider);
+      ref.invalidate(timelineEventsProvider);
+      ref.invalidate(documentsProvider);
+      ref.invalidate(alertsProvider);
+      ref.invalidate(dossierShareLinksProvider);
+
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Encrypted backup restored: ${result.fileName}.'),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _restoringEncryptedBackup = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
+    final localOnlyMode = ref.read(appConfigProvider).localOnlyMode;
+    final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
+    final onDeviceStatusAsync = ref.watch(onDeviceAiStatusProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Privacy AI')),
@@ -333,6 +454,60 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               ),
               const SizedBox(height: 16),
               SectionCard(
+                title: 'Local-only diagnostics',
+                subtitle:
+                    'Quick health check for offline/local-first execution readiness.',
+                action: TextButton.icon(
+                  onPressed: () {
+                    ref.invalidate(onDeviceAiStatusProvider);
+                    ref.invalidate(pendingOperationsProvider);
+                  },
+                  icon: const Icon(Icons.refresh_outlined),
+                  label: const Text('Refresh'),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(
+                            localOnlyMode
+                                ? 'Local-only mode: active'
+                                : 'Local-only mode: inactive',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            pendingOperationsAsync.asData == null
+                                ? 'Pending sync: checking...'
+                                : 'Pending sync: ${pendingOperationsAsync.asData!.value.length}',
+                          ),
+                        ),
+                        Chip(
+                          label: Text(
+                            onDeviceStatusAsync.asData == null
+                                ? 'On-device AI: checking...'
+                                : (onDeviceStatusAsync.asData!.value.isReady
+                                      ? 'On-device AI: ready'
+                                      : 'On-device AI: not ready'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      onDeviceStatusAsync.asData?.value.activeProviderLabel ??
+                          'No on-device provider detected yet.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
                 title: 'Data portability',
                 subtitle:
                     'Export dossier, emergency data, and structured backups.',
@@ -358,10 +533,10 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-dossier',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
-                                  shareText: 'Dossier salute ClinDiary',
-                                  shareSubject: 'Dossier salute ClinDiary',
+                                  shareText: 'ClinDiary health dossier',
+                                  shareSubject: 'ClinDiary health dossier',
                                   successMessage:
-                                      'Dossier PDF esportato e condiviso.',
+                                      'Dossier PDF exported and shared.',
                                 ),
                           icon: const Icon(Icons.picture_as_pdf_outlined),
                           label: const Text('Dossier PDF'),
@@ -375,10 +550,10 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-dossier-backup',
                                   filenameExtension: 'json',
                                   mimeType: 'application/json',
-                                  shareText: 'Backup strutturato ClinDiary',
-                                  shareSubject: 'Backup strutturato ClinDiary',
+                                  shareText: 'ClinDiary structured backup',
+                                  shareSubject: 'ClinDiary structured backup',
                                   successMessage:
-                                      'Backup JSON esportato e condiviso.',
+                                      'JSON backup exported and shared.',
                                 ),
                           icon: const Icon(Icons.data_object_outlined),
                           label: const Text('Backup JSON'),
@@ -392,16 +567,46 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-scheda-emergenza',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
-                                  shareText: 'Scheda emergenza ClinDiary',
-                                  shareSubject: 'Scheda emergenza ClinDiary',
+                                  shareText: 'ClinDiary emergency card',
+                                  shareSubject: 'ClinDiary emergency card',
                                   successMessage:
-                                      'Scheda emergenza esportata e condivisa.',
+                                      'Emergency card exported and shared.',
                                 ),
                           icon: const Icon(Icons.emergency_outlined),
                           label: const Text('Emergency card'),
                         ),
+                        if (localOnlyMode)
+                          FilledButton.tonalIcon(
+                            onPressed: _uploadingEncryptedBackup || _exporting
+                                ? null
+                                : _uploadEncryptedBackupToDrive,
+                            icon: const Icon(Icons.cloud_upload_outlined),
+                            label: Text(
+                              _uploadingEncryptedBackup
+                                  ? 'Uploading encrypted backup...'
+                                  : 'Encrypted backup to Drive',
+                            ),
+                          ),
+                        if (localOnlyMode)
+                          FilledButton.tonalIcon(
+                            onPressed: _restoringEncryptedBackup || _exporting
+                                ? null
+                                : _restoreEncryptedBackupFromDrive,
+                            icon: const Icon(Icons.restore_outlined),
+                            label: Text(
+                              _restoringEncryptedBackup
+                                  ? 'Restoring encrypted backup...'
+                                  : 'Restore encrypted backup',
+                            ),
+                          ),
                       ],
                     ),
+                    if (localOnlyMode) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Backups are encrypted locally before upload and stored in Google Drive app data. Restore applies the latest encrypted snapshot to the active profile.',
+                      ),
+                    ],
                   ],
                 ),
               ),

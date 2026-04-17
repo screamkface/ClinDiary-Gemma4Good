@@ -5,11 +5,13 @@ class AppConfig {
   const AppConfig({
     required this.apiBaseUrl,
     this.hackathonDemoMode = false,
+    this.localOnlyMode = false,
     this.googleAuthClientId = '',
   });
 
   final String apiBaseUrl;
   final bool hackathonDemoMode;
+  final bool localOnlyMode;
   final String googleAuthClientId;
 }
 
@@ -21,6 +23,13 @@ const defaultAppConfig = AppConfig(
   hackathonDemoMode: bool.fromEnvironment(
     'HACKATHON_DEMO_MODE',
     defaultValue: false,
+  ),
+  localOnlyMode: bool.fromEnvironment(
+    'LOCAL_ONLY_MODE',
+    defaultValue: bool.fromEnvironment(
+      'HACKATHON_DEMO_MODE',
+      defaultValue: false,
+    ),
   ),
   googleAuthClientId: String.fromEnvironment(
     'GOOGLE_AUTH_CLIENT_ID',

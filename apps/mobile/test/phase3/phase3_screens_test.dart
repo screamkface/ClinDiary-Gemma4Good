@@ -93,10 +93,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Recap AI'), findsOneWidget);
+    expect(find.text('AI recap'), findsOneWidget);
     expect(find.byIcon(Icons.content_copy_outlined), findsOneWidget);
-    expect(find.text('Rigenera'), findsOneWidget);
-    expect(find.text('Privata locale'), findsOneWidget);
+    expect(find.text('Regenerate'), findsOneWidget);
+    expect(find.text('Local private'), findsOneWidget);
   });
 
   test('insight summary query distingue la modalita privata locale', () {
@@ -130,20 +130,23 @@ void main() {
             ),
           ),
         ),
-          supportedLocales: [Locale('it', 'IT'), Locale('en', 'US')],
-          localizationsDelegates: [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+        supportedLocales: [Locale('it', 'IT'), Locale('en', 'US')],
+        localizationsDelegates: [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Proof locale'), findsOneWidget);
-    expect(find.textContaining('Provider attivo: Gemma 4 Local'), findsOneWidget);
-    expect(find.textContaining('Cloud esterno usato: No'), findsOneWidget);
+    expect(find.text('Local proof'), findsOneWidget);
+    expect(
+      find.textContaining('Active provider: Gemma 4 Local'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('External cloud used: No'), findsOneWidget);
   });
 
   testWidgets('insights screen apre il date picker senza crash', (
@@ -225,12 +228,12 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Rigenera').first);
+    await tester.tap(find.text('Regenerate').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     verify(() => repository.regenerateSummary(any())).called(1);
-    expect(find.text('Report rigenerato.'), findsOneWidget);
+    expect(find.text('Report regenerated.'), findsOneWidget);
   });
 
   testWidgets('insights screen copia il report negli appunti', (tester) async {
@@ -266,7 +269,7 @@ void main() {
 
     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
     expect(clipboardData?.text, 'Report da copiare.');
-    expect(find.text('Report copiato negli appunti.'), findsOneWidget);
+    expect(find.text('Report copied to clipboard.'), findsOneWidget);
   });
 
   testWidgets('history screen mostra check-up e recap del giorno', (
@@ -360,10 +363,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Recap giornaliero'), findsOneWidget);
+    expect(find.text('Daily recap'), findsOneWidget);
     expect(find.textContaining('Riepilogo prudente'), findsOneWidget);
-    expect(find.text('Emocromo'), findsOneWidget);
+    await tester.tap(find.text('Check-up').last);
+    await tester.pumpAndSettle();
     expect(find.text('headache 6/10'), findsOneWidget);
+    await tester.tap(find.text('Documents').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Emocromo'), findsOneWidget);
   });
 
   testWidgets(
@@ -425,15 +432,12 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(find.text('Rigenera').first);
+      await tester.tap(find.text('Regenerate').first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       verify(() => repository.regenerateSummary(any())).called(1);
-      expect(
-        find.textContaining('Report giornaliero rigenerato'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Daily report regenerated'), findsOneWidget);
     },
   );
 
@@ -488,7 +492,7 @@ void main() {
 
     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
     expect(clipboardData?.text, 'Report storico da copiare.');
-    expect(find.text('Report copiato negli appunti.'), findsOneWidget);
+    expect(find.text('Report copied to clipboard.'), findsOneWidget);
   });
 
   testWidgets('alerts screen mostra gli alert aperti', (tester) async {
@@ -517,7 +521,7 @@ void main() {
 
     expect(find.text('Urgenza: dolore toracico riportato'), findsOneWidget);
     expect(find.textContaining('Valutazione rapida'), findsOneWidget);
-    expect(find.text('Segna risolto'), findsOneWidget);
+    expect(find.text('Mark resolved'), findsOneWidget);
   });
 
   testWidgets('reports screen genera e mostra il report piu recente', (
@@ -557,11 +561,13 @@ void main() {
 
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.byIcon(Icons.picture_as_pdf_outlined),
+      find.text('Regenerate report'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.byIcon(Icons.picture_as_pdf_outlined));
+    await tester.tap(find.text('Regenerate report'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Latest report'));
     await tester.pumpAndSettle();
 
     expect(find.text('ClinDiary - weekly summary'), findsOneWidget);

@@ -167,6 +167,13 @@ class ApiClient {
     required List<MultipartUploadFile> files,
     bool authenticated = true,
   }) async {
+    if (_config.localOnlyMode) {
+      throw ApiException(
+        'Local-only mode is enabled. Network requests are disabled.',
+        statusCode: 503,
+        code: 'local_only_mode',
+      );
+    }
     final request = http.MultipartRequest('POST', _uri(path));
     final headers = await _headers(authenticated: authenticated);
     headers.remove('Content-Type');
@@ -355,6 +362,13 @@ class ApiClient {
     String? body,
     String? activeProfileIdOverride,
   }) async {
+    if (_config.localOnlyMode) {
+      throw ApiException(
+        'Local-only mode is enabled. Network requests are disabled.',
+        statusCode: 503,
+        code: 'local_only_mode',
+      );
+    }
     final request = http.Request(method, _uri(path));
     request.headers.addAll(
       await _headers(

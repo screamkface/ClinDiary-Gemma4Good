@@ -16,7 +16,6 @@ class HomeScreen extends ConsumerWidget {
     final pendingMedicationsAsync = ref.watch(pendingMedicationDosesProvider);
     final profileAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
-    final billingStatusAsync = ref.watch(billingStatusProvider);
     final l10n = AppLocalizations.of(context);
 
     final alertsCount = alertsAsync.asData?.value.length ?? 0;
@@ -24,8 +23,7 @@ class HomeScreen extends ConsumerWidget {
         unreadNotificationsAsync.asData?.value ?? false;
     final hasPendingMedications =
         pendingMedicationsAsync.asData?.value ?? false;
-    final isHackathonDemoMode =
-        billingStatusAsync.asData?.value?.isHackathonDemoMode == true;
+    final isHackathonDemoMode = ref.read(appConfigProvider).hackathonDemoMode;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -49,11 +47,8 @@ class HomeScreen extends ConsumerWidget {
                             Text(
                               bundle?.profile.displayName ??
                                   l10n.profileSetupInProgress,
-                              style: Theme.of(
-                                context,
-                              ).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -148,8 +143,10 @@ class HomeScreen extends ConsumerWidget {
               title: l10n.todayTitle,
               child: const Center(child: CircularProgressIndicator()),
             ),
-            error: (error, _) =>
-                SectionCard(title: l10n.todayTitle, child: Text(error.toString())),
+            error: (error, _) => SectionCard(
+              title: l10n.todayTitle,
+              child: Text(error.toString()),
+            ),
           ),
           if (isHackathonDemoMode) ...[
             const SizedBox(height: 12),
@@ -177,14 +174,21 @@ class HomeScreen extends ConsumerWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (var index = 0; index < profiles.length && index < 3; index++)
+                      for (
+                        var index = 0;
+                        index < profiles.length && index < 3;
+                        index++
+                      )
                         FilterChip(
                           selected: profiles[index].id == selectedId,
                           label: Text(
                             _hackathonScenarioLabel(index, profiles[index]),
                           ),
-                          onSelected: (_) =>
-                              _setActiveProfile(context, ref, profiles[index].id),
+                          onSelected: (_) => _setActiveProfile(
+                            context,
+                            ref,
+                            profiles[index].id,
+                          ),
                         ),
                     ],
                   ),
@@ -288,8 +292,10 @@ class HomeScreen extends ConsumerWidget {
               title: l10n.profiles,
               child: const Center(child: CircularProgressIndicator()),
             ),
-            error: (error, _) =>
-                SectionCard(title: l10n.profiles, child: Text(error.toString())),
+            error: (error, _) => SectionCard(
+              title: l10n.profiles,
+              child: Text(error.toString()),
+            ),
           ),
           const SizedBox(height: 12),
           SectionCard(
@@ -317,9 +323,9 @@ class HomeScreen extends ConsumerWidget {
                   onPressed: () => context.push('/app/home/wearables'),
                 ),
                 _MiniActionChip(
-                  label: l10n.aiPlus,
-                  icon: Icons.workspace_premium_outlined,
-                  onPressed: () => context.push('/app/home/billing'),
+                  label: 'Privacy and AI',
+                  icon: Icons.shield_outlined,
+                  onPressed: () => context.push('/app/home/privacy'),
                 ),
                 _MiniActionChip(
                   label: l10n.alerts,

@@ -590,7 +590,7 @@ String _formatDeliveryReport(NotificationDeliveryReport report) {
   appendChannel(report.email);
 
   if (parts.isEmpty) {
-    return 'Invio test completato.';
+    return 'Test delivery completed.';
   }
   return parts.join(' · ');
 }

@@ -28,7 +28,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -62,7 +62,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.createAccount)),
       body: Center(
@@ -130,7 +130,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         child: FilledButton(
                           onPressed: _isSubmitting ? null : _submit,
                           child: Text(
-                            _isSubmitting ? l10n.creatingAccount : l10n.continueButton,
+                            _isSubmitting
+                                ? l10n.creatingAccount
+                                : l10n.continueButton,
                           ),
                         ),
                       ),

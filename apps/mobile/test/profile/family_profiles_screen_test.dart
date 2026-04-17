@@ -61,9 +61,7 @@ void main() {
       when(
         () => repository.createManagedProfile(any()),
       ).thenAnswer((_) async => createdBundle);
-      when(
-        () => repository.setActiveProfileId(any()),
-      ).thenAnswer((_) async {});
+      when(() => repository.setActiveProfileId(any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(
         ProviderScope(
@@ -78,19 +76,19 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Nuovo profilo'));
+      await tester.tap(find.text('New profile'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Nome'),
+        find.widgetWithText(TextFormField, 'First name'),
         'Luca',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Relazione'),
+        find.widgetWithText(TextFormField, 'Relationship'),
         'Figlio',
       );
 
-      await tester.tap(find.text('Salva'));
+      await tester.tap(find.text('Save'));
       await tester.pump();
       await tester.pumpAndSettle();
 

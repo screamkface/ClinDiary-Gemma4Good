@@ -1,13 +1,16 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/core/app_config.dart';
+import 'package:clindiary/app/dependencies.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
-import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/home/presentation/home_screen.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -185,43 +188,53 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: HomeScreen()),
+        child: const MaterialApp(
+          home: HomeScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Oggi'), findsWidgets);
-    expect(find.text('Recap AI'), findsOneWidget);
+    expect(find.text('Today'), findsWidgets);
+    expect(find.text('AI Recap'), findsOneWidget);
     expect(find.text('Check-up'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Profili'),
+      find.text('Profiles'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Profili'), findsWidgets);
-    expect(find.text('Gestisci'), findsOneWidget);
-    expect(find.text('Aggiungi'), findsOneWidget);
-    expect(find.text('Anna Bianchi · principale'), findsOneWidget);
+    expect(find.text('Profiles'), findsWidgets);
+    expect(find.text('Manage'), findsOneWidget);
+    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Anna Bianchi · Primary'), findsOneWidget);
     expect(find.textContaining('Luca'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Vai a'),
+      find.text('Go To'),
       400,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Vai a'), findsOneWidget);
+    expect(find.text('Go To'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Altro'),
+      find.text('More'),
       400,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Altro'), findsOneWidget);
-    expect(find.text('Documenti'), findsOneWidget);
-    expect(find.text('Notifiche'), findsOneWidget);
-    expect(find.text('Prevenzione'), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
+    expect(find.text('Documents'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('Prevention'), findsOneWidget);
     expect(find.text('Dossier'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-notifications-badge')), findsOne);
     expect(find.byKey(const ValueKey('home-medications-badge')), findsOne);
@@ -234,26 +247,10 @@ void main() {
       ProviderScope(
         overrides: [
           activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
-          billingStatusProvider.overrideWith(
-            (ref) async => const BillingStatus(
-              currentPlan: BillingPlan(
-                id: 'plan-free',
-                code: 'free',
-                name: 'ClinDiary Free',
-                billingInterval: 'free',
-                priceCents: 0,
-                currency: 'EUR',
-                sortOrder: 0,
-                isActive: true,
-                isPublic: true,
-                isRecommended: false,
-                featureCodes: [],
-              ),
-              availablePlans: [],
-              entitlementCodes: ['ai_daily_summary'],
-              hasActivePaidSubscription: false,
-              checkoutReady: false,
-              isHackathonDemoMode: true,
+          appConfigProvider.overrideWith(
+            (ref) => const AppConfig(
+              apiBaseUrl: 'http://localhost:8000',
+              hackathonDemoMode: true,
             ),
           ),
           profileBundleProvider.overrideWith(
@@ -307,16 +304,26 @@ void main() {
           unreadNotificationsProvider.overrideWith((ref) async => false),
           pendingMedicationDosesProvider.overrideWith((ref) async => false),
         ],
-        child: const MaterialApp(home: HomeScreen()),
+        child: const MaterialApp(
+          home: HomeScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Scenari demo'), findsOneWidget);
+    expect(find.text('Demo Scenarios'), findsOneWidget);
     expect(find.textContaining('Scenario A'), findsOneWidget);
     expect(find.textContaining('Scenario B'), findsOneWidget);
     expect(find.textContaining('Scenario C'), findsOneWidget);
-    expect(find.text('Apri Recap AI'), findsOneWidget);
+    expect(find.text('Open AI Recap'), findsOneWidget);
   });
 }

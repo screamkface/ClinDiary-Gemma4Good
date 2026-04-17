@@ -51,10 +51,10 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   runSpacing: 8,
                   children: [
                     Chip(label: Text('${filteredEvents.length} events')),
-                    Chip(label: Text('${groups.length} giorni')),
+                    Chip(label: Text('${groups.length} days')),
                     Chip(
                       label: Text(
-                        'Ultimo ${dateTimeFormat.format(events.first.eventDate.toLocal())}',
+                        'Latest ${dateTimeFormat.format(events.first.eventDate.toLocal())}',
                       ),
                     ),
                   ],
@@ -62,13 +62,13 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               ),
               const SizedBox(height: 12),
               SectionCard(
-                title: 'Filtri',
+                title: 'Filters',
                 child: Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     _TimelineFilterChip(
-                      label: 'Tutti',
+                      label: 'All',
                       selected: _selectedFilter == 'all',
                       onSelected: () => setState(() => _selectedFilter = 'all'),
                     ),
@@ -79,19 +79,19 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           setState(() => _selectedFilter = 'journal'),
                     ),
                     _TimelineFilterChip(
-                      label: 'Documenti',
+                      label: 'Documents',
                       selected: _selectedFilter == 'documents',
                       onSelected: () =>
                           setState(() => _selectedFilter = 'documents'),
                     ),
                     _TimelineFilterChip(
-                      label: 'Farmaci',
+                      label: 'Medications',
                       selected: _selectedFilter == 'medications',
                       onSelected: () =>
                           setState(() => _selectedFilter = 'medications'),
                     ),
                     _TimelineFilterChip(
-                      label: 'Prevenzione',
+                      label: 'Prevention',
                       selected: _selectedFilter == 'prevention',
                       onSelected: () =>
                           setState(() => _selectedFilter = 'prevention'),
@@ -395,9 +395,9 @@ bool _matchesFilter(TimelineEventItem event, String filter) {
 String _eventLabel(String type) {
   switch (type) {
     case 'document_uploaded':
-      return 'Documento';
+      return 'Document';
     case 'lab_result_summary':
-      return 'Laboratorio';
+      return 'Lab';
     case 'imaging_summary':
       return 'Imaging';
     case 'ai_alert':
@@ -407,15 +407,15 @@ String _eventLabel(String type) {
     case 'screening_due':
       return 'Screening';
     case 'screening_completed':
-      return 'Prevenzione';
+      return 'Prevention';
     case 'medication_logged':
-      return 'Aderenza';
+      return 'Adherence';
     case 'daily_entry':
       return 'Check-up';
     case 'symptom_event':
-      return 'Sintomo';
+      return 'Symptom';
     case 'vital_event':
-      return 'Parametro';
+      return 'Vital';
     default:
       return type;
   }

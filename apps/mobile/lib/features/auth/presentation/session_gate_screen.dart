@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/auth/domain/auth_session.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +13,6 @@ class SessionGateScreen extends ConsumerStatefulWidget {
 }
 
 class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
-  static const _demoEmail = 'demo@clindiary.app';
-  static const _demoPassword = 'ChangeMe123!';
-
-  bool _demoLoginScheduled = false;
-
   void _redirectAfterFrame(String target) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -29,42 +21,10 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
     });
   }
 
-  void _startDemoLoginIfNeeded(AuthSession? session) {
-    if (_demoLoginScheduled) {
-      return;
-    }
-
-    final config = ref.read(appConfigProvider);
-    if (!config.hackathonDemoMode || session != null) {
-      return;
-    }
-
-    _demoLoginScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      unawaited(_runDemoLogin());
-    });
-  }
-
-  Future<void> _runDemoLogin() async {
-    try {
-      await ref
-          .read(authControllerProvider.notifier)
-          .login(email: _demoEmail, password: _demoPassword);
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      _redirectAfterFrame('/login');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     final isHackathonDemoMode = ref.read(appConfigProvider).hackathonDemoMode;
 
     Widget loadingBody(String message) {
@@ -93,7 +53,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
       body: authState.when(
         data: (session) {
           if (isHackathonDemoMode && session == null) {
-            _startDemoLoginIfNeeded(session);
+            _redirectAfterFrame('/app/home');
             return loadingBody(l10n.verifyingSession);
           }
 
@@ -107,7 +67,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
         },
         loading: () => loadingBody(l10n.startingApp),
         error: (_, _) {
-          _redirectAfterFrame('/login');
+          _redirectAfterFrame(isHackathonDemoMode ? '/app/home' : '/login');
           return loadingBody(l10n.redirectingToLogin);
         },
       ),

@@ -108,17 +108,17 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Catalogo prevenzione'), findsOneWidget);
-    expect(find.textContaining('Checklist personale'), findsOneWidget);
-    expect(find.text('Visita annuale consigliata'), findsWidgets);
+    expect(find.text('Prevention catalog'), findsOneWidget);
+    expect(find.textContaining('For your profile'), findsWidgets);
+    expect(find.text('Recommended annual visit'), findsWidgets);
     expect(
-      find.text('Esami e controlli da discutere col medico'),
+      find.text('Tests and checks to discuss with the doctor'),
       findsWidgets,
     );
     expect(find.text('Screening cervice uterina'), findsNWidgets(2));
     expect(find.text('Visita preventiva annuale'), findsNWidgets(2));
     expect(find.text('Programma pubblico'), findsWidgets);
-    expect(find.text('Segna completato'), findsNWidgets(2));
+    expect(find.text('Mark completed'), findsNWidgets(2));
   });
 
   testWidgets('medications screen mostra terapia e storico aderenza', (
@@ -183,7 +183,7 @@ void main() {
 
     expect(find.text('Farmaci'), findsOneWidget);
     expect(find.text('Atorvastatina'), findsNWidgets(2));
-    expect(find.text('Segna assunta'), findsOneWidget);
+    expect(find.text('Mark as taken'), findsOneWidget);
   });
 
   testWidgets('notifications screen mostra notifiche e azione letta', (
@@ -234,15 +234,15 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Preferenze reminder'), findsOneWidget);
-    expect(find.byTooltip('Invia test notifiche'), findsOneWidget);
+    expect(find.text('Reminder preferences'), findsOneWidget);
+    expect(find.byTooltip('Send test notifications'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Promemoria locali farmaci'),
+      find.text('Local medication reminders'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Promemoria locali farmaci'), findsOneWidget);
+    expect(find.text('Local medication reminders'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Screening da programmare'),
       250,
@@ -250,6 +250,6 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Screening da programmare'), findsOneWidget);
-    expect(find.text('Segna letta'), findsOneWidget);
+    expect(find.text('Mark as read'), findsOneWidget);
   });
 }

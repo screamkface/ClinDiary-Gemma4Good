@@ -109,7 +109,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ref.invalidate(preventionCenterProvider);
       ref.invalidate(notificationsProvider);
       ref.invalidate(timelineEventsProvider);
-      ref.invalidate(billingStatusProvider);
       if (!mounted) return;
       context.go('/app/home');
     } on ApiException catch (error) {
@@ -145,7 +144,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 6),
-                    const Text('Dati essenziali per iniziare.'),
+                    const Text('Essential data to get started.'),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _firstNameController,

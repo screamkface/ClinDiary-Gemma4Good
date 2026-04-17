@@ -34,8 +34,8 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
         SnackBar(
           content: Text(
             installedPath == null
-                ? 'Importazione annullata.'
-                : 'Modello copiato in $installedPath',
+                ? 'Import canceled.'
+                : 'Model copied to $installedPath',
           ),
         ),
       );
@@ -43,9 +43,9 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Importazione non riuscita: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Import failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isImporting = false);
@@ -351,7 +351,7 @@ class _LoadingCard extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 12),
-            Expanded(child: Text('Verifica stato modello in corso...')),
+            Expanded(child: Text('Checking model status...')),
           ],
         ),
       ),

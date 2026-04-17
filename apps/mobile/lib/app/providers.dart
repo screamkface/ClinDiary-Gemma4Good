@@ -1,8 +1,8 @@
 import 'package:clindiary/app/dependencies.dart';
+import 'package:clindiary/app/core/demo_seed_data.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
-import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/auth/presentation/auth_controller.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
@@ -29,20 +29,38 @@ export 'package:clindiary/app/dependencies.dart';
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, AuthSession?>(AuthController.new);
 
+bool _isHackathonDemoMode(Ref ref) {
+  return ref.read(appConfigProvider).hackathonDemoMode;
+}
+
+Future<T> _withDemoFallback<T>(
+  Ref ref, {
+  required Future<T> Function() run,
+  required T Function() demoValue,
+}) async {
+  try {
+    return await run();
+  } catch (_) {
+    if (_isHackathonDemoMode(ref)) {
+      return demoValue();
+    }
+    rethrow;
+  }
+}
+
 final profileBundleProvider = FutureProvider<ProfileBundle?>((ref) async {
   final session = await ref.watch(authControllerProvider.future);
-  if (session == null) {
-    return null;
-  }
-  return ref.watch(profileRepositoryProvider).fetchProfile();
-});
+  final isDemoMode = _isHackathonDemoMode(ref);
 
-final billingStatusProvider = FutureProvider<BillingStatus?>((ref) async {
-  final session = ref.watch(authControllerProvider).asData?.value;
-  if (session == null) {
+  if (session == null && !isDemoMode) {
     return null;
   }
-  return ref.watch(billingRepositoryProvider).fetchStatus();
+
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(profileRepositoryProvider).fetchProfile(),
+    demoValue: DemoSeedData.demoProfileBundle,
+  );
 });
 
 final activeProfileIdProvider = FutureProvider<String?>((ref) async {
@@ -67,10 +85,17 @@ final profileRegionCodeProvider = FutureProvider<String>((ref) async {
 
 final dailyEntriesProvider = FutureProvider<List<DailyEntry>>((ref) async {
   final session = await ref.watch(authControllerProvider.future);
-  if (session == null) {
+  final isDemoMode = _isHackathonDemoMode(ref);
+
+  if (session == null && !isDemoMode) {
     return const [];
   }
-  return ref.watch(dailyJournalRepositoryProvider).fetchEntries();
+
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(dailyJournalRepositoryProvider).fetchEntries(),
+    demoValue: DemoSeedData.demoDailyEntries,
+  );
 });
 
 final insightSummaryProvider =
@@ -82,7 +107,11 @@ final insightSummaryProvider =
       if (session == null) {
         throw Exception('Sessione non disponibile');
       }
-      return ref.watch(insightsRepositoryProvider).fetchSummary(query);
+      return _withDemoFallback(
+        ref,
+        run: () => ref.watch(insightsRepositoryProvider).fetchSummary(query),
+        demoValue: () => DemoSeedData.demoInsightSummary(query),
+      );
     });
 
 final localAiStatusProvider = FutureProvider<LocalAiStatus>((ref) async {
@@ -90,7 +119,11 @@ final localAiStatusProvider = FutureProvider<LocalAiStatus>((ref) async {
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
-  return ref.watch(insightsRepositoryProvider).fetchLocalStatus();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(insightsRepositoryProvider).fetchLocalStatus(),
+    demoValue: DemoSeedData.demoLocalAiStatus,
+  );
 });
 
 final onDeviceAiStatusProvider = FutureProvider<OnDeviceAiStatus>((ref) async {
@@ -98,7 +131,11 @@ final onDeviceAiStatusProvider = FutureProvider<OnDeviceAiStatus>((ref) async {
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
-  return ref.watch(insightsRepositoryProvider).fetchOnDeviceStatus();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(insightsRepositoryProvider).fetchOnDeviceStatus(),
+    demoValue: DemoSeedData.demoOnDeviceAiStatus,
+  );
 });
 
 final historyDayProvider = FutureProvider.family<HistoryDay, DateTime>((
@@ -109,9 +146,13 @@ final historyDayProvider = FutureProvider.family<HistoryDay, DateTime>((
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
-  return ref
-      .watch(historyRepositoryProvider)
-      .fetchDay(targetDate: targetDate, includeRollups: false);
+  return _withDemoFallback(
+    ref,
+    run: () => ref
+        .watch(historyRepositoryProvider)
+        .fetchDay(targetDate: targetDate, includeRollups: false),
+    demoValue: () => DemoSeedData.demoHistoryDay(targetDate),
+  );
 });
 
 final historyActivityDatesProvider =
@@ -125,9 +166,13 @@ final historyActivityDatesProvider =
           ? DateTime(monthAnchor.year + 1, 1, 1)
           : DateTime(monthAnchor.year, monthAnchor.month + 1, 1);
       final monthEnd = nextMonth.subtract(const Duration(days: 1));
-      return ref
-          .watch(historyRepositoryProvider)
-          .fetchActivityDates(startDate: monthStart, endDate: monthEnd);
+      return _withDemoFallback(
+        ref,
+        run: () => ref
+            .watch(historyRepositoryProvider)
+            .fetchActivityDates(startDate: monthStart, endDate: monthEnd),
+        demoValue: () => DemoSeedData.demoHistoryActivityDates(monthAnchor),
+      );
     });
 
 final deviceOverviewProvider = FutureProvider<DeviceOverview>((ref) async {
@@ -135,7 +180,11 @@ final deviceOverviewProvider = FutureProvider<DeviceOverview>((ref) async {
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
-  return ref.watch(devicesRepositoryProvider).fetchOverview();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(devicesRepositoryProvider).fetchOverview(),
+    demoValue: DemoSeedData.demoDeviceOverview,
+  );
 });
 
 final alertsProvider = FutureProvider<List<ClinicalAlert>>((ref) async {
@@ -143,7 +192,11 @@ final alertsProvider = FutureProvider<List<ClinicalAlert>>((ref) async {
   if (session == null) {
     return const [];
   }
-  return ref.watch(alertsRepositoryProvider).fetchAlerts();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(alertsRepositoryProvider).fetchAlerts(),
+    demoValue: DemoSeedData.demoAlerts,
+  );
 });
 
 final screeningCatalogProvider = FutureProvider<List<ScreeningCatalogItem>>((
@@ -154,9 +207,13 @@ final screeningCatalogProvider = FutureProvider<List<ScreeningCatalogItem>>((
     return const [];
   }
   final regionCode = await ref.watch(profileRegionCodeProvider.future);
-  return ref
-      .watch(screeningsRepositoryProvider)
-      .fetchCatalog(regionCode: regionCode);
+  return _withDemoFallback(
+    ref,
+    run: () => ref
+        .watch(screeningsRepositoryProvider)
+        .fetchCatalog(regionCode: regionCode),
+    demoValue: DemoSeedData.demoScreeningCatalog,
+  );
 });
 
 final myScreeningsProvider = FutureProvider<List<PatientScreeningStatusItem>>((
@@ -167,9 +224,13 @@ final myScreeningsProvider = FutureProvider<List<PatientScreeningStatusItem>>((
     return const [];
   }
   final regionCode = await ref.watch(profileRegionCodeProvider.future);
-  return ref
-      .watch(screeningsRepositoryProvider)
-      .fetchMyScreenings(regionCode: regionCode);
+  return _withDemoFallback(
+    ref,
+    run: () => ref
+        .watch(screeningsRepositoryProvider)
+        .fetchMyScreenings(regionCode: regionCode),
+    demoValue: DemoSeedData.demoMyScreenings,
+  );
 });
 
 final preventionCenterProvider = FutureProvider<PreventionCenterData>((
@@ -180,9 +241,13 @@ final preventionCenterProvider = FutureProvider<PreventionCenterData>((
     throw Exception('Sessione non disponibile');
   }
   final regionCode = await ref.watch(profileRegionCodeProvider.future);
-  return ref
-      .watch(preventionCenterRepositoryProvider)
-      .fetchCenter(regionCode: regionCode);
+  return _withDemoFallback(
+    ref,
+    run: () => ref
+        .watch(preventionCenterRepositoryProvider)
+        .fetchCenter(regionCode: regionCode),
+    demoValue: DemoSeedData.demoPreventionCenter,
+  );
 });
 
 final healthDossierProvider = FutureProvider<HealthDossier>((ref) async {
@@ -190,7 +255,11 @@ final healthDossierProvider = FutureProvider<HealthDossier>((ref) async {
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
-  return ref.watch(dossierRepositoryProvider).fetchDossier();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(dossierRepositoryProvider).fetchDossier(),
+    demoValue: DemoSeedData.demoHealthDossier,
+  );
 });
 
 final dossierShareLinksProvider = FutureProvider<List<DossierShareLinkItem>>((
@@ -200,7 +269,11 @@ final dossierShareLinksProvider = FutureProvider<List<DossierShareLinkItem>>((
   if (session == null) {
     return const [];
   }
-  return ref.watch(dossierRepositoryProvider).fetchShareLinks();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(dossierRepositoryProvider).fetchShareLinks(),
+    demoValue: DemoSeedData.demoDossierShareLinks,
+  );
 });
 
 final medicationLogsProvider = FutureProvider<List<MedicationLogItem>>((
@@ -210,7 +283,11 @@ final medicationLogsProvider = FutureProvider<List<MedicationLogItem>>((
   if (session == null) {
     return const [];
   }
-  return ref.watch(medicationsRepositoryProvider).fetchLogs();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(medicationsRepositoryProvider).fetchLogs(),
+    demoValue: DemoSeedData.demoMedicationLogs,
+  );
 });
 
 final notificationsProvider = FutureProvider<List<AppNotificationItem>>((
@@ -220,7 +297,11 @@ final notificationsProvider = FutureProvider<List<AppNotificationItem>>((
   if (session == null) {
     return const [];
   }
-  return ref.watch(notificationsRepositoryProvider).fetchNotifications();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(notificationsRepositoryProvider).fetchNotifications(),
+    demoValue: DemoSeedData.demoNotifications,
+  );
 });
 
 final unreadNotificationsProvider = FutureProvider<bool>((ref) async {
@@ -234,7 +315,11 @@ final notificationPreferencesProvider = FutureProvider<NotificationPreferences>(
     if (session == null) {
       throw Exception('Sessione non disponibile');
     }
-    return ref.watch(notificationsRepositoryProvider).fetchPreferences();
+    return _withDemoFallback(
+      ref,
+      run: () => ref.watch(notificationsRepositoryProvider).fetchPreferences(),
+      demoValue: DemoSeedData.demoNotificationPreferences,
+    );
   },
 );
 
@@ -286,7 +371,11 @@ final wearableSyncStatusProvider = FutureProvider<WearableSyncStatus>((
       message: 'Sessione non disponibile.',
     );
   }
-  return ref.watch(wearableHealthServiceProvider).getStatus();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(wearableHealthServiceProvider).getStatus(),
+    demoValue: DemoSeedData.demoWearableSyncStatus,
+  );
 });
 
 final wearableDailySummariesProvider = FutureProvider<List<WearableDaySummary>>(
@@ -295,7 +384,11 @@ final wearableDailySummariesProvider = FutureProvider<List<WearableDaySummary>>(
     if (session == null) {
       return const [];
     }
-    return ref.watch(wearablesRepositoryProvider).fetchDailySummaries();
+    return _withDemoFallback(
+      ref,
+      run: () => ref.watch(wearablesRepositoryProvider).fetchDailySummaries(),
+      demoValue: DemoSeedData.demoWearableSummaries,
+    );
   },
 );
 
@@ -324,7 +417,11 @@ final timelineEventsProvider = FutureProvider<List<TimelineEventItem>>((
   if (session == null) {
     return const [];
   }
-  return ref.watch(timelineRepositoryProvider).fetchEvents();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(timelineRepositoryProvider).fetchEvents(),
+    demoValue: DemoSeedData.demoTimelineEvents,
+  );
 });
 
 final documentsProvider = FutureProvider<List<ClinicalDocumentSummary>>((
@@ -334,7 +431,11 @@ final documentsProvider = FutureProvider<List<ClinicalDocumentSummary>>((
   if (session == null) {
     return const [];
   }
-  return ref.watch(documentsRepositoryProvider).fetchDocuments();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(documentsRepositoryProvider).fetchDocuments(),
+    demoValue: DemoSeedData.demoDocuments,
+  );
 });
 
 final documentArchiveProvider =
@@ -351,9 +452,15 @@ final documentArchiveProvider =
           isSearch: false,
         );
       }
-      return ref.watch(documentsRepositoryProvider).fetchArchive(
-        folderId: query.folderId,
-        query: query.searchQuery,
+      return _withDemoFallback(
+        ref,
+        run: () => ref
+            .watch(documentsRepositoryProvider)
+            .fetchArchive(folderId: query.folderId, query: query.searchQuery),
+        demoValue: () => DemoSeedData.demoDocumentArchive(
+          folderId: query.folderId,
+          query: query.searchQuery,
+        ),
       );
     });
 
@@ -364,7 +471,11 @@ final documentFoldersProvider = FutureProvider<List<DocumentFolderItem>>((
   if (session == null) {
     return const [];
   }
-  return ref.watch(documentsRepositoryProvider).fetchFolders();
+  return _withDemoFallback(
+    ref,
+    run: () => ref.watch(documentsRepositoryProvider).fetchFolders(),
+    demoValue: DemoSeedData.demoDocumentFolders,
+  );
 });
 
 final documentDetailProvider =
@@ -376,9 +487,13 @@ final documentDetailProvider =
       if (session == null) {
         throw Exception('Sessione non disponibile');
       }
-      return ref
-          .watch(documentsRepositoryProvider)
-          .fetchDocumentDetail(documentId);
+      return _withDemoFallback(
+        ref,
+        run: () => ref
+            .watch(documentsRepositoryProvider)
+            .fetchDocumentDetail(documentId),
+        demoValue: () => DemoSeedData.demoDocumentDetail(documentId),
+      );
     });
 
 void invalidatePatientScopedProviders(WidgetRef ref) {

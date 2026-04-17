@@ -93,7 +93,7 @@ class DiaryScreen extends ConsumerWidget {
                                     onPressed: () => context.push(
                                       '/app/diary/${entry.id}/symptom',
                                     ),
-                                    child: const Text('Sintomo'),
+                                    child: const Text('Symptom'),
                                   ),
                                 ),
                               ),

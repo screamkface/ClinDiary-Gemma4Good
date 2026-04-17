@@ -3,7 +3,6 @@ import 'package:clindiary/features/alerts/presentation/alerts_screen.dart';
 import 'package:clindiary/features/auth/presentation/login_screen.dart';
 import 'package:clindiary/features/auth/presentation/register_screen.dart';
 import 'package:clindiary/features/auth/presentation/session_gate_screen.dart';
-import 'package:clindiary/features/billing/presentation/billing_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/daily_check_in_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/diary_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/symptom_entry_screen.dart';
@@ -90,7 +89,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/onboarding';
       }
 
-      if (location == '/' || isAuthRoute(location) || location == '/onboarding') {
+      if (location == '/' ||
+          isAuthRoute(location) ||
+          location == '/onboarding') {
         return '/app/home';
       }
 
@@ -176,12 +177,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const ReportsScreen(),
                   ),
                   GoRoute(
-                    path: 'billing',
-                    builder: (context, state) => BillingScreen(
-                      featureCode: state.uri.queryParameters['feature'],
-                    ),
-                  ),
-                  GoRoute(
                     path: 'screenings',
                     builder: (context, state) => const ScreeningsScreen(),
                   ),
@@ -253,7 +248,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'ask',
                     builder: (context, state) => DocumentQueryScreen(
                       initialFolderId: state.uri.queryParameters['folderId'],
-                      initialFolderName: state.uri.queryParameters['folderName'],
+                      initialFolderName:
+                          state.uri.queryParameters['folderName'],
                     ),
                   ),
                   GoRoute(

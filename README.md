@@ -25,6 +25,13 @@ Per il MVP hackathon:
 - se il runtime locale e attivo ma il label non e definitivo, la UI usa `On-device locale` o `Modalita privata locale`
 - il fallback resta `rule_based`
 
+## Submission Docs (Public Repo)
+
+Per preparare la submission pubblica e il writeup in modo trasparente:
+
+- `docs/hackathon/public-submission-playbook.md`
+- `docs/hackathon/writeup-backend-mocked.md`
+
 ## Locale vs cloud
 
 - `Cloud/default recap`: usa il provider AI configurato normalmente per i recap persistiti

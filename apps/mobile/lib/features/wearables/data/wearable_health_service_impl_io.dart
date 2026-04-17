@@ -105,8 +105,8 @@ class IoWearableHealthService extends WearableHealthService {
         message =
             sdkStatus ==
                 HealthConnectSdkStatus.sdkUnavailableProviderUpdateRequired
-            ? 'Health Connect va installato o aggiornato prima della sincronizzazione.'
-            : 'Installa Health Connect per importare i dati smartwatch.';
+            ? 'Health Connect must be installed or updated before syncing.'
+            : 'Install Health Connect to import smartwatch data.';
       }
     }
 

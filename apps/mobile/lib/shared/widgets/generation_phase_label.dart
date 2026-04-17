@@ -10,6 +10,7 @@ class GenerationPhaseLabel extends StatefulWidget {
     this.thinkingLabel = 'Thinking...',
     this.writingLabel = 'Writing...',
     this.refiningLabel = 'Refining...',
+    this.showProgress = false,
     this.style,
     super.key,
   });
@@ -20,6 +21,7 @@ class GenerationPhaseLabel extends StatefulWidget {
   final String thinkingLabel;
   final String writingLabel;
   final String refiningLabel;
+  final bool showProgress;
   final TextStyle? style;
 
   @override
@@ -84,6 +86,15 @@ class _GenerationPhaseLabelState extends State<GenerationPhaseLabel> {
       return widget.idleLabel;
     }
 
+    final phaseLabel = _phaseLabel;
+    if (!widget.showProgress) {
+      return phaseLabel;
+    }
+
+    return '$phaseLabel ${_progressPercent.toString()}%';
+  }
+
+  String get _phaseLabel {
     if (widget.startedAt == null) {
       return widget.thinkingLabel;
     }
@@ -95,6 +106,27 @@ class _GenerationPhaseLabelState extends State<GenerationPhaseLabel> {
       return widget.writingLabel;
     }
     return widget.refiningLabel;
+  }
+
+  int get _progressPercent {
+    final elapsedMs = _elapsed.inMilliseconds;
+
+    if (elapsedMs <= 0) {
+      return 5;
+    }
+
+    if (elapsedMs < 2000) {
+      final phaseProgress = elapsedMs / 2000;
+      return (5 + (phaseProgress * 40)).round().clamp(5, 45);
+    }
+
+    if (elapsedMs < 5000) {
+      final phaseProgress = (elapsedMs - 2000) / 3000;
+      return (45 + (phaseProgress * 40)).round().clamp(45, 85);
+    }
+
+    final tailProgress = ((elapsedMs - 5000) / 10000).clamp(0.0, 1.0);
+    return (85 + (tailProgress * 14)).round().clamp(85, 99);
   }
 
   @override

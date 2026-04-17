@@ -241,7 +241,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${medication.name} rimosso dal profilo.')),
+        SnackBar(content: Text('${medication.name} removed from profile.')),
       );
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -406,12 +406,12 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: const Text('Annulla'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            child: const Text('Rimuovi'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -423,12 +423,12 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
     final logsAsync = ref.watch(medicationLogsProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final recentLogs = logsAsync.asData?.value ?? const <MedicationLogItem>[];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Farmaci'),
+        title: const Text('Medications'),
         actions: [
           IconButton(
             onPressed: () {
@@ -530,7 +530,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                       if (todayLog != null)
                                         Chip(
                                           label: Text(
-                                            'Oggi ${_adherenceLabel(todayLog.status)}',
+                                            'Today ${_adherenceLabel(todayLog.status)}',
                                           ),
                                         ),
                                     ],
@@ -697,7 +697,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
               title: 'Adherence history',
               subtitle: 'Latest confirmations.',
               child: logs.isEmpty
-                  ? const Text('Ancora nessuna conferma di assunzione.')
+                  ? const Text('No intake confirmations yet.')
                   : Column(
                       children: logs.take(6).map((log) {
                         return Card.outlined(
@@ -706,7 +706,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                             dense: true,
                             title: Text(log.medicationName),
                             subtitle: Text(
-                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • In attesa sync' : ''} • ${dateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
+                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • Sync pending' : ''} • ${dateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
                             ),
                             trailing: Text(
                               log.medicationDosage ?? '',
@@ -718,11 +718,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                     ),
             ),
             loading: () => const SectionCard(
-              title: 'Storico aderenza',
+              title: 'Adherence history',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Storico aderenza',
+              title: 'Adherence history',
               child: Text(error.toString()),
             ),
           ),
@@ -735,11 +735,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 String _adherenceLabel(String status) {
   switch (status) {
     case 'taken':
-      return 'Assunta';
+      return 'Taken';
     case 'skipped':
-      return 'Saltata';
+      return 'Skipped';
     case 'missed':
-      return 'Non confermata';
+      return 'Not confirmed';
     default:
       return status;
   }

@@ -106,12 +106,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Misuratore casa'), findsOneWidget);
     expect(find.text('122/78 mmHg · FC 66 bpm'), findsOneWidget);
-    expect(find.text('Registra misura'), findsOneWidget);
+    expect(find.text('Record measurement'), findsOneWidget);
     await tester.tap(find.text('Misure'));
     await tester.pumpAndSettle();
     expect(find.text('Pressione arteriosa'), findsOneWidget);
     await tester.tap(find.text('Import'));
     await tester.pumpAndSettle();
-    expect(find.text('Nessun import recente'), findsOneWidget);
+    expect(find.text('No recent imports'), findsOneWidget);
   });
 }

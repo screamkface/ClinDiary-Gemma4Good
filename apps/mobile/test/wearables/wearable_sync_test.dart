@@ -24,10 +24,10 @@ void main() {
     expect(text, contains('2026-03-20'));
     expect(text, contains('Health Connect'));
     expect(text, contains('Mi 10'));
-    expect(text, contains('8021 passi'));
-    expect(text, contains('sonno 7.3h'));
-    expect(text, contains('FC media 74 bpm'));
-    expect(text, contains('record 14'));
+    expect(text, contains('8021 steps'));
+    expect(text, contains('sleep 7.3h'));
+    expect(text, contains('avg HR 74 bpm'));
+    expect(text, contains('records 14'));
   });
 
   test('WearableSyncStatus.toDiagnosticText include stato e riepiloghi', () {
@@ -56,14 +56,14 @@ void main() {
 
     final text = status.toDiagnosticText(recentSummaries: summaries);
 
-    expect(text, contains('Diagnostica wearable'));
-    expect(text, contains('Piattaforma: android'));
+    expect(text, contains('Wearable diagnostics'));
+    expect(text, contains('Platform: android'));
     expect(text, contains('Provider: Health Connect'));
-    expect(text, contains('Permesso lettura: sì'));
-    expect(text, contains('Permessi Health Connect: sì'));
-    expect(text, contains('Permesso Attività fisica: sì'));
-    expect(text, contains('Sincronizzazione wearable: 1 giornate recenti.'));
-    expect(text, contains('8021 passi'));
-    expect(text, contains('Controlli consigliati:'));
+    expect(text, contains('Read permission: yes'));
+    expect(text, contains('Health Connect permissions: yes'));
+    expect(text, contains('Activity recognition permission: yes'));
+    expect(text, contains('Wearable sync: 1 recent days.'));
+    expect(text, contains('8021 steps'));
+    expect(text, contains('Recommended checks:'));
   });
 }

@@ -197,10 +197,10 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
               children: [
                 SectionCard(
                   title: 'Health connection',
-                  subtitle: 'Collega il provider e sincronizza i riepiloghi.',
+                  subtitle: 'Connect the provider and sync daily summaries.',
                   action: TextButton(
                     onPressed: _syncing ? null : _syncWearables,
-                    child: Text(_syncing ? 'Sync...' : 'Sincronizza'),
+                    child: Text(_syncing ? 'Syncing...' : 'Sync'),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,14 +220,14 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                             label: Text(
                               status.isAvailable
                                   ? status.providerName
-                                  : 'Provider assente',
+                                  : 'Provider unavailable',
                             ),
                           ),
                           Chip(
                             label: Text(
                               status.permissionGranted
-                                  ? 'Permessi OK'
-                                  : 'Permessi mancanti',
+                                  ? 'Permissions OK'
+                                  : 'Permissions missing',
                             ),
                           ),
                           if (status.isAndroid)
@@ -235,7 +235,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                               label: Text(
                                 status.hasHealthPermissions
                                     ? 'Health Connect OK'
-                                    : 'Health Connect negato',
+                                    : 'Health Connect denied',
                               ),
                             ),
                           if (status.isAndroid)
@@ -277,7 +277,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                                   ? null
                                   : _installProvider,
                               icon: const Icon(Icons.download_outlined),
-                              label: const Text('Installa provider'),
+                              label: const Text('Install provider'),
                             ),
                           if (status.needsPermission)
                             FilledButton.tonalIcon(
@@ -287,7 +287,7 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                               icon: const Icon(
                                 Icons.health_and_safety_outlined,
                               ),
-                              label: const Text('Connetti'),
+                              label: const Text('Connect'),
                             ),
                           if (status.needsPermission)
                             OutlinedButton.icon(
@@ -295,12 +295,12 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
                                   ? null
                                   : _openProviderSettings,
                               icon: const Icon(Icons.settings_outlined),
-                              label: const Text('Apri autorizzazioni'),
+                              label: const Text('Open permissions'),
                             ),
                           OutlinedButton.icon(
                             onPressed: _syncing ? null : _syncWearables,
                             icon: const Icon(Icons.sync_outlined),
-                            label: const Text('Sync 30 giorni'),
+                            label: const Text('Sync 30 days'),
                           ),
                         ],
                       ),

@@ -29,6 +29,7 @@ class HealthDossierScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dossierAsync = ref.watch(healthDossierProvider);
     final shareLinksAsync = ref.watch(dossierShareLinksProvider);
+    final localOnlyMode = ref.read(appConfigProvider).localOnlyMode;
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
     final dateTimeFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
@@ -43,8 +44,8 @@ class HealthDossierScreen extends ConsumerWidget {
         await SharePlus.instance.share(
           ShareParams(
             files: [XFile(file.path, mimeType: 'application/pdf')],
-            text: 'Dossier salute ClinDiary',
-            subject: 'Dossier salute ClinDiary',
+            text: 'ClinDiary health dossier',
+            subject: 'ClinDiary health dossier',
           ),
         );
       } on ApiException catch (error) {
@@ -73,8 +74,8 @@ class HealthDossierScreen extends ConsumerWidget {
         await SharePlus.instance.share(
           ShareParams(
             files: [XFile(file.path, mimeType: 'application/json')],
-            text: 'Backup strutturato ClinDiary',
-            subject: 'Backup strutturato ClinDiary',
+            text: 'ClinDiary structured backup',
+            subject: 'ClinDiary structured backup',
           ),
         );
       } on ApiException catch (error) {
@@ -97,7 +98,7 @@ class HealthDossierScreen extends ConsumerWidget {
             .exportEmergencyDossier();
         final directory = await getTemporaryDirectory();
         final filename =
-            'clindiary-scheda-emergenza-${DateTime.now().millisecondsSinceEpoch}.pdf';
+            'clindiary-emergency-card-${DateTime.now().millisecondsSinceEpoch}.pdf';
         final file = File(path.join(directory.path, filename));
         await file.writeAsBytes(bytes);
         await SharePlus.instance.share(
@@ -121,6 +122,10 @@ class HealthDossierScreen extends ConsumerWidget {
     }
 
     Future<void> shareEmergencyViaNfc() async {
+      if (localOnlyMode) {
+        await shareEmergencyPdf();
+        return;
+      }
       if (!Platform.isAndroid) {
         await shareEmergencyPdf();
         return;
@@ -194,7 +199,7 @@ class HealthDossierScreen extends ConsumerWidget {
             if (!context.mounted) return;
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(SnackBar(content: Text('NFC non riuscito: $error')));
+            ).showSnackBar(SnackBar(content: Text('NFC failed: $error')));
             await shareEmergencyPdf();
           }
         }
@@ -227,7 +232,7 @@ class HealthDossierScreen extends ConsumerWidget {
         }
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('NFC non disponibile o non riuscito: $error')),
+          SnackBar(content: Text('NFC unavailable or failed: $error')),
         );
         await shareEmergencyPdf();
       }
@@ -242,9 +247,9 @@ class HealthDossierScreen extends ConsumerWidget {
         );
         if (result == null || result.files.isEmpty) {
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Importazione annullata.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Import canceled.')));
           return;
         }
         final file = result.files.first;
@@ -269,7 +274,7 @@ class HealthDossierScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Backup JSON importato.')));
+        ).showSnackBar(const SnackBar(content: Text('JSON backup imported.')));
       } on ApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -309,6 +314,19 @@ class HealthDossierScreen extends ConsumerWidget {
     }
 
     Future<void> createShareLink(String scope) async {
+      if (localOnlyMode) {
+        if (!context.mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Secure cloud links are disabled while local-only mode is active.',
+            ),
+          ),
+        );
+        return;
+      }
       try {
         final link = await ref
             .read(dossierRepositoryProvider)
@@ -360,7 +378,7 @@ class HealthDossierScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () =>
                   Navigator.of(dialogContext, rootNavigator: true).pop(true),
-              child: const Text('Revoca'),
+              child: const Text('Revoke'),
             ),
           ],
         ),
@@ -374,7 +392,7 @@ class HealthDossierScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Link revocato.')));
+        ).showSnackBar(const SnackBar(content: Text('Link revoked.')));
       } on ApiException catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -395,16 +413,16 @@ class HealthDossierScreen extends ConsumerWidget {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Dossier salute'),
+          title: const Text('Health dossier'),
           actions: [
             IconButton(
               onPressed: sharePdfDossier,
               icon: const Icon(Icons.ios_share_outlined),
-              tooltip: 'Esporta e condividi',
+              tooltip: 'Export and share',
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
-              tooltip: 'Altre azioni',
+              tooltip: 'More actions',
               onSelected: (value) async {
                 switch (value) {
                   case 'json':
@@ -1172,101 +1190,142 @@ class HealthDossierScreen extends ConsumerWidget {
               _DossierTabList(
                 onRefresh: refreshDossier,
                 children: [
-                  SectionCard(
-                    title: 'Secure shares',
-                    subtitle: 'Revocable temporary links, max 30 days.',
-                    action: Wrap(
-                      spacing: 8,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => createShareLink('emergency'),
-                          icon: const Icon(Icons.shield_outlined),
-                          label: const Text('Emergency'),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => createShareLink('full'),
-                          icon: const Icon(Icons.folder_shared_outlined),
-                          label: const Text('Record'),
-                        ),
-                      ],
-                    ),
-                    child: shareLinksAsync.when(
-                      data: (links) => links.isEmpty
-                          ? const Text('No active secure links.')
-                          : Column(
-                              children: links
-                                  .map(
-                                    (link) => Card.outlined(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      child: ListTile(
-                                        title: Text(
-                                          [
-                                            link.label ?? link.scope,
-                                            if (!link.isActive) 'Expired',
-                                          ].join(' • '),
+                  if (localOnlyMode)
+                    SectionCard(
+                      title: 'Local-only transfers',
+                      subtitle:
+                          'Cloud share links are disabled. Use encrypted local exports and backup restore.',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'For emergency sharing, use the emergency PDF or NFC write flow. For full portability, use JSON export/import and encrypted Drive backup from Privacy AI.',
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              FilledButton.tonalIcon(
+                                onPressed: shareEmergencyPdf,
+                                icon: const Icon(Icons.emergency_outlined),
+                                label: const Text('Emergency PDF'),
+                              ),
+                              FilledButton.tonalIcon(
+                                onPressed: shareJsonBackup,
+                                icon: const Icon(Icons.data_object_outlined),
+                                label: const Text('JSON backup'),
+                              ),
+                              FilledButton.tonalIcon(
+                                onPressed: importJsonBackup,
+                                icon: const Icon(Icons.upload_file_outlined),
+                                label: const Text('Import JSON'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    SectionCard(
+                      title: 'Secure shares',
+                      subtitle: 'Revocable temporary links, max 30 days.',
+                      action: Wrap(
+                        spacing: 8,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => createShareLink('emergency'),
+                            icon: const Icon(Icons.shield_outlined),
+                            label: const Text('Emergency'),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => createShareLink('full'),
+                            icon: const Icon(Icons.folder_shared_outlined),
+                            label: const Text('Record'),
+                          ),
+                        ],
+                      ),
+                      child: shareLinksAsync.when(
+                        data: (links) => links.isEmpty
+                            ? const Text('No active secure links.')
+                            : Column(
+                                children: links
+                                    .map(
+                                      (link) => Card.outlined(
+                                        margin: const EdgeInsets.only(
+                                          bottom: 8,
                                         ),
-                                        subtitle: Text(
-                                          [
-                                            link.filename,
-                                            link.mimeType,
-                                            'Expires ${dateTimeFormat.format(link.expiresAt.toLocal())}',
-                                            if (link.lastAccessedAt != null)
-                                              'Last access ${dateTimeFormat.format(link.lastAccessedAt!.toLocal())}',
-                                          ].join(' • '),
-                                        ),
-                                        trailing: Wrap(
-                                          spacing: 4,
-                                          children: [
-                                            IconButton(
-                                              tooltip: 'Copy link',
-                                              onPressed: link.shareUrl == null
-                                                  ? null
-                                                  : () async {
-                                                      await Clipboard.setData(
-                                                        ClipboardData(
-                                                          text: link.shareUrl!,
-                                                        ),
-                                                      );
-                                                      if (!context.mounted) {
-                                                        return;
-                                                      }
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text(
-                                                            'Link copied.',
+                                        child: ListTile(
+                                          title: Text(
+                                            [
+                                              link.label ?? link.scope,
+                                              if (!link.isActive) 'Expired',
+                                            ].join(' • '),
+                                          ),
+                                          subtitle: Text(
+                                            [
+                                              link.filename,
+                                              link.mimeType,
+                                              'Expires ${dateTimeFormat.format(link.expiresAt.toLocal())}',
+                                              if (link.lastAccessedAt != null)
+                                                'Last access ${dateTimeFormat.format(link.lastAccessedAt!.toLocal())}',
+                                            ].join(' • '),
+                                          ),
+                                          trailing: Wrap(
+                                            spacing: 4,
+                                            children: [
+                                              IconButton(
+                                                tooltip: 'Copy link',
+                                                onPressed: link.shareUrl == null
+                                                    ? null
+                                                    : () async {
+                                                        await Clipboard.setData(
+                                                          ClipboardData(
+                                                            text:
+                                                                link.shareUrl!,
                                                           ),
-                                                        ),
-                                                      );
-                                                    },
-                                              icon: const Icon(
-                                                Icons.copy_outlined,
+                                                        );
+                                                        if (!context.mounted) {
+                                                          return;
+                                                        }
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'Link copied.',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                icon: const Icon(
+                                                  Icons.copy_outlined,
+                                                ),
                                               ),
-                                            ),
-                                            IconButton(
-                                              tooltip: 'Revoke',
-                                              onPressed: link.isActive
-                                                  ? () => revokeShareLink(link)
-                                                  : null,
-                                              icon: const Icon(
-                                                Icons.delete_outline,
+                                              IconButton(
+                                                tooltip: 'Revoke',
+                                                onPressed: link.isActive
+                                                    ? () =>
+                                                          revokeShareLink(link)
+                                                    : null,
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                      loading: () => const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: LinearProgressIndicator(),
+                                    )
+                                    .toList(),
+                              ),
+                        loading: () => const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: LinearProgressIndicator(),
+                        ),
+                        error: (error, _) => Text(error.toString()),
                       ),
-                      error: (error, _) => Text(error.toString()),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -1548,7 +1607,7 @@ Future<void> _writeEmergencyLinkToTag(NfcTag tag, String url) async {
     return;
   }
 
-  throw StateError('Questo tag NFC non supporta NDEF.');
+  throw StateError('This NFC tag does not support NDEF.');
 }
 
 NdefMessage _buildEmergencyLinkMessage(String url) {

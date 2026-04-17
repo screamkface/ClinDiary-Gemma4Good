@@ -22,7 +22,7 @@ class ProfileScreen extends ConsumerWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Profilo'),
+          title: const Text('Profile'),
           actions: [
             IconButton(
               onPressed: () => ref.invalidate(profileBundleProvider),
@@ -35,7 +35,7 @@ class ProfileScreen extends ConsumerWidget {
             tabs: [
               Tab(text: 'Summary'),
               Tab(text: 'Context'),
-              Tab(text: 'Clinico'),
+              Tab(text: 'Clinical'),
             ],
           ),
         ),
@@ -43,7 +43,7 @@ class ProfileScreen extends ConsumerWidget {
           data: (bundle) {
             if (bundle == null) {
               return const Center(
-                child: Text('Completa l’autenticazione per vedere il profilo.'),
+                child: Text('Complete authentication to view the profile.'),
               );
             }
             final pendingCount =
@@ -53,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
                 _ProfileTabList(
                   children: [
                     SectionCard(
-                      title: 'Profilo attivo',
+                      title: 'Active profile',
                       action: TextButton.icon(
                         onPressed: () =>
                             _showEditProfileDialog(context, ref, bundle),
@@ -80,7 +80,7 @@ class ProfileScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Tutto il profilo clinico parte da qui.',
+                                      'Your clinical profile starts here.',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodyMedium,
@@ -138,7 +138,7 @@ class ProfileScreen extends ConsumerWidget {
                                 onPressed: () =>
                                     context.push('/app/profile/vaccinations'),
                                 icon: const Icon(Icons.vaccines_outlined),
-                                label: 'Vaccini',
+                                label: 'Vaccinations',
                               ),
                               _ProfileActionChip(
                                 onPressed: () =>
@@ -1451,12 +1451,12 @@ class _ResourceSection extends StatelessWidget {
     return SectionCard(
       title: title,
       subtitle: items.isEmpty
-          ? '0 voci'
-          : '${items.length} ${items.length == 1 ? 'voce' : 'voci'}',
+          ? '0 items'
+          : '${items.length} ${items.length == 1 ? 'item' : 'items'}',
       action: FilledButton.tonalIcon(
         onPressed: onAdd,
         icon: const Icon(Icons.add),
-        label: const Text('Aggiungi'),
+        label: const Text('Add'),
       ),
       child: items.isEmpty
           ? _EmptyResourceState(message: emptyText)
@@ -1925,7 +1925,7 @@ class _EmptyResourceState extends StatelessWidget {
   }
 }
 
-const _weekdayLabels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 String _formatTimeOfDay(TimeOfDay value) {
   return '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';

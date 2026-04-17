@@ -1,4 +1,5 @@
 import 'package:clindiary/app/core/app_config.dart';
+import 'package:clindiary/app/core/demo_seed_data.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
@@ -19,6 +20,7 @@ class AuthRepository {
   }) : _apiClient = apiClient,
        _tokenStorage = tokenStorage,
        _localDatabase = localDatabase,
+       _hackathonDemoMode = appConfig.hackathonDemoMode,
        _googleAuthClientId = appConfig.googleAuthClientId.trim(),
        _localDocumentVaultService = localDocumentVaultService,
        _localMedicationReminderService = localMedicationReminderService;
@@ -26,12 +28,29 @@ class AuthRepository {
   final ApiClient _apiClient;
   final SecureTokenStorage _tokenStorage;
   final LocalDatabase _localDatabase;
+  final bool _hackathonDemoMode;
   final String _googleAuthClientId;
   final LocalDocumentVaultService _localDocumentVaultService;
   final LocalMedicationReminderService _localMedicationReminderService;
   Future<void>? _googleSignInInitialization;
 
   Future<AuthSession?> restoreSession() async {
+    if (_hackathonDemoMode) {
+      final session =
+          await _tokenStorage.readSession() ?? DemoSeedData.createDemoSession();
+      await _tokenStorage.saveSession(session);
+      await _persistSessionContext(session);
+      await _localDatabase.putCache(
+        key: activeProfileIdCacheKey,
+        payload: DemoSeedData.primaryProfileId,
+      );
+      await DemoSeedData.ensureSeeded(
+        _localDatabase,
+        localDocumentVaultService: _localDocumentVaultService,
+      );
+      return session;
+    }
+
     final session = await _tokenStorage.readSession();
     if (session != null) {
       final now = DateTime.now().toUtc();

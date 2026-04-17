@@ -2,13 +2,11 @@ import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/reports/domain/clinical_report.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
-import 'package:clindiary/shared/widgets/feature_lock_card.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -48,12 +46,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       setState(() => _latestReport = report);
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (error.isFeatureLocked) {
-        context.push(
-          '/app/home/billing?feature=${error.featureCode ?? 'ai_report_generation'}',
-        );
-        return;
-      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
@@ -75,7 +67,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossibile aprire il report.')),
+        const SnackBar(content: Text('Unable to open the report.')),
       );
     }
   }
@@ -84,12 +76,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final activeProfileId = ref.watch(activeProfileIdProvider).asData?.value;
-    final billingStatusAsync = ref.watch(billingStatusProvider);
-    final requiresAiPlan = _reportType != 'screening_status_report';
-    final proactiveLock =
-        requiresAiPlan &&
-        billingStatusAsync.asData?.value?.hasFeature('ai_report_generation') ==
-            false;
 
     if (_observedActiveProfileId != activeProfileId) {
       _observedActiveProfileId = activeProfileId;
@@ -107,11 +93,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Report clinici'),
+          title: const Text('Clinical reports'),
           bottom: const TabBar(
             tabs: [
-              Tab(text: 'Genera'),
-              Tab(text: 'Ultimo report'),
+              Tab(text: 'Generate'),
+              Tab(text: 'Latest report'),
             ],
           ),
         ),
@@ -163,27 +149,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      if (proactiveLock)
-                        FeatureLockCard(
-                          title: 'AI Plus required',
-                          compact: true,
-                          featureLabel: 'AI reports',
-                          message:
-                              'Narrative AI reports are part of ClinDiary AI Plus. The deterministic prevention report remains available on the Free plan.',
-                          onOpenBilling: () => context.push(
-                            '/app/home/billing?feature=ai_report_generation',
-                          ),
-                        )
-                      else
-                        FilledButton.icon(
-                          onPressed: _isGenerating ? null : _generateReport,
-                          icon: const Icon(Icons.picture_as_pdf_outlined),
-                          label: Text(
-                            _isGenerating
-                                ? 'Generating...'
-                                : 'Regenerate report',
-                          ),
+                      FilledButton.icon(
+                        onPressed: _isGenerating ? null : _generateReport,
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        label: Text(
+                          _isGenerating ? 'Generating...' : 'Regenerate report',
                         ),
+                      ),
                     ],
                   ),
                 ),

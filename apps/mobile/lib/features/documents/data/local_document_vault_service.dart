@@ -16,8 +16,7 @@ class LocalDocumentVaultService {
     LocalDocumentVaultCipher? cipher,
   }) : _rootDirectory = rootDirectory,
        _cipher =
-           cipher ??
-           LocalDocumentVaultCipher(secureStorage: secureStorage);
+           cipher ?? LocalDocumentVaultCipher(secureStorage: secureStorage);
 
   static const int maxDocumentCount = 80;
   static const int maxSingleFileBytes = 10 * 1024 * 1024;
@@ -40,10 +39,15 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
-    final documents = state.documents
-        .map((item) => item.toSummary(folderName: _pathLabelForFolder(item.folderId, folders)))
-        .toList()
-      ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+    final documents =
+        state.documents
+            .map(
+              (item) => item.toSummary(
+                folderName: _pathLabelForFolder(item.folderId, folders),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
     return documents;
   }
 
@@ -62,7 +66,9 @@ class LocalDocumentVaultService {
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
     final document = _requireDocument(state, documentId);
-    return document.toDetail(folderName: _pathLabelForFolder(document.folderId, folders));
+    return document.toDetail(
+      folderName: _pathLabelForFolder(document.folderId, folders),
+    );
   }
 
   Future<DocumentArchiveView> fetchArchive({
@@ -83,7 +89,9 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
-    final currentFolder = folderId == null ? null : _requireFolder(state, folderId);
+    final currentFolder = folderId == null
+        ? null
+        : _requireFolder(state, folderId);
     final normalizedQuery = _normalizeText(query);
 
     final childFolderCounts = <String?, int>{};
@@ -94,33 +102,39 @@ class LocalDocumentVaultService {
 
     final documentCounts = <String?, int>{};
     for (final document in state.documents) {
-      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+      documentCounts[document.folderId] =
+          (documentCounts[document.folderId] ?? 0) + 1;
     }
 
     final foldersForView = normalizedQuery == null
         ? state.folders
-            .where((folder) => folder.parentFolderId == currentFolder?.id)
+              .where((folder) => folder.parentFolderId == currentFolder?.id)
+              .map(
+                (folder) => _folderToItem(
+                  folder,
+                  folders,
+                  childFolderCounts,
+                  documentCounts,
+                ),
+              )
+              .toList()
+        : <DocumentFolderItem>[];
+
+    final documentsForView =
+        state.documents
+            .where((document) {
+              if (normalizedQuery != null) {
+                return _matchesSearch(document, folders, normalizedQuery);
+              }
+              return document.folderId == currentFolder?.id;
+            })
             .map(
-              (folder) => _folderToItem(
-                folder,
-                folders,
-                childFolderCounts,
-                documentCounts,
+              (document) => document.toSummary(
+                folderName: _pathLabelForFolder(document.folderId, folders),
               ),
             )
             .toList()
-        : <DocumentFolderItem>[];
-
-    final documentsForView = state.documents
-        .where((document) {
-          if (normalizedQuery != null) {
-            return _matchesSearch(document, folders, normalizedQuery);
-          }
-          return document.folderId == currentFolder?.id;
-        })
-        .map((document) => document.toSummary(folderName: _pathLabelForFolder(document.folderId, folders)))
-        .toList()
-      ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+          ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
 
     final breadcrumbs = <DocumentFolderItem>[];
     var node = currentFolder;
@@ -135,7 +149,12 @@ class LocalDocumentVaultService {
     return DocumentArchiveView(
       currentFolder: currentFolder == null
           ? null
-          : _folderToItem(currentFolder, folders, childFolderCounts, documentCounts),
+          : _folderToItem(
+              currentFolder,
+              folders,
+              childFolderCounts,
+              documentCounts,
+            ),
       breadcrumbs: breadcrumbs,
       folders: foldersForView,
       documents: documentsForView,
@@ -165,10 +184,14 @@ class LocalDocumentVaultService {
     }
     final documentCounts = <String?, int>{};
     for (final document in state.documents) {
-      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+      documentCounts[document.folderId] =
+          (documentCounts[document.folderId] ?? 0) + 1;
     }
     return state.folders
-        .map((folder) => _folderToItem(folder, folders, childFolderCounts, documentCounts))
+        .map(
+          (folder) =>
+              _folderToItem(folder, folders, childFolderCounts, documentCounts),
+        )
         .toList()
       ..sort((a, b) => a.pathLabel.compareTo(b.pathLabel));
   }
@@ -187,10 +210,7 @@ class LocalDocumentVaultService {
     required Map<String, String> fields,
   }) async {
     if (file.bytes.length > maxSingleFileBytes) {
-      throw ApiException(
-        'On the free plan, local files can be at most 10 MB.',
-        statusCode: 413,
-      );
+      throw ApiException('Local files can be at most 10 MB.', statusCode: 413);
     }
 
     final state = await _loadState(
@@ -199,25 +219,18 @@ class LocalDocumentVaultService {
     );
     if (state.documents.length >= maxDocumentCount) {
       throw ApiException(
-        'You have reached the local limit of 80 documents. Cloud storage and sync require AI Plus.',
-        statusCode: 402,
-        code: 'feature_locked',
-        details: const {
-          'feature_code': 'cloud_document_storage',
-          'recommended_plan_code': 'ai_plus_yearly',
-        },
+        'You have reached the local limit of 80 documents.',
+        statusCode: 409,
       );
     }
-    final totalBytes = state.documents.fold<int>(0, (sum, item) => sum + item.fileSizeBytes);
+    final totalBytes = state.documents.fold<int>(
+      0,
+      (sum, item) => sum + item.fileSizeBytes,
+    );
     if (totalBytes + file.bytes.length > maxTotalBytes) {
       throw ApiException(
-        'You have reached the local limit of 200 MB. More space and cloud backup require AI Plus.',
-        statusCode: 402,
-        code: 'feature_locked',
-        details: const {
-          'feature_code': 'cloud_document_storage',
-          'recommended_plan_code': 'ai_plus_yearly',
-        },
+        'You have reached the local storage limit of 200 MB.',
+        statusCode: 409,
       );
     }
 
@@ -233,7 +246,9 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final safeExtension = extension.isEmpty ? '' : extension.toLowerCase();
-    final savedFile = File(path.join(documentsDir.path, '$documentId$safeExtension'));
+    final savedFile = File(
+      path.join(documentsDir.path, '$documentId$safeExtension'),
+    );
     final encryptedBytes = await _cipher.encryptDocument(
       file.bytes,
       userScopeId: userScopeId,
@@ -242,14 +257,19 @@ class LocalDocumentVaultService {
     );
     await savedFile.writeAsBytes(encryptedBytes, flush: true);
 
-    final title = _normalizeText(fields['title']) ?? path.basenameWithoutExtension(file.name);
+    final title =
+        _normalizeText(fields['title']) ??
+        path.basenameWithoutExtension(file.name);
     final source = _normalizeText(fields['source']);
     final examDate = _tryParseDate(fields['exam_date']);
+    final explicitOcrText = _normalizeText(fields['ocr_text']);
+    final inferredOcrText = _inferTextPreview(file);
     final document = _StoredDocument(
       id: documentId,
       folderId: normalizedFolderId,
       title: title,
-      documentType: _normalizeText(fields['document_type']) ?? 'generic_document',
+      documentType:
+          _normalizeText(fields['document_type']) ?? 'generic_document',
       uploadDateIso: DateTime.now().toUtc().toIso8601String(),
       examDateIso: examDate?.toIso8601String(),
       source: source,
@@ -259,6 +279,7 @@ class LocalDocumentVaultService {
       parsedStatus: 'local_only',
       contextStatus: 'active',
       localFilePath: savedFile.path,
+      ocrText: explicitOcrText ?? inferredOcrText,
     );
 
     final nextState = state.copyWith(documents: [...state.documents, document]);
@@ -289,7 +310,7 @@ class LocalDocumentVaultService {
   }) async {
     final normalizedName = name.trim();
     if (normalizedName.isEmpty) {
-      throw ApiException('Il nome della cartella non puo essere vuoto.');
+      throw ApiException('Folder name cannot be empty.');
     }
 
     final state = await _loadState(
@@ -307,7 +328,10 @@ class LocalDocumentVaultService {
           folder.name.toLowerCase() == normalizedName.toLowerCase(),
     );
     if (siblingExists) {
-      throw ApiException('Esiste gia una cartella con questo nome in questo percorso.', statusCode: 409);
+      throw ApiException(
+        'A folder with this name already exists in this path.',
+        statusCode: 409,
+      );
     }
 
     final folder = _StoredFolder(
@@ -325,11 +349,13 @@ class LocalDocumentVaultService {
     final folders = {for (final item in nextState.folders) item.id: item};
     final childFolderCounts = <String?, int>{};
     for (final item in nextState.folders) {
-      childFolderCounts[item.parentFolderId] = (childFolderCounts[item.parentFolderId] ?? 0) + 1;
+      childFolderCounts[item.parentFolderId] =
+          (childFolderCounts[item.parentFolderId] ?? 0) + 1;
     }
     final documentCounts = <String?, int>{};
     for (final document in nextState.documents) {
-      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+      documentCounts[document.folderId] =
+          (documentCounts[document.folderId] ?? 0) + 1;
     }
     return _folderToItem(folder, folders, childFolderCounts, documentCounts);
   }
@@ -374,8 +400,12 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in nextState.folders) folder.id: folder};
-    final updated = updatedDocuments.firstWhere((item) => item.id == documentId);
-    return updated.toDetail(folderName: _pathLabelForFolder(updated.folderId, folders));
+    final updated = updatedDocuments.firstWhere(
+      (item) => item.id == documentId,
+    );
+    return updated.toDetail(
+      folderName: _pathLabelForFolder(updated.folderId, folders),
+    );
   }
 
   Future<ClinicalDocumentDetail> updateDocumentContextStatus(
@@ -417,8 +447,12 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in nextState.folders) folder.id: folder};
-    final updated = updatedDocuments.firstWhere((item) => item.id == documentId);
-    return updated.toDetail(folderName: _pathLabelForFolder(updated.folderId, folders));
+    final updated = updatedDocuments.firstWhere(
+      (item) => item.id == documentId,
+    );
+    return updated.toDetail(
+      folderName: _pathLabelForFolder(updated.folderId, folders),
+    );
   }
 
   Future<void> deleteDocument(String documentId) async {
@@ -436,7 +470,9 @@ class LocalDocumentVaultService {
     );
     final document = _requireDocument(state, documentId);
     final nextState = state.copyWith(
-      documents: state.documents.where((item) => item.id != documentId).toList(),
+      documents: state.documents
+          .where((item) => item.id != documentId)
+          .toList(),
     );
     await _saveState(
       nextState,
@@ -555,7 +591,9 @@ class LocalDocumentVaultService {
       return rootDirectory;
     }
     final applicationDocuments = await getApplicationDocumentsDirectory();
-    final dir = Directory(path.join(applicationDocuments.path, 'clindiary-local-documents'));
+    final dir = Directory(
+      path.join(applicationDocuments.path, 'clindiary-local-documents'),
+    );
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
@@ -675,7 +713,7 @@ class LocalDocumentVaultService {
   _StoredFolder _requireFolder(_LocalVaultState state, String folderId) {
     return state.folders.firstWhere(
       (folder) => folder.id == folderId,
-      orElse: () => throw ApiException('Cartella non trovata.', statusCode: 404),
+      orElse: () => throw ApiException('Folder not found.', statusCode: 404),
     );
   }
 
@@ -702,7 +740,10 @@ class LocalDocumentVaultService {
     );
   }
 
-  String _pathLabelForFolder(String? folderId, Map<String, _StoredFolder> folders) {
+  String _pathLabelForFolder(
+    String? folderId,
+    Map<String, _StoredFolder> folders,
+  ) {
     if (folderId == null) {
       return '';
     }
@@ -710,7 +751,9 @@ class LocalDocumentVaultService {
     var current = folders[folderId];
     while (current != null) {
       labels.insert(0, current.name);
-      current = current.parentFolderId == null ? null : folders[current.parentFolderId];
+      current = current.parentFolderId == null
+          ? null
+          : folders[current.parentFolderId];
     }
     return labels.join(' / ');
   }
@@ -751,13 +794,24 @@ class LocalDocumentVaultService {
     }
     return DateTime.tryParse(normalized);
   }
+
+  String? _inferTextPreview(SelectedUploadDocument file) {
+    final isTextMime = file.mimeType.toLowerCase().startsWith('text/');
+    final isTxtFile = path.extension(file.name).toLowerCase() == '.txt';
+    if (!isTextMime && !isTxtFile) {
+      return null;
+    }
+
+    final text = utf8.decode(file.bytes, allowMalformed: true).trim();
+    if (text.isEmpty) {
+      return null;
+    }
+    return text;
+  }
 }
 
 class _LocalVaultState {
-  const _LocalVaultState({
-    required this.folders,
-    required this.documents,
-  });
+  const _LocalVaultState({required this.folders, required this.documents});
 
   final List<_StoredFolder> folders;
   final List<_StoredDocument> documents;
@@ -819,7 +873,9 @@ class _StoredFolder {
       id: json['id'].toString(),
       name: json['name'].toString(),
       parentFolderId: json['parent_folder_id'] as String?,
-      createdAtIso: json['created_at']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      createdAtIso:
+          json['created_at']?.toString() ??
+          DateTime.now().toUtc().toIso8601String(),
     );
   }
 }
@@ -839,6 +895,7 @@ class _StoredDocument {
     required this.parsedStatus,
     required this.contextStatus,
     required this.localFilePath,
+    this.ocrText,
   });
 
   final String id;
@@ -854,10 +911,12 @@ class _StoredDocument {
   final String parsedStatus;
   final String contextStatus;
   final String localFilePath;
+  final String? ocrText;
 
   _StoredDocument copyWith({
     String? folderId,
     String? contextStatus,
+    String? ocrText,
   }) {
     return _StoredDocument(
       id: id,
@@ -873,6 +932,7 @@ class _StoredDocument {
       parsedStatus: parsedStatus,
       contextStatus: contextStatus ?? this.contextStatus,
       localFilePath: localFilePath,
+      ocrText: ocrText ?? this.ocrText,
     );
   }
 
@@ -914,7 +974,7 @@ class _StoredDocument {
       contextStatus: contextStatus,
       pendingSync: false,
       fileUrl: localFilePath,
-      ocrText: null,
+      ocrText: ocrText,
       viewerUrl: null,
       processedAt: null,
       labPanels: const [],
@@ -939,6 +999,7 @@ class _StoredDocument {
       'parsed_status': parsedStatus,
       'context_status': contextStatus,
       'local_file_path': localFilePath,
+      'ocr_text': ocrText,
     };
   }
 
@@ -948,7 +1009,9 @@ class _StoredDocument {
       folderId: json['folder_id'] as String?,
       title: json['title'].toString(),
       documentType: json['document_type']?.toString() ?? 'generic_document',
-      uploadDateIso: json['upload_date']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      uploadDateIso:
+          json['upload_date']?.toString() ??
+          DateTime.now().toUtc().toIso8601String(),
       examDateIso: json['exam_date'] as String?,
       source: json['source'] as String?,
       originalFilename: json['original_filename']?.toString() ?? 'document',
@@ -957,6 +1020,7 @@ class _StoredDocument {
       parsedStatus: json['parsed_status']?.toString() ?? 'local_only',
       contextStatus: json['context_status']?.toString() ?? 'active',
       localFilePath: json['local_file_path']?.toString() ?? '',
+      ocrText: json['ocr_text'] as String?,
     );
   }
 }

@@ -93,17 +93,13 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(
-              dialogContext,
-              rootNavigator: true,
-            ).pop(false),
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(
-              dialogContext,
-              rootNavigator: true,
-            ).pop(true),
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(true),
             child: const Text('Delete'),
           ),
         ],
@@ -147,13 +143,13 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
           .read(documentsRepositoryProvider)
           .prepareLocalViewerFile(detail.id);
       final uri = Uri.file(localPath);
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched) {
         await SharePlus.instance.share(
-          ShareParams(
-            text: 'ClinDiary document',
-            files: [XFile(localPath)],
-          ),
+          ShareParams(text: 'ClinDiary document', files: [XFile(localPath)]),
         );
       }
       return;
@@ -171,10 +167,6 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
         const SnackBar(content: Text('Unable to open the document.')),
       );
     }
-  }
-
-  void _openBillingForCloudArchive() {
-    context.push('/app/home/billing?feature=cloud_document_storage');
   }
 
   void _openGemmaCenter(ClinicalDocumentDetail detail) {
@@ -262,7 +254,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     );
     if (!mounted) return;
     if (selected == detail.folderId ||
-        (selected == null && (detail.folderId == null || detail.folderId!.isEmpty))) {
+        (selected == null &&
+            (detail.folderId == null || detail.folderId!.isEmpty))) {
       return;
     }
 
@@ -295,10 +288,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(documentDetailProvider(widget.documentId));
     final detail = detailAsync.valueOrNull;
-    final billingStatusAsync = ref.watch(billingStatusProvider);
-    final hasCloudStorageAccess =
-        billingStatusAsync.asData?.value?.hasFeature('cloud_document_storage') ??
-        false;
+    final hasCloudStorageAccess = !ref.read(appConfigProvider).localOnlyMode;
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
     return Scaffold(
@@ -363,9 +353,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         const SizedBox(width: 12),
                         Flexible(
                           child: Text(
-                            detail.isOld
-                                ? 'Reactivate for AI'
-                                : 'Mark as old',
+                            detail.isOld ? 'Reactivate for AI' : 'Mark as old',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -398,202 +386,182 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
           final isReadOnlyCloudDocument =
               detail.isCloud && !hasCloudStorageAccess;
           final canAskGemmaAboutDocument =
-            detail.ocrText != null && detail.ocrText!.trim().isNotEmpty ||
-            detail.labPanels.isNotEmpty ||
-            detail.imagingReports.isNotEmpty;
+              detail.ocrText != null && detail.ocrText!.trim().isNotEmpty ||
+              detail.labPanels.isNotEmpty ||
+              detail.imagingReports.isNotEmpty;
 
           return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            SectionCard(
-              title: detail.title,
-              subtitle: detail.isLocal
-                  ? 'Metadata for the file saved on the device.'
-                  : 'Metadata, status, and extracted content.',
-              action: FilledButton.tonalIcon(
-                onPressed: (detail.isLocal ||
-                        (detail.viewerUrl != null && detail.viewerUrl!.isNotEmpty))
-                    ? () => _openViewer(detail)
-                    : null,
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open file'),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(label: Text(documentTypeLabel(detail.documentType))),
-                      Chip(
-                        label: Text(documentStorageLabel(detail.storageLocation)),
-                      ),
-                      if (detail.folderName != null && detail.folderName!.isNotEmpty)
-                        Chip(label: Text('Folder: ${detail.folderName}')),
-                      Chip(
-                        label: Text(documentStatusLabel(detail.parsedStatus)),
-                      ),
-                      Chip(
-                        label: Text(
-                          documentContextStatusLabel(detail.contextStatus),
+            padding: const EdgeInsets.all(16),
+            children: [
+              SectionCard(
+                title: detail.title,
+                subtitle: detail.isLocal
+                    ? 'Metadata for the file saved on the device.'
+                    : 'Metadata, status, and extracted content.',
+                action: FilledButton.tonalIcon(
+                  onPressed:
+                      (detail.isLocal ||
+                          (detail.viewerUrl != null &&
+                              detail.viewerUrl!.isNotEmpty))
+                      ? () => _openViewer(detail)
+                      : null,
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Open file'),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          label: Text(documentTypeLabel(detail.documentType)),
                         ),
-                        backgroundColor: documentContextStatusColor(
-                          context,
-                          detail.contextStatus,
-                        ).withValues(alpha: 0.12),
-                      ),
-                      if (detail.classificationConfidence != null)
                         Chip(
                           label: Text(
-                            'Classification ${(detail.classificationConfidence! * 100).round()}%',
+                            documentStorageLabel(detail.storageLocation),
                           ),
                         ),
-                      if (detail.parsingConfidence != null)
+                        if (detail.folderName != null &&
+                            detail.folderName!.isNotEmpty)
+                          Chip(label: Text('Folder: ${detail.folderName}')),
+                        Chip(
+                          label: Text(documentStatusLabel(detail.parsedStatus)),
+                        ),
                         Chip(
                           label: Text(
-                            'Parsing ${(detail.parsingConfidence! * 100).round()}%',
+                            documentContextStatusLabel(detail.contextStatus),
                           ),
-                        ),
-                      if (detail.pendingSync)
-                        Chip(
-                          label: const Text('Sync pending'),
-                          backgroundColor: Theme.of(
+                          backgroundColor: documentContextStatusColor(
                             context,
-                          ).colorScheme.tertiaryContainer,
+                            detail.contextStatus,
+                          ).withValues(alpha: 0.12),
                         ),
-                    ],
-                  ),
-                  if (detail.pendingSync)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        'This document has changes waiting to sync.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                      ),
+                        if (detail.classificationConfidence != null)
+                          Chip(
+                            label: Text(
+                              'Classification ${(detail.classificationConfidence! * 100).round()}%',
+                            ),
+                          ),
+                        if (detail.parsingConfidence != null)
+                          Chip(
+                            label: Text(
+                              'Parsing ${(detail.parsingConfidence! * 100).round()}%',
+                            ),
+                          ),
+                        if (detail.pendingSync)
+                          Chip(
+                            label: const Text('Sync pending'),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
+                          ),
+                      ],
                     ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _InfoTile(
-                        label: 'Uploaded',
-                        value: dateFormat.format(detail.uploadDate.toLocal()),
-                      ),
-                      _InfoTile(
-                        label: 'Exam',
-                        value: detail.examDate == null
-                            ? 'N/A'
-                            : detail.examDate!.toIso8601String().split('T').first,
-                      ),
-                      _InfoTile(
-                        label: 'Source',
-                        value: detail.source ?? 'N/A',
-                      ),
-                      _InfoTile(
-                        label: 'File',
-                        value: detail.originalFilename,
-                      ),
-                      _InfoTile(
-                        label: 'Size',
-                        value: formatFileSize(detail.fileSizeBytes),
-                      ),
-                    ],
-                  ),
-                  if (detail.isOld && detail.isCloud)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        'This document is marked as old and is not included in AI recaps.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.secondary,
+                    if (detail.pendingSync)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'This document has changes waiting to sync.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
                         ),
                       ),
-                    ),
-                  if (detail.processingError != null &&
-                      detail.processingError!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        detail.processingError!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  if (canAskGemmaAboutDocument)
-                    FilledButton.tonalIcon(
-                      onPressed: () => _openGemmaCenter(detail),
-                      icon: const Icon(Icons.auto_awesome_outlined),
-                      label: const Text('Explain with Gemma'),
-                    ),
-                  if (canAskGemmaAboutDocument) const SizedBox(height: 12),
-                  if (detail.isCloud)
+                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        FilledButton.icon(
-                          onPressed:
-                              !canManageCloudDocument ||
-                                  _processing ||
-                                  !detail.canRetryProcessing
-                              ? null
-                              : _processDocument,
-                          icon: const Icon(Icons.auto_fix_high_outlined),
-                          label: Text(_processing ? 'Processing...' : 'Process'),
+                        _InfoTile(
+                          label: 'Uploaded',
+                          value: dateFormat.format(detail.uploadDate.toLocal()),
                         ),
-                        OutlinedButton.icon(
-                          onPressed:
-                              !canManageCloudDocument ||
-                                  !detail.canOpenManualReview
-                              ? null
-                              : () => context.push(
-                                  '/app/documents/${widget.documentId}/review',
-                                ),
-                          icon: const Icon(Icons.edit_note_outlined),
-                          label: const Text('Manual review'),
+                        _InfoTile(
+                          label: 'Exam',
+                          value: detail.examDate == null
+                              ? 'N/A'
+                              : detail.examDate!
+                                    .toIso8601String()
+                                    .split('T')
+                                    .first,
+                        ),
+                        _InfoTile(
+                          label: 'Source',
+                          value: detail.source ?? 'N/A',
+                        ),
+                        _InfoTile(
+                          label: 'File',
+                          value: detail.originalFilename,
+                        ),
+                        _InfoTile(
+                          label: 'Size',
+                          value: formatFileSize(detail.fileSizeBytes),
                         ),
                       ],
-                    )
-                  else
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(14),
+                    ),
+                    if (detail.isOld && detail.isCloud)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'This document is marked as old and is not included in AI recaps.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    if (detail.processingError != null &&
+                        detail.processingError!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          detail.processingError!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    if (canAskGemmaAboutDocument)
+                      FilledButton.tonalIcon(
+                        onPressed: () => _openGemmaCenter(detail),
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        label: const Text('Explain with Gemma'),
+                      ),
+                    if (canAskGemmaAboutDocument) const SizedBox(height: 12),
+                    if (detail.isCloud)
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
                         children: [
-                          const Text(
-                            'This document is saved only on the device.',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                          FilledButton.icon(
+                            onPressed:
+                                !canManageCloudDocument ||
+                                    _processing ||
+                                    !detail.canRetryProcessing
+                                ? null
+                                : _processDocument,
+                            icon: const Icon(Icons.auto_fix_high_outlined),
+                            label: Text(
+                              _processing ? 'Processing...' : 'Process',
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'OCR, automatic parsing, cloud backup, and document questions are available with AI Plus.',
-                          ),
-                          const SizedBox(height: 12),
-                          FilledButton.tonalIcon(
-                            onPressed: _openBillingForCloudArchive,
-                            icon: const Icon(Icons.workspace_premium_outlined),
-                            label: const Text('Unlock cloud archive'),
+                          OutlinedButton.icon(
+                            onPressed:
+                                !canManageCloudDocument ||
+                                    !detail.canOpenManualReview
+                                ? null
+                                : () => context.push(
+                                    '/app/documents/${widget.documentId}/review',
+                                  ),
+                            icon: const Icon(Icons.edit_note_outlined),
+                            label: const Text('Manual review'),
                           ),
                         ],
-                      ),
-                    ),
-                  if (isReadOnlyCloudDocument)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Container(
+                      )
+                    else
+                      Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -606,96 +574,114 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Read-only cloud document',
+                              'This document is saved only on the device.',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'The file remains viewable on the free plan, but moving, processing, and edits require AI Plus.',
-                            ),
-                            const SizedBox(height: 12),
-                            FilledButton.tonalIcon(
-                              onPressed: _openBillingForCloudArchive,
-                              icon: const Icon(Icons.workspace_premium_outlined),
-                              label: const Text('Reactivate AI Plus'),
+                              'You can ask local questions on this file, open it externally, and keep it encrypted in the local vault.',
                             ),
                           ],
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
-              SectionCard(
-                title: 'Extracted text',
-                subtitle: _showExtractedText
-                    ? 'OCR text for the document.'
-                    : 'Available on demand.',
-                action: TextButton.icon(
-                  onPressed: () => setState(
-                    () => _showExtractedText = !_showExtractedText,
-                  ),
-                  icon: Icon(
-                    _showExtractedText
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
-                  label: Text(
-                    _showExtractedText ? 'Hide text' : 'Show text',
-                  ),
-                ),
-                child: _showExtractedText
-                    ? Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLowest,
-                          borderRadius: BorderRadius.circular(14),
+                    if (isReadOnlyCloudDocument)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Read-only cloud document',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Cloud files remain viewable, but editing is disabled while local-only mode is active.',
+                              ),
+                            ],
+                          ),
                         ),
-                        child: SelectableText(detail.ocrText!),
-                      )
-                    : const Text(
-                        'The extracted text is ready but stays hidden until you choose to view it.',
                       ),
-              ),
-            if (detail.labPanels.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SectionCard(
-                title: 'Lab results',
-                child: Column(
-                  children: detail.labPanels
-                      .map(
-                        (panel) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _LabPanelView(panel: panel),
-                        ),
-                      )
-                      .toList(),
+                  ],
                 ),
               ),
-            ],
-            if (detail.imagingReports.isNotEmpty) ...[
               const SizedBox(height: 12),
-              SectionCard(
-                title: 'Imaging report',
-                child: Column(
-                  children: detail.imagingReports
-                      .map(
-                        (report) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _ImagingReportView(report: report),
+              if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
+                SectionCard(
+                  title: 'Extracted text',
+                  subtitle: _showExtractedText
+                      ? 'OCR text for the document.'
+                      : 'Available on demand.',
+                  action: TextButton.icon(
+                    onPressed: () => setState(
+                      () => _showExtractedText = !_showExtractedText,
+                    ),
+                    icon: Icon(
+                      _showExtractedText
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    label: Text(_showExtractedText ? 'Hide text' : 'Show text'),
+                  ),
+                  child: _showExtractedText
+                      ? Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: SelectableText(detail.ocrText!),
+                        )
+                      : const Text(
+                          'The extracted text is ready but stays hidden until you choose to view it.',
                         ),
-                      )
-                      .toList(),
                 ),
-              ),
+              if (detail.labPanels.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SectionCard(
+                  title: 'Lab results',
+                  child: Column(
+                    children: detail.labPanels
+                        .map(
+                          (panel) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _LabPanelView(panel: panel),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+              if (detail.imagingReports.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SectionCard(
+                  title: 'Imaging report',
+                  child: Column(
+                    children: detail.imagingReports
+                        .map(
+                          (report) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _ImagingReportView(report: report),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
             ],
-          ],
-        );
+          );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text(error.toString())),
@@ -756,7 +742,9 @@ class _FolderChoiceTile extends StatelessWidget {
     return Card.outlined(
       margin: const EdgeInsets.only(bottom: 8),
       color: selected
-          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.35)
+          ? Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.35)
           : null,
       child: ListTile(
         onTap: onTap,
@@ -788,57 +776,55 @@ class _LabPanelView extends StatelessWidget {
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        ...panel.results.map(
-          (result) {
-            final isAbnormal = result.abnormalFlag == true;
-            final statusColor = isAbnormal
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.primary;
+        ...panel.results.map((result) {
+          final isAbnormal = result.abnormalFlag == true;
+          final statusColor = isAbnormal
+              ? Theme.of(context).colorScheme.error
+              : Theme.of(context).colorScheme.primary;
 
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                result.analyteName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(
-                    _valueLabel(result),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: statusColor,
-                    ),
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              result.analyteName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  _valueLabel(result),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: statusColor,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _referenceLabel(result),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-              trailing: Chip(
-                label: Text(isAbnormal ? 'Out of range' : 'OK'),
-                visualDensity: VisualDensity.compact,
-                backgroundColor: isAbnormal
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.errorContainer.withValues(alpha: 0.7)
-                    : Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withValues(alpha: 0.7),
-                labelStyle: TextStyle(color: statusColor),
-              ),
-            );
-          },
-        ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _referenceLabel(result),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+            trailing: Chip(
+              label: Text(isAbnormal ? 'Out of range' : 'OK'),
+              visualDensity: VisualDensity.compact,
+              backgroundColor: isAbnormal
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.errorContainer.withValues(alpha: 0.7)
+                  : Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.7),
+              labelStyle: TextStyle(color: statusColor),
+            ),
+          );
+        }),
       ],
     );
   }
@@ -858,7 +844,7 @@ class _LabPanelView extends StatelessWidget {
           ? 'Range ${result.refMin}-${result.refMax}'
           : 'Range ${result.refMin}-${result.refMax} $unit';
     }
-    return 'Range non disponibile';
+    return 'Range unavailable';
   }
 }
 
@@ -879,11 +865,11 @@ class _ImagingReportView extends StatelessWidget {
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
-        if (report.bodyPart != null) Text('Distretto: ${report.bodyPart}'),
+        if (report.bodyPart != null) Text('Body area: ${report.bodyPart}'),
         const SizedBox(height: 8),
         if (report.impression != null && report.impression!.isNotEmpty)
           Text(
-            'Conclusione: ${report.impression!}',
+            'Conclusion: ${report.impression!}',
             style: const TextStyle(fontWeight: FontWeight.w700),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,

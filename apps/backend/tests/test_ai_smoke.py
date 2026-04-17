@@ -59,7 +59,11 @@ def test_ai_smoke_runs_with_payload_file(tmp_path, monkeypatch, capsys):
                 model_name=self.model_name,
             )
 
-    monkeypatch.setattr(ai_smoke, "build_summary_provider", lambda settings: _FakeProvider())
+    monkeypatch.setattr(
+        ai_smoke,
+        "build_summary_provider",
+        lambda settings, **kwargs: _FakeProvider(),
+    )
 
     exit_code = ai_smoke.main(["--payload", str(payload_file)])
 
@@ -82,7 +86,11 @@ def test_ai_smoke_requires_external_provider(monkeypatch, capsys):
                 model_name=self.model_name,
             )
 
-    monkeypatch.setattr(ai_smoke, "build_summary_provider", lambda settings: _FakeProvider())
+    monkeypatch.setattr(
+        ai_smoke,
+        "build_summary_provider",
+        lambda settings, **kwargs: _FakeProvider(),
+    )
 
     exit_code = ai_smoke.main(["--require-external-provider"])
 
@@ -92,25 +100,33 @@ def test_ai_smoke_requires_external_provider(monkeypatch, capsys):
     assert "external_provider_required=true" in output
 
 
-def test_ai_smoke_supports_gemma_summary_profile(monkeypatch, capsys):
+def test_ai_smoke_supports_private_local_daily_profile(monkeypatch, capsys):
+    captured_override = {}
+
     class _FakeProvider:
         provider_name = "gemma"
         model_name = "gemma-4"
 
         def generate_result(self, payload):
-            assert payload.summary_type == "pre_visit"
-            assert "2 misure da dispositivi clinici" in payload.data_considered
+            assert payload.summary_type == "daily"
+            assert "privato locale" in payload.summary_label
             return SummaryGenerationResult(
                 content="Sintesi Gemma prudente. " * 40,
                 provider_name=self.provider_name,
                 model_name=self.model_name,
             )
 
-    monkeypatch.setattr(ai_smoke, "build_summary_provider", lambda settings: _FakeProvider())
+    def _build_provider(settings, **kwargs):
+        captured_override["value"] = kwargs.get("override")
+        return _FakeProvider()
 
-    exit_code = ai_smoke.main(["--profile", "gemma_summary"])
+    monkeypatch.setattr(ai_smoke, "build_summary_provider", _build_provider)
+
+    exit_code = ai_smoke.main(["--profile", "private_local_daily"])
 
     assert exit_code == 0
+    assert captured_override["value"] is not None
     output = capsys.readouterr().out
+    assert "profile=private_local_daily" in output
     assert "provider=gemma" in output
     assert "model=gemma-4" in output

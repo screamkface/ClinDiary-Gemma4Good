@@ -58,9 +58,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Regeneration failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Regeneration failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isRegeneratingDailyReport = false);
@@ -146,10 +146,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     title: 'Day',
                     child: Center(child: CircularProgressIndicator()),
                   ),
-                  error: (error, _) => SectionCard(
-                    title: 'Day',
-                    child: Text(error.toString()),
-                  ),
+                  error: (error, _) =>
+                      SectionCard(title: 'Day', child: Text(error.toString())),
                 ),
               ],
             ),
@@ -339,11 +337,9 @@ class _HistoryContent extends StatelessWidget {
             runSpacing: 8,
             children: [
               _SummaryChip(label: dateFormat.format(history.targetDate)),
-              _SummaryChip(
-                label: entry == null ? 'No check-up' : 'Check-up',
-              ),
+              _SummaryChip(label: entry == null ? 'No check-up' : 'Check-up'),
               _SummaryChip(label: '${history.timelineEvents.length} eventi'),
-              _SummaryChip(label: '${history.documents.length} documenti'),
+              _SummaryChip(label: '${history.documents.length} documents'),
               if (history.dailySummary != null)
                 const _SummaryChip(label: 'Recap available'),
               if (history.wearableSummary != null)
@@ -454,8 +450,10 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.auto_awesome_outlined),
-                    label: Text(
-                    widget.isRegeneratingDailyReport ? 'Regenerating...' : 'Regenerate',
+                  label: Text(
+                    widget.isRegeneratingDailyReport
+                        ? 'Regenerating...'
+                        : 'Regenerate',
                   ),
                 ),
               ],
@@ -480,11 +478,15 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                         runSpacing: 8,
                         children: [
                           if (entry.energyLevel != null)
-                            _SummaryChip(label: 'Energy ${entry.energyLevel}/10'),
+                            _SummaryChip(
+                              label: 'Energy ${entry.energyLevel}/10',
+                            ),
                           if (entry.moodLevel != null)
                             _SummaryChip(label: 'Mood ${entry.moodLevel}/10'),
                           if (entry.stressLevel != null)
-                            _SummaryChip(label: 'Stress ${entry.stressLevel}/10'),
+                            _SummaryChip(
+                              label: 'Stress ${entry.stressLevel}/10',
+                            ),
                           if (entry.generalPain != null)
                             _SummaryChip(label: 'Pain ${entry.generalPain}/10'),
                         ],

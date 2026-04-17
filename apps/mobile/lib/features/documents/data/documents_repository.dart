@@ -1,13 +1,14 @@
 import 'dart:convert';
 
+import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
-import 'package:clindiary/features/billing/data/billing_repository.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_manual_review.dart';
+import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
 
 enum _DocumentStorageMode { local, cloud }
 
@@ -15,12 +16,13 @@ class DocumentsRepository {
   DocumentsRepository({
     required ApiClient apiClient,
     required LocalDatabase localDatabase,
-    BillingRepository? billingRepository,
+    AppConfig appConfig = defaultAppConfig,
+    OnDeviceAiService? onDeviceAiService,
     LocalDocumentVaultService? localVaultService,
   }) : _apiClient = apiClient,
        _localDatabase = localDatabase,
-       _billingRepository =
-           billingRepository ?? BillingRepository(apiClient: apiClient),
+       _appConfig = appConfig,
+       _onDeviceAiService = onDeviceAiService ?? OnDeviceAiService(),
        _localVaultService = localVaultService ?? LocalDocumentVaultService();
 
   static const _documentsCacheKey = 'documents_list';
@@ -28,7 +30,8 @@ class DocumentsRepository {
 
   final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
-  final BillingRepository _billingRepository;
+  final AppConfig _appConfig;
+  final OnDeviceAiService _onDeviceAiService;
   final LocalDocumentVaultService _localVaultService;
   _DocumentStorageMode? _cachedStorageMode;
 
@@ -148,10 +151,10 @@ class DocumentsRepository {
   }) async {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'Le domande ai documenti usano l archivio cloud indicizzato e richiedono ClinDiary AI Plus.',
-        featureCode: 'ai_document_query',
+      return _queryLocalDocuments(
+        question: question,
+        folderId: folderId,
+        topK: topK,
       );
     }
     return _queryCloudDocuments(
@@ -164,37 +167,34 @@ class DocumentsRepository {
   Future<int> reindexDocuments() async {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'Indicizzazione, OCR e parsing automatico sono disponibili solo per l archivio cloud AI Plus.',
-        featureCode: 'cloud_document_storage',
+      final scope = await _resolveLocalScope();
+      final localDocuments = await _localVaultService.fetchDocumentsForScope(
+        userScopeId: scope.userId,
+        profileScopeId: scope.profileId,
       );
+      return localDocuments.length;
     }
     return _reindexCloudDocuments();
   }
 
   Future<int> reindexDocument(String documentId) async {
     final storageMode = await _getStorageMode();
-    if (_isLocalDocumentId(documentId) ||
-        storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'Indicizzazione, OCR e parsing automatico sono disponibili solo per l archivio cloud AI Plus.',
-        featureCode: 'cloud_document_storage',
-      );
+    if (_isLocalDocumentId(documentId)) {
+      return 1;
+    }
+    if (storageMode == _DocumentStorageMode.local) {
+      return 0;
     }
     return _reindexCloudDocument(documentId);
   }
 
   Future<ClinicalDocumentDetail> processDocument(String documentId) async {
     final storageMode = await _getStorageMode();
-    if (_isLocalDocumentId(documentId) ||
-        storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'OCR, parsing, and advanced document timelines require AI Plus cloud storage.',
-        featureCode: 'cloud_document_storage',
-      );
+    if (_isLocalDocumentId(documentId)) {
+      return fetchDocumentDetail(documentId);
+    }
+    if (storageMode == _DocumentStorageMode.local) {
+      return _fetchCloudDocumentDetail(documentId);
     }
     return _processCloudDocument(documentId);
   }
@@ -204,13 +204,11 @@ class DocumentsRepository {
     DocumentManualReviewInput input,
   ) async {
     final storageMode = await _getStorageMode();
-    if (_isLocalDocumentId(documentId) ||
-        storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'La revisione strutturata dei documenti fa parte dell archivio cloud AI Plus.',
-        featureCode: 'cloud_document_storage',
-      );
+    if (_isLocalDocumentId(documentId)) {
+      return fetchDocumentDetail(documentId);
+    }
+    if (storageMode == _DocumentStorageMode.local) {
+      return _fetchCloudDocumentDetail(documentId);
     }
     return _submitCloudManualReview(documentId, input);
   }
@@ -230,10 +228,9 @@ class DocumentsRepository {
     }
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'On the free plan, already uploaded cloud documents remain viewable, but edits and processing require AI Plus.',
-        featureCode: 'cloud_document_storage',
+      throw ApiException(
+        'Cloud documents are read-only while local-only mode is active.',
+        statusCode: 409,
       );
     }
     return _updateCloudDocumentContextStatus(
@@ -254,10 +251,9 @@ class DocumentsRepository {
     }
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'On the free plan, already uploaded cloud documents remain viewable, but they cannot be deleted.',
-        featureCode: 'cloud_document_storage',
+      throw ApiException(
+        'Cloud documents are read-only while local-only mode is active.',
+        statusCode: 409,
       );
     }
     return _deleteCloudDocument(documentId);
@@ -278,10 +274,9 @@ class DocumentsRepository {
     }
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
-      throw _featureLocked(
-        message:
-            'Sul piano free i documenti cloud restano in sola lettura. Per spostarli serve AI Plus.',
-        featureCode: 'cloud_document_storage',
+      throw ApiException(
+        'Cloud documents are read-only while local-only mode is active.',
+        statusCode: 409,
       );
     }
     return _moveCloudDocument(documentId, folderId: folderId);
@@ -290,7 +285,7 @@ class DocumentsRepository {
   Future<String> prepareLocalViewerFile(String documentId) async {
     if (!_isLocalDocumentId(documentId)) {
       throw ApiException(
-        'Il documento non usa il vault locale.',
+        'This document does not use the local vault.',
         statusCode: 400,
       );
     }
@@ -303,30 +298,248 @@ class DocumentsRepository {
   }
 
   Future<_DocumentStorageMode> _getStorageMode() async {
-    try {
-      final status = await _billingRepository.fetchStatus();
-      final resolved = status.hasFeature('cloud_document_storage')
-          ? _DocumentStorageMode.cloud
-          : _DocumentStorageMode.local;
-      _cachedStorageMode = resolved;
+    if (_appConfig.localOnlyMode) {
+      _cachedStorageMode = _DocumentStorageMode.local;
       await _localDatabase.putCache(
         key: _documentStorageModeCacheKey,
-        payload: resolved.name,
+        payload: _DocumentStorageMode.local.name,
       );
-      return resolved;
-    } catch (_) {
-      if (_cachedStorageMode != null) {
-        return _cachedStorageMode!;
-      }
-      final persisted = await _localDatabase.readCache(
-        _documentStorageModeCacheKey,
-      );
-      if (persisted == _DocumentStorageMode.cloud.name) {
-        _cachedStorageMode = _DocumentStorageMode.cloud;
-        return _DocumentStorageMode.cloud;
-      }
+      return _DocumentStorageMode.local;
+    }
+
+    if (_cachedStorageMode != null) {
+      return _cachedStorageMode!;
+    }
+
+    final persisted = await _localDatabase.readCache(
+      _documentStorageModeCacheKey,
+    );
+    if (persisted == _DocumentStorageMode.local.name) {
       _cachedStorageMode = _DocumentStorageMode.local;
       return _DocumentStorageMode.local;
+    }
+
+    _cachedStorageMode = _DocumentStorageMode.cloud;
+    await _localDatabase.putCache(
+      key: _documentStorageModeCacheKey,
+      payload: _DocumentStorageMode.cloud.name,
+    );
+    return _DocumentStorageMode.cloud;
+  }
+
+  Future<DocumentQueryResult> _queryLocalDocuments({
+    required String question,
+    String? folderId,
+    int? topK,
+  }) async {
+    final normalizedQuestion = question.trim();
+    if (normalizedQuestion.isEmpty) {
+      throw ApiException('Please enter a question before searching documents.');
+    }
+
+    final scope = await _resolveLocalScope();
+    final archive = await _localVaultService.fetchArchiveForScope(
+      userScopeId: scope.userId,
+      profileScopeId: scope.profileId,
+      folderId: folderId,
+      query: null,
+    );
+
+    final localDocuments = archive.documents
+        .where((item) => item.isLocal)
+        .toList();
+    if (localDocuments.isEmpty) {
+      return DocumentQueryResult(
+        answer:
+            'No local documents are available yet. Import at least one file to use Document Q&A.',
+        citations: const [],
+        providerName: 'on_device_litertlm',
+        modelName: 'gemma-4-E2B-it.litertlm',
+        embeddingModelName: 'local-keyword-index',
+        rerankerModelName: 'local-heuristic-ranker',
+        retrievedChunks: 0,
+        retrievedDocuments: 0,
+        searchScopeLabel: folderId == null
+            ? 'Entire local archive'
+            : 'Selected local folder',
+        coverageNote: 'No matching local documents found.',
+        usedFallback: true,
+      );
+    }
+
+    final ranked = <_LocalQueryCandidate>[];
+    for (final summary in localDocuments) {
+      final detail = await fetchDocumentDetail(summary.id);
+      final candidate = _buildLocalQueryCandidate(
+        summary,
+        detail,
+        normalizedQuestion,
+      );
+      if (candidate.score > 0) {
+        ranked.add(candidate);
+      }
+    }
+
+    ranked.sort((a, b) {
+      final scoreOrder = b.score.compareTo(a.score);
+      if (scoreOrder != 0) {
+        return scoreOrder;
+      }
+      return b.summary.uploadDate.compareTo(a.summary.uploadDate);
+    });
+
+    final limited = ranked.take((topK ?? 3).clamp(1, 8)).toList();
+    if (limited.isEmpty) {
+      return DocumentQueryResult(
+        answer:
+            'I could not find relevant information in local documents for this question. Try adding key terms (exam name, date, analyte, or symptom).',
+        citations: const [],
+        providerName: 'on_device_litertlm',
+        modelName: 'gemma-4-E2B-it.litertlm',
+        embeddingModelName: 'local-keyword-index',
+        rerankerModelName: 'local-heuristic-ranker',
+        retrievedChunks: 0,
+        retrievedDocuments: 0,
+        searchScopeLabel: folderId == null
+            ? 'Entire local archive'
+            : 'Selected local folder',
+        coverageNote: 'No relevant excerpts were found in local documents.',
+        usedFallback: true,
+      );
+    }
+
+    final citations = limited
+        .map(
+          (candidate) => DocumentQueryCitation(
+            documentId: candidate.summary.id,
+            documentTitle: candidate.summary.title,
+            documentType: candidate.summary.documentType,
+            folderName: candidate.summary.folderName,
+            examDate: candidate.summary.examDate,
+            chunkKind: candidate.chunkKind,
+            chunkLabel: candidate.chunkLabel,
+            excerpt: candidate.excerpt,
+            score: candidate.score,
+            viewerUrl: candidate.detail.viewerUrl,
+          ),
+        )
+        .toList();
+
+    final answer = await _generateLocalQueryAnswer(
+      question: normalizedQuestion,
+      candidates: limited,
+    );
+
+    return DocumentQueryResult(
+      answer: answer,
+      citations: citations,
+      providerName: 'on_device_litertlm',
+      modelName: 'gemma-4-E2B-it.litertlm',
+      embeddingModelName: 'local-keyword-index',
+      rerankerModelName: 'local-heuristic-ranker',
+      retrievedChunks: limited.length,
+      retrievedDocuments: limited.map((item) => item.summary.id).toSet().length,
+      searchScopeLabel: folderId == null
+          ? 'Entire local archive'
+          : 'Selected local folder',
+      coverageNote: 'Answer generated from local encrypted document snippets.',
+      usedFallback: false,
+    );
+  }
+
+  _LocalQueryCandidate _buildLocalQueryCandidate(
+    ClinicalDocumentSummary summary,
+    ClinicalDocumentDetail detail,
+    String question,
+  ) {
+    final fragments = <String>[
+      summary.title,
+      summary.documentType,
+      if (summary.source != null) summary.source!,
+      if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
+        detail.ocrText!,
+      for (final panel in detail.labPanels)
+        '${panel.panelName} ${panel.results.map((item) => '${item.analyteName} ${item.value}${item.unit == null ? '' : ' ${item.unit}'}').join(' ')}',
+      for (final report in detail.imagingReports)
+        '${report.examType ?? 'imaging'} ${report.bodyPart ?? ''} ${report.impression ?? report.reportText}',
+    ];
+
+    final corpus = fragments.join(' ').toLowerCase();
+    final tokens = question
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((item) => item.trim().length >= 3)
+        .toSet();
+
+    var score = 0.0;
+    for (final token in tokens) {
+      if (corpus.contains(token)) {
+        score += 1.0;
+      }
+    }
+
+    if (summary.title.toLowerCase().contains(question.toLowerCase())) {
+      score += 2.0;
+    }
+    if (detail.labPanels.isNotEmpty && question.toLowerCase().contains('lab')) {
+      score += 0.8;
+    }
+    if (detail.imagingReports.isNotEmpty &&
+        question.toLowerCase().contains('imaging')) {
+      score += 0.8;
+    }
+
+    final excerpt = _buildExcerpt(detail);
+    return _LocalQueryCandidate(
+      summary: summary,
+      detail: detail,
+      score: score,
+      excerpt: excerpt,
+      chunkKind: detail.labPanels.isNotEmpty
+          ? 'lab_panel'
+          : detail.imagingReports.isNotEmpty
+          ? 'imaging_report'
+          : 'ocr_text',
+      chunkLabel: detail.labPanels.isNotEmpty
+          ? detail.labPanels.first.panelName
+          : detail.imagingReports.isNotEmpty
+          ? detail.imagingReports.first.examType
+          : 'Extracted text',
+    );
+  }
+
+  Future<String> _generateLocalQueryAnswer({
+    required String question,
+    required List<_LocalQueryCandidate> candidates,
+  }) async {
+    final context = candidates
+        .asMap()
+        .entries
+        .map(
+          (entry) =>
+              '[${entry.key + 1}] ${entry.value.summary.title}: ${entry.value.excerpt}',
+        )
+        .join('\n\n');
+
+    final systemPrompt =
+        'You are a careful clinical assistant. Use only the provided local document context. '
+        'Do not invent data, and clearly mention uncertainty when information is incomplete.';
+    final userPrompt =
+        'Question: $question\n\n'
+        'Local document context:\n$context\n\n'
+        'Write a concise answer in English with:\n'
+        '1) direct answer\n2) key findings\n3) a brief caution if needed.';
+
+    try {
+      return await _onDeviceAiService.generateText(
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt,
+      );
+    } catch (_) {
+      final top = candidates.first;
+      return 'Based on local documents, the most relevant file is "${top.summary.title}". '
+          'Key extracted evidence: ${top.excerpt}. '
+          'Review the cited snippets for full context before making clinical decisions.';
     }
   }
 
@@ -711,12 +924,12 @@ class DocumentsRepository {
 
     final fallback = _buildFallbackDetailJson({
       'id': documentId,
-      'title': 'Documento',
+      'title': 'Document',
       'document_type': 'generic_document',
       'upload_date': DateTime.now().toUtc().toIso8601String(),
       'exam_date': null,
       'source': null,
-      'original_filename': 'documento',
+      'original_filename': 'document',
       'mime_type': 'application/pdf',
       'file_size_bytes': 0,
       'parsed_status': 'pending',
@@ -796,14 +1009,14 @@ class DocumentsRepository {
   ) {
     return {
       'id': base['id'].toString(),
-      'title': base['title']?.toString() ?? 'Documento',
+      'title': base['title']?.toString() ?? 'Document',
       'document_type': base['document_type']?.toString() ?? 'generic_document',
       'upload_date':
           base['upload_date']?.toString() ??
           DateTime.now().toUtc().toIso8601String(),
       'exam_date': base['exam_date'],
       'source': base['source'],
-      'original_filename': base['original_filename']?.toString() ?? 'documento',
+      'original_filename': base['original_filename']?.toString() ?? 'document',
       'mime_type': base['mime_type']?.toString() ?? 'application/pdf',
       'file_size_bytes': base['file_size_bytes'] ?? 0,
       'parsed_status': base['parsed_status']?.toString() ?? 'pending',
@@ -824,22 +1037,55 @@ class DocumentsRepository {
     };
   }
 
-  ApiException _featureLocked({
-    required String message,
-    required String featureCode,
-  }) {
-    return ApiException(
-      message,
-      statusCode: 402,
-      code: 'feature_locked',
-      details: {
-        'feature_code': featureCode,
-        'recommended_plan_code': 'ai_plus_yearly',
-      },
-    );
+  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
+}
+
+class _LocalQueryCandidate {
+  const _LocalQueryCandidate({
+    required this.summary,
+    required this.detail,
+    required this.score,
+    required this.excerpt,
+    required this.chunkKind,
+    required this.chunkLabel,
+  });
+
+  final ClinicalDocumentSummary summary;
+  final ClinicalDocumentDetail detail;
+  final double score;
+  final String excerpt;
+  final String chunkKind;
+  final String? chunkLabel;
+}
+
+String _buildExcerpt(ClinicalDocumentDetail detail) {
+  if (detail.labPanels.isNotEmpty) {
+    final panel = detail.labPanels.first;
+    final values = panel.results
+        .take(3)
+        .map((item) {
+          final unit = item.unit == null ? '' : ' ${item.unit}';
+          return '${item.analyteName}: ${item.value}$unit';
+        })
+        .join('; ');
+    return '${panel.panelName}. $values';
   }
 
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
+  if (detail.imagingReports.isNotEmpty) {
+    final report = detail.imagingReports.first;
+    final impression = report.impression?.trim();
+    if (impression != null && impression.isNotEmpty) {
+      return impression;
+    }
+    return report.reportText;
+  }
+
+  final ocrText = detail.ocrText?.trim();
+  if (ocrText != null && ocrText.isNotEmpty) {
+    return ocrText.length > 500 ? '${ocrText.substring(0, 500)}...' : ocrText;
+  }
+
+  return 'No extractable text available.';
 }
 
 class _LocalVaultScope {

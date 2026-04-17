@@ -523,7 +523,7 @@ class _ConnectionsTab extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: () => onManualIngest(connection),
                   icon: const Icon(Icons.add_chart_outlined),
-                  label: const Text('Registra misura'),
+                  label: const Text('Record measurement'),
                 ),
               ],
               if (connection.lastError != null &&
@@ -828,7 +828,7 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Registra misura',
+                  'Record measurement',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -1253,7 +1253,7 @@ String _categoryLabel(String value) {
     case 'clinical_device':
       return 'Clinical device';
     case 'diabetes':
-      return 'Diabete';
+      return 'Diabetes';
     default:
       return value.replaceAll('_', ' ');
   }
@@ -1277,13 +1277,13 @@ String _integrationLabel(String value) {
 String _connectionStatusLabel(DeviceConnectionItem connection) {
   switch (connection.status) {
     case 'connected':
-      return 'Connesso';
+      return 'Connected';
     case 'pending':
-      return 'In setup';
+      return 'Setting up';
     case 'error':
-      return 'Errore';
+      return 'Error';
     case 'disconnected':
-      return 'Disconnesso';
+      return 'Disconnected';
     default:
       return connection.status;
   }
@@ -1292,13 +1292,13 @@ String _connectionStatusLabel(DeviceConnectionItem connection) {
 String _jobStatusLabel(String status) {
   switch (status) {
     case 'running':
-      return 'In corso';
+      return 'Running';
     case 'succeeded':
-      return 'Completato';
+      return 'Completed';
     case 'failed':
-      return 'Fallito';
+      return 'Failed';
     case 'pending':
-      return 'In attesa';
+      return 'Pending';
     default:
       return status;
   }

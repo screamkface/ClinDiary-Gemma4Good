@@ -18,13 +18,13 @@ void main() {
       ),
     );
 
-    expect(find.text('Pensando...'), findsOneWidget);
+    expect(find.text('Thinking...'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('Scrivendo...'), findsOneWidget);
+    expect(find.text('Writing...'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('Rifinendo...'), findsOneWidget);
+    expect(find.text('Refining...'), findsOneWidget);
   });
 
   testWidgets('mostra il testo idle quando inattiva', (tester) async {

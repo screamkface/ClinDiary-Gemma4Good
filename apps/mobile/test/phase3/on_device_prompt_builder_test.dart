@@ -407,7 +407,7 @@ void main() {
         contains('Pressione arteriosa: ultimo valore 134/84 mmHg.'),
       );
       expect(prompt.userPrompt, contains('Glicemia a digiuno'));
-      expect(prompt.userPrompt, contains('3100 passi'));
+      expect(prompt.userPrompt, contains('3100 steps'));
     },
   );
 

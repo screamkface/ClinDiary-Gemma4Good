@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/documents/data/document_picker_service.dart';
 import 'package:clindiary/features/documents/data/documents_repository.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
@@ -88,14 +87,11 @@ void main() {
     );
     expect(find.text('Esami marzo'), findsOneWidget);
     expect(find.text('Esami'), findsOneWidget);
-    expect(find.textContaining('Referto laboratorio'), findsOneWidget);
-    expect(find.text('Processato'), findsOneWidget);
-    expect(find.text('Vecchio'), findsOneWidget);
-    expect(find.text('Sync in attesa'), findsOneWidget);
-    expect(
-      find.textContaining('In attesa di sincronizzazione'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Lab report'), findsOneWidget);
+    expect(find.text('Parsed'), findsOneWidget);
+    expect(find.text('Old'), findsOneWidget);
+    expect(find.text('Sync pending'), findsOneWidget);
+    expect(find.textContaining('Waiting for sync'), findsOneWidget);
     expect(find.textContaining('178.1 KB'), findsOneWidget);
   });
 
@@ -138,15 +134,15 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Nuova cartella'));
+    await tester.tap(find.text('New folder'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nome cartella'),
+      find.widgetWithText(TextFormField, 'Folder name'),
       'Esami sangue',
     );
 
-    await tester.tap(find.text('Crea'));
+    await tester.tap(find.text('Create'));
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -201,13 +197,13 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Processato'));
+      await tester.tap(find.text('Parsed'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sposta file').last);
+      await tester.tap(find.text('Move file').last);
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Archivio principale'), findsOneWidget);
+      expect(find.text('Main archive'), findsOneWidget);
       expect(find.text('Esami 2026'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
@@ -270,15 +266,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Referto laboratorio aprile'), findsOneWidget);
-      expect(find.text('Sync in attesa'), findsOneWidget);
+      expect(find.text('Sync pending'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
-      expect(find.text('Testo estratto'), findsOneWidget);
-      expect(find.text('Mostra testo'), findsOneWidget);
+      expect(find.text('Extracted text'), findsOneWidget);
+      expect(find.text('Show text'), findsOneWidget);
       expect(find.textContaining('Glucosio 110 mg/dL 70-99'), findsNothing);
-      await tester.tap(find.text('Mostra testo'));
+      await tester.tap(find.text('Show text'));
       await tester.pumpAndSettle();
-      expect(find.text('Nascondi testo'), findsOneWidget);
+      expect(find.text('Hide text'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
       expect(find.textContaining('Glucosio'), findsWidgets);
@@ -286,22 +282,16 @@ void main() {
       await tester.pumpAndSettle();
       final abnormalValueText = tester.widget<Text>(find.text('110 mg/dL'));
       final context = tester.element(find.text('110 mg/dL'));
-      expect(find.text('Fuori range'), findsOneWidget);
+      expect(find.text('Out of range'), findsOneWidget);
       expect(
         abnormalValueText.style?.color,
         equals(Theme.of(context).colorScheme.error),
       );
-      expect(find.text('Vecchio'), findsWidgets);
-      expect(
-        find.textContaining('non viene incluso nei recap AI'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('modifiche in attesa di sincronizzazione'),
-        findsOneWidget,
-      );
-      expect(find.text('Apri file'), findsOneWidget);
-      expect(find.text('Revisione manuale'), findsOneWidget);
+      expect(find.text('Old'), findsWidgets);
+      expect(find.textContaining('not included in AI recaps'), findsOneWidget);
+      expect(find.textContaining('changes waiting to sync'), findsOneWidget);
+      expect(find.text('Open file'), findsOneWidget);
+      expect(find.text('Manual review'), findsOneWidget);
     },
   );
 
@@ -311,28 +301,6 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            billingStatusProvider.overrideWith(
-              (ref) async => const BillingStatus(
-                currentPlan: BillingPlan(
-                  id: 'plan-ai-plus',
-                  code: 'ai_plus_yearly',
-                  name: 'AI Plus',
-                  billingInterval: 'yearly',
-                  priceCents: 4900,
-                  currency: 'EUR',
-                  sortOrder: 1,
-                  isActive: true,
-                  isPublic: true,
-                  isRecommended: true,
-                  featureCodes: ['cloud_document_storage'],
-                ),
-                availablePlans: [],
-                entitlementCodes: ['cloud_document_storage'],
-                hasActivePaidSubscription: true,
-                checkoutReady: false,
-                isHackathonDemoMode: false,
-              ),
-            ),
             documentFoldersProvider.overrideWith(
               (ref) async => const [
                 DocumentFolderItem(
@@ -380,11 +348,11 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sposta file').last);
+      await tester.tap(find.text('Move file').last);
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Archivio principale'), findsOneWidget);
+      expect(find.text('Main archive'), findsOneWidget);
       expect(find.text('Esami 2026'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
@@ -448,13 +416,13 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Seleziona file'));
+      await tester.tap(find.text('Select file'));
       await tester.pumpAndSettle();
       expect(find.text('nuovo-referto.pdf'), findsOneWidget);
       verify(() => picker.pickDocument()).called(1);
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Titolo documento'),
+        find.widgetWithText(TextFormField, 'Document title'),
         'Nuovo referto',
       );
       await tester.scrollUntilVisible(
@@ -546,13 +514,13 @@ void main() {
 
     expect(find.text('Esami'), findsOneWidget);
     await tester.enterText(
-      find.widgetWithText(TextField, 'Domanda'),
+      find.byType(TextField),
       'Ci sono valori fuori range?',
     );
     await tester.pump();
     await tester.drag(find.byType(ListView), const Offset(0, -240));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cerca nei documenti'), warnIfMissed: false);
+    await tester.tap(find.text('Search files'), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     verify(
@@ -572,7 +540,7 @@ void main() {
     expect(find.text('Esami aprile'), findsOneWidget);
     expect(find.textContaining('qwen3-reranker-4b'), findsOneWidget);
 
-    await tester.tap(find.text('Aggiorna indice'), warnIfMissed: false);
+    await tester.tap(find.text('Refresh index'), warnIfMissed: false);
     await tester.pump();
     verify(() => repository.reindexDocuments()).called(1);
   });
@@ -654,7 +622,7 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
 
-      final saveLabel = find.text('Salva revisione manuale');
+      final saveLabel = find.text('Save manual review');
       expect(saveLabel, findsOneWidget);
       await tester.ensureVisible(saveLabel);
       final saveButton = find.ancestor(

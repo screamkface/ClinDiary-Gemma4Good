@@ -5,8 +5,8 @@ import 'package:clindiary/app/core/notifications/local_medication_reminder_servi
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
 import 'package:clindiary/features/auth/data/auth_repository.dart';
-import 'package:clindiary/features/billing/data/billing_repository.dart';
 import 'package:clindiary/features/alerts/data/alerts_repository.dart';
+import 'package:clindiary/features/backup/data/encrypted_backup_service.dart';
 import 'package:clindiary/features/daily_journal/data/daily_journal_repository.dart';
 import 'package:clindiary/features/daily_journal/data/voice_check_in_assistant.dart';
 import 'package:clindiary/features/devices/data/devices_repository.dart';
@@ -92,10 +92,6 @@ final authRepositoryProvider = Provider<AuthRepository>(
   ),
 );
 
-final billingRepositoryProvider = Provider<BillingRepository>(
-  (ref) => BillingRepository(apiClient: ref.watch(apiClientProvider)),
-);
-
 final devicesRepositoryProvider = Provider<DevicesRepository>(
   (ref) => DevicesRepository(apiClient: ref.watch(apiClientProvider)),
 );
@@ -120,6 +116,7 @@ final insightsRepositoryProvider = Provider<InsightsRepository>(
     localDatabase: ref.watch(localDatabaseProvider),
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
     onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
+    appConfig: ref.watch(appConfigProvider),
   ),
 );
 
@@ -183,7 +180,8 @@ final documentsRepositoryProvider = Provider<DocumentsRepository>(
   (ref) => DocumentsRepository(
     apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
-    billingRepository: ref.watch(billingRepositoryProvider),
+    appConfig: ref.watch(appConfigProvider),
+    onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
     localVaultService: ref.watch(localDocumentVaultServiceProvider),
   ),
 );
@@ -213,6 +211,9 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
   (ref) => ReportsRepository(
     apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
+    appConfig: ref.watch(appConfigProvider),
+    onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
+    onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
   ),
 );
 
@@ -244,5 +245,16 @@ final dossierRepositoryProvider = Provider<DossierRepository>(
   (ref) => DossierRepository(
     apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
+    appConfig: ref.watch(appConfigProvider),
+  ),
+);
+
+final encryptedBackupServiceProvider = Provider<EncryptedBackupService>(
+  (ref) => EncryptedBackupService(
+    appConfig: ref.watch(appConfigProvider),
+    dossierRepository: ref.watch(dossierRepositoryProvider),
+    localDatabase: ref.watch(localDatabaseProvider),
+    secureStorage: ref.watch(flutterSecureStorageProvider),
+    httpClient: ref.watch(httpClientProvider),
   ),
 );

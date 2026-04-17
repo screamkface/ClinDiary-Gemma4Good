@@ -8,14 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-
 class DocumentsScreen extends ConsumerStatefulWidget {
   const DocumentsScreen({super.key});
 
   @override
   ConsumerState<DocumentsScreen> createState() => _DocumentsScreenState();
 }
-
 
 class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   final _searchController = TextEditingController();
@@ -80,10 +78,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(
-              dialogContext,
-              rootNavigator: true,
-            ).pop(),
+            onPressed: () =>
+                Navigator.of(dialogContext, rootNavigator: true).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
@@ -101,10 +97,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     }
 
     try {
-      await ref.read(documentsRepositoryProvider).createFolder(
-        name: createdName,
-        parentFolderId: _currentFolderId,
-      );
+      await ref
+          .read(documentsRepositoryProvider)
+          .createFolder(name: createdName, parentFolderId: _currentFolderId);
       await _refreshAll();
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -193,7 +188,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
     if (!mounted) return;
     if (selected == document.folderId ||
-        (selected == null && (document.folderId == null || document.folderId!.isEmpty))) {
+        (selected == null &&
+            (document.folderId == null || document.folderId!.isEmpty))) {
       return;
     }
 
@@ -219,7 +215,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final uri = Uri(
       path: '/app/documents/upload',
       queryParameters: {
-        if (archive.currentFolder != null) 'folderId': archive.currentFolder!.id,
+        if (archive.currentFolder != null)
+          'folderId': archive.currentFolder!.id,
         if (archive.currentFolder != null)
           'folderName': archive.currentFolder!.pathLabel,
         'storageMode': archive.storageLocation,
@@ -229,14 +226,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   void _openDocumentQuery(DocumentArchiveView archive) {
-    if (archive.isLocal) {
-      context.push('/app/home/billing?feature=cloud_document_storage');
-      return;
-    }
     final uri = Uri(
       path: '/app/documents/ask',
       queryParameters: {
-        if (archive.currentFolder != null) 'folderId': archive.currentFolder!.id,
+        if (archive.currentFolder != null)
+          'folderId': archive.currentFolder!.id,
         if (archive.currentFolder != null)
           'folderName': archive.currentFolder!.pathLabel,
       },
@@ -284,8 +278,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       decoration: InputDecoration(
                         labelText: 'Search files',
                         hintText: archive.isLocal
-                          ? 'Title, folder, source, file name...'
-                          : 'Title, file name, extracted text...',
+                            ? 'Title, folder, source, file name...'
+                            : 'Title, file name, extracted text...',
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: _appliedQuery == null
                             ? IconButton(
@@ -309,7 +303,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 ? Icons.phone_android_outlined
                                 : Icons.cloud_outlined,
                           ),
-                          label: Text(documentStorageLabel(archive.storageLocation)),
+                          label: Text(
+                            documentStorageLabel(archive.storageLocation),
+                          ),
                         ),
                         FilledButton.tonalIcon(
                           onPressed: _createFolder,
@@ -325,22 +321,18 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           ),
                           label: Text(
                             archive.currentFolder == null
-                              ? (archive.isLocal
-                                ? 'Save file'
-                                : 'Upload file')
-                              : (archive.isLocal ? 'Save here' : 'Upload here'),
+                                ? (archive.isLocal
+                                      ? 'Save file'
+                                      : 'Upload file')
+                                : (archive.isLocal
+                                      ? 'Save here'
+                                      : 'Upload here'),
                           ),
                         ),
                         FilledButton.tonalIcon(
                           onPressed: () => _openDocumentQuery(archive),
-                          icon: Icon(
-                            archive.isLocal
-                                ? Icons.workspace_premium_outlined
-                                : Icons.chat_bubble_outline,
-                          ),
-                          label: Text(
-                            archive.isLocal ? 'Unlock cloud' : 'Ask files',
-                          ),
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          label: const Text('Ask files'),
                         ),
                       ],
                     ),
@@ -348,7 +340,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(
-                          'On the free plan, files stay on the device. OCR, automatic parsing, cloud backup, and document Q&A unlock with AI Plus.',
+                          'Files are encrypted locally on this device. Ask Files runs against local snippets and keeps processing on-device when available.',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.secondary,
                           ),
@@ -459,7 +451,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 SectionCard(
                   title: 'Cloud archive read-only',
                   subtitle:
-                      'These files were already in the cloud. They remain viewable on the free plan, but editing them requires AI Plus.',
+                      'These files were already in the cloud. They remain viewable, but edits are disabled while local-only mode is active.',
                   child: Column(
                     children: archive.legacyCloudDocuments
                         .map(
@@ -494,7 +486,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     );
   }
 }
-
 
 class _ArchiveBreadcrumbs extends StatelessWidget {
   const _ArchiveBreadcrumbs({
@@ -541,7 +532,6 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
     );
   }
 }
-
 
 class _DocumentArchiveTile extends StatelessWidget {
   const _DocumentArchiveTile({
@@ -699,7 +689,6 @@ class _DocumentArchiveTile extends StatelessWidget {
   }
 }
 
-
 class _FolderChoiceTile extends StatelessWidget {
   const _FolderChoiceTile({
     required this.title,
@@ -718,7 +707,9 @@ class _FolderChoiceTile extends StatelessWidget {
     return Card.outlined(
       margin: const EdgeInsets.only(bottom: 8),
       color: selected
-          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.35)
+          ? Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.35)
           : null,
       child: ListTile(
         onTap: onTap,

@@ -195,7 +195,7 @@ void main() {
         isA<ApiException>().having(
           (error) => error.message,
           'message',
-          contains('Sessione scaduta'),
+          contains('Session expired'),
         ),
       ),
     );

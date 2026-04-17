@@ -30,7 +30,7 @@ class _SessionGateTestAuthController extends AuthController {
 }
 
 void main() {
-  testWidgets('session gate auto-login in demo mode e apre la home', (
+  testWidgets('session gate in demo mode apre direttamente la home', (
     tester,
   ) async {
     _SessionGateTestAuthController.loginCalls = 0;
@@ -83,7 +83,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(_SessionGateTestAuthController.loginCalls, 1);
+    expect(_SessionGateTestAuthController.loginCalls, 0);
     expect(find.text('Home reached'), findsOneWidget);
   });
 

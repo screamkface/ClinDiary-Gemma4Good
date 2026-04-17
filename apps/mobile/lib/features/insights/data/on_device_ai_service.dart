@@ -106,9 +106,7 @@ class OnDeviceAiService {
       }
       final content = response['content']?.toString().trim() ?? '';
       if (content.isEmpty) {
-        throw Exception(
-          'The on-device runtime returned empty content.',
-        );
+        throw Exception('The on-device runtime returned empty content.');
       }
       return content;
     } on MissingPluginException {
@@ -178,9 +176,7 @@ class OnDeviceAiService {
         ..headers[HttpHeaders.acceptHeader] = 'application/octet-stream';
       final response = await client.send(request);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Model download failed: HTTP ${response.statusCode}',
-        );
+        throw Exception('Model download failed: HTTP ${response.statusCode}');
       }
 
       final contentLength = response.contentLength;
@@ -288,6 +284,6 @@ class OnDeviceAiService {
       return;
     }
 
-    throw Exception('Impossibile leggere il file selezionato.');
+    throw Exception('Unable to read the selected file.');
   }
 }

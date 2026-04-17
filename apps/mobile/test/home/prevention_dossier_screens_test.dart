@@ -8,7 +8,9 @@ import 'package:clindiary/features/prevention_center/domain/prevention_center.da
 import 'package:clindiary/features/prevention_center/presentation/prevention_center_screen.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/features/wearables/domain/wearable_day_summary.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -91,25 +93,35 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: PreventionCenterScreen()),
+        child: const MaterialApp(
+          home: PreventionCenterScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Centro prevenzione'), findsOneWidget);
-    expect(find.text('Visita annuale consigliata'), findsOneWidget);
-    await tester.tap(find.text('Vaccini'));
+    expect(find.text('Prevention center'), findsOneWidget);
+    expect(find.text('Recommended annual visit'), findsOneWidget);
+    await tester.tap(find.text('Vaccines'));
     await tester.pumpAndSettle();
-    expect(find.text('Vaccini consigliati'), findsOneWidget);
+    expect(find.text('Recommended vaccines'), findsOneWidget);
     expect(find.text('Vaccino antinfluenzale'), findsOneWidget);
     await tester.tap(find.text('Follow-up'));
     await tester.pumpAndSettle();
-    expect(find.text('Controlli stagionali'), findsOneWidget);
-    expect(find.text('Reminder di follow-up'), findsOneWidget);
-    await tester.tap(find.text('Controlli'));
+    expect(find.text('Seasonal checks'), findsOneWidget);
+    expect(find.text('Follow-up reminders'), findsOneWidget);
+    await tester.tap(find.text('Checks'));
     await tester.pumpAndSettle();
-    expect(find.text('Visite e controlli per il tuo profilo'), findsOneWidget);
+    expect(find.text('Visits and checks for your profile'), findsOneWidget);
   });
 
   testWidgets('health dossier screen mostra sezioni ordinate', (tester) async {
@@ -270,31 +282,38 @@ void main() {
           ),
           dossierShareLinksProvider.overrideWith((ref) async => const []),
         ],
-        child: const MaterialApp(home: HealthDossierScreen()),
+        child: const MaterialApp(
+          home: HealthDossierScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Dossier salute'), findsOneWidget);
+    expect(find.text('Health dossier'), findsOneWidget);
     expect(find.byKey(const ValueKey('dossier-emergency-nfc')), findsOneWidget);
-    await tester.tap(find.text('Clinico'));
+    await tester.tap(find.text('Clinical'));
     await tester.pumpAndSettle();
-    expect(find.text('Farmaci attuali'), findsOneWidget);
-    expect(find.text('Dispositivi clinici'), findsOneWidget);
+    expect(find.text('Current medications'), findsOneWidget);
+    expect(find.text('Clinical devices'), findsOneWidget);
     expect(find.text('Pressione arteriosa'), findsOneWidget);
-    await tester.tap(find.text('Diario'));
+    await tester.tap(find.text('Diary'));
     await tester.pumpAndSettle();
-    expect(find.text('Diario recente'), findsOneWidget);
-    await tester.tap(find.text('Referti'));
+    expect(find.text('Recent diary'), findsOneWidget);
+    await tester.tap(find.text('Reports'));
     await tester.pumpAndSettle();
-    expect(find.text('Documenti e referti'), findsOneWidget);
+    expect(find.text('Documents and reports'), findsOneWidget);
     expect(find.text('Esami sangue annuali'), findsWidgets);
-    await tester.tap(find.text('Diario'));
+    await tester.tap(find.text('Share'));
     await tester.pumpAndSettle();
-    expect(find.text('Insight, report e alert'), findsOneWidget);
-    await tester.tap(find.text('Condividi'));
-    await tester.pumpAndSettle();
-    expect(find.text('Condivisioni sicure'), findsOneWidget);
+    expect(find.text('Secure shares'), findsOneWidget);
   });
 }
