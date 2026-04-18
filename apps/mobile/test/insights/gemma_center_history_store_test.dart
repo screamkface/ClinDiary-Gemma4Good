@@ -53,7 +53,7 @@ void main() {
   });
 
   test(
-    'Gemma Center history migrates legacy Italian metadata to English',
+    'Gemma Center history normalizes legacy metadata to canonical values',
     () async {
       final database = LocalDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -68,8 +68,8 @@ void main() {
 [
   {
     "id": "legacy-1",
-    "kind": "question",
-    "title": "Domanda clinica",
+    "kind": "trend_explanation",
+    "title": "",
     "response": "Answer from legacy data",
     "created_at": "2026-04-08T10:00:00Z",
     "prompt": "Legacy prompt",
@@ -83,13 +83,14 @@ void main() {
       final entries = await store.readEntries();
 
       expect(entries, hasLength(1));
-      expect(entries.single.title, 'Clinical question');
+      expect(entries.single.title, 'Trend analysis');
+      expect(entries.single.kind, 'trend');
 
       final migratedCache = await database.readCache(
         scopedCacheKey('gemma_center_history', 'profile-a'),
       );
-      expect(migratedCache, contains('Clinical question'));
-      expect(migratedCache, isNot(contains('Domanda clinica')));
+      expect(migratedCache, contains('Trend analysis'));
+      expect(migratedCache, isNot(contains('trend_explanation')));
     },
   );
 }

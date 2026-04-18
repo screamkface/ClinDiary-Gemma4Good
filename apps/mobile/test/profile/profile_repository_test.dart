@@ -159,7 +159,7 @@ void main() {
               'alcohol_use': null,
               'activity_level': null,
               'region_code': 'IT-LOM',
-              'relationship_label': 'figlio',
+              'relationship_label': 'son',
               'occupation': null,
               'exercise_habits': null,
               'sleep_pattern': null,
@@ -178,7 +178,7 @@ void main() {
         final profiles = await repository.fetchManagedProfiles();
         expect(profiles, hasLength(1));
         expect(profiles.single.firstName, 'Luca');
-        expect(profiles.single.relationshipLabel, 'figlio');
+        expect(profiles.single.relationshipLabel, 'son');
         expect(profiles.single.isPrimary, isFalse);
       },
     );
@@ -214,7 +214,7 @@ void main() {
 
         final payload = <String, dynamic>{
           'first_name': 'Maria',
-          'occupation': 'Studio clinico',
+          'occupation': 'Clinical office',
           'region_code': 'IT-LOM',
         };
 
@@ -228,7 +228,7 @@ void main() {
         final queued = await database.listPendingOperations();
 
         expect(bundle.profile.firstName, 'Maria');
-        expect(bundle.profile.occupation, 'Studio clinico');
+        expect(bundle.profile.occupation, 'Clinical office');
         expect(bundle.profile.regionCode, 'IT-LOM');
         expect(queued, hasLength(1));
         expect(queued.single.path, '/api/v1/profile/me');
@@ -236,7 +236,7 @@ void main() {
         final cached = await database.readCache('profile_bundle::profile-1');
         final decoded = ProfileBundle.fromJson(_decodeBundle(cached!));
         expect(decoded.profile.firstName, 'Maria');
-        expect(decoded.profile.occupation, 'Studio clinico');
+        expect(decoded.profile.occupation, 'Clinical office');
         expect(decoded.profile.regionCode, 'IT-LOM');
       },
     );
@@ -328,8 +328,8 @@ void main() {
           'administered_on': '2026-03-25',
           'dose_number': 1,
           'next_due_date': '2026-09-25',
-          'provider_name': 'Medico di base',
-          'notes': 'Richiamo stagionale',
+          'provider_name': 'Primary care physician',
+          'notes': 'Seasonal booster',
         };
 
         final repository = ProfileRepository(
@@ -366,7 +366,7 @@ void main() {
             'administered_on': '2026-03-20',
             'dose_number': 1,
             'next_due_date': null,
-            'provider_name': 'Medico di base',
+            'provider_name': 'Primary care physician',
             'notes': null,
           },
         ];

@@ -36,6 +36,8 @@ Opzioni Wi-Fi:
   --device-id ID               Serial ADB gia connesso via Wi-Fi.
 
 Le altre opzioni vengono passate a scripts/run_android_app.ps1:
+    --local-only
+    --with-backend
   --skip-seed
   --keep-background
   --backend-only
@@ -235,7 +237,7 @@ function Invoke-Launcher {
         $launcherArgs += $ForwardedArgs.ToArray()
     }
 
-    Write-Info "Avvio backend + app tramite Wi-Fi debugging..."
+    Write-Info "Avvio app tramite Wi-Fi debugging..."
     & $LauncherScript @launcherArgs
     if ($LASTEXITCODE -ne 0) {
         Fail "scripts/run_android_app.ps1 non e riuscito."
@@ -243,8 +245,6 @@ function Invoke-Launcher {
 }
 
 Parse-Args $ScriptArgs
-Require-Command "python"
-Require-Command "docker"
 
 if (-not $RunBackendOnly) {
     Ensure-FlutterOnPath

@@ -93,7 +93,10 @@ final authRepositoryProvider = Provider<AuthRepository>(
 );
 
 final devicesRepositoryProvider = Provider<DevicesRepository>(
-  (ref) => DevicesRepository(apiClient: ref.watch(apiClientProvider)),
+  (ref) => DevicesRepository(
+    apiClient: ref.watch(apiClientProvider),
+    localDatabase: ref.watch(localDatabaseProvider),
+  ),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(

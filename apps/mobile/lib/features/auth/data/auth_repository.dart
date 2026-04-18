@@ -21,6 +21,7 @@ class AuthRepository {
        _tokenStorage = tokenStorage,
        _localDatabase = localDatabase,
        _hackathonDemoMode = appConfig.hackathonDemoMode,
+       _localOnlyMode = appConfig.localOnlyMode,
        _googleAuthClientId = appConfig.googleAuthClientId.trim(),
        _localDocumentVaultService = localDocumentVaultService,
        _localMedicationReminderService = localMedicationReminderService;
@@ -29,26 +30,17 @@ class AuthRepository {
   final SecureTokenStorage _tokenStorage;
   final LocalDatabase _localDatabase;
   final bool _hackathonDemoMode;
+  final bool _localOnlyMode;
   final String _googleAuthClientId;
   final LocalDocumentVaultService _localDocumentVaultService;
   final LocalMedicationReminderService _localMedicationReminderService;
   Future<void>? _googleSignInInitialization;
 
+  bool get _shouldBypassAuth => _hackathonDemoMode || _localOnlyMode;
+
   Future<AuthSession?> restoreSession() async {
-    if (_hackathonDemoMode) {
-      final session =
-          await _tokenStorage.readSession() ?? DemoSeedData.createDemoSession();
-      await _tokenStorage.saveSession(session);
-      await _persistSessionContext(session);
-      await _localDatabase.putCache(
-        key: activeProfileIdCacheKey,
-        payload: DemoSeedData.primaryProfileId,
-      );
-      await DemoSeedData.ensureSeeded(
-        _localDatabase,
-        localDocumentVaultService: _localDocumentVaultService,
-      );
-      return session;
+    if (_shouldBypassAuth) {
+      return _restoreOrCreateBypassSession();
     }
 
     final session = await _tokenStorage.readSession();
@@ -69,6 +61,10 @@ class AuthRepository {
     required String email,
     required String password,
   }) async {
+    if (_shouldBypassAuth) {
+      return _restoreOrCreateBypassSession();
+    }
+
     final response = await _apiClient.postJson(
       '/api/v1/auth/login',
       authenticated: false,
@@ -81,6 +77,10 @@ class AuthRepository {
   }
 
   Future<AuthSession> loginWithGoogle({required String idToken}) async {
+    if (_shouldBypassAuth) {
+      return _restoreOrCreateBypassSession();
+    }
+
     final response = await _apiClient.postJson(
       '/api/v1/auth/google',
       authenticated: false,
@@ -96,6 +96,10 @@ class AuthRepository {
     required String email,
     required String password,
   }) async {
+    if (_shouldBypassAuth) {
+      return _restoreOrCreateBypassSession();
+    }
+
     final response = await _apiClient.postJson(
       '/api/v1/auth/register',
       authenticated: false,
@@ -141,6 +145,12 @@ class AuthRepository {
       return;
     }
 
+    if (_shouldBypassAuth) {
+      await clearLocalSessionState();
+      await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
+      return;
+    }
+
     await _apiClient.postJson(
       '/api/v1/auth/account/delete',
       body: {'confirmation_text': confirmationText},
@@ -168,12 +178,32 @@ class AuthRepository {
   }
 
   Future<String?> requestPasswordReset(String email) async {
+    if (_shouldBypassAuth) {
+      return null;
+    }
+
     final response = await _apiClient.postJson(
       '/api/v1/auth/password-reset/request',
       authenticated: false,
       body: {'email': email},
     );
     return response['preview_token'] as String?;
+  }
+
+  Future<AuthSession> _restoreOrCreateBypassSession() async {
+    final session =
+        await _tokenStorage.readSession() ?? DemoSeedData.createDemoSession();
+    await _tokenStorage.saveSession(session);
+    await _persistSessionContext(session);
+    await _localDatabase.putCache(
+      key: activeProfileIdCacheKey,
+      payload: DemoSeedData.primaryProfileId,
+    );
+    await DemoSeedData.ensureSeeded(
+      _localDatabase,
+      localDocumentVaultService: _localDocumentVaultService,
+    );
+    return session;
   }
 
   Future<void> _disconnectGoogleSession() async {

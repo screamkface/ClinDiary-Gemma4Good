@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('symptom entry screen supporta il testo libero', (tester) async {
+  testWidgets('symptom entry screen supports free text', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(home: SymptomEntryScreen(entryId: 'entry-1')),

@@ -10,6 +10,7 @@ $script:KeepBackground = $false
 $script:WithOcr = $false
 $script:PreferLan = $false
 $script:BackendOnly = $false
+$script:LocalOnly = $true
 $script:UseLocalGemma = $false
 $script:FlutterExtraArgs = @()
 
@@ -51,6 +52,8 @@ Opzioni:
   --api-base-url URL    Forza un API_BASE_URL specifico per Flutter.
   --api-port PORT       Usa una porta backend diversa da 8000.
   --prefer-lan          Usa l'IP locale del PC invece di adb reverse.
+    --local-only          Modalita predefinita: avvia solo Flutter locale senza backend/Docker.
+    --with-backend        Disattiva local-only e riattiva backend + Docker.
     --local-gemma         Applica l'overlay env generato da scripts/setup_local_gemma_ollama.sh.
   --backend-only        Avvia solo backend/worker/beat e non esegue flutter run.
   --skip-seed           Non eseguire il seed demo.
@@ -60,8 +63,10 @@ Opzioni:
 
 Esempi:
   powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1
+    powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --with-backend
   powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --device-id R58M123456A
   powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --device-id R58M123456A --prefer-lan
+    powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --local-only
   powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --backend-only
   powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --skip-seed --keep-background
   powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 -- --debug
@@ -102,6 +107,12 @@ function Parse-Args {
             }
             "--prefer-lan" {
                 $script:PreferLan = $true
+            }
+            "--local-only" {
+                $script:LocalOnly = $true
+            }
+            "--with-backend" {
+                $script:LocalOnly = $false
             }
             "--local-gemma" {
                 $script:UseLocalGemma = $true
@@ -145,6 +156,56 @@ function Require-Command {
 
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         Fail "Comando richiesto non trovato: $Name"
+    }
+}
+
+function Convert-ToBoolean {
+    param(
+        [string]$Value,
+        [bool]$DefaultValue = $false
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $DefaultValue
+    }
+
+    switch ($Value.Trim().ToLowerInvariant()) {
+        "1" { return $true }
+        "true" { return $true }
+        "yes" { return $true }
+        "on" { return $true }
+        "0" { return $false }
+        "false" { return $false }
+        "no" { return $false }
+        "off" { return $false }
+        default { return $DefaultValue }
+    }
+}
+
+function Resolve-ModeFlags {
+    $hackathonDemoMode = if (-not [string]::IsNullOrWhiteSpace($env:HACKATHON_DEMO_MODE)) {
+        Convert-ToBoolean -Value $env:HACKATHON_DEMO_MODE -DefaultValue $false
+    }
+    elseif ($script:LocalOnly) {
+        $true
+    }
+    else {
+        $false
+    }
+
+    $localOnlyMode = if (-not [string]::IsNullOrWhiteSpace($env:LOCAL_ONLY_MODE)) {
+        Convert-ToBoolean -Value $env:LOCAL_ONLY_MODE -DefaultValue $hackathonDemoMode
+    }
+    elseif ($script:LocalOnly -or $hackathonDemoMode) {
+        $true
+    }
+    else {
+        $false
+    }
+
+    return [pscustomobject]@{
+        HackathonDemoMode = $hackathonDemoMode
+        LocalOnlyMode = $localOnlyMode
     }
 }
 
@@ -720,18 +781,31 @@ function Cleanup {
 Parse-Args $ScriptArgs
 
 try {
-    Require-Command "python"
-    Require-Command "docker"
     Ensure-FlutterOnPath
 
     New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
     New-Item -ItemType Directory -Force -Path $PidDir | Out-Null
 
     Load-EnvFiles
-    Start-Infrastructure
-    Ensure-BackendEnvironment
-    Run-MigrationsAndSeed
-    Ensure-BackendServices
+    $modeFlags = Resolve-ModeFlags
+    $hackathonDemoMode = if ($modeFlags.HackathonDemoMode) { "true" } else { "false" }
+    $localOnlyMode = if ($modeFlags.LocalOnlyMode) { "true" } else { "false" }
+
+    if ($BackendOnly -and $modeFlags.LocalOnlyMode) {
+        Fail "--backend-only non e compatibile con --local-only o LOCAL_ONLY_MODE=true"
+    }
+
+    if (-not $modeFlags.LocalOnlyMode) {
+        Require-Command "python"
+        Require-Command "docker"
+        Start-Infrastructure
+        Ensure-BackendEnvironment
+        Run-MigrationsAndSeed
+        Ensure-BackendServices
+    }
+    else {
+        Write-Info "Local-only mode attivo: salto avvio backend e Docker."
+    }
 
     if ($BackendOnly) {
         $apiBaseUrl = if ($ApiBaseUrlOverride) {
@@ -749,16 +823,30 @@ try {
     Ensure-MobileDependencies
     Detect-AndroidDevice
 
-    $apiBaseUrl = Configure-AndroidNetworking
-    $hackathonDemoMode = if ($env:HACKATHON_DEMO_MODE) { $env:HACKATHON_DEMO_MODE } else { "false" }
+    $apiBaseUrl = if ($ApiBaseUrlOverride) {
+        $ApiBaseUrlOverride
+    }
+    elseif ($modeFlags.LocalOnlyMode) {
+        "http://127.0.0.1:$ApiPort"
+    }
+    else {
+        Configure-AndroidNetworking
+    }
+
     Write-Info "API_BASE_URL usato da Flutter: $apiBaseUrl"
     Write-Info "Hackathon demo mode: $hackathonDemoMode"
-    Write-Info "Credenziali demo: demo@clindiary.app / ChangeMe123!"
+    Write-Info "Local only mode: $localOnlyMode"
+    if ($modeFlags.LocalOnlyMode -or $modeFlags.HackathonDemoMode) {
+        Write-Info "Login demo disabilitato: accesso automatico in app."
+    }
+    else {
+        Write-Info "Credenziali demo: demo@clindiary.app / ChangeMe123!"
+    }
     $googleAuthClientId = if ($env:GOOGLE_OAUTH_CLIENT_ID) { $env:GOOGLE_OAUTH_CLIENT_ID } else { "" }
 
     Push-Location $MobileDir
     try {
-        & flutter run -d $DeviceId --dart-define="API_BASE_URL=$apiBaseUrl" --dart-define="HACKATHON_DEMO_MODE=$hackathonDemoMode" --dart-define="GOOGLE_AUTH_CLIENT_ID=$googleAuthClientId" @FlutterExtraArgs
+        & flutter run -d $DeviceId --dart-define="API_BASE_URL=$apiBaseUrl" --dart-define="HACKATHON_DEMO_MODE=$hackathonDemoMode" --dart-define="LOCAL_ONLY_MODE=$localOnlyMode" --dart-define="GOOGLE_AUTH_CLIENT_ID=$googleAuthClientId" @FlutterExtraArgs
         if ($LASTEXITCODE -ne 0) {
             Fail "flutter run non riuscito."
         }

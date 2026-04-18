@@ -122,7 +122,7 @@ void main() {
       final documents = await repository.fetchDocuments();
       expect(apiClient.flushCalls, 1);
       expect(documents, hasLength(1));
-      expect(documents.single.title, 'Esami marzo');
+      expect(documents.single.title, 'March labs');
     });
 
     test(
@@ -147,7 +147,7 @@ void main() {
         final documents = await repository.fetchDocuments();
         expect(apiClient.flushCalls, 1);
         expect(documents, hasLength(1));
-        expect(documents.single.title, 'Esami marzo');
+        expect(documents.single.title, 'March labs');
       },
     );
 
@@ -168,7 +168,7 @@ void main() {
 
         final detail = await repository.fetchDocumentDetail('doc-1');
         expect(apiClient.flushCalls, 1);
-        expect(detail.title, 'Referto laboratorio aprile');
+        expect(detail.title, 'April lab report');
       },
     );
 
@@ -193,53 +193,50 @@ void main() {
 
         final detail = await repository.fetchDocumentDetail('doc-1');
         expect(apiClient.flushCalls, 1);
-        expect(detail.title, 'Referto laboratorio aprile');
+        expect(detail.title, 'April lab report');
         expect(detail.pendingSync, isFalse);
       },
     );
 
-    test(
-      'uploadDocument aggiorna la cache documenti senza svuotarla',
-      () async {
-        final database = LocalDatabase.forTesting(NativeDatabase.memory());
-        final apiClient = FakeApiClient(localDatabase: database);
-        apiClient.uploadResponse = _sampleUploadResponseJson();
-        addTearDown(database.close);
-        addTearDown(apiClient.dispose);
-        await _setCloudStorageMode(database);
+    test('uploadDocument updates document cache without clearing it', () async {
+      final database = LocalDatabase.forTesting(NativeDatabase.memory());
+      final apiClient = FakeApiClient(localDatabase: database);
+      apiClient.uploadResponse = _sampleUploadResponseJson();
+      addTearDown(database.close);
+      addTearDown(apiClient.dispose);
+      await _setCloudStorageMode(database);
 
-        await database.putCache(
-          key: 'documents_list',
-          payload: jsonEncode([_sampleDocumentSummaryJson()]),
-        );
+      await database.putCache(
+        key: 'documents_list',
+        payload: jsonEncode([_sampleDocumentSummaryJson()]),
+      );
 
-        final repository = DocumentsRepository(
-          apiClient: apiClient,
-          localDatabase: database,
-        );
+      final repository = DocumentsRepository(
+        apiClient: apiClient,
+        localDatabase: database,
+      );
 
-        final uploaded = await repository.uploadDocument(
-          file: const SelectedUploadDocument(
-            name: 'nuovo-referto.pdf',
-            bytes: [37, 80, 68, 70],
-            mimeType: 'application/pdf',
-          ),
-          fields: const {'title': 'Nuovo referto'},
-        );
-        final cachedList = await database.readCache('documents_list');
-        final cachedItems = jsonDecode(cachedList!) as List<dynamic>;
+      final uploaded = await repository.uploadDocument(
+        file: const SelectedUploadDocument(
+          name: 'new-report.pdf',
+          bytes: [37, 80, 68, 70],
+          mimeType: 'application/pdf',
+        ),
+        fields: const {'title': 'New report'},
+      );
+      final cachedList = await database.readCache('documents_list');
+      final cachedItems = jsonDecode(cachedList!) as List<dynamic>;
 
-        expect(apiClient.flushCalls, 1);
-        expect(uploaded.id, 'doc-2');
-        expect(cachedItems, hasLength(2));
-        expect(
-          ClinicalDocumentSummary.fromJson(
-            cachedItems.last as Map<String, dynamic>,
-          ).title,
-          'Nuovo referto',
-        );
-      },
-    );
+      expect(apiClient.flushCalls, 1);
+      expect(uploaded.id, 'doc-2');
+      expect(cachedItems, hasLength(2));
+      expect(
+        ClinicalDocumentSummary.fromJson(
+          cachedItems.last as Map<String, dynamic>,
+        ).title,
+        'New report',
+      );
+    });
 
     test(
       'updateDocumentContextStatus queues offline and marks cache pending',
@@ -355,12 +352,12 @@ bool _hasSqliteLibrary() {
 Map<String, dynamic> _sampleDocumentSummaryJson() {
   return {
     'id': 'doc-1',
-    'title': 'Esami marzo',
+    'title': 'March labs',
     'document_type': 'lab_report',
     'upload_date': '2026-03-20T08:00:00Z',
     'exam_date': '2026-03-19',
-    'source': 'Laboratorio locale',
-    'original_filename': 'esami-marzo.pdf',
+    'source': 'Local lab',
+    'original_filename': 'march-labs.pdf',
     'mime_type': 'application/pdf',
     'file_size_bytes': 182400,
     'parsed_status': 'parsed',
@@ -375,23 +372,23 @@ Map<String, dynamic> _sampleDocumentSummaryJson() {
 Map<String, dynamic> _sampleDocumentDetailJson() {
   return {
     ..._sampleDocumentSummaryJson(),
-    'title': 'Referto laboratorio aprile',
+    'title': 'April lab report',
     'upload_date': '2026-04-02T09:00:00Z',
     'exam_date': '2026-04-01',
-    'file_url': 'patients/demo/lab-aprile.pdf',
-    'ocr_text': 'Glucosio 110 mg/dL 70-99',
+    'file_url': 'patients/demo/lab-april.pdf',
+    'ocr_text': 'Glucose 110 mg/dL 70-99',
     'viewer_url': '/api/v1/documents/doc-1/content?token=abc',
     'processed_at': '2026-04-02T09:05:00Z',
     'lab_panels': [
       {
         'id': 'panel-1',
-        'panel_name': 'Esami del sangue',
+        'panel_name': 'Blood tests',
         'panel_date': '2026-04-01',
         'confidence_score': 0.84,
         'results': [
           {
             'id': 'result-1',
-            'analyte_name': 'Glucosio',
+            'analyte_name': 'Glucose',
             'value': '110',
             'unit': 'mg/dL',
             'ref_min': 70,
@@ -409,12 +406,12 @@ Map<String, dynamic> _sampleDocumentDetailJson() {
 Map<String, dynamic> _sampleUploadResponseJson() {
   return {
     'id': 'doc-2',
-    'title': 'Nuovo referto',
+    'title': 'New report',
     'document_type': 'generic_document',
     'upload_date': '2026-03-25T09:00:00Z',
     'exam_date': null,
     'source': null,
-    'original_filename': 'nuovo-referto.pdf',
+    'original_filename': 'new-report.pdf',
     'mime_type': 'application/pdf',
     'file_size_bytes': 4096,
     'parsed_status': 'pending',

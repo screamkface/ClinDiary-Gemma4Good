@@ -14,12 +14,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
     registerFallbackValue(<String, dynamic>{});
   });
 
   testWidgets(
-    'family profiles screen crea un profilo senza usare controller dismessi',
+    'family profiles screen creates a profile without using disposed controllers',
     (tester) async {
       final repository = MockProfileRepository();
       const primaryProfile = PatientProfile(
@@ -37,7 +37,7 @@ void main() {
         firstName: 'Luca',
         lastName: 'Bianchi',
         smoker: false,
-        relationshipLabel: 'Figlio',
+        relationshipLabel: 'Son',
       );
       final initialBundle = ProfileBundle(
         profile: primaryProfile,
@@ -85,7 +85,7 @@ void main() {
       );
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Relationship'),
-        'Figlio',
+        'Son',
       );
 
       await tester.tap(find.text('Save'));

@@ -60,6 +60,19 @@ class DocumentsRepository {
         profileScopeId: scope.profileId,
       );
     }
+
+    final storageMode = await _getStorageMode();
+    if (storageMode == _DocumentStorageMode.local) {
+      final cached = await _readCachedDocumentDetailJson(documentId);
+      if (cached != null) {
+        return ClinicalDocumentDetail.fromJson(cached);
+      }
+      throw ApiException(
+        'Cloud documents are read-only while local-only mode is active.',
+        statusCode: 409,
+      );
+    }
+
     return _fetchCloudDocumentDetail(documentId);
   }
 
@@ -194,7 +207,14 @@ class DocumentsRepository {
       return fetchDocumentDetail(documentId);
     }
     if (storageMode == _DocumentStorageMode.local) {
-      return _fetchCloudDocumentDetail(documentId);
+      final cached = await _readCachedDocumentDetailJson(documentId);
+      if (cached != null) {
+        return ClinicalDocumentDetail.fromJson(cached);
+      }
+      throw ApiException(
+        'Cloud documents are read-only while local-only mode is active.',
+        statusCode: 409,
+      );
     }
     return _processCloudDocument(documentId);
   }
@@ -205,10 +225,23 @@ class DocumentsRepository {
   ) async {
     final storageMode = await _getStorageMode();
     if (_isLocalDocumentId(documentId)) {
-      return fetchDocumentDetail(documentId);
+      final scope = await _resolveLocalScope();
+      return _localVaultService.submitManualReviewForScope(
+        documentId,
+        userScopeId: scope.userId,
+        profileScopeId: scope.profileId,
+        input: input,
+      );
     }
     if (storageMode == _DocumentStorageMode.local) {
-      return _fetchCloudDocumentDetail(documentId);
+      final cached = await _readCachedDocumentDetailJson(documentId);
+      if (cached != null) {
+        return ClinicalDocumentDetail.fromJson(cached);
+      }
+      throw ApiException(
+        'Cloud documents are read-only while local-only mode is active.',
+        statusCode: 409,
+      );
     }
     return _submitCloudManualReview(documentId, input);
   }

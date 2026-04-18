@@ -175,22 +175,16 @@ class GemmaCenterHistoryEntry {
   static String _normalizeKind(String? rawKind) {
     switch (rawKind?.trim().toLowerCase()) {
       case 'question':
-      case 'domanda':
-      case 'domanda clinica':
         return 'question';
       case 'trend':
-      case 'andamento':
       case 'trend_explanation':
-      case 'spiegazione andamento':
         return 'trend';
       case 'pre_visit':
       case 'pre-visit':
       case 'pre_visit_brief':
-      case 'scheda pre-visita':
         return 'pre_visit';
       case 'document_summary':
       case 'document':
-      case 'riassunto documento':
         return 'document_summary';
       default:
         return rawKind?.trim().isNotEmpty == true
@@ -216,22 +210,8 @@ class GemmaCenterHistoryEntry {
       }
     }
 
-    if (kind == 'question' && title == 'Domanda clinica') {
-      return 'Clinical question';
-    }
-    if (kind == 'trend' && title == 'Spiegazione andamento') {
-      return 'Trend analysis';
-    }
-    if (kind == 'pre_visit' && title == 'Scheda pre-visita') {
-      return 'Pre-visit brief';
-    }
-    if (kind == 'document_summary') {
-      if (title == 'Riassunto documento') {
-        return 'Document summary';
-      }
-      if (title.startsWith('Riassunto: ')) {
-        return 'Summary: ${title.substring('Riassunto: '.length)}';
-      }
+    if (kind == 'document_summary' && title.startsWith('Summary: ')) {
+      return title;
     }
     return title;
   }

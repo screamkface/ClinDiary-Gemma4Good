@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 String alertSeverityLabel(String severity) {
   switch (severity) {
     case 'urgency':
-      return 'Urgenza';
+      return 'Urgency';
     case 'contact_doctor':
-      return 'Contatta medico';
+      return 'Contact doctor';
     case 'attention':
-      return 'Attenzione';
+      return 'Attention';
     default:
       return 'Info';
   }

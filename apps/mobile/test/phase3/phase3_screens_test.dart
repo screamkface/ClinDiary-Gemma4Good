@@ -33,7 +33,7 @@ void main() {
   String? clipboardText;
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
     registerFallbackValue(FakeInsightSummaryQuery());
   });
 
@@ -61,7 +61,7 @@ void main() {
         .setMockMethodCallHandler(SystemChannels.platform, null);
   });
 
-  testWidgets('insights screen mostra la sintesi prudente', (tester) async {
+  testWidgets('insights screen shows the cautious summary', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -72,7 +72,7 @@ void main() {
               periodStart: DateTime.utc(2026, 3, 14),
               periodEnd: DateTime.utc(2026, 3, 20),
               content:
-                  'Periodo analizzato: dal 2026-03-14 al 2026-03-20.\nSi osserva una media di energia stabile.',
+                  'Analyzed period: from 2026-03-14 to 2026-03-20.\nA stable average energy level is observed.',
               generatedAt: DateTime.utc(2026, 3, 20, 9),
             ),
           ),
@@ -99,7 +99,7 @@ void main() {
     expect(find.text('Local private'), findsOneWidget);
   });
 
-  test('insight summary query distingue la modalita privata locale', () {
+  test('insight summary query distinguishes local private mode', () {
     const standard = InsightSummaryQuery(summaryType: 'daily');
     const privateLocal = InsightSummaryQuery(
       summaryType: 'daily',
@@ -110,7 +110,7 @@ void main() {
     expect(standard.hashCode, isNot(privateLocal.hashCode));
   });
 
-  testWidgets('insights screen mostra proof card in modalita privata locale', (
+  testWidgets('insights screen shows proof card in local private mode', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -149,7 +149,7 @@ void main() {
     expect(find.textContaining('External cloud used: No'), findsOneWidget);
   });
 
-  testWidgets('insights screen apre il date picker senza crash', (
+  testWidgets('insights screen opens date picker without crash', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -185,7 +185,7 @@ void main() {
     expect(find.byType(DatePickerDialog), findsOneWidget);
   });
 
-  testWidgets('insights screen rigenera il report solo su richiesta', (
+  testWidgets('insights screen regenerates the report only on request', (
     tester,
   ) async {
     final repository = MockInsightsRepository();
@@ -195,7 +195,7 @@ void main() {
         summaryType: 'daily',
         periodStart: DateTime.utc(2026, 3, 20),
         periodEnd: DateTime.utc(2026, 3, 20),
-        content: 'Report rigenerato manualmente.',
+        content: 'Report regenerated manually.',
         generatedAt: DateTime.utc(2026, 3, 20, 22),
       ),
     );
@@ -210,7 +210,7 @@ void main() {
               summaryType: query.summaryType,
               periodStart: DateTime.utc(2026, 3, 20),
               periodEnd: DateTime.utc(2026, 3, 20),
-              content: 'Report gia presente.',
+              content: 'Report already available.',
               generatedAt: DateTime.utc(2026, 3, 20, 21),
             ),
           ),
@@ -236,7 +236,7 @@ void main() {
     expect(find.text('Report regenerated.'), findsOneWidget);
   });
 
-  testWidgets('insights screen copia il report negli appunti', (tester) async {
+  testWidgets('insights screen copies the report to clipboard', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -246,7 +246,7 @@ void main() {
               summaryType: query.summaryType,
               periodStart: DateTime.utc(2026, 3, 20),
               periodEnd: DateTime.utc(2026, 3, 20),
-              content: 'Report da copiare.',
+              content: 'Report to copy.',
               generatedAt: DateTime.utc(2026, 3, 20, 21),
             ),
           ),
@@ -268,13 +268,11 @@ void main() {
     await tester.pump();
 
     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-    expect(clipboardData?.text, 'Report da copiare.');
+    expect(clipboardData?.text, 'Report to copy.');
     expect(find.text('Report copied to clipboard.'), findsOneWidget);
   });
 
-  testWidgets('history screen mostra check-up e recap del giorno', (
-    tester,
-  ) async {
+  testWidgets('history screen shows check-up and daily recap', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -287,7 +285,7 @@ void main() {
                 energyLevel: 4,
                 moodLevel: 5,
                 generalPain: 6,
-                generalNotes: 'Giornata pesante ma gestibile.',
+                generalNotes: 'Tough but manageable day.',
                 symptoms: [
                   const SymptomEntry(
                     id: 'sym-1',
@@ -310,7 +308,7 @@ void main() {
                 summaryType: 'daily',
                 periodStart: DateTime.utc(2026, 3, 20),
                 periodEnd: DateTime.utc(2026, 3, 20),
-                content: 'Riepilogo prudente della giornata.',
+                content: 'Cautious recap of the day.',
                 generatedAt: DateTime.utc(2026, 3, 20, 21),
               ),
               weeklySummary: null,
@@ -327,10 +325,10 @@ void main() {
               documents: [
                 ClinicalDocumentSummary(
                   id: 'doc-1',
-                  title: 'Emocromo',
+                  title: 'Complete blood count',
                   documentType: 'lab_report',
                   uploadDate: DateTime.utc(2026, 3, 20, 8),
-                  originalFilename: 'emocromo.pdf',
+                  originalFilename: 'cbc.pdf',
                   mimeType: 'application/pdf',
                   fileSizeBytes: 1024,
                   parsedStatus: 'parsed',
@@ -340,8 +338,8 @@ void main() {
                 TimelineEventItem(
                   id: 'event-1',
                   eventType: 'daily_entry',
-                  title: 'Check-up completato',
-                  description: 'Sintomi e note salvati.',
+                  title: 'Check-up completed',
+                  description: 'Symptoms and notes saved.',
                   eventDate: DateTime.utc(2026, 3, 20, 20),
                 ),
               ],
@@ -364,84 +362,83 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Daily recap'), findsOneWidget);
-    expect(find.textContaining('Riepilogo prudente'), findsOneWidget);
+    expect(find.textContaining('Cautious recap'), findsOneWidget);
     await tester.tap(find.text('Check-up').last);
     await tester.pumpAndSettle();
     expect(find.text('headache 6/10'), findsOneWidget);
     await tester.tap(find.text('Documents').last);
     await tester.pumpAndSettle();
-    expect(find.text('Emocromo'), findsOneWidget);
+    expect(find.text('Complete blood count'), findsOneWidget);
   });
 
-  testWidgets(
-    'history screen rigenera il report giornaliero solo con il bottone',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(800, 1400));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('history screen regenerates daily report only with button', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final repository = MockInsightsRepository();
-      when(() => repository.regenerateSummary(any())).thenAnswer(
-        (_) async => InsightSummary(
-          id: 'sum-history-regenerated',
-          summaryType: 'daily',
-          periodStart: DateTime.utc(2026, 3, 20),
-          periodEnd: DateTime.utc(2026, 3, 20),
-          content: 'Report storico rigenerato.',
-          generatedAt: DateTime.utc(2026, 3, 20, 22),
-        ),
-      );
+    final repository = MockInsightsRepository();
+    when(() => repository.regenerateSummary(any())).thenAnswer(
+      (_) async => InsightSummary(
+        id: 'sum-history-regenerated',
+        summaryType: 'daily',
+        periodStart: DateTime.utc(2026, 3, 20),
+        periodEnd: DateTime.utc(2026, 3, 20),
+        content: 'Historical report regenerated.',
+        generatedAt: DateTime.utc(2026, 3, 20, 22),
+      ),
+    );
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            insightsRepositoryProvider.overrideWith((ref) => repository),
-            historyActivityDatesProvider.overrideWith(
-              (ref, targetDate) async => const [],
-            ),
-            historyDayProvider.overrideWith(
-              (ref, targetDate) async => HistoryDay(
-                targetDate: DateTime.utc(2026, 3, 20),
-                dailyEntry: null,
-                dailySummary: InsightSummary(
-                  id: 'sum-history',
-                  summaryType: 'daily',
-                  periodStart: DateTime.utc(2026, 3, 20),
-                  periodEnd: DateTime.utc(2026, 3, 20),
-                  content: 'Report storico esistente.',
-                  generatedAt: DateTime.utc(2026, 3, 20, 21),
-                ),
-                weeklySummary: null,
-                monthlySummary: null,
-                wearableSummary: null,
-                documents: const [],
-                timelineEvents: const [],
-              ),
-            ),
-          ],
-          child: const MaterialApp(
-            home: HistoryScreen(),
-            supportedLocales: [Locale('it', 'IT'), Locale('en', 'US')],
-            localizationsDelegates: [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          insightsRepositoryProvider.overrideWith((ref) => repository),
+          historyActivityDatesProvider.overrideWith(
+            (ref, targetDate) async => const [],
           ),
+          historyDayProvider.overrideWith(
+            (ref, targetDate) async => HistoryDay(
+              targetDate: DateTime.utc(2026, 3, 20),
+              dailyEntry: null,
+              dailySummary: InsightSummary(
+                id: 'sum-history',
+                summaryType: 'daily',
+                periodStart: DateTime.utc(2026, 3, 20),
+                periodEnd: DateTime.utc(2026, 3, 20),
+                content: 'Existing historical report.',
+                generatedAt: DateTime.utc(2026, 3, 20, 21),
+              ),
+              weeklySummary: null,
+              monthlySummary: null,
+              wearableSummary: null,
+              documents: const [],
+              timelineEvents: const [],
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: HistoryScreen(),
+          supportedLocales: [Locale('it', 'IT'), Locale('en', 'US')],
+          localizationsDelegates: [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
         ),
-      );
+      ),
+    );
 
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(find.text('Regenerate').first);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Regenerate').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-      verify(() => repository.regenerateSummary(any())).called(1);
-      expect(find.textContaining('Daily report regenerated'), findsOneWidget);
-    },
-  );
+    verify(() => repository.regenerateSummary(any())).called(1);
+    expect(find.textContaining('Daily report regenerated'), findsOneWidget);
+  });
 
-  testWidgets('history screen copia il report giornaliero negli appunti', (
+  testWidgets('history screen copies daily report to clipboard', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
@@ -462,7 +459,7 @@ void main() {
                 summaryType: 'daily',
                 periodStart: DateTime.utc(2026, 3, 20),
                 periodEnd: DateTime.utc(2026, 3, 20),
-                content: 'Report storico da copiare.',
+                content: 'Historical report to copy.',
                 generatedAt: DateTime.utc(2026, 3, 20, 21),
               ),
               weeklySummary: null,
@@ -491,11 +488,11 @@ void main() {
     await tester.pump();
 
     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-    expect(clipboardData?.text, 'Report storico da copiare.');
+    expect(clipboardData?.text, 'Historical report to copy.');
     expect(find.text('Report copied to clipboard.'), findsOneWidget);
   });
 
-  testWidgets('alerts screen mostra gli alert aperti', (tester) async {
+  testWidgets('alerts screen shows open alerts', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -505,8 +502,8 @@ void main() {
                 id: 'alert-1',
                 severity: 'urgency',
                 alertType: 'chest_pain',
-                title: 'Urgenza: dolore toracico riportato',
-                description: 'Valutazione rapida consigliata.',
+                title: 'Urgency: chest pain reported',
+                description: 'Rapid assessment recommended.',
                 status: 'open',
                 triggeredAt: DateTime.utc(2026, 3, 20, 10),
               ),
@@ -519,12 +516,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Urgenza: dolore toracico riportato'), findsOneWidget);
-    expect(find.textContaining('Valutazione rapida'), findsOneWidget);
+    expect(find.text('Urgency: chest pain reported'), findsOneWidget);
+    expect(find.textContaining('Rapid assessment'), findsOneWidget);
     expect(find.text('Mark resolved'), findsOneWidget);
   });
 
-  testWidgets('reports screen genera e mostra il report piu recente', (
+  testWidgets('reports screen generates and shows latest report', (
     tester,
   ) async {
     final repository = MockReportsRepository();
@@ -544,7 +541,7 @@ void main() {
         title: 'ClinDiary - weekly summary',
         periodStart: DateTime.utc(2026, 3, 14),
         periodEnd: DateTime.utc(2026, 3, 20),
-        contentText: 'Riassunto AI prudente\nEnergia media 5.0/10.',
+        contentText: 'Cautious AI summary\nAverage energy 5.0/10.',
         generatedAt: DateTime.utc(2026, 3, 20, 11),
         downloadUrl: '/api/v1/reports/report-1/content?token=abc',
       ),
@@ -571,6 +568,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ClinDiary - weekly summary'), findsOneWidget);
-    expect(find.textContaining('Riassunto AI prudente'), findsOneWidget);
+    expect(find.textContaining('Cautious AI summary'), findsOneWidget);
   });
 }

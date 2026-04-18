@@ -13,12 +13,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  testWidgets('wearables screen mostra stato e giornate sincronizzate', (
-    tester,
-  ) async {
+  testWidgets('wearables screen shows status and synced days', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

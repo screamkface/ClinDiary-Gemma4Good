@@ -391,10 +391,10 @@ class _VaccineRegistryChip extends StatelessWidget {
       _ => colorScheme.secondary,
     };
     final label = switch (status) {
-      'up_to_date' => 'in regola',
-      'recommended' => 'da fare',
-      'attention' => 'attenzione',
-      _ => 'da rivedere',
+      'up_to_date' => 'up to date',
+      'recommended' => 'to do',
+      'attention' => 'attention',
+      _ => 'to review',
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

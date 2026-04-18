@@ -52,6 +52,9 @@ final _profileBranchNavigatorKey = GlobalKey<NavigatorState>(
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
+  final appConfig = ref.read(appConfigProvider);
+  final shouldBypassAuth =
+      appConfig.hackathonDemoMode || appConfig.localOnlyMode;
 
   bool isPublicRoute(String location) {
     return location == '/' ||
@@ -72,6 +75,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final session = authState.valueOrNull;
 
       if (authState.isLoading) {
+        return null;
+      }
+
+      if (shouldBypassAuth) {
+        if (location == '/' ||
+            isAuthRoute(location) ||
+            location == '/onboarding') {
+          return '/app/home';
+        }
         return null;
       }
 

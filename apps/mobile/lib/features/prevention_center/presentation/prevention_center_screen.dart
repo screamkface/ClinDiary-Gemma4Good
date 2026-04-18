@@ -418,13 +418,13 @@ Color _toneForPriority(String priority, ColorScheme colorScheme) {
 String _statusLabel(String status) {
   switch (status) {
     case 'recommended':
-      return 'Consigliato';
+      return 'Recommended';
     case 'overdue':
-      return 'In ritardo';
+      return 'Overdue';
     case 'attention':
-      return 'Attenzione';
+      return 'Attention';
     case 'ready':
-      return 'Pronto';
+      return 'Ready';
     case 'seasonal':
       return 'Seasonal';
     case 'up_to_date':

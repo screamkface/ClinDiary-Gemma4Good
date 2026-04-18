@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('back gesture poppa prima la pagina della branch corrente', (
+  testWidgets('back gesture pops the current branch page first', (
     tester,
   ) async {
     final homeKey = GlobalKey<NavigatorState>();
@@ -71,9 +71,7 @@ void main() {
     expect(find.text('Secondary Root'), findsNothing);
   });
 
-  testWidgets('bottom bar non va in overflow con testo grande', (
-    tester,
-  ) async {
+  testWidgets('bottom bar does not overflow with large text', (tester) async {
     final keys = List.generate(5, (_) => GlobalKey<NavigatorState>());
 
     final router = GoRouter(
@@ -93,8 +91,8 @@ void main() {
               '/profile',
             ])
               StatefulShellBranch(
-                navigatorKey: keys[
-                    [
+                navigatorKey:
+                    keys[[
                       '/home',
                       '/journal',
                       '/ai',

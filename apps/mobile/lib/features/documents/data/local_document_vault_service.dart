@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/features/documents/data/local_lab_text_parser.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_cipher.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
+import 'package:clindiary/features/documents/domain/document_manual_review.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -14,7 +17,9 @@ class LocalDocumentVaultService {
     Directory? rootDirectory,
     FlutterSecureStorage? secureStorage,
     LocalDocumentVaultCipher? cipher,
+    LocalLabTextParser? labTextParser,
   }) : _rootDirectory = rootDirectory,
+       _labTextParser = labTextParser ?? const LocalLabTextParser(),
        _cipher =
            cipher ?? LocalDocumentVaultCipher(secureStorage: secureStorage);
 
@@ -23,8 +28,12 @@ class LocalDocumentVaultService {
   static const int maxTotalBytes = 200 * 1024 * 1024;
 
   final Directory? _rootDirectory;
+  final LocalLabTextParser _labTextParser;
   final LocalDocumentVaultCipher _cipher;
   final Random _random = Random.secure();
+  final Map<String, _LocalStructuredData> _structuredDataCache = {};
+  final Map<String, Future<_LocalStructuredData>> _inFlightStructuredData = {};
+  Future<void> _parseQueueTail = Future<void>.value();
 
   Future<List<ClinicalDocumentSummary>> fetchDocuments() async {
     throw UnimplementedError('Use scoped fetchDocumentsForScope.');
@@ -66,8 +75,15 @@ class LocalDocumentVaultService {
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
     final document = _requireDocument(state, documentId);
+    final structuredData = await _resolveStructuredData(document);
     return document.toDetail(
       folderName: _pathLabelForFolder(document.folderId, folders),
+      parsedStatusOverride: structuredData.parsedStatus,
+      parsingConfidence: structuredData.parsingConfidence,
+      processingError: structuredData.processingError,
+      processedAt: structuredData.processedAt,
+      labPanels: structuredData.labPanels,
+      imagingReports: structuredData.imagingReports,
     );
   }
 
@@ -289,6 +305,8 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
 
+    unawaited(_warmStructuredData(document));
+
     final folders = {for (final folder in nextState.folders) folder.id: folder};
     return document.toSummary(
       folderName: _pathLabelForFolder(document.folderId, folders),
@@ -455,6 +473,49 @@ class LocalDocumentVaultService {
     );
   }
 
+  Future<ClinicalDocumentDetail> submitManualReview(
+    String documentId, {
+    required DocumentManualReviewInput input,
+  }) async {
+    throw UnimplementedError('Use scoped submitManualReviewForScope.');
+  }
+
+  Future<ClinicalDocumentDetail> submitManualReviewForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+    required DocumentManualReviewInput input,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in state.folders) folder.id: folder};
+    final document = _requireDocument(state, documentId);
+    final updatedDocument = _applyManualReview(document, input);
+
+    final updatedDocuments = state.documents.map((item) {
+      if (item.id != documentId) {
+        return item;
+      }
+      return updatedDocument;
+    }).toList();
+
+    final nextState = state.copyWith(documents: updatedDocuments);
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+
+    _evictStructuredDataCache(documentId);
+    unawaited(_warmStructuredData(updatedDocument));
+
+    return updatedDocument.toDetail(
+      folderName: _pathLabelForFolder(updatedDocument.folderId, folders),
+    );
+  }
+
   Future<void> deleteDocument(String documentId) async {
     throw UnimplementedError('Use scoped deleteDocumentForScope.');
   }
@@ -496,6 +557,7 @@ class LocalDocumentVaultService {
     if (await previewFile.exists()) {
       await previewFile.delete();
     }
+    _evictStructuredDataCache(documentId);
   }
 
   Future<void> deleteAllForUserScope(String userScopeId) async {
@@ -506,6 +568,7 @@ class LocalDocumentVaultService {
       await dir.delete(recursive: true);
     }
     await _cipher.deleteKeyForUserScope(userScopeId);
+    _clearStructuredDataCache();
   }
 
   Future<String> prepareViewerFileForScope(
@@ -702,6 +765,107 @@ class LocalDocumentVaultService {
     return state;
   }
 
+  Future<_LocalStructuredData> _resolveStructuredData(
+    _StoredDocument document,
+  ) async {
+    final text = document.ocrText?.trim();
+    if (text == null || text.isEmpty) {
+      return const _LocalStructuredData();
+    }
+
+    final cacheKey = _structuredDataCacheKey(document, text);
+    final cached = _structuredDataCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    final inFlight = _inFlightStructuredData[cacheKey];
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final future = _enqueueParseTask(() async {
+      final parsed = await _labTextParser.parse(
+        documentId: document.id,
+        documentType: document.documentType,
+        title: document.title,
+        examDateIso: document.examDateIso,
+        text: text,
+      );
+
+      return _LocalStructuredData(
+        parsedStatus: parsed.parsedStatus == 'parsed' ? 'parsed' : null,
+        parsingConfidence: parsed.parsingConfidence,
+        processedAt: parsed.processedAt,
+        labPanels: parsed.labPanels,
+        imagingReports: parsed.imagingReports,
+      );
+    });
+    _inFlightStructuredData[cacheKey] = future;
+
+    try {
+      final resolved = await future;
+      _rememberStructuredData(cacheKey, resolved);
+      return resolved;
+    } finally {
+      _inFlightStructuredData.remove(cacheKey);
+    }
+  }
+
+  Future<void> _warmStructuredData(_StoredDocument document) async {
+    try {
+      await _resolveStructuredData(document);
+    } catch (_) {
+      // Parsing is best-effort during warm-up; on-demand detail loading retries.
+    }
+  }
+
+  String _structuredDataCacheKey(_StoredDocument document, String text) {
+    return '${document.id}|${document.documentType}|${document.title}|${document.examDateIso ?? ''}|${text.hashCode}';
+  }
+
+  void _rememberStructuredData(String cacheKey, _LocalStructuredData data) {
+    _structuredDataCache[cacheKey] = data;
+    if (_structuredDataCache.length <= 64) {
+      return;
+    }
+    _structuredDataCache.remove(_structuredDataCache.keys.first);
+  }
+
+  void _evictStructuredDataCache(String documentId) {
+    final cachedKeys = _structuredDataCache.keys
+        .where((key) => key.startsWith('$documentId|'))
+        .toList(growable: false);
+    for (final key in cachedKeys) {
+      _structuredDataCache.remove(key);
+    }
+
+    final inFlightKeys = _inFlightStructuredData.keys
+        .where((key) => key.startsWith('$documentId|'))
+        .toList(growable: false);
+    for (final key in inFlightKeys) {
+      _inFlightStructuredData.remove(key);
+    }
+  }
+
+  void _clearStructuredDataCache() {
+    _structuredDataCache.clear();
+    _inFlightStructuredData.clear();
+  }
+
+  Future<T> _enqueueParseTask<T>(Future<T> Function() task) {
+    final completer = Completer<T>();
+    final run = _parseQueueTail.then((_) async {
+      try {
+        completer.complete(await task());
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    _parseQueueTail = run.catchError((_) {});
+    return completer.future;
+  }
+
   String _sanitizeSegment(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
@@ -777,6 +941,60 @@ class LocalDocumentVaultService {
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     final random = _random.nextInt(1 << 32).toRadixString(16);
     return '$prefix-$timestamp-$random';
+  }
+
+  _StoredDocument _applyManualReview(
+    _StoredDocument document,
+    DocumentManualReviewInput input,
+  ) {
+    final updatedExamDateIso = _resolveManualReviewExamDateIso(
+      requestedExamDate: input.examDate,
+      existingExamDateIso: document.examDateIso,
+    );
+
+    return _StoredDocument(
+      id: document.id,
+      folderId: document.folderId,
+      title: _normalizeText(input.title) ?? document.title,
+      documentType: _normalizeText(input.documentType) ?? document.documentType,
+      uploadDateIso: document.uploadDateIso,
+      examDateIso: updatedExamDateIso,
+      source: input.source == null
+          ? document.source
+          : _normalizeText(input.source),
+      originalFilename: document.originalFilename,
+      mimeType: document.mimeType,
+      fileSizeBytes: document.fileSizeBytes,
+      parsedStatus: document.parsedStatus,
+      contextStatus: document.contextStatus,
+      localFilePath: document.localFilePath,
+      ocrText: input.ocrText == null
+          ? document.ocrText
+          : _normalizeText(input.ocrText),
+    );
+  }
+
+  String? _resolveManualReviewExamDateIso({
+    required String? requestedExamDate,
+    required String? existingExamDateIso,
+  }) {
+    if (requestedExamDate == null) {
+      return existingExamDateIso;
+    }
+
+    final trimmed = requestedExamDate.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final parsed = DateTime.tryParse(trimmed);
+    if (parsed == null) {
+      throw ApiException(
+        'Exam date is invalid. Use ISO format YYYY-MM-DD.',
+        statusCode: 422,
+      );
+    }
+    return parsed.toIso8601String();
   }
 
   String? _normalizeText(String? value) {
@@ -957,7 +1175,15 @@ class _StoredDocument {
     );
   }
 
-  ClinicalDocumentDetail toDetail({String? folderName}) {
+  ClinicalDocumentDetail toDetail({
+    String? folderName,
+    String? parsedStatusOverride,
+    double? parsingConfidence,
+    String? processingError,
+    DateTime? processedAt,
+    List<LabPanelItem> labPanels = const [],
+    List<ImagingReportItem> imagingReports = const [],
+  }) {
     return ClinicalDocumentDetail(
       id: id,
       folderId: folderId,
@@ -970,15 +1196,17 @@ class _StoredDocument {
       originalFilename: originalFilename,
       mimeType: mimeType,
       fileSizeBytes: fileSizeBytes,
-      parsedStatus: parsedStatus,
+      parsedStatus: parsedStatusOverride ?? parsedStatus,
       contextStatus: contextStatus,
+      parsingConfidence: parsingConfidence,
+      processingError: processingError,
       pendingSync: false,
       fileUrl: localFilePath,
       ocrText: ocrText,
       viewerUrl: null,
-      processedAt: null,
-      labPanels: const [],
-      imagingReports: const [],
+      processedAt: processedAt,
+      labPanels: labPanels,
+      imagingReports: imagingReports,
       storageLocation: 'local',
       localFilePath: localFilePath,
     );
@@ -1023,4 +1251,22 @@ class _StoredDocument {
       ocrText: json['ocr_text'] as String?,
     );
   }
+}
+
+class _LocalStructuredData {
+  const _LocalStructuredData({
+    this.parsedStatus,
+    this.parsingConfidence,
+    this.processingError,
+    this.processedAt,
+    this.labPanels = const [],
+    this.imagingReports = const [],
+  });
+
+  final String? parsedStatus;
+  final double? parsingConfidence;
+  final String? processingError;
+  final DateTime? processedAt;
+  final List<LabPanelItem> labPanels;
+  final List<ImagingReportItem> imagingReports;
 }

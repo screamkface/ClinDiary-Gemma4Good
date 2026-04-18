@@ -30,9 +30,7 @@ class _SessionGateTestAuthController extends AuthController {
 }
 
 void main() {
-  testWidgets('session gate in demo mode apre direttamente la home', (
-    tester,
-  ) async {
+  testWidgets('session gate in demo mode opens home directly', (tester) async {
     _SessionGateTestAuthController.loginCalls = 0;
 
     final router = GoRouter(
@@ -87,9 +85,7 @@ void main() {
     expect(find.text('Home reached'), findsOneWidget);
   });
 
-  testWidgets('session gate mantiene il flusso standard verso il login', (
-    tester,
-  ) async {
+  testWidgets('session gate keeps the standard flow to login', (tester) async {
     _SessionGateTestAuthController.loginCalls = 0;
 
     final router = GoRouter(

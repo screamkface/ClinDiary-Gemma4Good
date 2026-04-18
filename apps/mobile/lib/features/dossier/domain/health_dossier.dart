@@ -49,7 +49,7 @@ class DossierEmergencySummary {
 
   DossierEmergencySummary.empty()
     : generatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      headline = 'Scheda emergenza ClinDiary',
+      headline = 'ClinDiary emergency card',
       keyPoints = const [],
       activeProblems = const [],
       activeMedications = const [],

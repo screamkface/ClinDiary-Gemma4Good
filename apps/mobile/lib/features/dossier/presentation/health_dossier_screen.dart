@@ -1514,7 +1514,7 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 Chip(
-                  label: Text('Ultima ${item.latestValue}'),
+                  label: Text('Latest ${item.latestValue}'),
                   visualDensity: VisualDensity.compact,
                 ),
                 if ((item.trendLabel ?? '').isNotEmpty)
@@ -1526,8 +1526,8 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
                   Chip(
                     label: Text(
                       item.concernLevel == 'high'
-                          ? 'Attenzione alta'
-                          : 'Da monitorare',
+                          ? 'High attention'
+                          : 'To monitor',
                     ),
                     visualDensity: VisualDensity.compact,
                     backgroundColor: concernColor?.withValues(alpha: 0.12),
@@ -1551,7 +1551,7 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
             ],
             const SizedBox(height: 8),
             Text(
-              'Ultima misura ${dateFormat.format(item.latestMeasuredAt.toLocal())} • ${item.measurementCount} registrazioni',
+              'Latest measurement ${dateFormat.format(item.latestMeasuredAt.toLocal())} • ${item.measurementCount} records',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -1564,13 +1564,13 @@ class _DossierDeviceMeasurementCard extends StatelessWidget {
 String _sexLabel(String value) {
   switch (value) {
     case 'female':
-      return 'Femmina';
+      return 'Female';
     case 'male':
-      return 'Maschio';
+      return 'Male';
     case 'intersex':
       return 'Intersex';
     default:
-      return 'Non specificato';
+      return 'Not specified';
   }
 }
 

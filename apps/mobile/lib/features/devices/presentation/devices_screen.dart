@@ -168,7 +168,9 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            created == 1 ? 'Misura registrata.' : '$created misure registrate.',
+            created == 1
+                ? 'Measurement recorded.'
+                : '$created measurements recorded.',
           ),
         ),
       );
@@ -192,7 +194,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dispositivi'),
+        title: const Text('Devices'),
         actions: [
           if (_busy)
             const Padding(
@@ -221,9 +223,9 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 child: SectionCard(
-                  title: 'Wave 1 clinica',
+                  title: 'Wave 1 clinical',
                   subtitle:
-                      'OMRON, Withings, iHealth, A&D e Dexcom in un modulo unico.',
+                      'OMRON, Withings, iHealth, A&D, and Dexcom in one unified module.',
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -234,7 +236,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
                       ),
                       _SummaryChip(
                         icon: Icons.link_outlined,
-                        label: '${overview.connectedCount} connessi',
+                        label: '${overview.connectedCount} connected',
                       ),
                       _SummaryChip(
                         icon: Icons.pending_actions_outlined,
@@ -243,7 +245,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
                       _SummaryChip(
                         icon: Icons.monitor_heart_outlined,
                         label:
-                            '${overview.recentMeasurements.length} misure recenti',
+                            '${overview.recentMeasurements.length} recent measurements',
                       ),
                     ],
                   ),
@@ -254,8 +256,8 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
                 child: TabBar(
                   tabs: const [
                     Tab(text: 'Provider'),
-                    Tab(text: 'Connessi'),
-                    Tab(text: 'Misure'),
+                    Tab(text: 'Connected'),
+                    Tab(text: 'Measurements'),
                     Tab(text: 'Import'),
                   ],
                 ),
@@ -333,7 +335,7 @@ class _ProvidersTab extends StatelessWidget {
           subtitle: provider.summary,
           action: FilledButton.tonal(
             onPressed: () => onConfigure(provider, connection),
-            child: Text(connection == null ? 'Configura' : 'Aggiorna'),
+            child: Text(connection == null ? 'Configure' : 'Update'),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,8 +350,8 @@ class _ProvidersTab extends StatelessWidget {
                   ),
                   _ProviderBadge(
                     label: provider.providerConfigured
-                        ? 'Server pronto'
-                        : 'Server da configurare',
+                        ? 'Server ready'
+                        : 'Server to configure',
                     tone: provider.providerConfigured
                         ? _BadgeTone.positive
                         : _BadgeTone.warning,
@@ -368,7 +370,7 @@ class _ProvidersTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Metriche chiave',
+                'Key metrics',
                 style: Theme.of(
                   context,
                 ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -457,7 +459,7 @@ class _ConnectionsTab extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'configure', child: Text('Configura')),
+              const PopupMenuItem(value: 'configure', child: Text('Configure')),
               PopupMenuItem(
                 value: 'sync',
                 enabled: connection.supportsLiveSync,
@@ -482,14 +484,14 @@ class _ConnectionsTab extends StatelessWidget {
                   _ProviderBadge(
                     label: connection.supportsLiveSync
                         ? 'Sync live'
-                        : 'Sync live non pronto',
+                        : 'Live sync not ready',
                     tone: connection.supportsLiveSync
                         ? _BadgeTone.info
                         : _BadgeTone.neutral,
                   ),
                   if (connection.supportsManualIngest)
                     const _ProviderBadge(
-                      label: 'Pronto per SDK',
+                      label: 'SDK ready',
                       tone: _BadgeTone.info,
                     ),
                 ],
@@ -642,7 +644,7 @@ class _JobsTab extends StatelessWidget {
                     tone: _jobBadgeTone(job.status),
                   ),
                   _ProviderBadge(
-                    label: '${job.itemCount} elementi',
+                    label: '${job.itemCount} items',
                     tone: _BadgeTone.neutral,
                   ),
                 ],
@@ -775,11 +777,11 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
     final fields = _manualFieldsFor(_metricType);
 
     if (primary == null) {
-      _showError('Inserisci ${fields.primaryLabel.toLowerCase()}.');
+      _showError('Enter ${fields.primaryLabel.toLowerCase()}.');
       return;
     }
     if (fields.secondaryRequired && secondary == null) {
-      _showError('Inserisci ${fields.secondaryLabel!.toLowerCase()}.');
+      _showError('Enter ${fields.secondaryLabel!.toLowerCase()}.');
       return;
     }
 
@@ -838,7 +840,7 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _metricType,
-                  decoration: const InputDecoration(labelText: 'Metrica'),
+                  decoration: const InputDecoration(labelText: 'Metric'),
                   items: _manualMetricOptions
                       .map(
                         (item) => DropdownMenuItem(
@@ -1345,45 +1347,48 @@ class _ManualMetricFields {
 }
 
 const _manualMetricOptions = [
-  _ManualMetricOption('blood_pressure', 'Pressione arteriosa'),
-  _ManualMetricOption('body_weight', 'Peso'),
-  _ManualMetricOption('spo2', 'Saturazione ossigeno'),
-  _ManualMetricOption('heart_rate', 'Frequenza cardiaca'),
-  _ManualMetricOption('temperature', 'Temperatura'),
-  _ManualMetricOption('blood_glucose_bgm', 'Glicemia capillare'),
+  _ManualMetricOption('blood_pressure', 'Blood pressure'),
+  _ManualMetricOption('body_weight', 'Weight'),
+  _ManualMetricOption('spo2', 'Oxygen saturation'),
+  _ManualMetricOption('heart_rate', 'Heart rate'),
+  _ManualMetricOption('temperature', 'Temperature'),
+  _ManualMetricOption('blood_glucose_bgm', 'Capillary glucose'),
 ];
 
 _ManualMetricFields _manualFieldsFor(String metricType) {
   switch (metricType) {
     case 'blood_pressure':
       return const _ManualMetricFields(
-        primaryLabel: 'Sistolica',
-        secondaryLabel: 'Diastolica',
-        tertiaryLabel: 'Frequenza cardiaca',
+        primaryLabel: 'Systolic',
+        secondaryLabel: 'Diastolic',
+        tertiaryLabel: 'Heart rate',
         defaultUnit: 'mmHg',
         tertiaryUnit: 'bpm',
         secondaryRequired: true,
       );
     case 'body_weight':
-      return const _ManualMetricFields(primaryLabel: 'Peso', defaultUnit: 'kg');
+      return const _ManualMetricFields(
+        primaryLabel: 'Weight',
+        defaultUnit: 'kg',
+      );
     case 'spo2':
       return const _ManualMetricFields(primaryLabel: 'SpO2', defaultUnit: '%');
     case 'heart_rate':
       return const _ManualMetricFields(
-        primaryLabel: 'Frequenza cardiaca',
+        primaryLabel: 'Heart rate',
         defaultUnit: 'bpm',
       );
     case 'temperature':
       return const _ManualMetricFields(
-        primaryLabel: 'Temperatura',
+        primaryLabel: 'Temperature',
         defaultUnit: '°C',
       );
     case 'blood_glucose_bgm':
       return const _ManualMetricFields(
-        primaryLabel: 'Glicemia',
+        primaryLabel: 'Glucose',
         defaultUnit: 'mg/dL',
       );
     default:
-      return const _ManualMetricFields(primaryLabel: 'Valore');
+      return const _ManualMetricFields(primaryLabel: 'Value');
   }
 }

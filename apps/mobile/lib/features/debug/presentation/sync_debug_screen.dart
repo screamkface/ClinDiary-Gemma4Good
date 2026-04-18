@@ -25,9 +25,9 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
       ref.invalidate(pendingOperationsProvider);
       ref.invalidate(requestTracesProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Operations synced: $synced')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Operations synced: $synced')));
     } finally {
       if (mounted) {
         setState(() => _flushing = false);
@@ -136,8 +136,8 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                    title: 'Queued operations',
-                    subtitle: items.isEmpty
+                  title: 'Queued operations',
+                  subtitle: items.isEmpty
                       ? 'No pending operations.'
                       : 'Latest ${items.length} local operations.',
                   child: items.isEmpty
@@ -149,7 +149,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
                               child: _DebugRowCard(
                                 title: '${item.method} ${item.path}',
                                 subtitle:
-                                    'Tentativi ${item.attempts} ÔÇó ${formatter.format(item.createdAt.toLocal())}'
+                                    'Attempts ${item.attempts} - ${formatter.format(item.createdAt.toLocal())}'
                                     '${item.lastError == null || item.lastError!.isEmpty ? '' : '\n${item.lastError}'}',
                               ),
                             );
@@ -163,7 +163,7 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Operazioni in coda',
+              title: 'Queued operations',
               child: Text(error.toString()),
             ),
           ),
@@ -172,10 +172,10 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
             data: (items) => SectionCard(
               title: 'Recent network traces',
               subtitle: items.isEmpty
-                    ? 'No traces recorded.'
-                    : 'Latest ${items.take(20).length} local requests.',
+                  ? 'No traces recorded.'
+                  : 'Latest ${items.take(20).length} local requests.',
               child: items.isEmpty
-                    ? const Text('No traces recorded.')
+                  ? const Text('No traces recorded.')
                   : Column(
                       children: items.take(20).map((item) {
                         return Padding(

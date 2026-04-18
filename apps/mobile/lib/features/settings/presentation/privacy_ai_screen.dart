@@ -564,7 +564,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                               : () => _shareExport(
                                   loadBytes: (repository) =>
                                       repository.exportEmergencyDossier(),
-                                  filePrefix: 'clindiary-scheda-emergenza',
+                                  filePrefix: 'clindiary-emergency-card',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
                                   shareText: 'ClinDiary emergency card',

@@ -23,7 +23,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
     registerFallbackValue(
       const SelectedUploadDocument(
         name: 'fallback.pdf',
@@ -37,7 +37,7 @@ void main() {
     );
   });
 
-  testWidgets('documents screen mostra elenco e stati documentali', (
+  testWidgets('documents screen shows list and document statuses', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -49,8 +49,8 @@ void main() {
               folders: const [
                 DocumentFolderItem(
                   id: 'folder-1',
-                  name: 'Esami',
-                  pathLabel: 'Esami',
+                  name: 'Labs',
+                  pathLabel: 'Labs',
                   childFolderCount: 0,
                   documentCount: 1,
                 ),
@@ -58,10 +58,10 @@ void main() {
               documents: [
                 ClinicalDocumentSummary(
                   id: 'doc-1',
-                  title: 'Esami marzo',
+                  title: 'March labs',
                   documentType: 'lab_report',
                   uploadDate: DateTime.utc(2026, 3, 20, 8),
-                  originalFilename: 'esami-marzo.pdf',
+                  originalFilename: 'march-labs.pdf',
                   mimeType: 'application/pdf',
                   fileSizeBytes: 182400,
                   parsedStatus: 'parsed',
@@ -81,12 +81,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('Esami marzo'),
+      find.text('March labs'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Esami marzo'), findsOneWidget);
-    expect(find.text('Esami'), findsOneWidget);
+    expect(find.text('March labs'), findsOneWidget);
+    expect(find.text('Labs'), findsOneWidget);
     expect(find.textContaining('Lab report'), findsOneWidget);
     expect(find.text('Parsed'), findsOneWidget);
     expect(find.text('Old'), findsOneWidget);
@@ -95,7 +95,7 @@ void main() {
     expect(find.textContaining('178.1 KB'), findsOneWidget);
   });
 
-  testWidgets('documents screen crea una cartella senza eccezioni Flutter', (
+  testWidgets('documents screen creates a folder without Flutter exceptions', (
     tester,
   ) async {
     final repository = MockDocumentsRepository();
@@ -108,8 +108,8 @@ void main() {
     ).thenAnswer(
       (_) async => const DocumentFolderItem(
         id: 'folder-2',
-        name: 'Esami sangue',
-        pathLabel: 'Esami sangue',
+        name: 'Blood tests',
+        pathLabel: 'Blood tests',
         childFolderCount: 0,
         documentCount: 0,
       ),
@@ -139,7 +139,7 @@ void main() {
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Folder name'),
-      'Esami sangue',
+      'Blood tests',
     );
 
     await tester.tap(find.text('Create'));
@@ -147,14 +147,14 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => repository.createFolder(name: 'Esami sangue', parentFolderId: null),
+      () => repository.createFolder(name: 'Blood tests', parentFolderId: null),
     ).called(1);
     expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets(
-    'documents screen apre sposta file dal menu senza errori navigator',
+    'documents screen opens move file from menu without navigator errors',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -166,10 +166,10 @@ void main() {
                 documents: [
                   ClinicalDocumentSummary(
                     id: 'doc-1',
-                    title: 'Esami marzo',
+                    title: 'March labs',
                     documentType: 'lab_report',
                     uploadDate: DateTime.utc(2026, 3, 20, 8),
-                    originalFilename: 'esami-marzo.pdf',
+                    originalFilename: 'march-labs.pdf',
                     mimeType: 'application/pdf',
                     fileSizeBytes: 182400,
                     parsedStatus: 'parsed',
@@ -183,8 +183,8 @@ void main() {
               (ref) async => const [
                 DocumentFolderItem(
                   id: 'folder-1',
-                  name: 'Esami 2026',
-                  pathLabel: 'Esami 2026',
+                  name: 'Labs 2026',
+                  pathLabel: 'Labs 2026',
                   childFolderCount: 0,
                   documentCount: 1,
                 ),
@@ -204,13 +204,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Main archive'), findsOneWidget);
-      expect(find.text('Esami 2026'), findsWidgets);
+      expect(find.text('Labs 2026'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'document detail screen nasconde il testo estratto finché l’utente non lo apre',
+    'document detail screen hides extracted text until user opens it',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -218,12 +218,12 @@ void main() {
             documentDetailProvider.overrideWith(
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
-                title: 'Referto laboratorio aprile',
+                title: 'April lab report',
                 documentType: 'lab_report',
                 uploadDate: DateTime.utc(2026, 4, 2, 9),
                 examDate: DateTime.utc(2026, 4, 1),
-                source: 'Laboratorio locale',
-                originalFilename: 'lab-aprile.pdf',
+                source: 'Local lab',
+                originalFilename: 'lab-april.pdf',
                 mimeType: 'application/pdf',
                 fileSizeBytes: 64000,
                 parsedStatus: 'parsed',
@@ -232,18 +232,18 @@ void main() {
                 parsingConfidence: 0.84,
                 processingError: null,
                 pendingSync: true,
-                fileUrl: 'patients/demo/lab-aprile.pdf',
+                fileUrl: 'patients/demo/lab-april.pdf',
                 viewerUrl: '/api/v1/documents/doc-1/content?token=abc',
-                ocrText: 'Glucosio 110 mg/dL 70-99',
+                ocrText: 'Glucose 110 mg/dL 70-99',
                 processedAt: DateTime.utc(2026, 4, 2, 9, 5),
                 labPanels: const [
                   LabPanelItem(
                     id: 'panel-1',
-                    panelName: 'Esami del sangue',
+                    panelName: 'Blood tests',
                     results: [
                       LabResultItem(
                         id: 'result-1',
-                        analyteName: 'Glucosio',
+                        analyteName: 'Glucose',
                         value: '110',
                         unit: 'mg/dL',
                         refMin: 70,
@@ -265,19 +265,19 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Referto laboratorio aprile'), findsOneWidget);
+      expect(find.text('April lab report'), findsOneWidget);
       expect(find.text('Sync pending'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
       expect(find.text('Extracted text'), findsOneWidget);
       expect(find.text('Show text'), findsOneWidget);
-      expect(find.textContaining('Glucosio 110 mg/dL 70-99'), findsNothing);
+      expect(find.textContaining('Glucose 110 mg/dL 70-99'), findsNothing);
       await tester.tap(find.text('Show text'));
       await tester.pumpAndSettle();
       expect(find.text('Hide text'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Glucosio'), findsWidgets);
+      expect(find.textContaining('Glucose'), findsWidgets);
       await tester.drag(find.byType(ListView), const Offset(0, -240));
       await tester.pumpAndSettle();
       final abnormalValueText = tester.widget<Text>(find.text('110 mg/dL'));
@@ -296,7 +296,7 @@ void main() {
   );
 
   testWidgets(
-    'document detail screen apre sposta file dal menu senza errori navigator',
+    'document detail screen opens move file from menu without navigator errors',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -305,8 +305,8 @@ void main() {
               (ref) async => const [
                 DocumentFolderItem(
                   id: 'folder-1',
-                  name: 'Esami 2026',
-                  pathLabel: 'Esami 2026',
+                  name: 'Labs 2026',
+                  pathLabel: 'Labs 2026',
                   childFolderCount: 0,
                   documentCount: 1,
                 ),
@@ -315,12 +315,12 @@ void main() {
             documentDetailProvider.overrideWith(
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
-                title: 'Referto laboratorio aprile',
+                title: 'April lab report',
                 documentType: 'lab_report',
                 uploadDate: DateTime.utc(2026, 4, 2, 9),
                 examDate: DateTime.utc(2026, 4, 1),
-                source: 'Laboratorio locale',
-                originalFilename: 'lab-aprile.pdf',
+                source: 'Local lab',
+                originalFilename: 'lab-april.pdf',
                 mimeType: 'application/pdf',
                 fileSizeBytes: 64000,
                 parsedStatus: 'parsed',
@@ -329,9 +329,9 @@ void main() {
                 parsingConfidence: 0.84,
                 processingError: null,
                 pendingSync: false,
-                fileUrl: 'patients/demo/lab-aprile.pdf',
+                fileUrl: 'patients/demo/lab-april.pdf',
                 viewerUrl: '/api/v1/documents/doc-1/content?token=abc',
-                ocrText: 'Glucosio 110 mg/dL 70-99',
+                ocrText: 'Glucose 110 mg/dL 70-99',
                 processedAt: DateTime.utc(2026, 4, 2, 9, 5),
                 labPanels: const [],
                 imagingReports: const [],
@@ -353,20 +353,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Main archive'), findsOneWidget);
-      expect(find.text('Esami 2026'), findsWidgets);
+      expect(find.text('Labs 2026'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'document upload screen seleziona file, invia upload e naviga al dettaglio',
+    'document upload screen selects file, uploads, and navigates to detail',
     (tester) async {
       final repository = MockDocumentsRepository();
       final picker = MockDocumentPickerService();
 
       when(() => picker.pickDocument()).thenAnswer(
         (_) async => const SelectedUploadDocument(
-          name: 'nuovo-referto.pdf',
+          name: 'new-report.pdf',
           bytes: [37, 80, 68, 70],
           mimeType: 'application/pdf',
         ),
@@ -379,10 +379,10 @@ void main() {
       ).thenAnswer(
         (_) async => ClinicalDocumentSummary(
           id: 'doc-42',
-          title: 'Nuovo referto',
+          title: 'New report',
           documentType: 'generic_document',
           uploadDate: DateTime.utc(2026, 3, 20, 10),
-          originalFilename: 'nuovo-referto.pdf',
+          originalFilename: 'new-report.pdf',
           mimeType: 'application/pdf',
           fileSizeBytes: 4096,
           parsedStatus: 'pending',
@@ -400,7 +400,7 @@ void main() {
           GoRoute(
             path: '/app/documents/:documentId',
             builder: (_, state) => Scaffold(
-              body: Text('Dettaglio ${state.pathParameters['documentId']}'),
+              body: Text('Detail ${state.pathParameters['documentId']}'),
             ),
           ),
         ],
@@ -418,12 +418,12 @@ void main() {
 
       await tester.tap(find.text('Select file'));
       await tester.pumpAndSettle();
-      expect(find.text('nuovo-referto.pdf'), findsOneWidget);
+      expect(find.text('new-report.pdf'), findsOneWidget);
       verify(() => picker.pickDocument()).called(1);
 
       await tester.enterText(
         find.widgetWithText(TextFormField, 'Document title'),
-        'Nuovo referto',
+        'New report',
       );
       await tester.scrollUntilVisible(
         find.byIcon(Icons.cloud_upload_outlined),
@@ -442,7 +442,7 @@ void main() {
     },
   );
 
-  testWidgets('document query screen mostra risposta e citazioni', (
+  testWidgets('document query screen shows answer and citations', (
     tester,
   ) async {
     final repository = MockDocumentsRepository();
@@ -456,16 +456,16 @@ void main() {
     ).thenAnswer(
       (_) async => DocumentQueryResult(
         answer:
-            'Referti recenti: la creatinina risulta elevata in un documento recente [1].',
+            'Recent reports: creatinine is elevated in a recent document [1].',
         citations: const [
           DocumentQueryCitation(
             documentId: 'doc-42',
-            documentTitle: 'Esami aprile',
+            documentTitle: 'April labs',
             documentType: 'lab_report',
-            folderName: 'Esami 2026',
+            folderName: 'Labs 2026',
             chunkKind: 'lab_panel',
-            chunkLabel: 'Pannello laboratorio',
-            excerpt: 'Creatinina: 1.6 mg/dL range 0.7-1.2 fuori range',
+            chunkLabel: 'Lab panel',
+            excerpt: 'Creatinine: 1.6 mg/dL range 0.7-1.2 out of range',
             score: 0.92,
           ),
         ],
@@ -475,15 +475,15 @@ void main() {
         rerankerModelName: 'qwen3-reranker-4b',
         retrievedChunks: 1,
         retrievedDocuments: 1,
-        searchScopeLabel: 'Cartella: Esami',
-        coverageNote: '1 documento e 1 passaggio usati per la risposta.',
+        searchScopeLabel: 'Folder: Labs',
+        coverageNote: '1 document and 1 passage used for the answer.',
         usedFallback: false,
       ),
     );
     when(() => repository.reindexDocuments()).thenAnswer((_) async => 3);
 
     final router = GoRouter(
-      initialLocation: '/app/documents/ask?folderId=folder-1&folderName=Esami',
+      initialLocation: '/app/documents/ask?folderId=folder-1&folderName=Labs',
       routes: [
         GoRoute(
           path: '/app/documents/ask',
@@ -495,7 +495,7 @@ void main() {
         GoRoute(
           path: '/app/documents/:documentId',
           builder: (_, state) => Scaffold(
-            body: Text('Dettaglio ${state.pathParameters['documentId']}'),
+            body: Text('Detail ${state.pathParameters['documentId']}'),
           ),
         ),
       ],
@@ -512,10 +512,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Esami'), findsOneWidget);
+    expect(find.text('Labs'), findsOneWidget);
     await tester.enterText(
       find.byType(TextField),
-      'Ci sono valori fuori range?',
+      'Are there out-of-range values?',
     );
     await tester.pump();
     await tester.drag(find.byType(ListView), const Offset(0, -240));
@@ -525,19 +525,19 @@ void main() {
 
     verify(
       () => repository.queryDocuments(
-        question: 'Ci sono valori fuori range?',
+        question: 'Are there out-of-range values?',
         folderId: 'folder-1',
         topK: null,
       ),
     ).called(1);
-    expect(find.textContaining('creatinina risulta elevata'), findsOneWidget);
-    expect(find.textContaining('1 documento e 1 passaggio'), findsOneWidget);
+    expect(find.textContaining('creatinine is elevated'), findsOneWidget);
+    expect(find.textContaining('1 document and 1 passage'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Esami aprile'),
+      find.text('April labs'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Esami aprile'), findsOneWidget);
+    expect(find.text('April labs'), findsOneWidget);
     expect(find.textContaining('qwen3-reranker-4b'), findsOneWidget);
 
     await tester.tap(find.text('Refresh index'), warnIfMissed: false);
@@ -546,7 +546,7 @@ void main() {
   });
 
   testWidgets(
-    'document review screen invia revisione manuale e chiude la schermata',
+    'document review screen submits manual review and closes the screen',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(1080, 2400);
@@ -560,11 +560,11 @@ void main() {
       when(() => repository.submitManualReview(any(), any())).thenAnswer(
         (_) async => ClinicalDocumentDetail(
           id: 'doc-9',
-          title: 'Referto revisionato',
+          title: 'Revised report',
           documentType: 'generic_document',
           uploadDate: DateTime.utc(2026, 3, 20, 10),
           examDate: DateTime.utc(2026, 3, 19),
-          source: 'Laboratorio locale',
+          source: 'Local lab',
           originalFilename: 'scan.png',
           mimeType: 'image/png',
           fileSizeBytes: 4096,
@@ -574,7 +574,7 @@ void main() {
           processingError: null,
           fileUrl: 'patients/demo/scan.png',
           viewerUrl: '/api/v1/documents/doc-9/content?token=abc',
-          ocrText: 'Glucosio 102 mg/dL 70-99',
+          ocrText: 'Glucose 102 mg/dL 70-99',
           processedAt: DateTime.utc(2026, 3, 20, 10, 10),
           labPanels: const [],
           imagingReports: const [],
@@ -588,21 +588,21 @@ void main() {
             documentDetailProvider.overrideWith(
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
-                title: 'Scan da correggere',
+                title: 'Scan to correct',
                 documentType: 'generic_document',
                 uploadDate: DateTime.utc(2026, 3, 20, 8),
                 examDate: DateTime.utc(2026, 3, 19),
-                source: 'Laboratorio locale',
+                source: 'Local lab',
                 originalFilename: 'scan.png',
                 mimeType: 'image/png',
                 fileSizeBytes: 5120,
                 parsedStatus: 'review_required',
                 classificationConfidence: 0.4,
                 parsingConfidence: null,
-                processingError: 'Servono correzioni manuali',
+                processingError: 'Manual corrections required',
                 fileUrl: 'patients/demo/scan.png',
                 viewerUrl: '/api/v1/documents/doc-9/content?token=abc',
-                ocrText: 'Glucosio 102 mg/dL 70-99',
+                ocrText: 'Glucose 102 mg/dL 70-99',
                 processedAt: DateTime.utc(2026, 3, 20, 8, 30),
                 labPanels: const [],
                 imagingReports: const [],
@@ -618,7 +618,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final textFields = find.byType(TextFormField);
-      await tester.enterText(textFields.at(0), 'Referto revisionato');
+      await tester.enterText(textFields.at(0), 'Revised report');
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
 

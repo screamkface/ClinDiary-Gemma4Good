@@ -16,6 +16,7 @@ class DossierRepository {
        _appConfig = appConfig;
 
   static const _cacheKey = 'health_dossier';
+  static const _shareLinksCacheKey = 'dossier_share_links';
 
   final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
@@ -147,7 +148,18 @@ class DossierRepository {
 
   Future<List<DossierShareLinkItem>> fetchShareLinks() async {
     if (_appConfig.localOnlyMode) {
-      return const [];
+      final cached = await _readCachedShareLinks();
+      if (cached == null) {
+        return const [];
+      }
+      final decoded = jsonDecode(cached) as List<dynamic>;
+      return decoded
+          .map(
+            (item) =>
+                DossierShareLinkItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     }
     final response = await _apiClient.getJson('/api/v1/dossier/share-links');
     return (response as List<dynamic>)
@@ -163,10 +175,28 @@ class DossierRepository {
     int expiresInDays = 7,
   }) async {
     if (_appConfig.localOnlyMode) {
-      throw ApiException(
-        'Share links are unavailable while local-only mode is active.',
-        statusCode: 409,
-      );
+      final now = DateTime.now().toUtc();
+      final expiresAt = now.add(Duration(days: expiresInDays.clamp(1, 365)));
+      final item = <String, dynamic>{
+        'id': 'local-share-${DateTime.now().microsecondsSinceEpoch}',
+        'scope': scope,
+        'label': label,
+        'share_url': null,
+        'filename': scope == 'emergency'
+            ? 'dossier-emergency.pdf'
+            : 'dossier.pdf',
+        'mime_type': 'application/pdf',
+        'expires_at': expiresAt.toIso8601String(),
+        'revoked_at': null,
+        'last_accessed_at': null,
+        'created_at': now.toIso8601String(),
+      };
+
+      final links =
+          await _readCachedShareLinksJson() ?? <Map<String, dynamic>>[];
+      links.insert(0, item);
+      await _writeCachedShareLinksJson(links);
+      return DossierShareLinkItem.fromJson(item);
     }
     final response = await _apiClient.postJson(
       '/api/v1/dossier/share-links',
@@ -177,12 +207,66 @@ class DossierRepository {
 
   Future<void> revokeShareLink(String shareLinkId) async {
     if (_appConfig.localOnlyMode) {
-      throw ApiException(
-        'Share links are unavailable while local-only mode is active.',
-        statusCode: 409,
-      );
+      final links =
+          await _readCachedShareLinksJson() ?? <Map<String, dynamic>>[];
+      var changed = false;
+      for (final link in links) {
+        if (link['id']?.toString() == shareLinkId) {
+          link['revoked_at'] = DateTime.now().toUtc().toIso8601String();
+          changed = true;
+          break;
+        }
+      }
+      if (changed) {
+        await _writeCachedShareLinksJson(links);
+      }
+      return;
     }
     await _apiClient.delete('/api/v1/dossier/share-links/$shareLinkId');
+  }
+
+  Future<List<Map<String, dynamic>>?> _readCachedShareLinksJson() async {
+    final cached = await _readCachedShareLinks();
+    if (cached == null) {
+      return null;
+    }
+    final decoded = jsonDecode(cached) as List<dynamic>;
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> _writeCachedShareLinksJson(
+    List<Map<String, dynamic>> items,
+  ) async {
+    await _localDatabase.putCache(
+      key: await _shareLinksCacheKeyForCurrentProfile(),
+      payload: jsonEncode(items),
+    );
+  }
+
+  Future<String?> _readCachedShareLinks() async {
+    final activeProfileId = await _localDatabase.readCache(
+      activeProfileIdCacheKey,
+    );
+    final normalizedActiveId = activeProfileId?.trim();
+    if (normalizedActiveId != null && normalizedActiveId.isNotEmpty) {
+      return _localDatabase.readCache(
+        '$_shareLinksCacheKey::$normalizedActiveId',
+      );
+    }
+    return _localDatabase.readCache(_shareLinksCacheKey);
+  }
+
+  Future<String> _shareLinksCacheKeyForCurrentProfile() async {
+    final activeProfileId = await _localDatabase.readCache(
+      activeProfileIdCacheKey,
+    );
+    final normalizedActiveId = activeProfileId?.trim();
+    if (normalizedActiveId != null && normalizedActiveId.isNotEmpty) {
+      return '$_shareLinksCacheKey::$normalizedActiveId';
+    }
+    return _shareLinksCacheKey;
   }
 
   Future<HealthDossier> _loadCachedDossierOrThrow() async {

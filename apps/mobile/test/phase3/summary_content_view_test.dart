@@ -19,9 +19,9 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Titolo recap'), findsOneWidget);
-    expect(find.text('voce in corsivo e grassetto'), findsOneWidget);
-    expect(find.text('Apri documento o note inline'), findsOneWidget);
+    expect(find.text('Recap title'), findsOneWidget);
+    expect(find.text('item in italic and bold'), findsOneWidget);
+    expect(find.text('Open document or inline notes'), findsOneWidget);
     expect(find.textContaining('*'), findsNothing);
     expect(find.textContaining('`'), findsNothing);
     expect(find.textContaining('['), findsNothing);
@@ -53,11 +53,14 @@ void main() {
 
     final viewportFinder = find.byType(SingleChildScrollView);
     final scrollableFinder = find.byType(Scrollable);
-    final section18Finder = find.text('Sezione 18');
+    final section18Finder = find.text('Section 18');
     final initialViewport = tester.getRect(viewportFinder);
 
-    expect(find.text('Sezione 1'), findsOneWidget);
-    expect(tester.getTopLeft(section18Finder).dy, greaterThan(initialViewport.bottom));
+    expect(find.text('Section 1'), findsOneWidget);
+    expect(
+      tester.getTopLeft(section18Finder).dy,
+      greaterThan(initialViewport.bottom),
+    );
 
     await tester.scrollUntilVisible(
       section18Finder,
@@ -67,8 +70,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final finalViewport = tester.getRect(viewportFinder);
-    expect(tester.getTopLeft(section18Finder).dy, lessThan(finalViewport.bottom));
-    expect(find.text('Dettaglio molto lungo 18'), findsOneWidget);
+    expect(
+      tester.getTopLeft(section18Finder).dy,
+      lessThan(finalViewport.bottom),
+    );
+    expect(find.text('Very long detail 18'), findsOneWidget);
   });
 
   testWidgets('summary content view promotes plain report section titles', (
@@ -87,107 +93,109 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Sintomi recenti'), findsOneWidget);
-    expect(find.text('Trend principali'), findsOneWidget);
+    expect(find.text('Recent symptoms'), findsOneWidget);
+    expect(find.text('Main trends'), findsOneWidget);
     expect(find.textContaining('---'), findsNothing);
-    expect(find.text('cefalea serale'), findsOneWidget);
+    expect(find.text('evening headache'), findsOneWidget);
   });
 
-  testWidgets('summary content view renders markdown tables deterministically', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: EdgeInsets.all(16),
-            child: SummaryContentView(
-              content: _markdownTableContent,
-              constrainHeight: false,
+  testWidgets(
+    'summary content view renders markdown tables deterministically',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: EdgeInsets.all(16),
+              child: SummaryContentView(
+                content: _markdownTableContent,
+                constrainHeight: false,
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Punti da portare in visita'), findsOneWidget);
-    expect(find.text('Area'), findsOneWidget);
-    expect(find.text('Dato'), findsOneWidget);
-    expect(find.text('Passi'), findsOneWidget);
-    expect(find.text('8200/die'), findsOneWidget);
-    expect(find.textContaining('---'), findsNothing);
-  });
+      expect(find.text('Points to bring to the visit'), findsOneWidget);
+      expect(find.text('Area'), findsOneWidget);
+      expect(find.text('Value'), findsOneWidget);
+      expect(find.text('Steps'), findsOneWidget);
+      expect(find.text('8200/day'), findsOneWidget);
+      expect(find.textContaining('---'), findsNothing);
+    },
+  );
 
-  testWidgets('summary content view renders simple pipe tables deterministically', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Padding(
-            padding: EdgeInsets.all(16),
-            child: SummaryContentView(
-              content: _simplePipeTableContent,
-              constrainHeight: false,
+  testWidgets(
+    'summary content view renders simple pipe tables deterministically',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Padding(
+              padding: EdgeInsets.all(16),
+              child: SummaryContentView(
+                content: _simplePipeTableContent,
+                constrainHeight: false,
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Sintomo'), findsOneWidget);
-    expect(find.text('Frequenza'), findsOneWidget);
-    expect(find.text('cefalea'), findsOneWidget);
-    expect(find.text('3 sere'), findsOneWidget);
-  });
+      expect(find.text('Symptom'), findsOneWidget);
+      expect(find.text('Frequency'), findsOneWidget);
+      expect(find.text('headache'), findsOneWidget);
+      expect(find.text('3 evenings'), findsOneWidget);
+    },
+  );
 }
 
 const _longContent =
-    '**Sezione 1**\n- Riga 1\n- Dettaglio molto lungo 1\n\n'
-    '**Sezione 2**\n- Riga 2\n- Dettaglio molto lungo 2\n\n'
-    '**Sezione 3**\n- Riga 3\n- Dettaglio molto lungo 3\n\n'
-    '**Sezione 4**\n- Riga 4\n- Dettaglio molto lungo 4\n\n'
-    '**Sezione 5**\n- Riga 5\n- Dettaglio molto lungo 5\n\n'
-    '**Sezione 6**\n- Riga 6\n- Dettaglio molto lungo 6\n\n'
-    '**Sezione 7**\n- Riga 7\n- Dettaglio molto lungo 7\n\n'
-    '**Sezione 8**\n- Riga 8\n- Dettaglio molto lungo 8\n\n'
-    '**Sezione 9**\n- Riga 9\n- Dettaglio molto lungo 9\n\n'
-    '**Sezione 10**\n- Riga 10\n- Dettaglio molto lungo 10\n\n'
-    '**Sezione 11**\n- Riga 11\n- Dettaglio molto lungo 11\n\n'
-    '**Sezione 12**\n- Riga 12\n- Dettaglio molto lungo 12\n\n'
-    '**Sezione 13**\n- Riga 13\n- Dettaglio molto lungo 13\n\n'
-    '**Sezione 14**\n- Riga 14\n- Dettaglio molto lungo 14\n\n'
-    '**Sezione 15**\n- Riga 15\n- Dettaglio molto lungo 15\n\n'
-    '**Sezione 16**\n- Riga 16\n- Dettaglio molto lungo 16\n\n'
-    '**Sezione 17**\n- Riga 17\n- Dettaglio molto lungo 17\n\n'
-    '**Sezione 18**\n- Riga 18\n- Dettaglio molto lungo 18';
+    '**Section 1**\n- Line 1\n- Very long detail 1\n\n'
+    '**Section 2**\n- Line 2\n- Very long detail 2\n\n'
+    '**Section 3**\n- Line 3\n- Very long detail 3\n\n'
+    '**Section 4**\n- Line 4\n- Very long detail 4\n\n'
+    '**Section 5**\n- Line 5\n- Very long detail 5\n\n'
+    '**Section 6**\n- Line 6\n- Very long detail 6\n\n'
+    '**Section 7**\n- Line 7\n- Very long detail 7\n\n'
+    '**Section 8**\n- Line 8\n- Very long detail 8\n\n'
+    '**Section 9**\n- Line 9\n- Very long detail 9\n\n'
+    '**Section 10**\n- Line 10\n- Very long detail 10\n\n'
+    '**Section 11**\n- Line 11\n- Very long detail 11\n\n'
+    '**Section 12**\n- Line 12\n- Very long detail 12\n\n'
+    '**Section 13**\n- Line 13\n- Very long detail 13\n\n'
+    '**Section 14**\n- Line 14\n- Very long detail 14\n\n'
+    '**Section 15**\n- Line 15\n- Very long detail 15\n\n'
+    '**Section 16**\n- Line 16\n- Very long detail 16\n\n'
+    '**Section 17**\n- Line 17\n- Very long detail 17\n\n'
+    '**Section 18**\n- Line 18\n- Very long detail 18';
 
 const _markdownContent =
-    '# Titolo recap\n\n'
-    '* voce in *corsivo* e **grassetto**\n'
-    '> [Apri documento](https://example.com) o `note inline`';
+    '# Recap title\n\n'
+    '* item in *italic* and **bold**\n'
+    '> [Open document](https://example.com) or `inline notes`';
 
 const _reportContent =
-    'Sintomi recenti\n'
-    '- cefalea serale\n'
-    '- stanchezza lieve\n\n'
+    'Recent symptoms\n'
+    '- evening headache\n'
+    '- mild fatigue\n\n'
     '---\n\n'
-    'Trend principali\n'
-    'Energia media 5.4/10.\n'
-    'Dolore medio 2.1/10.';
+    'Main trends\n'
+    'Average energy 5.4/10.\n'
+    'Average pain 2.1/10.';
 
 const _markdownTableContent =
-    'Punti da portare in visita\n\n'
-    '| Area | Dato | Nota |\n'
+    'Points to bring to the visit\n\n'
+    '| Area | Value | Note |\n'
     '| --- | --- | --- |\n'
-    '| Passi | 8200/die | andamento stabile |\n'
-    '| Sonno | 6.8h | variabile |';
+    '| Steps | 8200/day | stable trend |\n'
+    '| Sleep | 6.8h | variable |';
 
 const _simplePipeTableContent =
-    'Sintomo | Frequenza | Nota\n'
-    'cefalea | 3 sere | più spesso dopo poco sonno\n'
-    'stanchezza | quasi quotidiana | lieve';
+    'Symptom | Frequency | Note\n'
+    'headache | 3 evenings | more often after poor sleep\n'
+    'fatigue | almost daily | mild';

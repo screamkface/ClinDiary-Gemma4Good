@@ -37,7 +37,7 @@ class DemoSeedData {
   ];
 
   static const String _seedVersionKey = 'demo_seed_version';
-  static const String _seedVersion = '2026-04-17-v3';
+  static const String _seedVersion = '2026-04-18-v4';
 
   static AuthSession createDemoSession() {
     final now = DateTime.now().toUtc();
@@ -142,23 +142,31 @@ class DemoSeedData {
             'source': 'Milan Community Clinic',
             'exam_date': '2026-04-10',
             'content':
-                'Patient: Marco Rossi\nCreatinine: 1.28 mg/dL (reference 0.67-1.17)\neGFR: 71 mL/min/1.73m2\nUrea: 46 mg/dL\nComment: Mild creatinine elevation, hydration and repeat panel advised in 8 weeks.',
+                'Patient: Marco Rossi\nCreatinine: 1.31 mg/dL (reference 0.67-1.17) [OUT OF RANGE - high]\neGFR: 68 mL/min/1.73m2 (reference > 90) [OUT OF RANGE - low]\nPotassium: 5.2 mmol/L (reference 3.5-5.1) [OUT OF RANGE - high]\nComment: Renal trend slightly worse than Jan 2026 (creatinine 1.22). Reinforce hydration and repeat in 6-8 weeks.',
           },
           {
-            'title': 'Lipid panel follow-up - Mar 2026',
+            'title': 'Lipid and glucose follow-up - Mar 2026',
             'document_type': 'lab_report',
             'source': 'Milan Community Clinic',
             'exam_date': '2026-03-22',
             'content':
-                'Patient: Marco Rossi\nLDL cholesterol: 132 mg/dL (target < 115)\nHDL: 51 mg/dL\nTriglycerides: 158 mg/dL\nComment: Continue Mediterranean diet and exercise.',
+                'Patient: Marco Rossi\nLDL cholesterol: 138 mg/dL (target < 115) [OUT OF RANGE - high]\nTriglycerides: 176 mg/dL (reference < 150) [OUT OF RANGE - high]\nHbA1c: 5.8% (reference 4.0-5.6) [OUT OF RANGE - high]\nComment: Family history of diabetes and hypercholesterolemia noted. Continue Mediterranean diet and increase aerobic exercise frequency.',
           },
           {
-            'title': 'Urinalysis and renal trend - Feb 2026',
+            'title': 'CBC and inflammation panel - Jan 2026',
             'document_type': 'lab_report',
             'source': 'Poliambulatorio San Marco',
-            'exam_date': '2026-02-18',
+            'exam_date': '2026-01-14',
             'content':
-                'Patient: Marco Rossi\nUrinalysis: no proteinuria, no hematuria\nCreatinine previous: 1.19 mg/dL\nComment: Renal function stable, monitor quarterly.',
+                'Patient: Marco Rossi\nhs-CRP: 4.2 mg/L (reference < 3.0) [OUT OF RANGE - high]\nCreatinine: 1.22 mg/dL (reference 0.67-1.17) [OUT OF RANGE - high]\nHemoglobin: 14.6 g/dL (reference 13.5-17.5)\nComment: Low-grade inflammatory signal with persistent mild renal marker elevation; monitor trend quarterly.',
+          },
+          {
+            'title': 'Renal baseline comparison - Nov 2025',
+            'document_type': 'lab_report',
+            'source': 'Poliambulatorio San Marco',
+            'exam_date': '2025-11-07',
+            'content':
+                'Patient: Marco Rossi\nCreatinine: 1.18 mg/dL (reference 0.67-1.17) [OUT OF RANGE - high]\neGFR: 75 mL/min/1.73m2 (reference > 90) [OUT OF RANGE - low]\nUrea: 43 mg/dL (reference 17-43)\nComment: Earliest available value in this local history. Useful baseline for renal trend questions.',
           },
         ];
       case childManagedProfileId:
@@ -169,7 +177,7 @@ class DemoSeedData {
             'source': 'Pediatric Care Unit Milano',
             'exam_date': '2026-04-08',
             'content':
-                'Patient: Giulia Rossi\nHemoglobin: 12.2 g/dL\nFerritin: 18 ng/mL (borderline low)\nWBC: 6.4 x10^9/L\nComment: Increase iron-rich foods and recheck ferritin in 3 months.',
+                'Patient: Giulia Rossi\nHemoglobin: 11.9 g/dL (reference 12.0-15.5) [OUT OF RANGE - low]\nFerritin: 14 ng/mL (reference 15-120) [OUT OF RANGE - low]\nEosinophils: 8.2% (reference 0-6) [OUT OF RANGE - high]\nComment: Findings coherent with allergic season and low iron stores. Recheck ferritin after nutritional intervention.',
           },
           {
             'title': 'Allergy panel and IgE - Mar 2026',
@@ -177,15 +185,23 @@ class DemoSeedData {
             'source': 'Pediatric Care Unit Milano',
             'exam_date': '2026-03-16',
             'content':
-                'Patient: Giulia Rossi\nTotal IgE: 182 IU/mL (elevated)\nSpecific reactivity: grass pollen positive\nComment: Seasonal allergic rhinitis profile confirmed.',
+                'Patient: Giulia Rossi\nTotal IgE: 198 IU/mL (reference < 100) [OUT OF RANGE - high]\nAbsolute eosinophils: 0.62 x10^9/L (reference 0.05-0.45) [OUT OF RANGE - high]\nSpecific reactivity: grass pollen positive\nComment: Seasonal allergic rhinitis profile confirmed; values slightly higher than previous year peak.',
           },
           {
-            'title': 'Vitamin D and growth check - Feb 2026',
-            'document_type': 'visit_note',
+            'title': 'Vitamin D and iron status - Jan 2026',
+            'document_type': 'lab_report',
             'source': 'Pediatric Care Unit Milano',
-            'exam_date': '2026-02-21',
+            'exam_date': '2026-01-21',
             'content':
-                'Patient: Giulia Rossi\n25-OH Vitamin D: 24 ng/mL\nGrowth parameters: age-appropriate\nComment: Continue vitamin D supplementation 1000 IU daily.',
+                'Patient: Giulia Rossi\n25-OH Vitamin D: 22 ng/mL (reference 30-100) [OUT OF RANGE - low]\nTransferrin saturation: 15% (reference 20-45) [OUT OF RANGE - low]\nMCV: 78 fL (reference 80-96) [OUT OF RANGE - low]\nComment: Continue vitamin D3 1000 IU daily and iron-rich diet per pediatric plan.',
+          },
+          {
+            'title': 'Previous CBC baseline - Nov 2025',
+            'document_type': 'lab_report',
+            'source': 'Pediatric Care Unit Milano',
+            'exam_date': '2025-11-19',
+            'content':
+                'Patient: Giulia Rossi\nHemoglobin: 11.8 g/dL (reference 12.0-15.5) [OUT OF RANGE - low]\nFerritin: 16 ng/mL (reference 15-120)\nTotal IgE: 164 IU/mL (reference < 100) [OUT OF RANGE - high]\nComment: Baseline report showing persistent allergy signal and early iron depletion trend.',
           },
         ];
       case seniorManagedProfileId:
@@ -197,7 +213,7 @@ class DemoSeedData {
             'source': 'Centro Clinico San Carlo',
             'exam_date': '2026-04-11',
             'content':
-                'Patient: Luisa Rossi\nCreatinine: 1.35 mg/dL (high)\neGFR: 49 mL/min/1.73m2\nTSH: 5.8 mIU/L (high)\nComment: CKD stage 3 trend and suboptimal thyroid control, endocrinology review recommended.',
+                'Patient: Luisa Rossi\nCreatinine: 1.37 mg/dL (reference 0.60-1.10) [OUT OF RANGE - high]\neGFR: 48 mL/min/1.73m2 (reference > 60) [OUT OF RANGE - low]\nTSH: 6.1 mIU/L (reference 0.40-4.00) [OUT OF RANGE - high]\nComment: CKD stage 3 trend confirmed with persistent suboptimal thyroid control.',
           },
           {
             'title': 'HbA1c and glucose follow-up - Mar 2026',
@@ -205,15 +221,23 @@ class DemoSeedData {
             'source': 'Centro Clinico San Carlo',
             'exam_date': '2026-03-20',
             'content':
-                'Patient: Luisa Rossi\nHbA1c: 6.4%\nFasting glucose: 121 mg/dL\nComment: Prediabetes range, nutritional counseling reinforced.',
+                'Patient: Luisa Rossi\nHbA1c: 6.6% (reference < 5.7) [OUT OF RANGE - high]\nFasting glucose: 126 mg/dL (reference 70-99) [OUT OF RANGE - high]\nPost-prandial glucose: 189 mg/dL (reference < 140) [OUT OF RANGE - high]\nComment: Dysglycemia worsened versus Jan 2026; diabetic threshold reached, treatment plan review advised.',
           },
           {
-            'title': 'Cardiology follow-up note - Feb 2026',
-            'document_type': 'visit_note',
-            'source': 'Cardiology Ambulatory Unit',
-            'exam_date': '2026-02-15',
+            'title': 'Lipid and renal microalbumin trend - Jan 2026',
+            'document_type': 'lab_report',
+            'source': 'Centro Clinico San Carlo',
+            'exam_date': '2026-01-18',
             'content':
-                'Patient: Luisa Rossi\nBlood pressure average home logs: 132/80 mmHg\nECG: sinus rhythm, no acute ischemic changes\nComment: Continue antihypertensive therapy and monthly monitoring.',
+                'Patient: Luisa Rossi\nLDL cholesterol: 146 mg/dL (target < 100) [OUT OF RANGE - high]\nUrine albumin/creatinine ratio: 46 mg/g (reference < 30) [OUT OF RANGE - high]\nPotassium: 5.3 mmol/L (reference 3.5-5.1) [OUT OF RANGE - high]\nComment: Combined cardio-renal risk remains elevated; continue close monitoring.',
+          },
+          {
+            'title': 'Thyroid baseline trend - Oct 2025',
+            'document_type': 'lab_report',
+            'source': 'Endocrinology Ambulatory Unit',
+            'exam_date': '2025-10-22',
+            'content':
+                'Patient: Luisa Rossi\nTSH: 5.4 mIU/L (reference 0.40-4.00) [OUT OF RANGE - high]\nFree T4: 0.79 ng/dL (reference 0.80-1.80) [OUT OF RANGE - low]\nCreatinine: 1.29 mg/dL (reference 0.60-1.10) [OUT OF RANGE - high]\nComment: Historical baseline confirming long-standing thyroid and renal trend now seen in 2026 reports.',
           },
         ];
     }

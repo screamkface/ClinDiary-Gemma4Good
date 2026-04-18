@@ -56,7 +56,7 @@ void main() {
       final dossierRepository = MockDossierRepository();
 
       const question =
-          'Come sta andando il mio quadro clinico negli ultimi giorni?';
+          'How is my clinical picture evolving over the last few days?';
       final referenceDate = DateTime.utc(2026, 4, 5);
       const systemPrompt = 'system';
       const userPrompt = 'user';
@@ -111,7 +111,7 @@ void main() {
           systemPrompt: systemPrompt,
           userPrompt: userPrompt,
         ),
-      ).thenAnswer((_) async => 'Risposta di Gemma');
+      ).thenAnswer((_) async => 'Gemma answer');
 
       final service = GemmaCoachService(
         onDeviceAiService: aiService,
@@ -131,7 +131,7 @@ void main() {
         referenceDate: referenceDate,
       );
 
-      expect(answer, 'Risposta di Gemma');
+      expect(answer, 'Gemma answer');
       expect(promptBuildCalls, 2);
       verify(() => profileRepository.fetchProfile()).called(1);
       verify(() => dossierRepository.fetchDossier()).called(1);

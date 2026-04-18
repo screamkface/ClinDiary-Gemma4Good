@@ -126,7 +126,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Onboarding clinico')),
+      appBar: AppBar(title: const Text('Clinical onboarding')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -139,7 +139,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Impostiamo la tua base clinica',
+                      'Let\'s set up your clinical baseline',
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
@@ -148,31 +148,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(labelText: 'Nome'),
+                      decoration: const InputDecoration(
+                        labelText: 'First name',
+                      ),
                       validator: (value) => value == null || value.isEmpty
-                          ? 'Campo obbligatorio'
+                          ? 'Required field'
                           : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _lastNameController,
-                      decoration: const InputDecoration(labelText: 'Cognome'),
+                      decoration: const InputDecoration(labelText: 'Last name'),
                       validator: (value) => value == null || value.isEmpty
-                          ? 'Campo obbligatorio'
+                          ? 'Required field'
                           : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _birthDateController,
                       decoration: const InputDecoration(
-                        labelText: 'Data di nascita (YYYY-MM-DD)',
+                        labelText: 'Birth date (YYYY-MM-DD)',
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Campo obbligatorio';
+                          return 'Required field';
                         }
                         if (DateTime.tryParse(value) == null) {
-                          return 'Formato non valido';
+                          return 'Invalid format';
                         }
                         return null;
                       },
@@ -181,21 +183,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _sex,
                       decoration: const InputDecoration(
-                        labelText: 'Sesso biologico',
+                        labelText: 'Biological sex',
                       ),
                       items: const [
                         DropdownMenuItem(
                           value: 'female',
-                          child: Text('Femmina'),
+                          child: Text('Female'),
                         ),
-                        DropdownMenuItem(value: 'male', child: Text('Maschio')),
+                        DropdownMenuItem(value: 'male', child: Text('Male')),
                         DropdownMenuItem(
                           value: 'intersex',
                           child: Text('Intersex'),
                         ),
                         DropdownMenuItem(
                           value: 'unknown',
-                          child: Text('Preferisco non indicare'),
+                          child: Text('Prefer not to say'),
                         ),
                       ],
                       onChanged: (value) =>
@@ -211,7 +213,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               decimal: true,
                             ),
                             decoration: const InputDecoration(
-                              labelText: 'Altezza (cm)',
+                              labelText: 'Height (cm)',
                             ),
                           ),
                         ),

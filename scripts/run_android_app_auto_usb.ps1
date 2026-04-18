@@ -5,6 +5,7 @@ $script:ScriptArgs = @($args)
 $script:SkipSeed = $false
 $script:KeepBackground = $false
 $script:BackendOnly = $false
+$script:LocalOnly = $true
 $script:WithOcr = $false
 $script:ApiPort = if ($env:API_PORT) { [int]$env:API_PORT } else { 8000 }
 $script:PreferLan = $false
@@ -33,6 +34,8 @@ Uso:
 Opzioni:
   --skip-seed       Non eseguire il seed demo.
   --keep-background Lascia attivi backend/worker/beat dopo l'uscita di Flutter.
+    --local-only      Modalita predefinita: avvia solo Flutter in locale, senza backend.
+    --with-backend    Disattiva local-only e riattiva backend + Docker.
   --backend-only    Avvia solo il backend senza Flutter.
   --with-ocr        Installa le dipendenze OCR opzionali del backend.
   --api-port PORT   Usa una porta backend diversa da 8000.
@@ -42,7 +45,8 @@ Opzioni:
 
 Descrizione:
   Questo script rileva automaticamente qualsiasi dispositivo Android USB collegato
-  e avvia il backend + app Flutter su di esso. Se nessun device è trovato, esce con errore.
+    e avvia l'app Flutter in modalita locale su di esso. Se nessun device e trovato, esce con errore.
+    Usa --with-backend se vuoi riattivare backend + Docker.
   Se ci sono più dispositivi, usa il primo disponibile.
 
 Esempi:
@@ -65,9 +69,16 @@ function Parse-Args {
             "--keep-background" {
                 $script:KeepBackground = $true
             }
+            "--local-only" {
+                $script:LocalOnly = $true
+            }
+            "--with-backend" {
+                $script:LocalOnly = $false
+            }
             "--backend-only" {
                 $script:BackendOnly = $true
                 $script:KeepBackground = $true
+                $script:LocalOnly = $false
             }
             "--with-ocr" {
                 $script:WithOcr = $true
@@ -159,6 +170,10 @@ if ($script:SkipSeed) {
 
 if ($script:KeepBackground) {
     $launcherArgs += "--keep-background"
+}
+
+if ($script:LocalOnly) {
+    $launcherArgs += "--local-only"
 }
 
 if ($script:BackendOnly) {

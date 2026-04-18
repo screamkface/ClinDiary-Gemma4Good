@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('cambia fase durante una generazione attiva', (tester) async {
+  testWidgets('changes phase during active generation', (tester) async {
     final startedAt = DateTime.now();
 
     await tester.pumpWidget(
@@ -12,7 +12,7 @@ void main() {
           body: GenerationPhaseLabel(
             isActive: true,
             startedAt: startedAt,
-            idleLabel: 'Rigenera',
+            idleLabel: 'Regenerate',
           ),
         ),
       ),
@@ -27,15 +27,15 @@ void main() {
     expect(find.text('Refining...'), findsOneWidget);
   });
 
-  testWidgets('mostra il testo idle quando inattiva', (tester) async {
+  testWidgets('shows idle text when inactive', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: GenerationPhaseLabel(isActive: false, idleLabel: 'Rigenera'),
+          body: GenerationPhaseLabel(isActive: false, idleLabel: 'Regenerate'),
         ),
       ),
     );
 
-    expect(find.text('Rigenera'), findsOneWidget);
+    expect(find.text('Regenerate'), findsOneWidget);
   });
 }

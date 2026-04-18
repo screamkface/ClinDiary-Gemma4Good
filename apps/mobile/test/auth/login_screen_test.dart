@@ -10,9 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../support/fakes.dart';
 
 void main() {
-  testWidgets('login screen esegue il submit e naviga alla home', (
-    tester,
-  ) async {
+  testWidgets('login screen submits and navigates to home', (tester) async {
     final router = GoRouter(
       initialLocation: '/login',
       routes: [

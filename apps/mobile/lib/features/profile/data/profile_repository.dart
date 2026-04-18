@@ -132,12 +132,32 @@ class ProfileRepository {
     }
   }
 
-  Future<ProfileBundle> createManagedProfile(Map<String, dynamic> payload) async {
-    await _apiClient.postJson(
-      '/api/v1/profile/profiles',
-      body: payload,
-    );
-    return fetchProfile();
+  Future<ProfileBundle> createManagedProfile(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      await _apiClient.postJson('/api/v1/profile/profiles', body: payload);
+      return fetchProfile();
+    } on ApiException catch (error) {
+      if (!_shouldQueue(error.statusCode)) {
+        rethrow;
+      }
+      return _queueBundleMutation(
+        method: 'POST',
+        path: '/api/v1/profile/profiles',
+        body: payload,
+        lastError: error.message,
+        patch: (bundle) => _appendManagedProfile(bundle, payload),
+      );
+    } catch (error) {
+      return _queueBundleMutation(
+        method: 'POST',
+        path: '/api/v1/profile/profiles',
+        body: payload,
+        lastError: error.toString(),
+        patch: (bundle) => _appendManagedProfile(bundle, payload),
+      );
+    }
   }
 
   Future<List<PatientProfile>> fetchManagedProfiles() async {
@@ -606,7 +626,9 @@ class ProfileRepository {
     );
   }
 
-  Future<void> _ensureActiveProfileSelection(Map<String, dynamic> bundle) async {
+  Future<void> _ensureActiveProfileSelection(
+    Map<String, dynamic> bundle,
+  ) async {
     final current = await getActiveProfileId();
     if (current != null && current.trim().isNotEmpty) {
       return;
@@ -635,10 +657,9 @@ class ProfileRepository {
         final decoded = Map<String, dynamic>.from(
           jsonDecode(legacyCache) as Map<String, dynamic>,
         );
-        final cachedProfileId =
-            decoded['profile'] is Map<String, dynamic>
-                ? (decoded['profile'] as Map<String, dynamic>)['id']?.toString()
-                : null;
+        final cachedProfileId = decoded['profile'] is Map<String, dynamic>
+            ? (decoded['profile'] as Map<String, dynamic>)['id']?.toString()
+            : null;
         if (cachedProfileId == normalizedActiveId) {
           return decoded;
         }
@@ -852,6 +873,63 @@ class ProfileRepository {
     final items = _readResourceList(bundle, key)..add(item);
     bundle[key] = items;
     return bundle;
+  }
+
+  Map<String, dynamic> _appendManagedProfile(
+    Map<String, dynamic> bundle,
+    Map<String, dynamic> payload,
+  ) {
+    final managed =
+        (bundle['managed_profiles'] as List<dynamic>? ?? const <dynamic>[])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+    managed.add(_buildPendingManagedProfile(bundle, payload));
+    bundle['managed_profiles'] = managed;
+    return bundle;
+  }
+
+  Map<String, dynamic> _buildPendingManagedProfile(
+    Map<String, dynamic> bundle,
+    Map<String, dynamic> payload,
+  ) {
+    final activeProfile = Map<String, dynamic>.from(
+      bundle['profile'] as Map<String, dynamic>? ?? _templateProfileJson(),
+    );
+    return {
+      'id': _pendingId('managed-profile'),
+      'user_id': activeProfile['user_id'] ?? 'pending-user',
+      'is_primary': false,
+      'first_name': payload['first_name'],
+      'last_name': payload['last_name'],
+      'birth_date': payload['birth_date'],
+      'biological_sex': payload['biological_sex'],
+      'height_cm': payload['height_cm'],
+      'weight_kg': payload['weight_kg'],
+      'smoker': payload['smoker'] as bool? ?? false,
+      'former_smoker': payload['former_smoker'] as bool? ?? false,
+      'postmenopausal': payload['postmenopausal'] as bool? ?? false,
+      'fragility_fracture_history':
+          payload['fragility_fracture_history'] as bool? ?? false,
+      'feels_unsteady': payload['feels_unsteady'] as bool? ?? false,
+      'new_or_multiple_partners':
+          payload['new_or_multiple_partners'] as bool? ?? false,
+      'partner_with_sti': payload['partner_with_sti'] as bool? ?? false,
+      'sex_with_men': payload['sex_with_men'] as bool? ?? false,
+      'sti_or_exposure_concerns':
+          payload['sti_or_exposure_concerns'] as bool? ?? false,
+      'trying_to_conceive': payload['trying_to_conceive'] as bool? ?? false,
+      'currently_pregnant': payload['currently_pregnant'] as bool? ?? false,
+      'taking_folic_acid': payload['taking_folic_acid'] as bool? ?? false,
+      'region_code': payload['region_code'] ?? activeProfile['region_code'],
+      'relationship_label':
+          payload['relationship_label'] ?? payload['relationship'],
+      'occupation': payload['occupation'],
+      'exercise_habits': payload['exercise_habits'],
+      'sleep_pattern': payload['sleep_pattern'],
+      'symptom_triggers': payload['symptom_triggers'],
+      'functional_limitations': payload['functional_limitations'],
+      'pending_sync': true,
+    };
   }
 
   Map<String, dynamic> _removeResource(

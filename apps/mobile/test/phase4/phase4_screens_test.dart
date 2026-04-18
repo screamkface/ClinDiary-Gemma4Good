@@ -16,10 +16,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  testWidgets('screenings screen mostra screening e catalogo', (tester) async {
+  testWidgets('screenings screen shows screenings and catalog', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -29,14 +29,13 @@ void main() {
                 id: 'screen-annual',
                 screeningProgramId: 'program-annual',
                 screeningCode: 'preventive_annual_visit',
-                screeningName: 'Visita preventiva annuale',
-                screeningCategory: 'prevenzione_generale',
+                screeningName: 'Annual preventive visit',
+                screeningCategory: 'general_prevention',
                 carePathway: 'annual_visit',
                 recommendationLevel: 'routine',
-                cadenceLabel: 'Annuale',
+                cadenceLabel: 'Annual',
                 publicCoverageFlag: false,
-                recommendationReason:
-                    'Utile per fare il punto sulla prevenzione.',
+                recommendationReason: 'Useful for reviewing prevention status.',
                 nextDueDate: DateTime.utc(2026, 3, 20),
                 completedThisYear: false,
                 status: 'recommended',
@@ -46,13 +45,13 @@ void main() {
                 id: 'screen-1',
                 screeningProgramId: 'program-1',
                 screeningCode: 'cervical_cancer_it',
-                screeningName: 'Screening cervice uterina',
+                screeningName: 'Cervical cancer screening',
                 screeningCategory: 'oncologia',
                 carePathway: 'discuss_with_doctor',
                 recommendationLevel: 'routine',
-                cadenceLabel: 'Programma pubblico',
+                cadenceLabel: 'Public program',
                 publicCoverageFlag: true,
-                recommendationReason: 'Consigliato in base al profilo.',
+                recommendationReason: 'Recommended based on profile.',
                 nextDueDate: DateTime.utc(2026, 3, 20),
                 completedThisYear: false,
                 status: 'recommended',
@@ -71,14 +70,14 @@ void main() {
               const ScreeningCatalogItem(
                 id: 'program-annual',
                 code: 'preventive_annual_visit',
-                name: 'Visita preventiva annuale',
-                description: 'Controllo generale',
+                name: 'Annual preventive visit',
+                description: 'General check-up',
                 minAge: 18,
                 publicCoverageFlag: false,
-                category: 'prevenzione_generale',
+                category: 'general_prevention',
                 carePathway: 'annual_visit',
                 recommendationLevel: 'routine',
-                cadenceLabel: 'Annuale',
+                cadenceLabel: 'Annual',
                 catalogOnly: false,
                 active: true,
                 regionalAvailability: [],
@@ -86,15 +85,15 @@ void main() {
               const ScreeningCatalogItem(
                 id: 'program-1',
                 code: 'cervical_cancer_it',
-                name: 'Screening cervice uterina',
-                description: 'Screening periodico',
+                name: 'Cervical cancer screening',
+                description: 'Periodic screening',
                 minAge: 25,
                 maxAge: 64,
                 publicCoverageFlag: true,
                 category: 'oncologia',
                 carePathway: 'discuss_with_doctor',
                 recommendationLevel: 'routine',
-                cadenceLabel: 'Programma pubblico',
+                cadenceLabel: 'Public program',
                 catalogOnly: false,
                 active: true,
                 regionalAvailability: [],
@@ -115,13 +114,13 @@ void main() {
       find.text('Tests and checks to discuss with the doctor'),
       findsWidgets,
     );
-    expect(find.text('Screening cervice uterina'), findsNWidgets(2));
-    expect(find.text('Visita preventiva annuale'), findsNWidgets(2));
-    expect(find.text('Programma pubblico'), findsWidgets);
+    expect(find.text('Cervical cancer screening'), findsNWidgets(2));
+    expect(find.text('Annual preventive visit'), findsNWidgets(2));
+    expect(find.text('Public program'), findsWidgets);
     expect(find.text('Mark completed'), findsNWidgets(2));
   });
 
-  testWidgets('medications screen mostra terapia e storico aderenza', (
+  testWidgets('medications screen shows therapy and adherence history', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -145,14 +144,14 @@ void main() {
                   id: 'med-1',
                   name: 'Atorvastatina',
                   dosage: '20 mg',
-                  frequency: '1/die',
+                  frequency: '1/day',
                   active: true,
                   schedules: [
                     MedicationScheduleItem(
                       id: 'sched-1',
                       scheduledTime: '08:00:00',
                       daysOfWeek: [1, 3, 5],
-                      instructions: 'Dopo colazione',
+                      instructions: 'After breakfast',
                       active: true,
                     ),
                   ],
@@ -181,12 +180,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Farmaci'), findsOneWidget);
+    expect(find.text('Medications'), findsOneWidget);
     expect(find.text('Atorvastatina'), findsNWidgets(2));
     expect(find.text('Mark as taken'), findsOneWidget);
   });
 
-  testWidgets('notifications screen mostra notifiche e azione letta', (
+  testWidgets('notifications screen shows notifications and read action', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -197,8 +196,8 @@ void main() {
               AppNotificationItem(
                 id: 'notif-1',
                 notificationType: 'screening_reminder',
-                title: 'Screening da programmare',
-                body: 'Prenota il controllo preventivo.',
+                title: 'Screening to schedule',
+                body: 'Book the preventive check-up.',
                 priority: 'high',
                 readStatus: false,
                 createdAt: DateTime.utc(2026, 3, 20, 10),
@@ -244,12 +243,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Local medication reminders'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Screening da programmare'),
+      find.text('Screening to schedule'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Screening da programmare'), findsOneWidget);
+    expect(find.text('Screening to schedule'), findsOneWidget);
     expect(find.text('Mark as read'), findsOneWidget);
   });
 }

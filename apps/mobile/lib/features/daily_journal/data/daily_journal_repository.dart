@@ -24,51 +24,448 @@ class DailyJournalRepository {
         key: await profileScopedCacheKey(_localDatabase, _cacheKey),
         payload: jsonEncode(response),
       );
-      return response
-          .map((item) => DailyEntry.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } on ApiException {
-      final cached = await readProfileScopedCache(_localDatabase, _cacheKey);
-      if (cached == null) rethrow;
-      final decoded = jsonDecode(cached) as List<dynamic>;
-      return decoded
-          .map((item) => DailyEntry.fromJson(item as Map<String, dynamic>))
-          .toList();
+      return _decodeEntries(
+        response
+            .map(
+              (item) => Map<String, dynamic>.from(item as Map<String, dynamic>),
+            )
+            .toList(),
+      );
+    } on ApiException catch (error) {
+      final cached = await _readCachedEntriesJson();
+      if (cached == null) {
+        if (_isLocalOnlyError(error)) {
+          return const <DailyEntry>[];
+        }
+        rethrow;
+      }
+      return _decodeEntries(cached);
     } catch (_) {
-      final cached = await readProfileScopedCache(_localDatabase, _cacheKey);
+      final cached = await _readCachedEntriesJson();
       if (cached == null) rethrow;
-      final decoded = jsonDecode(cached) as List<dynamic>;
-      return decoded
-          .map((item) => DailyEntry.fromJson(item as Map<String, dynamic>))
-          .toList();
+      return _decodeEntries(cached);
     }
   }
 
   Future<DailyEntry> createEntry(Map<String, dynamic> payload) async {
-    final response = await _apiClient.postJson(
-      '/api/v1/daily-entries',
-      body: payload,
-    );
-    return DailyEntry.fromJson(response);
+    try {
+      final response = await _apiClient.postJson(
+        '/api/v1/daily-entries',
+        body: payload,
+      );
+      await _upsertEntryInCache(response);
+      return DailyEntry.fromJson(response);
+    } on ApiException catch (error) {
+      if (!_shouldQueue(error.statusCode)) {
+        rethrow;
+      }
+      final pendingEntry = _buildPendingEntry(payload);
+      if (!_isLocalOnlyError(error)) {
+        await _apiClient.enqueueJsonOperation(
+          method: 'POST',
+          path: '/api/v1/daily-entries',
+          body: payload,
+          lastError: error.message,
+        );
+      }
+      await _upsertEntryInCache(pendingEntry);
+      return DailyEntry.fromJson(pendingEntry);
+    } catch (error) {
+      final pendingEntry = _buildPendingEntry(payload);
+      await _apiClient.enqueueJsonOperation(
+        method: 'POST',
+        path: '/api/v1/daily-entries',
+        body: payload,
+        lastError: error.toString(),
+      );
+      await _upsertEntryInCache(pendingEntry);
+      return DailyEntry.fromJson(pendingEntry);
+    }
   }
 
   Future<void> addSymptom({
     required String entryId,
     required Map<String, dynamic> payload,
   }) async {
-    await _apiClient.postJson(
-      '/api/v1/daily-entries/$entryId/symptoms',
-      body: payload,
-    );
+    final path = '/api/v1/daily-entries/$entryId/symptoms';
+    try {
+      final response = await _apiClient.postJson(path, body: payload);
+      await _upsertSymptomInCache(entryId, response);
+    } on ApiException catch (error) {
+      if (!_shouldQueue(error.statusCode)) {
+        rethrow;
+      }
+      if (!_isLocalOnlyError(error) && !_isPendingId(entryId)) {
+        await _apiClient.enqueueJsonOperation(
+          method: 'POST',
+          path: path,
+          body: payload,
+          lastError: error.message,
+        );
+      }
+      await _upsertSymptomInCache(entryId, _buildPendingSymptom(payload));
+    } catch (error) {
+      if (!_isPendingId(entryId)) {
+        await _apiClient.enqueueJsonOperation(
+          method: 'POST',
+          path: path,
+          body: payload,
+          lastError: error.toString(),
+        );
+      }
+      await _upsertSymptomInCache(entryId, _buildPendingSymptom(payload));
+    }
   }
 
   Future<void> addVital({
     required String entryId,
     required Map<String, dynamic> payload,
   }) async {
-    await _apiClient.postJson(
-      '/api/v1/daily-entries/$entryId/vitals',
-      body: payload,
+    final path = '/api/v1/daily-entries/$entryId/vitals';
+    try {
+      final response = await _apiClient.postJson(path, body: payload);
+      await _upsertVitalInCache(entryId, response);
+    } on ApiException catch (error) {
+      if (!_shouldQueue(error.statusCode)) {
+        rethrow;
+      }
+      if (!_isLocalOnlyError(error) && !_isPendingId(entryId)) {
+        await _apiClient.enqueueJsonOperation(
+          method: 'POST',
+          path: path,
+          body: payload,
+          lastError: error.message,
+        );
+      }
+      await _upsertVitalInCache(entryId, _buildPendingVital(payload));
+    } catch (error) {
+      if (!_isPendingId(entryId)) {
+        await _apiClient.enqueueJsonOperation(
+          method: 'POST',
+          path: path,
+          body: payload,
+          lastError: error.toString(),
+        );
+      }
+      await _upsertVitalInCache(entryId, _buildPendingVital(payload));
+    }
+  }
+
+  Future<void> _upsertEntryInCache(Map<String, dynamic> entry) async {
+    final entries = await _readCachedEntriesJson() ?? <Map<String, dynamic>>[];
+    final normalized = _normalizeEntry(entry);
+    final entryId = normalized['id'].toString();
+    final index = entries.indexWhere(
+      (item) => item['id']?.toString() == entryId,
+    );
+    if (index == -1) {
+      entries.add(normalized);
+    } else {
+      entries[index] = normalized;
+    }
+    _sortEntriesDescending(entries);
+    await _writeCachedEntriesJson(entries);
+  }
+
+  Future<void> _upsertSymptomInCache(
+    String entryId,
+    Map<String, dynamic> symptom,
+  ) async {
+    final entries = await _readCachedEntriesJson() ?? <Map<String, dynamic>>[];
+    final index = entries.indexWhere(
+      (item) => item['id']?.toString() == entryId,
+    );
+    final normalizedSymptom = _normalizeSymptom(symptom);
+
+    if (index == -1) {
+      final syntheticEntry = _buildPendingEntry({
+        'entry_date': _todayIsoDate(),
+      });
+      syntheticEntry['id'] = entryId;
+      syntheticEntry['symptoms'] = <Map<String, dynamic>>[normalizedSymptom];
+      entries.add(syntheticEntry);
+    } else {
+      final current = _normalizeEntry(entries[index]);
+      final symptoms = _normalizeSymptomList(current['symptoms']);
+      final symptomIndex = symptoms.indexWhere(
+        (item) => item['id']?.toString() == normalizedSymptom['id']?.toString(),
+      );
+      if (symptomIndex == -1) {
+        symptoms.add(normalizedSymptom);
+      } else {
+        symptoms[symptomIndex] = normalizedSymptom;
+      }
+      current['symptoms'] = symptoms;
+      entries[index] = current;
+    }
+
+    _sortEntriesDescending(entries);
+    await _writeCachedEntriesJson(entries);
+  }
+
+  Future<void> _upsertVitalInCache(
+    String entryId,
+    Map<String, dynamic> vital,
+  ) async {
+    final entries = await _readCachedEntriesJson() ?? <Map<String, dynamic>>[];
+    final index = entries.indexWhere(
+      (item) => item['id']?.toString() == entryId,
+    );
+    final normalizedVital = _normalizeVital(vital);
+
+    if (index == -1) {
+      final syntheticEntry = _buildPendingEntry({
+        'entry_date': _todayIsoDate(),
+      });
+      syntheticEntry['id'] = entryId;
+      syntheticEntry['vitals'] = <Map<String, dynamic>>[normalizedVital];
+      entries.add(syntheticEntry);
+    } else {
+      final current = _normalizeEntry(entries[index]);
+      final vitals = _normalizeVitalList(current['vitals']);
+      final vitalIndex = vitals.indexWhere(
+        (item) => item['id']?.toString() == normalizedVital['id']?.toString(),
+      );
+      if (vitalIndex == -1) {
+        vitals.add(normalizedVital);
+      } else {
+        vitals[vitalIndex] = normalizedVital;
+      }
+      current['vitals'] = vitals;
+      entries[index] = current;
+    }
+
+    _sortEntriesDescending(entries);
+    await _writeCachedEntriesJson(entries);
+  }
+
+  List<DailyEntry> _decodeEntries(List<Map<String, dynamic>> entries) {
+    return entries.map(DailyEntry.fromJson).toList();
+  }
+
+  Future<List<Map<String, dynamic>>?> _readCachedEntriesJson() async {
+    final cached = await readProfileScopedCache(_localDatabase, _cacheKey);
+    if (cached == null) {
+      return null;
+    }
+    final decoded = jsonDecode(cached) as List<dynamic>;
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> _writeCachedEntriesJson(
+    List<Map<String, dynamic>> entries,
+  ) async {
+    await _localDatabase.putCache(
+      key: await profileScopedCacheKey(_localDatabase, _cacheKey),
+      payload: jsonEncode(entries),
     );
   }
+
+  void _sortEntriesDescending(List<Map<String, dynamic>> entries) {
+    entries.sort((a, b) {
+      final aDate = _tryParseDate(a['entry_date']?.toString());
+      final bDate = _tryParseDate(b['entry_date']?.toString());
+      if (aDate == null && bDate == null) {
+        return 0;
+      }
+      if (aDate == null) {
+        return 1;
+      }
+      if (bDate == null) {
+        return -1;
+      }
+      return bDate.compareTo(aDate);
+    });
+  }
+
+  Map<String, dynamic> _normalizeEntry(Map<String, dynamic> entry) {
+    final normalized = Map<String, dynamic>.from(entry);
+    normalized['id'] = normalized['id']?.toString() ?? _pendingId('entry');
+    normalized['entry_date'] = _normalizeEntryDate(normalized['entry_date']);
+    normalized['sleep_hours'] = _asDouble(normalized['sleep_hours']);
+    normalized['sleep_quality'] = _asInt(normalized['sleep_quality']);
+    normalized['energy_level'] = _asInt(normalized['energy_level']);
+    normalized['mood_level'] = _asInt(normalized['mood_level']);
+    normalized['stress_level'] = _asInt(normalized['stress_level']);
+    normalized['appetite_level'] = _asInt(normalized['appetite_level']);
+    normalized['hydration_level'] = _asInt(normalized['hydration_level']);
+    normalized['general_pain'] = _asInt(normalized['general_pain']);
+    normalized['general_notes'] = normalized['general_notes']?.toString();
+    normalized['symptoms'] = _normalizeSymptomList(normalized['symptoms']);
+    normalized['vitals'] = _normalizeVitalList(normalized['vitals']);
+    return normalized;
+  }
+
+  List<Map<String, dynamic>> _normalizeSymptomList(dynamic raw) {
+    final list = raw as List<dynamic>? ?? const <dynamic>[];
+    return list
+        .map(
+          (item) => _normalizeSymptom(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _normalizeVitalList(dynamic raw) {
+    final list = raw as List<dynamic>? ?? const <dynamic>[];
+    return list
+        .map((item) => _normalizeVital(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Map<String, dynamic> _normalizeSymptom(Map<String, dynamic> symptom) {
+    final normalized = Map<String, dynamic>.from(symptom);
+    normalized['id'] = normalized['id']?.toString() ?? _pendingId('symptom');
+    normalized['symptom_code'] =
+        normalized['symptom_code']?.toString() ?? 'custom';
+    normalized['severity'] = _asInt(normalized['severity']);
+    normalized['duration_minutes'] = _asInt(normalized['duration_minutes']);
+    normalized['body_location'] = normalized['body_location']?.toString();
+    normalized['metadata_json'] = _normalizeMetadata(
+      normalized['metadata_json'],
+    );
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeVital(Map<String, dynamic> vital) {
+    final normalized = Map<String, dynamic>.from(vital);
+    normalized['id'] = normalized['id']?.toString() ?? _pendingId('vital');
+    normalized['type'] = normalized['type']?.toString() ?? 'generic';
+    normalized['value'] = normalized['value']?.toString() ?? '';
+    normalized['unit'] = normalized['unit']?.toString();
+    normalized['measured_at'] =
+        _normalizeDateTime(normalized['measured_at']) ??
+        DateTime.now().toUtc().toIso8601String();
+    return normalized;
+  }
+
+  Map<String, dynamic> _buildPendingEntry(Map<String, dynamic> payload) {
+    return _normalizeEntry({
+      'id': _pendingId('entry'),
+      'entry_date': payload['entry_date'] ?? _todayIsoDate(),
+      'sleep_hours': payload['sleep_hours'],
+      'sleep_quality': payload['sleep_quality'],
+      'energy_level': payload['energy_level'],
+      'mood_level': payload['mood_level'],
+      'stress_level': payload['stress_level'],
+      'appetite_level': payload['appetite_level'],
+      'hydration_level': payload['hydration_level'],
+      'general_pain': payload['general_pain'],
+      'general_notes': payload['general_notes'],
+      'symptoms': const <Map<String, dynamic>>[],
+      'vitals': const <Map<String, dynamic>>[],
+      'pending_sync': true,
+    });
+  }
+
+  Map<String, dynamic> _buildPendingSymptom(Map<String, dynamic> payload) {
+    return _normalizeSymptom({
+      'id': _pendingId('symptom'),
+      'symptom_code': payload['symptom_code'],
+      'severity': payload['severity'],
+      'duration_minutes': payload['duration_minutes'],
+      'body_location': payload['body_location'],
+      'metadata_json': payload['metadata_json'],
+      'pending_sync': true,
+    });
+  }
+
+  Map<String, dynamic> _buildPendingVital(Map<String, dynamic> payload) {
+    return _normalizeVital({
+      'id': _pendingId('vital'),
+      'type': payload['type'],
+      'value': payload['value'],
+      'unit': payload['unit'],
+      'measured_at': payload['measured_at'],
+      'pending_sync': true,
+    });
+  }
+
+  Map<String, dynamic> _normalizeMetadata(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(value);
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.fromEntries(
+        value.entries.map(
+          (entry) => MapEntry(entry.key.toString(), entry.value),
+        ),
+      );
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      return <String, dynamic>{'notes': value.trim()};
+    }
+    return const <String, dynamic>{};
+  }
+
+  String _normalizeEntryDate(dynamic value) {
+    final parsed = _tryParseDate(value?.toString());
+    if (parsed != null) {
+      return parsed.toIso8601String().split('T').first;
+    }
+    return _todayIsoDate();
+  }
+
+  String? _normalizeDateTime(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is DateTime) {
+      return value.toUtc().toIso8601String();
+    }
+    final text = value.toString().trim();
+    if (text.isEmpty) {
+      return null;
+    }
+    final parsed = DateTime.tryParse(text);
+    return parsed?.toUtc().toIso8601String() ?? text;
+  }
+
+  DateTime? _tryParseDate(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value.trim());
+  }
+
+  String _todayIsoDate() {
+    return DateTime.now().toUtc().toIso8601String().split('T').first;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.round();
+    }
+    return int.tryParse(value.toString());
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is double) {
+      return value;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value.toString());
+  }
+
+  bool _isPendingId(String value) => value.startsWith('pending-');
+
+  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
+
+  String _pendingId(String prefix) {
+    return 'pending-$prefix-${DateTime.now().microsecondsSinceEpoch}';
+  }
+
+  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

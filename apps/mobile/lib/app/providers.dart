@@ -30,7 +30,8 @@ final authControllerProvider =
     AsyncNotifierProvider<AuthController, AuthSession?>(AuthController.new);
 
 bool _isHackathonDemoMode(Ref ref) {
-  return ref.read(appConfigProvider).hackathonDemoMode;
+  final config = ref.read(appConfigProvider);
+  return config.hackathonDemoMode || config.localOnlyMode;
 }
 
 Future<T> _withDemoFallback<T>(

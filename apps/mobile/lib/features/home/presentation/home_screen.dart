@@ -23,7 +23,8 @@ class HomeScreen extends ConsumerWidget {
         unreadNotificationsAsync.asData?.value ?? false;
     final hasPendingMedications =
         pendingMedicationsAsync.asData?.value ?? false;
-    final isHackathonDemoMode = ref.read(appConfigProvider).hackathonDemoMode;
+    final config = ref.read(appConfigProvider);
+    final isDemoMode = config.hackathonDemoMode || config.localOnlyMode;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -148,7 +149,7 @@ class HomeScreen extends ConsumerWidget {
               child: Text(error.toString()),
             ),
           ),
-          if (isHackathonDemoMode) ...[
+          if (isDemoMode) ...[
             const SizedBox(height: 12),
             profileAsync.when(
               data: (bundle) {

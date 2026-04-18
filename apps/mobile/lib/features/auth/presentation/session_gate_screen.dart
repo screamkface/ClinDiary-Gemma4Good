@@ -25,7 +25,9 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
     final l10n = AppLocalizations.of(context);
-    final isHackathonDemoMode = ref.read(appConfigProvider).hackathonDemoMode;
+    final appConfig = ref.read(appConfigProvider);
+    final shouldBypassAuth =
+        appConfig.hackathonDemoMode || appConfig.localOnlyMode;
 
     Widget loadingBody(String message) {
       return Center(
@@ -52,7 +54,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
     return Scaffold(
       body: authState.when(
         data: (session) {
-          if (isHackathonDemoMode && session == null) {
+          if (shouldBypassAuth && session == null) {
             _redirectAfterFrame('/app/home');
             return loadingBody(l10n.verifyingSession);
           }
@@ -67,7 +69,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
         },
         loading: () => loadingBody(l10n.startingApp),
         error: (_, _) {
-          _redirectAfterFrame(isHackathonDemoMode ? '/app/home' : '/login');
+          _redirectAfterFrame(shouldBypassAuth ? '/app/home' : '/login');
           return loadingBody(l10n.redirectingToLogin);
         },
       ),
