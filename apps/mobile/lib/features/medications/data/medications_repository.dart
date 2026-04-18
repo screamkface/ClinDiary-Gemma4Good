@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clindiary/app/core/json/json_deep_copy.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
@@ -392,9 +393,7 @@ class MedicationsRepository {
     if (cached == null) {
       return;
     }
-    final cloned = Map<String, dynamic>.from(
-      jsonDecode(jsonEncode(cached)) as Map<String, dynamic>,
-    );
+    final cloned = deepCopyJsonMap(cached);
     patch(cloned);
     await _writeCachedProfileBundleJson(cloned);
   }

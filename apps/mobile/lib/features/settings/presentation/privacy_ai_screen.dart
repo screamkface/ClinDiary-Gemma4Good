@@ -297,16 +297,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
           .read(encryptedBackupServiceProvider)
           .restoreLatestEncryptedSnapshotFromDrive(replaceExisting: true);
 
-      ref.invalidate(healthDossierProvider);
-      ref.invalidate(profileBundleProvider);
-      ref.invalidate(screeningCatalogProvider);
-      ref.invalidate(myScreeningsProvider);
-      ref.invalidate(preventionCenterProvider);
-      ref.invalidate(notificationsProvider);
-      ref.invalidate(timelineEventsProvider);
-      ref.invalidate(documentsProvider);
-      ref.invalidate(alertsProvider);
-      ref.invalidate(dossierShareLinksProvider);
+      invalidateRestoredSnapshotProviders(ref);
 
       if (!mounted) {
         return;

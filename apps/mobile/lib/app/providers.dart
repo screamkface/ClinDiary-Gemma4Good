@@ -497,6 +497,50 @@ final documentDetailProvider =
       );
     });
 
+void invalidateMedicationProviders(
+  WidgetRef ref, {
+  bool includeTimeline = false,
+}) {
+  ref.invalidate(profileBundleProvider);
+  ref.invalidate(medicationLogsProvider);
+  ref.invalidate(notificationsProvider);
+  ref.invalidate(notificationPreferencesProvider);
+  ref.invalidate(localMedicationReminderStatusProvider);
+  if (includeTimeline) {
+    ref.invalidate(timelineEventsProvider);
+  }
+}
+
+void invalidateScreeningProviders(
+  WidgetRef ref, {
+  bool includeCatalog = false,
+  bool includeTimeline = true,
+  bool includeNotifications = true,
+}) {
+  ref.invalidate(myScreeningsProvider);
+  ref.invalidate(preventionCenterProvider);
+  if (includeCatalog) {
+    ref.invalidate(screeningCatalogProvider);
+  }
+  if (includeNotifications) {
+    ref.invalidate(notificationsProvider);
+  }
+  if (includeTimeline) {
+    ref.invalidate(timelineEventsProvider);
+  }
+}
+
+void invalidateRestoredSnapshotProviders(WidgetRef ref) {
+  ref.invalidate(healthDossierProvider);
+  ref.invalidate(profileBundleProvider);
+  ref.invalidate(myScreeningsProvider);
+  ref.invalidate(preventionCenterProvider);
+  ref.invalidate(timelineEventsProvider);
+  ref.invalidate(documentsProvider);
+  ref.invalidate(alertsProvider);
+  ref.invalidate(dossierShareLinksProvider);
+}
+
 void invalidatePatientScopedProviders(WidgetRef ref) {
   ref.invalidate(activeProfileIdProvider);
   ref.invalidate(profileBundleProvider);

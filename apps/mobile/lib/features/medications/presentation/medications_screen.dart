@@ -15,21 +15,22 @@ class MedicationsScreen extends ConsumerStatefulWidget {
 }
 
 class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
+  static final DateFormat _historyDateFormat = DateFormat(
+    'dd MMM yyyy, HH:mm',
+    'en_US',
+  );
+  static final DateFormat _pausedUntilDateFormat = DateFormat('dd/MM/yyyy');
+
   String? _busyMedicationId;
   String? _busyScheduleId;
 
-  Future<void> _refreshMedicationState() async {
-    ref.invalidate(profileBundleProvider);
-    ref.invalidate(medicationLogsProvider);
-    ref.invalidate(notificationsProvider);
-    ref.invalidate(localMedicationReminderStatusProvider);
+  Future<void> _refreshMedicationState({bool includeTimeline = false}) async {
+    final bundle = await ref.read(profileRepositoryProvider).fetchProfile();
+    final preferences = await ref
+        .read(notificationsRepositoryProvider)
+        .fetchPreferences();
+    final logs = await ref.read(medicationsRepositoryProvider).fetchLogs();
 
-    final bundle = await ref.read(profileBundleProvider.future);
-    final preferences = await ref.read(notificationPreferencesProvider.future);
-    final logs = await ref.read(medicationLogsProvider.future);
-    if (bundle == null) {
-      return;
-    }
     await ref
         .read(localMedicationReminderServiceProvider)
         .syncMedicationReminders(
@@ -37,7 +38,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           preferences: preferences,
           logs: logs,
         );
-    ref.invalidate(localMedicationReminderStatusProvider);
+
+    invalidateMedicationProviders(ref, includeTimeline: includeTimeline);
   }
 
   Future<void> _logMedication(
@@ -62,8 +64,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             medicationId: medication.id,
             targetDate: DateTime.now(),
           );
-      await _refreshMedicationState();
-      ref.invalidate(timelineEventsProvider);
+      await _refreshMedicationState(includeTimeline: true);
       if (!mounted) return;
       if (result.pendingSync) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -146,7 +147,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Reminder paused until ${DateFormat('dd/MM/yyyy').format(picked)}.',
+            'Reminder paused until ${_pausedUntilDateFormat.format(picked)}.',
           ),
         ),
       );
@@ -237,8 +238,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       await ref
           .read(medicationsRepositoryProvider)
           .deleteMedication(medication.id);
-      await _refreshMedicationState();
-      ref.invalidate(timelineEventsProvider);
+      await _refreshMedicationState(includeTimeline: true);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${medication.name} removed from profile.')),
@@ -423,7 +423,6 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
     final logsAsync = ref.watch(medicationLogsProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final recentLogs = logsAsync.asData?.value ?? const <MedicationLogItem>[];
 
     return Scaffold(
@@ -431,11 +430,24 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         title: const Text('Medications'),
         actions: [
           IconButton(
-            onPressed: () {
-              ref.invalidate(profileBundleProvider);
-              ref.invalidate(medicationLogsProvider);
-              ref.invalidate(notificationsProvider);
-              ref.invalidate(localMedicationReminderStatusProvider);
+            onPressed: () async {
+              try {
+                await _refreshMedicationState();
+              } on ApiException catch (error) {
+                if (!mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(error.message)));
+              } catch (error) {
+                if (!mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(error.toString())));
+              }
             },
             icon: const Icon(Icons.refresh),
           ),
@@ -706,7 +718,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                             dense: true,
                             title: Text(log.medicationName),
                             subtitle: Text(
-                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • Sync pending' : ''} • ${dateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
+                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • Sync pending' : ''} • ${_historyDateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
                             ),
                             trailing: Text(
                               log.medicationDosage ?? '',

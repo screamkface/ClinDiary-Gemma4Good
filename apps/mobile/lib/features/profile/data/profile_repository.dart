@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clindiary/app/core/json/json_deep_copy.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
@@ -698,9 +699,7 @@ class ProfileRepository {
   }
 
   Map<String, dynamic> _cloneBundleJson(Map<String, dynamic> bundle) {
-    return Map<String, dynamic>.from(
-      jsonDecode(jsonEncode(bundle)) as Map<String, dynamic>,
-    );
+    return deepCopyJsonMap(bundle);
   }
 
   Map<String, dynamic> _bundleTemplateJson() {

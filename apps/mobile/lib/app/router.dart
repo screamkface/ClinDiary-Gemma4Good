@@ -1,4 +1,5 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/bootstrap/gemma_model_bootstrap.dart';
 import 'package:clindiary/features/alerts/presentation/alerts_screen.dart';
 import 'package:clindiary/features/auth/presentation/login_screen.dart';
 import 'package:clindiary/features/auth/presentation/register_screen.dart';
@@ -242,9 +243,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/ai',
-                builder: (context, state) => GemmaCenterScreen(
-                  initialQuestion: state.uri.queryParameters['question'],
-                  documentId: state.uri.queryParameters['documentId'],
+                builder: (context, state) => GemmaModelBootstrap(
+                  child: GemmaCenterScreen(
+                    initialQuestion: state.uri.queryParameters['question'],
+                    documentId: state.uri.queryParameters['documentId'],
+                  ),
                 ),
               ),
             ],
