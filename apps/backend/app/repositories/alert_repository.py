@@ -42,3 +42,33 @@ class AlertRepository:
     def add(self, alert: Alert) -> Alert:
         self.db.add(alert)
         return alert
+
+    def list_by_source(
+        self,
+        *,
+        patient_id: UUID,
+        source_type: str,
+        source_id: UUID,
+    ) -> list[Alert]:
+        stmt = select(Alert).where(
+            Alert.patient_id == patient_id,
+            Alert.source_type == source_type,
+            Alert.source_id == source_id,
+        )
+        return list(self.db.scalars(stmt))
+
+    def delete_by_source(
+        self,
+        *,
+        patient_id: UUID,
+        source_type: str,
+        source_id: UUID,
+    ) -> list[Alert]:
+        alerts = self.list_by_source(
+            patient_id=patient_id,
+            source_type=source_type,
+            source_id=source_id,
+        )
+        for alert in alerts:
+            self.db.delete(alert)
+        return alerts

@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.vital_sign_entry import VitalSignEntry
 from app.services.profile_context import resolve_user_profile
 from app.services.alert_service import AlertService
+from app.repositories.alert_repository import AlertRepository
 from app.repositories.daily_entry_repository import DailyEntryRepository
 from app.repositories.timeline_repository import TimelineRepository
 
@@ -18,6 +19,7 @@ class DailyEntryService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.daily_entry_repository = DailyEntryRepository(db)
+        self.alert_repository = AlertRepository(db)
         self.timeline_repository = TimelineRepository(db)
 
     def create_entry(self, user: User, payload) -> DailyEntry:
@@ -75,6 +77,26 @@ class DailyEntryService:
         self.db.commit()
         self.db.refresh(entry)
         return self.get_entry(user, entry.id)
+
+    def delete_entry(self, user: User, entry_id) -> None:
+        entry = self.get_entry(user, entry_id)
+
+        self.timeline_repository.delete_by_source("daily_entry", entry.id)
+        for symptom in entry.symptoms:
+            self.timeline_repository.delete_by_source("symptom_entry", symptom.id)
+        for vital in entry.vitals:
+            self.timeline_repository.delete_by_source("vital_sign_entry", vital.id)
+
+        deleted_alerts = self.alert_repository.delete_by_source(
+            patient_id=entry.patient_id,
+            source_type="daily_entry",
+            source_id=entry.id,
+        )
+        for alert in deleted_alerts:
+            self.timeline_repository.delete_by_source("alert", alert.id)
+
+        self.daily_entry_repository.delete(entry)
+        self.db.commit()
 
     def add_symptom(self, user: User, entry_id, payload) -> SymptomEntry:
         entry = self.get_entry(user, entry_id)

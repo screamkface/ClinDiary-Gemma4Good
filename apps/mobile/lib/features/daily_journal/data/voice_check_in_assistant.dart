@@ -5,6 +5,15 @@ class VoiceCheckInAssistant {
   VoiceCheckInAssistant({required OnDeviceAiService onDeviceAiService})
     : _onDeviceAiService = onDeviceAiService;
 
+  static final RegExp _symptomSignalPattern = RegExp(
+    r'\b(symptom|symptoms|sintomo|sintomi|pain|dolore|headache|cefalea|fever|febbre|nausea|cough|tosse|fatigue|stanchezza|dizziness|vertigini)\b',
+    caseSensitive: false,
+  );
+  static final RegExp _noSymptomPattern = RegExp(
+    r'\b(no|without|nessun|nessuna|senza)\s+(symptom|symptoms|sintomo|sintomi|pain|dolore)\b',
+    caseSensitive: false,
+  );
+
   final OnDeviceAiService _onDeviceAiService;
 
   Future<VoiceCheckInDraft> buildDraftFromTranscript({
@@ -18,7 +27,61 @@ class VoiceCheckInAssistant {
         referenceDate: referenceDate,
       ),
     );
-    return VoiceCheckInDraft.fromAiResponse(response);
+    final parsedDraft = VoiceCheckInDraft.fromAiResponse(response);
+    return _ensureSymptomCoverage(draft: parsedDraft, transcript: transcript);
+  }
+
+  VoiceCheckInDraft _ensureSymptomCoverage({
+    required VoiceCheckInDraft draft,
+    required String transcript,
+  }) {
+    if (draft.symptoms.isNotEmpty ||
+        !_symptomSignalPattern.hasMatch(transcript) ||
+        _noSymptomPattern.hasMatch(transcript)) {
+      return draft;
+    }
+
+    final fallbackNotes = _resolveFallbackNotes(draft.generalNotes, transcript);
+    final followUpQuestions = <String>[
+      ...draft.followUpQuestions,
+      if (!draft.followUpQuestions.any(
+        (question) => question.toLowerCase().contains('symptom'),
+      ))
+        'Which symptom did you feel exactly?',
+    ];
+
+    return draft.copyWith(
+      generalNotes: fallbackNotes,
+      followUpQuestions: followUpQuestions,
+      symptoms: <VoiceCheckInSymptomDraft>[
+        VoiceCheckInSymptomDraft(
+          symptomCode: 'unspecified_symptom',
+          metadataJson: fallbackNotes == null || fallbackNotes.isEmpty
+              ? const <String, dynamic>{}
+              : <String, dynamic>{'notes': fallbackNotes},
+        ),
+      ],
+    );
+  }
+
+  String? _resolveFallbackNotes(String? generalNotes, String transcript) {
+    final existingNotes = generalNotes?.trim();
+    if (existingNotes != null && existingNotes.isNotEmpty) {
+      return existingNotes;
+    }
+
+    final normalizedTranscript = transcript
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalizedTranscript.isEmpty) {
+      return null;
+    }
+
+    if (normalizedTranscript.length <= 180) {
+      return normalizedTranscript;
+    }
+
+    return '${normalizedTranscript.substring(0, 177)}...';
   }
 
   String _buildUserPrompt({
@@ -57,6 +120,8 @@ Rules:
 - if the symptom is not clear, leave the field empty instead of guessing
 - if useful details are missing or the text is ambiguous, add follow_up_questions with short questions in English
 - follow_up_questions must be an empty list if no clarification is needed
+- if the user reports symptoms but type is unclear, include one symptom with symptom_code "unspecified_symptom"
+- for unclear symptoms, place the short user detail in metadata_json.notes
 
 Required schema:
 {

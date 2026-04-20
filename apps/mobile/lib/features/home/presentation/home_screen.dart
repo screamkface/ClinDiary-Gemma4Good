@@ -326,7 +326,8 @@ class HomeScreen extends ConsumerWidget {
                 _MiniActionChip(
                   label: 'Privacy and AI',
                   icon: Icons.shield_outlined,
-                  onPressed: () => context.push('/app/home/privacy'),
+                  onPressed: () =>
+                      context.push('/app/profile/settings/privacy-ai'),
                 ),
                 _MiniActionChip(
                   label: l10n.alerts,

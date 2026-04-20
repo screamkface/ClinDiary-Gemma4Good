@@ -1,12 +1,81 @@
+import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+enum _DiaryEntryAction { addSymptom, deleteCheckUp }
+
 class DiaryScreen extends ConsumerWidget {
   const DiaryScreen({super.key});
+
+  Future<void> _handleEntryAction(
+    BuildContext context,
+    WidgetRef ref,
+    DailyEntry entry,
+    _DiaryEntryAction action,
+  ) async {
+    switch (action) {
+      case _DiaryEntryAction.addSymptom:
+        context.push('/app/diary/${entry.id}/symptom');
+        return;
+      case _DiaryEntryAction.deleteCheckUp:
+        final shouldDelete = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Delete check-up?'),
+            content: const Text(
+              'This removes the check-up and related symptom/vital events.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldDelete != true || !context.mounted) {
+          return;
+        }
+
+        try {
+          await ref
+              .read(dailyJournalRepositoryProvider)
+              .deleteEntry(entryId: entry.id);
+          ref.invalidate(dailyEntriesProvider);
+          ref.invalidate(timelineEventsProvider);
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Check-up deleted')));
+        } on ApiException catch (error) {
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        } catch (_) {
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to delete check-up now')),
+          );
+        }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,11 +158,26 @@ class DiaryScreen extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  trailing: FilledButton.tonal(
-                                    onPressed: () => context.push(
-                                      '/app/diary/${entry.id}/symptom',
+                                  onTap: () => context.push(
+                                    '/app/diary/${entry.id}/symptom',
+                                  ),
+                                  trailing: PopupMenuButton<_DiaryEntryAction>(
+                                    onSelected: (action) => _handleEntryAction(
+                                      context,
+                                      ref,
+                                      entry,
+                                      action,
                                     ),
-                                    child: const Text('Symptom'),
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem<_DiaryEntryAction>(
+                                        value: _DiaryEntryAction.addSymptom,
+                                        child: Text('Add symptom'),
+                                      ),
+                                      PopupMenuItem<_DiaryEntryAction>(
+                                        value: _DiaryEntryAction.deleteCheckUp,
+                                        child: Text('Delete check-up'),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

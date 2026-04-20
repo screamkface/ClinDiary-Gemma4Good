@@ -79,3 +79,55 @@ def test_daily_entries_accept_free_text_symptoms(client, auth_headers):
     assert entry_response.status_code == 200
     symptoms = entry_response.json()["symptoms"]
     assert any(item["symptom_code"] == "dolore addominale dopo i pasti" for item in symptoms)
+
+
+def test_delete_daily_entry_cleans_related_timeline_events(client, auth_headers):
+    create_entry = client.post(
+        "/api/v1/daily-entries",
+        headers=auth_headers,
+        json={
+            "entry_date": "2026-03-22",
+            "energy_level": 5,
+            "general_notes": "Delete flow test",
+        },
+    )
+    assert create_entry.status_code == 201
+    entry_id = create_entry.json()["id"]
+
+    add_symptom = client.post(
+        f"/api/v1/daily-entries/{entry_id}/symptoms",
+        headers=auth_headers,
+        json={
+            "symptom_code": "headache",
+            "severity": 3,
+        },
+    )
+    assert add_symptom.status_code == 201
+    symptom_id = add_symptom.json()["id"]
+
+    add_vital = client.post(
+        f"/api/v1/daily-entries/{entry_id}/vitals",
+        headers=auth_headers,
+        json={"type": "heart_rate", "value": "72", "unit": "bpm"},
+    )
+    assert add_vital.status_code == 201
+    vital_id = add_vital.json()["id"]
+
+    delete_response = client.delete(
+        f"/api/v1/daily-entries/{entry_id}",
+        headers=auth_headers,
+    )
+    assert delete_response.status_code == 204
+
+    missing_entry = client.get(f"/api/v1/daily-entries/{entry_id}", headers=auth_headers)
+    assert missing_entry.status_code == 404
+
+    timeline_response = client.get("/api/v1/timeline", headers=auth_headers)
+    assert timeline_response.status_code == 200
+    timeline_sources = {
+        (event["source_type"], event["source_id"])
+        for event in timeline_response.json()
+    }
+    assert ("daily_entry", entry_id) not in timeline_sources
+    assert ("symptom_entry", symptom_id) not in timeline_sources
+    assert ("vital_sign_entry", vital_id) not in timeline_sources

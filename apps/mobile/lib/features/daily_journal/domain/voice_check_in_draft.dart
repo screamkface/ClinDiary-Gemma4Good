@@ -29,6 +29,36 @@ class VoiceCheckInDraft {
   final List<String> followUpQuestions;
   final List<VoiceCheckInSymptomDraft> symptoms;
 
+  VoiceCheckInDraft copyWith({
+    DateTime? entryDate,
+    double? sleepHours,
+    int? sleepQuality,
+    int? energyLevel,
+    int? moodLevel,
+    int? stressLevel,
+    int? appetiteLevel,
+    int? hydrationLevel,
+    int? generalPain,
+    String? generalNotes,
+    List<String>? followUpQuestions,
+    List<VoiceCheckInSymptomDraft>? symptoms,
+  }) {
+    return VoiceCheckInDraft(
+      entryDate: entryDate ?? this.entryDate,
+      sleepHours: sleepHours ?? this.sleepHours,
+      sleepQuality: sleepQuality ?? this.sleepQuality,
+      energyLevel: energyLevel ?? this.energyLevel,
+      moodLevel: moodLevel ?? this.moodLevel,
+      stressLevel: stressLevel ?? this.stressLevel,
+      appetiteLevel: appetiteLevel ?? this.appetiteLevel,
+      hydrationLevel: hydrationLevel ?? this.hydrationLevel,
+      generalPain: generalPain ?? this.generalPain,
+      generalNotes: generalNotes ?? this.generalNotes,
+      followUpQuestions: followUpQuestions ?? this.followUpQuestions,
+      symptoms: symptoms ?? this.symptoms,
+    );
+  }
+
   bool get hasSymptoms => symptoms.isNotEmpty;
 
   bool get hasFollowUpQuestions => followUpQuestions.isNotEmpty;
@@ -103,9 +133,7 @@ class VoiceCheckInDraft {
       }
     }
 
-    throw const FormatException(
-      'Incomplete JSON in the model response.',
-    );
+    throw const FormatException('Incomplete JSON in the model response.');
   }
 
   static DateTime? _parseDate(dynamic value) {
@@ -207,6 +235,22 @@ class VoiceCheckInSymptomDraft {
   final int? durationMinutes;
   final String? bodyLocation;
   final Map<String, dynamic> metadataJson;
+
+  VoiceCheckInSymptomDraft copyWith({
+    String? symptomCode,
+    int? severity,
+    int? durationMinutes,
+    String? bodyLocation,
+    Map<String, dynamic>? metadataJson,
+  }) {
+    return VoiceCheckInSymptomDraft(
+      symptomCode: symptomCode ?? this.symptomCode,
+      severity: severity ?? this.severity,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      bodyLocation: bodyLocation ?? this.bodyLocation,
+      metadataJson: metadataJson ?? this.metadataJson,
+    );
+  }
 
   factory VoiceCheckInSymptomDraft.fromJson(Map<String, dynamic> json) {
     return VoiceCheckInSymptomDraft(

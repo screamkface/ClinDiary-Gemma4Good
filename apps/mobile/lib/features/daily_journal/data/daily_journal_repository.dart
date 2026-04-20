@@ -151,6 +151,61 @@ class DailyJournalRepository {
     }
   }
 
+  Future<void> deleteEntry({required String entryId}) async {
+    final removedEntry = await _removeEntryFromCache(entryId);
+    final removedEntryDate = removedEntry?['entry_date']?.toString();
+    final profileScope = await activeProfileCacheScope(_localDatabase);
+
+    if (_isPendingId(entryId)) {
+      await _discardMatchingPendingCreates(
+        entryDate: removedEntryDate,
+        profileScope: profileScope,
+      );
+      return;
+    }
+
+    final path = '/api/v1/daily-entries/$entryId';
+    try {
+      await _apiClient.delete(path);
+      await _discardMatchingPendingCreates(
+        entryDate: removedEntryDate,
+        profileScope: profileScope,
+      );
+    } on ApiException catch (error) {
+      if (!_shouldQueue(error.statusCode)) {
+        if (removedEntry != null) {
+          await _upsertEntryInCache(removedEntry);
+        }
+        rethrow;
+      }
+      if (!_isLocalOnlyError(error)) {
+        await _apiClient.enqueueJsonOperation(
+          method: 'DELETE',
+          path: path,
+          body: const <String, dynamic>{},
+          lastError: error.message,
+          replaceExisting: true,
+        );
+      }
+      await _discardMatchingPendingCreates(
+        entryDate: removedEntryDate,
+        profileScope: profileScope,
+      );
+    } catch (error) {
+      await _apiClient.enqueueJsonOperation(
+        method: 'DELETE',
+        path: path,
+        body: const <String, dynamic>{},
+        lastError: error.toString(),
+        replaceExisting: true,
+      );
+      await _discardMatchingPendingCreates(
+        entryDate: removedEntryDate,
+        profileScope: profileScope,
+      );
+    }
+  }
+
   Future<void> _upsertEntryInCache(Map<String, dynamic> entry) async {
     final entries = await _readCachedEntriesJson() ?? <Map<String, dynamic>>[];
     final normalized = _normalizeEntry(entry);
@@ -237,6 +292,76 @@ class DailyJournalRepository {
 
     _sortEntriesDescending(entries);
     await _writeCachedEntriesJson(entries);
+  }
+
+  Future<Map<String, dynamic>?> _removeEntryFromCache(String entryId) async {
+    final entries = await _readCachedEntriesJson();
+    if (entries == null) {
+      return null;
+    }
+
+    final index = entries.indexWhere(
+      (item) => item['id']?.toString() == entryId,
+    );
+    if (index < 0) {
+      return null;
+    }
+
+    final removed = _normalizeEntry(entries.removeAt(index));
+    await _writeCachedEntriesJson(entries);
+    return removed;
+  }
+
+  Future<void> _discardMatchingPendingCreates({
+    required String? entryDate,
+    required String? profileScope,
+  }) async {
+    if (entryDate == null || entryDate.trim().isEmpty) {
+      return;
+    }
+
+    final queued = await _localDatabase.listPendingOperations(limit: 500);
+    for (final operation in queued) {
+      if (operation.method.toUpperCase() != 'POST' ||
+          operation.path != '/api/v1/daily-entries') {
+        continue;
+      }
+      if (!_sameProfileScope(operation.profileId, profileScope)) {
+        continue;
+      }
+
+      final payload = operation.payload;
+      if (payload == null || payload.trim().isEmpty) {
+        continue;
+      }
+
+      try {
+        final decoded = jsonDecode(payload);
+        if (decoded is! Map) {
+          continue;
+        }
+        final pendingDate = decoded['entry_date']?.toString().trim();
+        if (pendingDate == null || pendingDate.isEmpty) {
+          continue;
+        }
+        if (pendingDate == entryDate.trim()) {
+          await _localDatabase.markPendingOperationSynced(operation.id);
+        }
+      } catch (_) {
+        // Best effort cleanup for orphaned pending create operations.
+      }
+    }
+  }
+
+  bool _sameProfileScope(String? left, String? right) {
+    final normalizedLeft = left?.trim();
+    final normalizedRight = right?.trim();
+    final leftEmpty = normalizedLeft == null || normalizedLeft.isEmpty;
+    final rightEmpty = normalizedRight == null || normalizedRight.isEmpty;
+    if (leftEmpty && rightEmpty) {
+      return true;
+    }
+    return normalizedLeft == normalizedRight;
   }
 
   List<DailyEntry> _decodeEntries(List<Map<String, dynamic>> entries) {

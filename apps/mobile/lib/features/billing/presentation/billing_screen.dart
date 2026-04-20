@@ -23,7 +23,7 @@ class BillingScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           FilledButton.tonalIcon(
-            onPressed: () => context.go('/app/home/privacy'),
+            onPressed: () => context.go('/app/profile/settings/privacy-ai'),
             icon: const Icon(Icons.shield_outlined),
             label: const Text('Open Privacy and AI settings'),
           ),

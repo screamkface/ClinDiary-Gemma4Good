@@ -65,3 +65,6 @@ class DailyEntryRepository:
     def add_vital(self, vital: VitalSignEntry) -> VitalSignEntry:
         self.db.add(vital)
         return vital
+
+    def delete(self, entry: DailyEntry) -> None:
+        self.db.delete(entry)

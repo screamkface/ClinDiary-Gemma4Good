@@ -12,6 +12,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+enum _GemmaSymptomMenuAction { detectFromNotes, clearDetected }
+
 class DailyCheckInScreen extends ConsumerStatefulWidget {
   const DailyCheckInScreen({super.key});
 
@@ -151,6 +153,193 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
       _listening = false;
       _parsingVoice = false;
     });
+  }
+
+  String _normalizedQuestion(String question) {
+    return question.trim().toLowerCase();
+  }
+
+  List<String> _mergeFollowUpQuestions(
+    List<String> existing,
+    List<String> incoming,
+  ) {
+    final merged = <String>[];
+    final seen = <String>{};
+    for (final question in [...existing, ...incoming]) {
+      final normalized = question.trim();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      if (seen.add(_normalizedQuestion(normalized))) {
+        merged.add(normalized);
+      }
+    }
+    return merged;
+  }
+
+  String _symptomIdentity(VoiceCheckInSymptomDraft symptom) {
+    final code = symptom.symptomCode.trim().toLowerCase();
+    final location = symptom.bodyLocation?.trim().toLowerCase() ?? '';
+    return '$code|$location';
+  }
+
+  VoiceCheckInSymptomDraft _mergeSymptomDraft(
+    VoiceCheckInSymptomDraft current,
+    VoiceCheckInSymptomDraft incoming,
+  ) {
+    final mergedMetadata = <String, dynamic>{
+      ...current.metadataJson,
+      ...incoming.metadataJson,
+    };
+    return current.copyWith(
+      symptomCode: incoming.symptomCode,
+      severity: incoming.severity ?? current.severity,
+      durationMinutes: incoming.durationMinutes ?? current.durationMinutes,
+      bodyLocation: incoming.bodyLocation ?? current.bodyLocation,
+      metadataJson: mergedMetadata,
+    );
+  }
+
+  List<VoiceCheckInSymptomDraft> _mergeSymptoms(
+    List<VoiceCheckInSymptomDraft> existing,
+    List<VoiceCheckInSymptomDraft> incoming,
+  ) {
+    final byIdentity = <String, VoiceCheckInSymptomDraft>{
+      for (final symptom in existing) _symptomIdentity(symptom): symptom,
+    };
+
+    for (final symptom in incoming) {
+      final identity = _symptomIdentity(symptom);
+      final current = byIdentity[identity];
+      byIdentity[identity] = current == null
+          ? symptom
+          : _mergeSymptomDraft(current, symptom);
+    }
+
+    return byIdentity.values.toList(growable: false);
+  }
+
+  String _buildSymptomExtractionTranscript() {
+    final notes = _notesController.text.trim();
+    final transcript = _voiceTranscript.trim();
+    if (notes.isEmpty && transcript.isEmpty) {
+      return '';
+    }
+    if (notes.isEmpty) {
+      return transcript;
+    }
+    if (transcript.isEmpty) {
+      return notes;
+    }
+    return '$notes\n$transcript';
+  }
+
+  Future<void> _extractSymptomsWithGemma() async {
+    if (_saving || _parsingVoice || _listening) {
+      return;
+    }
+
+    final transcript = _buildSymptomExtractionTranscript();
+    if (transcript.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add notes or record voice before extracting symptoms'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _parsingVoice = true;
+      _voiceError = null;
+    });
+
+    try {
+      final referenceDate =
+          DateTime.tryParse(_dateController.text.trim()) ?? DateTime.now();
+      final extractedDraft = await ref
+          .read(voiceCheckInAssistantProvider)
+          .buildDraftFromTranscript(
+            transcript: transcript,
+            referenceDate: referenceDate,
+          );
+
+      if (!mounted) {
+        return;
+      }
+
+      final existingDraft = _voiceDraft ?? const VoiceCheckInDraft();
+      final previousSymptoms = existingDraft.symptoms;
+      final mergedSymptoms = _mergeSymptoms(
+        previousSymptoms,
+        extractedDraft.symptoms,
+      );
+      final mergedQuestions = _mergeFollowUpQuestions(
+        existingDraft.followUpQuestions,
+        extractedDraft.followUpQuestions,
+      );
+
+      setState(() {
+        _voiceDraft = existingDraft.copyWith(
+          generalNotes: existingDraft.generalNotes?.trim().isNotEmpty == true
+              ? existingDraft.generalNotes
+              : extractedDraft.generalNotes,
+          followUpQuestions: mergedQuestions,
+          symptoms: mergedSymptoms,
+        );
+      });
+
+      final addedSymptomsCount =
+          mergedSymptoms.length - previousSymptoms.length;
+      final message = mergedSymptoms.isEmpty
+          ? 'Gemma did not detect symptoms from the current notes.'
+          : addedSymptomsCount > 0
+          ? 'Gemma added $addedSymptomsCount symptoms to this check-in.'
+          : 'Gemma refreshed detected symptoms.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _voiceError = message;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gemma symptom extraction failed: $message')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _parsingVoice = false;
+        });
+      }
+    }
+  }
+
+  void _clearDetectedSymptoms() {
+    final draft = _voiceDraft;
+    if (draft == null || draft.symptoms.isEmpty) {
+      return;
+    }
+    setState(() {
+      _voiceDraft = draft.copyWith(
+        symptoms: const <VoiceCheckInSymptomDraft>[],
+      );
+    });
+  }
+
+  void _onGemmaSymptomMenuActionSelected(_GemmaSymptomMenuAction action) {
+    switch (action) {
+      case _GemmaSymptomMenuAction.detectFromNotes:
+        unawaited(_extractSymptomsWithGemma());
+        break;
+      case _GemmaSymptomMenuAction.clearDetected:
+        _clearDetectedSymptoms();
+        break;
+    }
   }
 
   Future<bool> _ensureSpeechReady() async {
@@ -430,6 +619,45 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                           icon: const Icon(Icons.delete_outline),
                           label: const Text('Clear'),
                         ),
+                        PopupMenuButton<_GemmaSymptomMenuAction>(
+                          enabled: !_saving && !_parsingVoice && !_listening,
+                          onSelected: _onGemmaSymptomMenuActionSelected,
+                          itemBuilder: (context) => [
+                            const PopupMenuItem<_GemmaSymptomMenuAction>(
+                              value: _GemmaSymptomMenuAction.detectFromNotes,
+                              child: Text('Detect symptoms with Gemma'),
+                            ),
+                            PopupMenuItem<_GemmaSymptomMenuAction>(
+                              value: _GemmaSymptomMenuAction.clearDetected,
+                              enabled:
+                                  (_voiceDraft?.symptoms.isNotEmpty ?? false),
+                              child: const Text('Clear detected symptoms'),
+                            ),
+                          ],
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: ShapeDecoration(
+                              shape: StadiumBorder(
+                                side: BorderSide(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.healing_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text('Symptoms via Gemma'),
+                                SizedBox(width: 4),
+                                Icon(Icons.arrow_drop_down, size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     if (_voiceError != null) ...[
@@ -475,7 +703,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                       Text(
                         _voiceDraft!.hasSymptoms
                             ? 'Gemma filled in the fields and ${_voiceDraft!.symptoms.length} symptoms.'
-                            : 'Gemma filled in the main fields.',
+                            : 'Gemma filled in the main fields. Open "Symptoms via Gemma" to detect symptoms from notes.',
                       ),
                       if (_voiceDraft!.hasFollowUpQuestions) ...[
                         const SizedBox(height: 8),

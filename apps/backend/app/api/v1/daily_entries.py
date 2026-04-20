@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -48,4 +48,14 @@ def update_daily_entry(
     db: Annotated[Session, Depends(get_db)],
 ):
     return DailyEntryService(db).update_entry(user, entry_id, payload)
+
+
+@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_daily_entry(
+    entry_id: UUID,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    DailyEntryService(db).delete_entry(user, entry_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
