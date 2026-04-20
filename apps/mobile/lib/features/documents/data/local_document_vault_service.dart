@@ -8,6 +8,7 @@ import 'package:clindiary/features/documents/data/local_lab_text_parser.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_cipher.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_manual_review.dart';
+import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -48,15 +49,11 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
-    final documents =
-        state.documents
-            .map(
-              (item) => item.toSummary(
-                folderName: _pathLabelForFolder(item.folderId, folders),
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+    final documents = await _buildSummariesForDocuments(
+      state.documents,
+      folders: folders,
+    );
+    documents.sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
     return documents;
   }
 
@@ -136,21 +133,19 @@ class LocalDocumentVaultService {
               .toList()
         : <DocumentFolderItem>[];
 
-    final documentsForView =
-        state.documents
-            .where((document) {
-              if (normalizedQuery != null) {
-                return _matchesSearch(document, folders, normalizedQuery);
-              }
-              return document.folderId == currentFolder?.id;
-            })
-            .map(
-              (document) => document.toSummary(
-                folderName: _pathLabelForFolder(document.folderId, folders),
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+    final filteredDocuments = state.documents
+        .where((document) {
+          if (normalizedQuery != null) {
+            return _matchesSearch(document, folders, normalizedQuery);
+          }
+          return document.folderId == currentFolder?.id;
+        })
+        .toList(growable: false);
+    final documentsForView = await _buildSummariesForDocuments(
+      filteredDocuments,
+      folders: folders,
+    );
+    documentsForView.sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
 
     final breadcrumbs = <DocumentFolderItem>[];
     var node = currentFolder;
@@ -279,7 +274,7 @@ class LocalDocumentVaultService {
     final source = _normalizeText(fields['source']);
     final examDate = _tryParseDate(fields['exam_date']);
     final explicitOcrText = _normalizeText(fields['ocr_text']);
-    final inferredOcrText = _inferTextPreview(file);
+    final inferredOcrText = await _inferTextPreview(file);
     final document = _StoredDocument(
       id: documentId,
       folderId: normalizedFolderId,
@@ -770,6 +765,13 @@ class LocalDocumentVaultService {
   ) async {
     final text = document.ocrText?.trim();
     if (text == null || text.isEmpty) {
+      if (_requiresStructuredData(document.documentType)) {
+        return const _LocalStructuredData(
+          parsedStatus: 'review_required',
+          processingError:
+              'No text could be extracted locally from this file. Open Manual review to add values.',
+        );
+      }
       return const _LocalStructuredData();
     }
 
@@ -792,10 +794,19 @@ class LocalDocumentVaultService {
         examDateIso: document.examDateIso,
         text: text,
       );
+      final isParsed = parsed.parsedStatus == 'parsed';
+      final requiresStructuredData = _requiresStructuredData(
+        document.documentType,
+      );
 
       return _LocalStructuredData(
-        parsedStatus: parsed.parsedStatus == 'parsed' ? 'parsed' : null,
+        parsedStatus: isParsed
+            ? 'parsed'
+            : (requiresStructuredData ? 'review_required' : null),
         parsingConfidence: parsed.parsingConfidence,
+        processingError: isParsed || !requiresStructuredData
+            ? null
+            : 'Automatic parsing could not detect structured values. Open Manual review to confirm them.',
         processedAt: parsed.processedAt,
         labPanels: parsed.labPanels,
         imagingReports: parsed.imagingReports,
@@ -937,6 +948,40 @@ class LocalDocumentVaultService {
     return haystack.contains(normalizedQuery);
   }
 
+  Future<List<ClinicalDocumentSummary>> _buildSummariesForDocuments(
+    List<_StoredDocument> documents, {
+    required Map<String, _StoredFolder> folders,
+  }) {
+    return Future.wait(
+      documents.map(
+        (document) => _toSummaryWithStructuredData(document, folders: folders),
+      ),
+    );
+  }
+
+  Future<ClinicalDocumentSummary> _toSummaryWithStructuredData(
+    _StoredDocument document, {
+    required Map<String, _StoredFolder> folders,
+  }) async {
+    final folderName = _pathLabelForFolder(document.folderId, folders);
+    if (!_requiresStructuredData(document.documentType)) {
+      return document.toSummary(folderName: folderName);
+    }
+
+    final structuredData = await _resolveStructuredData(document);
+    return document.toSummary(
+      folderName: folderName,
+      parsedStatusOverride: structuredData.parsedStatus,
+      parsingConfidence: structuredData.parsingConfidence,
+      processingError: structuredData.processingError,
+    );
+  }
+
+  bool _requiresStructuredData(String documentType) {
+    final normalizedType = documentType.trim().toLowerCase();
+    return normalizedType == 'lab_report' || normalizedType == 'imaging_report';
+  }
+
   String _newId(String prefix) {
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     final random = _random.nextInt(1 << 32).toRadixString(16);
@@ -1013,18 +1058,86 @@ class LocalDocumentVaultService {
     return DateTime.tryParse(normalized);
   }
 
-  String? _inferTextPreview(SelectedUploadDocument file) {
-    final isTextMime = file.mimeType.toLowerCase().startsWith('text/');
-    final isTxtFile = path.extension(file.name).toLowerCase() == '.txt';
-    if (!isTextMime && !isTxtFile) {
+  Future<String?> _inferTextPreview(SelectedUploadDocument file) async {
+    final mimeType = file.mimeType.toLowerCase();
+    final extension = path.extension(file.name).toLowerCase();
+    final isTextMime = mimeType.startsWith('text/');
+    final isTxtFile = extension == '.txt';
+
+    if (isTextMime || isTxtFile) {
+      final text = utf8.decode(file.bytes, allowMalformed: true).trim();
+      return text.isEmpty ? null : text;
+    }
+
+    final isPdf = mimeType == 'application/pdf' || extension == '.pdf';
+    if (!isPdf) {
       return null;
     }
 
-    final text = utf8.decode(file.bytes, allowMalformed: true).trim();
-    if (text.isEmpty) {
+    return _extractPdfTextPreview(file);
+  }
+
+  Future<String?> _extractPdfTextPreview(SelectedUploadDocument file) async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
       return null;
     }
-    return text;
+
+    File? tempFile;
+    try {
+      final tempDir = await _temporaryExtractionDirectory();
+      final tempName =
+          'vault-parse-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(1 << 32).toRadixString(16)}.pdf';
+      tempFile = File(path.join(tempDir.path, tempName));
+      await tempFile.writeAsBytes(file.bytes, flush: true);
+
+      final document = await PDFDoc.fromPath(tempFile.path);
+      final extracted = await document.text;
+      return _normalizeExtractedText(extracted);
+    } catch (_) {
+      return null;
+    } finally {
+      if (tempFile != null) {
+        try {
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        } catch (_) {
+          // Ignore cleanup failures for temporary extraction files.
+        }
+      }
+    }
+  }
+
+  String? _normalizeExtractedText(String rawText) {
+    final normalized = rawText
+        .replaceAll('\u0000', '')
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    if (normalized.length <= 50000) {
+      return normalized;
+    }
+    return normalized.substring(0, 50000);
+  }
+
+  Future<Directory> _temporaryExtractionDirectory() async {
+    if (_rootDirectory != null) {
+      final directory = Directory(
+        path.join(_rootDirectory.path, '.tmp_extract'),
+      );
+      return directory.create(recursive: true);
+    }
+
+    final tempRoot = await getTemporaryDirectory();
+    final directory = Directory(
+      path.join(tempRoot.path, 'clindiary_tmp_extract'),
+    );
+    return directory.create(recursive: true);
   }
 }
 
@@ -1154,7 +1267,12 @@ class _StoredDocument {
     );
   }
 
-  ClinicalDocumentSummary toSummary({String? folderName}) {
+  ClinicalDocumentSummary toSummary({
+    String? folderName,
+    String? parsedStatusOverride,
+    double? parsingConfidence,
+    String? processingError,
+  }) {
     return ClinicalDocumentSummary(
       id: id,
       folderId: folderId,
@@ -1167,8 +1285,10 @@ class _StoredDocument {
       originalFilename: originalFilename,
       mimeType: mimeType,
       fileSizeBytes: fileSizeBytes,
-      parsedStatus: parsedStatus,
+      parsedStatus: parsedStatusOverride ?? parsedStatus,
       contextStatus: contextStatus,
+      parsingConfidence: parsingConfidence,
+      processingError: processingError,
       pendingSync: false,
       storageLocation: 'local',
       localFilePath: localFilePath,

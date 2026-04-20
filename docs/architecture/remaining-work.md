@@ -373,3 +373,9 @@ Ordine sensato da seguire adesso:
 - file Flutter ephemerals
 - registrant generati di piattaforma, se non stai lavorando a plugin/platform integration
 - migrazioni vecchie gia applicate: non modificarle, aggiungine di nuove
+
+## 6. Backlog post-hackathon: auth locale e backup cifrato
+
+- Decisione proposta: auth locale obbligatoria al primo avvio (password/PIN), sblocco biometrico opzionale, backup cloud opzionale ma solo cifrato end-to-end.
+- Motivazione: mantenere privacy by default offline-first anche quando si aggiunge recovery multi-device.
+- Documento di dettaglio: `docs/architecture/post-hackathon-local-auth-backup.md`.

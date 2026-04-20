@@ -358,6 +358,53 @@ void main() {
     },
   );
 
+  testWidgets('document detail screen shows manual review for local documents', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentDetailProvider.overrideWith(
+            (ref, documentId) async => ClinicalDocumentDetail(
+              id: documentId,
+              title: 'Blood report from phone',
+              documentType: 'lab_report',
+              uploadDate: DateTime.utc(2026, 4, 2, 9),
+              examDate: DateTime.utc(2026, 4, 1),
+              source: 'Camera upload',
+              originalFilename: 'blood-report.pdf',
+              mimeType: 'application/pdf',
+              fileSizeBytes: 64000,
+              parsedStatus: 'review_required',
+              contextStatus: 'active',
+              processingError:
+                  'No text could be extracted locally from this file. Open Manual review to add values.',
+              pendingSync: false,
+              fileUrl: '/local/blood-report.pdf',
+              ocrText: null,
+              labPanels: const [],
+              imagingReports: const [],
+              storageLocation: 'local',
+              localFilePath: '/tmp/local-doc.pdf',
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: DocumentDetailScreen(documentId: 'doc-1'),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('This document is saved only on the device.'),
+      findsOneWidget,
+    );
+    expect(find.text('Manual review'), findsOneWidget);
+    expect(find.text('Open file'), findsOneWidget);
+  });
+
   testWidgets(
     'document upload screen selects file, uploads, and navigates to detail',
     (tester) async {

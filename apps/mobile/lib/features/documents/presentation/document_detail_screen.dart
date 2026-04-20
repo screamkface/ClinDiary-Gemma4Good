@@ -561,28 +561,43 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         ],
                       )
                     else
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLowest,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'This document is saved only on the device.',
-                              style: TextStyle(fontWeight: FontWeight.w700),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerLowest,
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'You can ask local questions on this file, open it externally, and keep it encrypted in the local vault.',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'This document is saved only on the device.',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'You can ask local questions on this file, open it externally, and keep it encrypted in the local vault.',
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: !detail.canOpenManualReview
+                                ? null
+                                : () => context.push(
+                                    '/app/documents/${widget.documentId}/review',
+                                  ),
+                            icon: const Icon(Icons.edit_note_outlined),
+                            label: const Text('Manual review'),
+                          ),
+                        ],
                       ),
                     if (isReadOnlyCloudDocument)
                       Padding(

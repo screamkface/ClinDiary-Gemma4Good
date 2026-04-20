@@ -381,6 +381,56 @@ void main() {
   );
 
   test(
+    'local vault flags lab reports without local text as review required',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'clindiary-local-vault-review-required-test',
+      );
+      addTearDown(() async {
+        if (await root.exists()) {
+          await root.delete(recursive: true);
+        }
+      });
+
+      final vault = LocalDocumentVaultService(rootDirectory: root);
+      const userScopeId = 'user-review-required';
+      const profileScopeId = 'profile-review-required';
+
+      final uploaded = await vault.uploadDocumentForScope(
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+        file: const SelectedUploadDocument(
+          name: 'blood-report.pdf',
+          bytes: [37, 80, 68, 70],
+          mimeType: 'application/pdf',
+        ),
+        fields: const {
+          'title': 'Blood panel from phone',
+          'document_type': 'lab_report',
+        },
+      );
+
+      final archive = await vault.fetchArchiveForScope(
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+      );
+      final summary = archive.documents.firstWhere(
+        (item) => item.id == uploaded.id,
+      );
+      expect(summary.parsedStatus, 'review_required');
+      expect(summary.processingError, isNotNull);
+
+      final detail = await vault.fetchDocumentDetailForScope(
+        uploaded.id,
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+      );
+      expect(detail.parsedStatus, 'review_required');
+      expect(detail.processingError, isNotNull);
+    },
+  );
+
+  test(
     'local vault parses lab ranges locally without blocking the UI',
     () async {
       final root = await Directory.systemTemp.createTemp(
