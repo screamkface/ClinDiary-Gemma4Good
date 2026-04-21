@@ -146,7 +146,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'This action deletes the account, profiles, AI recaps, share links, and associated cloud data. On the device we also remove cache and local documents for this account.',
+                  'This action deletes the account, profiles, AI recaps, share links, and associated local data on this device.',
                 ),
                 const SizedBox(height: 12),
                 const Text('To confirm, type DELETE.'),
@@ -331,7 +331,6 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
-    final localOnlyMode = ref.read(appConfigProvider).localOnlyMode;
     final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final onDeviceStatusAsync = ref.watch(onDeviceAiStatusProvider);
 
@@ -464,11 +463,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       runSpacing: 8,
                       children: [
                         Chip(
-                          label: Text(
-                            localOnlyMode
-                                ? 'Local-only mode: active'
-                                : 'Local-only mode: inactive',
-                          ),
+                          label: const Text('Local-only mode: always active'),
                         ),
                         Chip(
                           label: Text(
@@ -566,38 +561,12 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                           icon: const Icon(Icons.emergency_outlined),
                           label: const Text('Emergency card'),
                         ),
-                        if (localOnlyMode)
-                          FilledButton.tonalIcon(
-                            onPressed: _uploadingEncryptedBackup || _exporting
-                                ? null
-                                : _uploadEncryptedBackupToDrive,
-                            icon: const Icon(Icons.cloud_upload_outlined),
-                            label: Text(
-                              _uploadingEncryptedBackup
-                                  ? 'Uploading encrypted backup...'
-                                  : 'Encrypted backup to Drive',
-                            ),
-                          ),
-                        if (localOnlyMode)
-                          FilledButton.tonalIcon(
-                            onPressed: _restoringEncryptedBackup || _exporting
-                                ? null
-                                : _restoreEncryptedBackupFromDrive,
-                            icon: const Icon(Icons.restore_outlined),
-                            label: Text(
-                              _restoringEncryptedBackup
-                                  ? 'Restoring encrypted backup...'
-                                  : 'Restore encrypted backup',
-                            ),
-                          ),
                       ],
                     ),
-                    if (localOnlyMode) ...[
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Backups are encrypted locally before upload and stored in Google Drive app data. Restore applies the latest encrypted snapshot to the active profile.',
-                      ),
-                    ],
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Exports are generated locally from on-device data.',
+                    ),
                   ],
                 ),
               ),
@@ -609,7 +578,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'If you delete the account, we remove cloud data, tokens, recaps, and share links. On the device we also delete cache, local reminders, and free local documents saved for this account.',
+                      'If you delete the account, we remove local data, tokens, recaps, share links, cache, reminders, and local documents saved for this account.',
                     ),
                     const SizedBox(height: 12),
                     FilledButton.tonalIcon(

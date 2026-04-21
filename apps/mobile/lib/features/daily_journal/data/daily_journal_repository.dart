@@ -13,6 +13,7 @@ class DailyJournalRepository {
        _localDatabase = localDatabase;
 
   static const _cacheKey = 'daily_entries';
+  static const _localShadowUntilKey = '_local_shadow_until';
 
   final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
@@ -20,17 +21,22 @@ class DailyJournalRepository {
   Future<List<DailyEntry>> fetchEntries() async {
     try {
       final response = await _apiClient.getJsonList('/api/v1/daily-entries');
+      final remoteEntries = response
+          .map(
+            (item) => Map<String, dynamic>.from(item as Map<String, dynamic>),
+          )
+          .toList();
+      final cachedEntries =
+          await _readCachedEntriesJson() ?? const <Map<String, dynamic>>[];
+      final mergedEntries = _mergeRemoteWithCachedEntries(
+        remoteEntries: remoteEntries,
+        cachedEntries: cachedEntries,
+      );
       await _localDatabase.putCache(
         key: await profileScopedCacheKey(_localDatabase, _cacheKey),
-        payload: jsonEncode(response),
+        payload: jsonEncode(mergedEntries),
       );
-      return _decodeEntries(
-        response
-            .map(
-              (item) => Map<String, dynamic>.from(item as Map<String, dynamic>),
-            )
-            .toList(),
-      );
+      return _decodeEntries(mergedEntries);
     } on ApiException catch (error) {
       final cached = await _readCachedEntriesJson();
       if (cached == null) {
@@ -53,7 +59,10 @@ class DailyJournalRepository {
         '/api/v1/daily-entries',
         body: payload,
       );
-      await _upsertEntryInCache(response);
+      await _upsertEntryInCache({
+        ...response,
+        _localShadowUntilKey: _buildLocalShadowUntilIso(),
+      });
       return DailyEntry.fromJson(response);
     } on ApiException catch (error) {
       if (!_shouldQueue(error.statusCode)) {
@@ -220,6 +229,50 @@ class DailyJournalRepository {
     }
     _sortEntriesDescending(entries);
     await _writeCachedEntriesJson(entries);
+  }
+
+  List<Map<String, dynamic>> _mergeRemoteWithCachedEntries({
+    required List<Map<String, dynamic>> remoteEntries,
+    required List<Map<String, dynamic>> cachedEntries,
+  }) {
+    final merged = remoteEntries.map(_normalizeEntry).toList();
+    final seenIds = merged
+        .map((entry) => entry['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    final nowUtc = DateTime.now().toUtc();
+
+    for (final cachedEntry in cachedEntries) {
+      final normalized = _normalizeEntry(cachedEntry);
+      final id = normalized['id']?.toString();
+      if (id == null || id.isEmpty || seenIds.contains(id)) {
+        continue;
+      }
+      if (_shouldKeepCachedEntry(normalized, nowUtc)) {
+        merged.add(normalized);
+        seenIds.add(id);
+      }
+    }
+
+    _sortEntriesDescending(merged);
+    return merged;
+  }
+
+  bool _shouldKeepCachedEntry(Map<String, dynamic> entry, DateTime nowUtc) {
+    final entryId = entry['id']?.toString() ?? '';
+    if (_isPendingId(entryId) || entry['pending_sync'] == true) {
+      return true;
+    }
+
+    final shadowUntilRaw = entry[_localShadowUntilKey]?.toString();
+    if (shadowUntilRaw == null || shadowUntilRaw.trim().isEmpty) {
+      return false;
+    }
+    final shadowUntil = DateTime.tryParse(shadowUntilRaw.trim());
+    if (shadowUntil == null) {
+      return false;
+    }
+    return shadowUntil.toUtc().isAfter(nowUtc);
   }
 
   Future<void> _upsertSymptomInCache(
@@ -420,6 +473,11 @@ class DailyJournalRepository {
     normalized['general_notes'] = normalized['general_notes']?.toString();
     normalized['symptoms'] = _normalizeSymptomList(normalized['symptoms']);
     normalized['vitals'] = _normalizeVitalList(normalized['vitals']);
+    if (normalized.containsKey(_localShadowUntilKey)) {
+      normalized[_localShadowUntilKey] = _normalizeDateTime(
+        normalized[_localShadowUntilKey],
+      );
+    }
     return normalized;
   }
 
@@ -556,6 +614,12 @@ class DailyJournalRepository {
 
   String _todayIsoDate() {
     return DateTime.now().toUtc().toIso8601String().split('T').first;
+  }
+
+  String _buildLocalShadowUntilIso({
+    Duration ttl = const Duration(minutes: 10),
+  }) {
+    return DateTime.now().toUtc().add(ttl).toIso8601String();
   }
 
   int? _asInt(dynamic value) {

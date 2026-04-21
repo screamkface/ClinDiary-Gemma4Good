@@ -152,6 +152,32 @@ void main() {
       expect(find.text('3 evenings'), findsOneWidget);
     },
   );
+
+  testWidgets('summary content view strips latex markers', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: EdgeInsets.all(16),
+            child: SummaryContentView(
+              content: _latexContent,
+              constrainHeight: false,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Creatinina 1.6 mg/dL'), findsOneWidget);
+    expect(find.text('eGFR 45/1 ml/min'), findsOneWidget);
+    expect(find.text('Formula CKD_EPI'), findsOneWidget);
+    expect(find.textContaining(r'\text'), findsNothing);
+    expect(find.textContaining(r'\frac'), findsNothing);
+    expect(find.textContaining(r'\mathrm'), findsNothing);
+    expect(find.textContaining(r'$'), findsNothing);
+  });
 }
 
 const _longContent =
@@ -199,3 +225,11 @@ const _simplePipeTableContent =
     'Symptom | Frequency | Note\n'
     'headache | 3 evenings | more often after poor sleep\n'
     'fatigue | almost daily | mild';
+
+const _latexContent =
+    'Referto\n\n'
+    r'- $\text{Creatinina}$ 1.6 mg/dL'
+    '\n'
+    r'- eGFR $\frac{45}{1}$ ml/min'
+    '\n'
+    r'- Formula \mathrm{CKD\_EPI}';

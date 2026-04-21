@@ -1097,7 +1097,8 @@ def _document_answer_system_prompt() -> str:
         "Sei ClinDiary. Rispondi solo usando i passaggi documentali forniti. "
         "Non inventare dati, non formulare diagnosi, non prescrivere terapie. "
         "Se i documenti non bastano, dillo esplicitamente. "
-        "Usa citazioni inline come [1], [2] che corrispondono ai passaggi forniti."
+        "Usa citazioni inline come [1], [2] che corrispondono ai passaggi forniti. "
+        "Usa solo testo semplice: niente Markdown, niente LaTeX, niente blocchi di codice."
     )
 
 
@@ -1111,5 +1112,6 @@ def _document_answer_user_prompt(*, question: str, context_blocks: list[str]) ->
         "- rispondi in italiano\n"
         "- sii chiaro e prudente\n"
         "- se citi un fatto, aggiungi la citazione [n]\n"
+        "- usa testo semplice (no Markdown, no LaTeX, no $, no \\text{}, no ``` )\n"
         "- chiudi ricordando che la risposta non sostituisce il medico\n"
     )

@@ -10,13 +10,13 @@ class DocumentUploadScreen extends ConsumerStatefulWidget {
   const DocumentUploadScreen({
     this.initialFolderId,
     this.initialFolderName,
-    this.initialStorageLocation,
+    this.initialCaptureMode,
     super.key,
   });
 
   final String? initialFolderId;
   final String? initialFolderName;
-  final String? initialStorageLocation;
+  final String? initialCaptureMode;
 
   @override
   ConsumerState<DocumentUploadScreen> createState() =>
@@ -31,8 +31,20 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   String _documentType = 'generic_document';
   SelectedUploadDocument? _selectedDocument;
   bool _uploading = false;
+  bool get _shouldOpenCameraOnStart =>
+      widget.initialCaptureMode?.toLowerCase() == 'camera';
 
-  bool get _isLocalStorage => widget.initialStorageLocation == 'local';
+  @override
+  void initState() {
+    super.initState();
+    if (_shouldOpenCameraOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _pickPhotoFromCamera();
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -47,6 +59,16 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         .read(documentPickerServiceProvider)
         .pickDocument();
     if (!mounted) return;
+    setState(() => _selectedDocument = selected);
+  }
+
+  Future<void> _pickPhotoFromCamera() async {
+    final selected = await ref
+        .read(documentPickerServiceProvider)
+        .pickPhotoFromCamera();
+    if (!mounted) {
+      return;
+    }
     setState(() => _selectedDocument = selected);
   }
 
@@ -72,9 +94,9 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _selectedDocument == null) {
       if (_selectedDocument == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Select a file first.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Select a file first.')));
       }
       return;
     }
@@ -119,7 +141,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload document')),
+      appBar: AppBar(title: const Text('Add file')),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -129,24 +151,14 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               SectionCard(
                 title: 'File',
                 subtitle: widget.initialFolderName == null
-                    ? (_isLocalStorage
-                          ? 'Choose the document to save on the device.'
-                          : 'Choose the document to upload to the ClinDiary cloud.')
-                    : (_isLocalStorage
-                          ? 'The file will be saved locally in the current folder.'
-                          : 'The file will be uploaded to the current cloud folder.'),
+                    ? 'Choose a file to save on this device.'
+                    : 'The file will be saved in the current local folder.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Chip(
-                      avatar: Icon(
-                        _isLocalStorage
-                            ? Icons.phone_android_outlined
-                            : Icons.cloud_outlined,
-                      ),
-                      label: Text(
-                        _isLocalStorage ? 'On-device archive' : 'Cloud archive',
-                      ),
+                      avatar: const Icon(Icons.phone_android_outlined),
+                      label: const Text('On-device archive'),
                     ),
                     const SizedBox(height: 12),
                     if (widget.initialFolderName != null &&
@@ -157,16 +169,32 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    FilledButton.tonalIcon(
-                      onPressed: _uploading ? null : _pickDocument,
-                      icon: const Icon(Icons.attach_file),
-                      label: Text(
-                        _selectedDocument == null
-                            ? 'Select file'
-                            : _selectedDocument!.name,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: _uploading ? null : _pickDocument,
+                          icon: const Icon(Icons.attach_file),
+                          label: const Text('Select file'),
+                        ),
+                        FilledButton.icon(
+                          onPressed: _uploading ? null : _pickPhotoFromCamera,
+                          icon: const Icon(Icons.camera_alt_outlined),
+                          label: const Text('Take photo'),
+                        ),
+                      ],
                     ),
+                    if (_selectedDocument == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          'PDF, JPG or PNG.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                      ),
                     if (_selectedDocument != null) ...[
                       const SizedBox(height: 12),
                       _UploadInfoTile(
@@ -261,20 +289,8 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _uploading ? null : _submit,
-                icon: Icon(
-                  _isLocalStorage
-                      ? Icons.save_alt_outlined
-                      : Icons.cloud_upload_outlined,
-                ),
-                label: Text(
-                  _uploading
-                      ? (_isLocalStorage
-                            ? 'Saving...'
-                            : 'Uploading...')
-                      : (_isLocalStorage
-                            ? 'Save on device'
-                            : 'Upload document'),
-                ),
+                icon: const Icon(Icons.save_alt_outlined),
+                label: Text(_uploading ? 'Saving...' : 'Save on device'),
               ),
             ],
           ),

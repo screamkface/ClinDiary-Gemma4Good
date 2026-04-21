@@ -134,7 +134,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('New folder'));
+    await tester.tap(find.text('New folder').first);
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -266,13 +266,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('April lab report'), findsOneWidget);
+      expect(find.text('Show technical details'), findsOneWidget);
+      await tester.tap(find.text('Show technical details'));
+      await tester.pumpAndSettle();
       expect(find.text('Sync pending'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
       expect(find.text('Extracted text'), findsOneWidget);
       expect(find.text('Show text'), findsOneWidget);
       expect(find.textContaining('Glucose 110 mg/dL 70-99'), findsNothing);
-      await tester.tap(find.text('Show text'));
+      final showTextFinder = find.text('Show text').first;
+      await tester.ensureVisible(showTextFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(showTextFinder, warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(find.text('Hide text'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
@@ -335,6 +341,8 @@ void main() {
                 processedAt: DateTime.utc(2026, 4, 2, 9, 5),
                 labPanels: const [],
                 imagingReports: const [],
+                storageLocation: 'local',
+                localFilePath: '/tmp/doc-1.pdf',
               ),
             ),
           ],
@@ -465,7 +473,7 @@ void main() {
 
       await tester.tap(find.text('Select file'));
       await tester.pumpAndSettle();
-      expect(find.text('new-report.pdf'), findsOneWidget);
+      expect(find.textContaining('new-report.pdf'), findsOneWidget);
       verify(() => picker.pickDocument()).called(1);
 
       await tester.enterText(
@@ -473,11 +481,11 @@ void main() {
         'New report',
       );
       await tester.scrollUntilVisible(
-        find.byIcon(Icons.cloud_upload_outlined),
+        find.byIcon(Icons.save_alt_outlined),
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.byIcon(Icons.cloud_upload_outlined));
+      await tester.tap(find.byIcon(Icons.save_alt_outlined));
       await tester.pumpAndSettle();
 
       verify(

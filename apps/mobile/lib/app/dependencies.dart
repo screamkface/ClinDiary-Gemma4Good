@@ -231,11 +231,15 @@ final documentPickerServiceProvider = Provider<DocumentPickerService>(
   (ref) => DocumentPickerService(),
 );
 
-final localDocumentVaultServiceProvider = Provider<LocalDocumentVaultService>(
-  (ref) => LocalDocumentVaultService(
+final localDocumentVaultServiceProvider = Provider<LocalDocumentVaultService>((
+  ref,
+) {
+  final service = LocalDocumentVaultService(
     secureStorage: ref.watch(flutterSecureStorageProvider),
-  ),
-);
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
 
 final preventionCenterRepositoryProvider = Provider<PreventionCenterRepository>(
   (ref) => PreventionCenterRepository(

@@ -14,13 +14,14 @@ String alertSeverityLabel(String severity) {
 }
 
 Color alertSeverityColor(BuildContext context, String severity) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   switch (severity) {
     case 'urgency':
       return Theme.of(context).colorScheme.error;
     case 'contact_doctor':
-      return Colors.deepOrange.shade700;
+      return isDark ? Colors.deepOrange.shade200 : Colors.deepOrange.shade700;
     case 'attention':
-      return Colors.orange.shade700;
+      return isDark ? Colors.orange.shade200 : Colors.orange.shade700;
     default:
       return Theme.of(context).colorScheme.primary;
   }

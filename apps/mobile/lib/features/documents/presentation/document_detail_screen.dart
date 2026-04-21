@@ -1,5 +1,6 @@
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -28,6 +29,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
   bool _deleting = false;
   bool _moving = false;
   bool _showExtractedText = false;
+  bool _showTechnicalDetails = false;
+  bool _wasParsingInBackground = false;
 
   Future<void> _processDocument() async {
     setState(() => _processing = true);
@@ -284,9 +287,42 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     }
   }
 
+  String _nextStepHint(ClinicalDocumentDetail detail) {
+    if (detail.parsedStatus == 'processing') {
+      return 'Processing is running. Refresh in a few seconds.';
+    }
+    if (detail.parsedStatus == 'review_required') {
+      return 'Open Manual review to add or confirm key values.';
+    }
+    if (detail.parsedStatus == 'parsed') {
+      return 'You can ask Gemma for a quick explanation or open the file.';
+    }
+    if (detail.isLocal && (detail.ocrText == null || detail.ocrText!.isEmpty)) {
+      return 'Add details with Manual review to improve local answers.';
+    }
+    return 'Open the file and confirm details if needed.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(documentDetailProvider(widget.documentId));
+    final parseProgressAsync = ref.watch(localDocumentParseProgressProvider);
+    final parseSnapshot =
+        parseProgressAsync.asData?.value ??
+        const LocalDocumentParseProgressSnapshot.empty();
+    final parseProgress = parseSnapshot.progressFor(widget.documentId);
+    final isParsingInBackground = parseProgress != null;
+
+    if (_wasParsingInBackground && !isParsingInBackground) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.invalidate(documentDetailProvider(widget.documentId));
+        ref.invalidate(documentsProvider);
+        ref.invalidate(documentArchiveProvider);
+      });
+    }
+    _wasParsingInBackground = isParsingInBackground;
+
     final detail = detailAsync.valueOrNull;
     final hasCloudStorageAccess = !ref.read(appConfigProvider).localOnlyMode;
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
@@ -396,8 +432,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
               SectionCard(
                 title: detail.title,
                 subtitle: detail.isLocal
-                    ? 'Metadata for the file saved on the device.'
-                    : 'Metadata, status, and extracted content.',
+                    ? 'Saved on this device.'
+                    : 'Status and key info for this file.',
                 action: FilledButton.tonalIcon(
                   onPressed:
                       (detail.isLocal ||
@@ -429,36 +465,76 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         Chip(
                           label: Text(documentStatusLabel(detail.parsedStatus)),
                         ),
-                        Chip(
-                          label: Text(
-                            documentContextStatusLabel(detail.contextStatus),
-                          ),
-                          backgroundColor: documentContextStatusColor(
-                            context,
-                            detail.contextStatus,
-                          ).withValues(alpha: 0.12),
-                        ),
-                        if (detail.classificationConfidence != null)
+                        if (isParsingInBackground)
                           Chip(
                             label: Text(
-                              'Classification ${(detail.classificationConfidence! * 100).round()}%',
+                              'Parsing ${(parseProgress.progress * 100).round()}%',
                             ),
-                          ),
-                        if (detail.parsingConfidence != null)
-                          Chip(
-                            label: Text(
-                              'Parsing ${(detail.parsingConfidence! * 100).round()}%',
-                            ),
-                          ),
-                        if (detail.pendingSync)
-                          Chip(
-                            label: const Text('Sync pending'),
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.tertiaryContainer,
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer
+                                .withValues(alpha: 0.7),
                           ),
                       ],
                     ),
+                    if (isParsingInBackground)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: LinearProgressIndicator(
+                          value: parseProgress.progress,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () => setState(
+                        () => _showTechnicalDetails = !_showTechnicalDetails,
+                      ),
+                      icon: Icon(
+                        _showTechnicalDetails
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                      ),
+                      label: Text(
+                        _showTechnicalDetails
+                            ? 'Hide technical details'
+                            : 'Show technical details',
+                      ),
+                    ),
+                    if (_showTechnicalDetails)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Chip(
+                            label: Text(
+                              documentContextStatusLabel(detail.contextStatus),
+                            ),
+                            backgroundColor: documentContextStatusColor(
+                              context,
+                              detail.contextStatus,
+                            ).withValues(alpha: 0.12),
+                          ),
+                          if (detail.classificationConfidence != null)
+                            Chip(
+                              label: Text(
+                                'Classification ${(detail.classificationConfidence! * 100).round()}%',
+                              ),
+                            ),
+                          if (detail.parsingConfidence != null)
+                            Chip(
+                              label: Text(
+                                'Parsing ${(detail.parsingConfidence! * 100).round()}%',
+                              ),
+                            ),
+                          if (detail.pendingSync)
+                            Chip(
+                              label: const Text('Sync pending'),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.tertiaryContainer,
+                            ),
+                        ],
+                      ),
                     if (detail.pendingSync)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -522,6 +598,29 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           ),
                         ),
                       ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Next step',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(_nextStepHint(detail)),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     if (canAskGemmaAboutDocument)
                       FilledButton.tonalIcon(
@@ -699,7 +798,29 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(error.toString())),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Unable to load this document.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(error.toString(), textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: () =>
+                      ref.invalidate(documentDetailProvider(widget.documentId)),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try again'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

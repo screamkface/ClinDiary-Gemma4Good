@@ -523,8 +523,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                 payload: symptom.toRequestPayload(),
               );
         }
-        ref.invalidate(dailyEntriesProvider);
-        ref.invalidate(timelineEventsProvider);
+        invalidatePatientScopedProviders(ref);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Check-in and voice symptoms saved')),
@@ -533,8 +532,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
         return;
       }
 
-      ref.invalidate(dailyEntriesProvider);
-      ref.invalidate(timelineEventsProvider);
+      invalidatePatientScopedProviders(ref);
       if (!mounted) return;
       final addSymptom = await showDialog<bool>(
         context: context,

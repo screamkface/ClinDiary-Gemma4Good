@@ -102,6 +102,7 @@ class DailyEntry {
     this.generalNotes,
     required this.symptoms,
     required this.vitals,
+    this.pendingSync = false,
   });
 
   final String id;
@@ -117,6 +118,9 @@ class DailyEntry {
   final String? generalNotes;
   final List<SymptomEntry> symptoms;
   final List<VitalSignEntry> vitals;
+  final bool pendingSync;
+
+  bool get isPendingDraft => id.startsWith('pending-');
 
   factory DailyEntry.fromJson(Map<String, dynamic> json) => DailyEntry(
     id: json['id'].toString(),
@@ -136,5 +140,6 @@ class DailyEntry {
     vitals: (json['vitals'] as List<dynamic>)
         .map((item) => VitalSignEntry.fromJson(item as Map<String, dynamic>))
         .toList(),
+    pendingSync: json['pending_sync'] as bool? ?? false,
   );
 }

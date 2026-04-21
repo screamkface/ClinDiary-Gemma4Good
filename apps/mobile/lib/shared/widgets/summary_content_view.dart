@@ -150,10 +150,7 @@ class _SummaryLine extends StatelessWidget {
       );
     }
 
-    return Text(
-      line.text,
-      style: textTheme.bodyMedium?.copyWith(height: 1.4),
-    );
+    return Text(line.text, style: textTheme.bodyMedium?.copyWith(height: 1.4));
   }
 }
 
@@ -255,12 +252,16 @@ bool _looksLikeHeading(String line) {
   final trimmed = line.trim();
   return trimmed.startsWith('#') ||
       RegExp(r'^\d+\.\s+').hasMatch(trimmed) ||
-      (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4);
+      (trimmed.startsWith('**') &&
+          trimmed.endsWith('**') &&
+          trimmed.length > 4);
 }
 
 bool _looksLikeBullet(String line) {
   final trimmed = line.trim();
-  return RegExp(r'^([-+*•]\s+|[-+*]\s+\[[xX ]\]\s*|\d+\)\s+)').hasMatch(trimmed);
+  return RegExp(
+    r'^([-+*•]\s+|[-+*]\s+\[[xX ]\]\s*|\d+\)\s+)',
+  ).hasMatch(trimmed);
 }
 
 bool _isVisualDivider(String line) {
@@ -292,15 +293,18 @@ _ParsedSummaryLine? _parseSummaryLine(String rawLine) {
   );
 }
 
-String _normalizeMarkdownLine(
-  String line, {
-  required bool stripBulletMarker,
-}) {
+String _normalizeMarkdownLine(String line, {required bool stripBulletMarker}) {
   var cleaned = line.trim();
   cleaned = cleaned.replaceAll(RegExp(r'^#{1,6}\s*'), '');
   cleaned = cleaned.replaceAll(RegExp(r'^>\s*'), '');
-  cleaned = cleaned.replaceAll(RegExp(r'^[-+*]\s+\[[xX ]\]\s*'), stripBulletMarker ? '' : '- ');
-  cleaned = cleaned.replaceAll(RegExp(r'^\d+\)\s+'), stripBulletMarker ? '' : '- ');
+  cleaned = cleaned.replaceAll(
+    RegExp(r'^[-+*]\s+\[[xX ]\]\s*'),
+    stripBulletMarker ? '' : '- ',
+  );
+  cleaned = cleaned.replaceAll(
+    RegExp(r'^\d+\)\s+'),
+    stripBulletMarker ? '' : '- ',
+  );
 
   if (stripBulletMarker) {
     cleaned = cleaned.replaceAll(RegExp(r'^[-+*•]\s+'), '');
@@ -317,6 +321,7 @@ String _normalizeMarkdownLine(
     (match) => match.group(1) ?? '',
   );
   cleaned = cleaned.replaceAll('```', '');
+  cleaned = _stripInlineLatex(cleaned);
   cleaned = _stripInlineMarkdown(cleaned);
   cleaned = cleaned.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   return cleaned;
@@ -359,7 +364,8 @@ _ParsedSummaryBlock? _parseSummaryBlock(String block) {
       var cursor = index;
       while (cursor < remainingLines.length) {
         final candidate = remainingLines[cursor];
-        if (!_looksLikeTableRow(candidate) && !_isTableSeparatorRow(candidate)) {
+        if (!_looksLikeTableRow(candidate) &&
+            !_isTableSeparatorRow(candidate)) {
           break;
         }
         tableLines.add(candidate);
@@ -384,10 +390,7 @@ _ParsedSummaryBlock? _parseSummaryBlock(String block) {
     return null;
   }
 
-  return _ParsedSummaryBlock(
-    heading: heading,
-    items: items,
-  );
+  return _ParsedSummaryBlock(heading: heading, items: items);
 }
 
 bool _looksLikeTableRow(String line) {
@@ -401,7 +404,8 @@ bool _isTableSeparatorRow(String line) {
     return false;
   }
   return cells.every(
-    (cell) => cell.trim().isNotEmpty && RegExp(r'^:?-{2,}:?$').hasMatch(cell.trim()),
+    (cell) =>
+        cell.trim().isNotEmpty && RegExp(r'^:?-{2,}:?$').hasMatch(cell.trim()),
   );
 }
 
@@ -484,10 +488,137 @@ String _stripInlineMarkdown(String value) {
     var previous = '';
     while (previous != cleaned) {
       previous = cleaned;
-      cleaned = cleaned.replaceAllMapped(pattern, (match) => match.group(1) ?? '');
+      cleaned = cleaned.replaceAllMapped(
+        pattern,
+        (match) => match.group(1) ?? '',
+      );
     }
   }
 
+  return cleaned;
+}
+
+String _stripInlineLatex(String value) {
+  var cleaned = value;
+
+  // Preserve math payload while removing inline/display delimiters.
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\$\$([\s\S]*?)\$\$'),
+    (match) => match.group(1) ?? '',
+  );
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\$([^$\n]+)\$'),
+    (match) => match.group(1) ?? '',
+  );
+
+  cleaned = _replaceLatexCommandsWithInnerText(
+    cleaned,
+    commands: const [
+      'text',
+      'mathrm',
+      'mathbf',
+      'mathit',
+      'operatorname',
+      'textbf',
+      'textit',
+      'underline',
+      'overline',
+    ],
+  );
+
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\\frac\s*\{([^{}]+)\}\{([^{}]+)\}'),
+    (match) => '${match.group(1) ?? ''}/${match.group(2) ?? ''}',
+  );
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\\sqrt\s*\{([^{}]+)\}'),
+    (match) => 'sqrt(${match.group(1) ?? ''})',
+  );
+
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\^\{([^{}]+)\}'),
+    (match) => '^${match.group(1) ?? ''}',
+  );
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'_\{([^{}]+)\}'),
+    (match) => '_${match.group(1) ?? ''}',
+  );
+
+  const symbolReplacements = {
+    r'\pm': '+/-',
+    r'\times': 'x',
+    r'\cdot': '*',
+    r'\ge': '>=',
+    r'\le': '<=',
+    r'\neq': '!=',
+    r'\approx': '~',
+    r'\to': '->',
+    r'\degree': 'deg',
+  };
+  symbolReplacements.forEach((pattern, replacement) {
+    cleaned = cleaned.replaceAll(pattern, replacement);
+  });
+
+  const escapedReplacements = {
+    r'\%': '%',
+    r'\_': '_',
+    r'\&': '&',
+    r'\#': '#',
+    r'\\$': r'$',
+    r'\{': '{',
+    r'\}': '}',
+  };
+  escapedReplacements.forEach((pattern, replacement) {
+    cleaned = cleaned.replaceAll(pattern, replacement);
+  });
+
+  // Unwrap remaining commands that still carry one argument.
+  for (var i = 0; i < 3; i++) {
+    final next = cleaned.replaceAllMapped(
+      RegExp(r'\\[a-zA-Z]+\s*\{([^{}]*)\}'),
+      (match) => match.group(1) ?? '',
+    );
+    if (next == cleaned) {
+      break;
+    }
+    cleaned = next;
+  }
+
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\\[a-zA-Z]+'),
+    (match) => match.group(0)!.replaceFirst('\\', ''),
+  );
+
+  cleaned = cleaned
+      .replaceAll(r'\(', '')
+      .replaceAll(r'\)', '')
+      .replaceAll(r'\[', '')
+      .replaceAll(r'\]', '')
+      .replaceAll('{', '')
+      .replaceAll('}', '');
+
+  cleaned = cleaned.replaceAll(RegExp(r'(?<=\s)\$(?=\s|[A-Za-z])'), '');
+  cleaned = cleaned.replaceAll(RegExp(r'^\$+|\$+$'), '');
+
+  return cleaned;
+}
+
+String _replaceLatexCommandsWithInnerText(
+  String value, {
+  required List<String> commands,
+}) {
+  var cleaned = value;
+  for (final command in commands) {
+    final pattern = RegExp('\\\\$command\\s*\\{([^{}]+)\\}');
+    var previous = '';
+    while (previous != cleaned) {
+      previous = cleaned;
+      cleaned = cleaned.replaceAllMapped(
+        pattern,
+        (match) => match.group(1) ?? '',
+      );
+    }
+  }
   return cleaned;
 }
 
@@ -520,10 +651,7 @@ class _ParsedSummaryLine extends _ParsedSummaryItem {
 }
 
 class _ParsedSummaryBlock {
-  const _ParsedSummaryBlock({
-    required this.heading,
-    required this.items,
-  });
+  const _ParsedSummaryBlock({required this.heading, required this.items});
 
   final String? heading;
   final List<_ParsedSummaryItem> items;

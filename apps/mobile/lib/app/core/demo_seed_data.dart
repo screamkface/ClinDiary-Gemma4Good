@@ -93,7 +93,7 @@ class DemoSeedData {
       await _seedLocalRagReports(localDocumentVaultService);
     }
 
-    await database.putCache(key: 'document_storage_mode', payload: 'cloud');
+    await database.putCache(key: 'document_storage_mode', payload: 'local');
     await database.putCache(key: _seedVersionKey, payload: _seedVersion);
   }
 

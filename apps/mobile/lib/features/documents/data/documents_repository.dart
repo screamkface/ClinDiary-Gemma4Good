@@ -39,14 +39,10 @@ class DocumentsRepository {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
       final scope = await _resolveLocalScope();
-      final localDocuments = await _localVaultService.fetchDocumentsForScope(
+      return _localVaultService.fetchDocumentsForScope(
         userScopeId: scope.userId,
         profileScopeId: scope.profileId,
       );
-      final legacyCloudDocuments = await _fetchReadOnlyCloudDocuments();
-      final merged = [...localDocuments, ...legacyCloudDocuments]
-        ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
-      return merged;
     }
     return _fetchCloudDocuments();
   }
@@ -83,29 +79,11 @@ class DocumentsRepository {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
       final scope = await _resolveLocalScope();
-      final localArchive = await _localVaultService.fetchArchiveForScope(
+      return _localVaultService.fetchArchiveForScope(
         userScopeId: scope.userId,
         profileScopeId: scope.profileId,
         folderId: folderId,
         query: query,
-      );
-      final shouldIncludeLegacyCloud =
-          folderId == null || query?.trim().isNotEmpty == true;
-      if (!shouldIncludeLegacyCloud) {
-        return localArchive;
-      }
-      final legacyCloudDocuments = await _fetchReadOnlyCloudDocuments(
-        query: query,
-      );
-      return DocumentArchiveView(
-        currentFolder: localArchive.currentFolder,
-        breadcrumbs: localArchive.breadcrumbs,
-        folders: localArchive.folders,
-        documents: localArchive.documents,
-        legacyCloudDocuments: legacyCloudDocuments,
-        query: localArchive.query,
-        isSearch: localArchive.isSearch,
-        storageLocation: localArchive.storageLocation,
       );
     }
     return _fetchCloudArchive(folderId: folderId, query: query);
@@ -331,33 +309,12 @@ class DocumentsRepository {
   }
 
   Future<_DocumentStorageMode> _getStorageMode() async {
-    if (_appConfig.localOnlyMode) {
-      _cachedStorageMode = _DocumentStorageMode.local;
-      await _localDatabase.putCache(
-        key: _documentStorageModeCacheKey,
-        payload: _DocumentStorageMode.local.name,
-      );
-      return _DocumentStorageMode.local;
-    }
-
-    if (_cachedStorageMode != null) {
-      return _cachedStorageMode!;
-    }
-
-    final persisted = await _localDatabase.readCache(
-      _documentStorageModeCacheKey,
-    );
-    if (persisted == _DocumentStorageMode.local.name) {
-      _cachedStorageMode = _DocumentStorageMode.local;
-      return _DocumentStorageMode.local;
-    }
-
-    _cachedStorageMode = _DocumentStorageMode.cloud;
+    _cachedStorageMode = _DocumentStorageMode.local;
     await _localDatabase.putCache(
       key: _documentStorageModeCacheKey,
-      payload: _DocumentStorageMode.cloud.name,
+      payload: _DocumentStorageMode.local.name,
     );
-    return _DocumentStorageMode.cloud;
+    return _DocumentStorageMode.local;
   }
 
   Future<DocumentQueryResult> _queryLocalDocuments({
@@ -560,8 +517,12 @@ class DocumentsRepository {
     final userPrompt =
         'Question: $question\n\n'
         'Local document context:\n$context\n\n'
-        'Write a concise answer in English with:\n'
-        '1) direct answer\n2) key findings\n3) a brief caution if needed.';
+        'Write a concise answer in English using plain text only.\n'
+        'Do not use Markdown, LaTeX, \$, code fences, or special formatting markers.\n'
+        'Use exactly these lines:\n'
+        'Direct answer: ...\n'
+        'Key findings: ...\n'
+        'Caution: ...';
 
     try {
       return await _onDeviceAiService.generateText(

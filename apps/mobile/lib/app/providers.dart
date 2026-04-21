@@ -9,6 +9,7 @@ import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/devices/domain/device_hub.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
+import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/history/domain/history_day.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
@@ -402,6 +403,11 @@ final pendingOperationsProvider = FutureProvider<List<PendingOperation>>((
   }
   return ref.watch(localDatabaseProvider).listPendingOperations(limit: 50);
 });
+
+final localDocumentParseProgressProvider =
+    StreamProvider<LocalDocumentParseProgressSnapshot>((ref) {
+      return ref.watch(localDocumentVaultServiceProvider).watchParseProgress();
+    });
 
 final requestTracesProvider = FutureProvider<List<RequestTrace>>((ref) async {
   final session = await ref.watch(authControllerProvider.future);

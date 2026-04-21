@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 ThemeData buildClinDiaryTheme({required Brightness brightness}) {
   final isDark = brightness == Brightness.dark;
 
-  final background = isDark ? const Color(0xFF0F131A) : const Color(0xFFF8F8F6);
+  final background = isDark ? const Color(0xFF0F131A) : const Color(0xFFF5F7FA);
   final surface = isDark ? const Color(0xFF171C24) : Colors.white;
-  final primary = isDark ? const Color(0xFF8FA5D7) : const Color(0xFF3F4A5D);
+  final primary = isDark ? const Color(0xFF97B0E8) : const Color(0xFF334155);
   final accent = isDark ? const Color(0xFFD0A27C) : const Color(0xFF8B6C55);
   final ink = isDark ? const Color(0xFFF2F4F8) : const Color(0xFF20262F);
   final outline = isDark ? const Color(0xFF313A48) : const Color(0xFFD9DEE6);
@@ -29,10 +29,26 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
         ),
   );
 
-  final textTheme = baseTheme.textTheme.apply(
-    bodyColor: ink,
-    displayColor: ink,
-  );
+  final textTheme = baseTheme.textTheme
+      .apply(bodyColor: ink, displayColor: ink)
+      .copyWith(
+        headlineSmall: baseTheme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+        titleLarge: baseTheme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.1,
+        ),
+        titleMedium: baseTheme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        bodyMedium: baseTheme.textTheme.bodyMedium?.copyWith(height: 1.42),
+        bodySmall: baseTheme.textTheme.bodySmall?.copyWith(height: 1.38),
+        labelLarge: baseTheme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      );
 
   return baseTheme.copyWith(
     scaffoldBackgroundColor: background,
@@ -120,14 +136,14 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         side: BorderSide(color: outline),
         textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -155,7 +171,7 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: primary, width: 1.2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     ),
     cardTheme: CardThemeData(
       color: surface,
@@ -164,7 +180,7 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
       surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: outline, width: 1),
       ),
       margin: EdgeInsets.zero,
@@ -184,8 +200,8 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
     ),
     listTileTheme: const ListTileThemeData(
       dense: false,
-      visualDensity: VisualDensity(horizontal: 0, vertical: -2),
-      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      visualDensity: VisualDensity(horizontal: 0, vertical: -1),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
     ),
   );
 }

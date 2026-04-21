@@ -1,8 +1,11 @@
+import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class RootShell extends StatelessWidget {
+class RootShell extends ConsumerStatefulWidget {
   const RootShell({
     required this.navigationShell,
     required this.branchNavigatorKeys,
@@ -19,7 +22,7 @@ class RootShell extends StatelessWidget {
       selectedIcon: Icons.home_rounded,
     ),
     _ShellDestination(
-      label: 'Diary',
+      label: 'Check-in',
       icon: Icons.edit_note_outlined,
       selectedIcon: Icons.edit_note_rounded,
     ),
@@ -30,7 +33,7 @@ class RootShell extends StatelessWidget {
       isCenterAction: true,
     ),
     _ShellDestination(
-      label: 'Documents',
+      label: 'Files',
       icon: Icons.folder_open_outlined,
       selectedIcon: Icons.folder_open_rounded,
     ),
@@ -41,17 +44,48 @@ class RootShell extends StatelessWidget {
     ),
   ];
 
+  @override
+  ConsumerState<RootShell> createState() => _RootShellState();
+}
+
+class _RootShellState extends ConsumerState<RootShell> {
+  @override
+  void initState() {
+    super.initState();
+    _preloadLocalExperience();
+  }
+
+  void _preloadLocalExperience() {
+    Future<void>(() async {
+      try {
+        await Future.wait<dynamic>([
+          ref.read(profileBundleProvider.future),
+          ref.read(alertsProvider.future),
+          ref.read(dailyEntriesProvider.future),
+          ref.read(
+            documentArchiveProvider(const DocumentArchiveQuery()).future,
+          ),
+          ref.read(documentFoldersProvider.future),
+          ref.read(pendingOperationsProvider.future),
+          ref.read(onDeviceAiStatusProvider.future),
+        ]);
+      } catch (_) {
+        // Preload is best-effort and should never block shell rendering.
+      }
+    });
+  }
+
   void _onDestinationSelected(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final visibleDestinations = _destinations
-        .take(branchNavigatorKeys.length)
+    final visibleDestinations = RootShell._destinations
+        .take(widget.branchNavigatorKeys.length)
         .toList();
 
     return PopScope(
@@ -61,30 +95,31 @@ class RootShell extends StatelessWidget {
           return;
         }
 
-        final branchNavigatorState =
-            branchNavigatorKeys[navigationShell.currentIndex].currentState;
+        final branchNavigatorState = widget
+            .branchNavigatorKeys[widget.navigationShell.currentIndex]
+            .currentState;
         if (branchNavigatorState != null && branchNavigatorState.canPop()) {
           branchNavigatorState.pop();
           return;
         }
 
-        if (navigationShell.currentIndex != 0) {
-          navigationShell.goBranch(0, initialLocation: true);
+        if (widget.navigationShell.currentIndex != 0) {
+          widget.navigationShell.goBranch(0, initialLocation: true);
           return;
         }
 
         SystemNavigator.pop();
       },
       child: Scaffold(
-        body: SafeArea(bottom: false, child: navigationShell),
+        body: SafeArea(bottom: false, child: widget.navigationShell),
         bottomNavigationBar: visibleDestinations.length == 5
             ? _ClinDiaryBottomBar(
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 destinations: visibleDestinations,
                 onSelected: _onDestinationSelected,
               )
             : _FallbackBottomBar(
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 destinations: visibleDestinations,
                 onSelected: _onDestinationSelected,
               ),

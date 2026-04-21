@@ -207,6 +207,12 @@ void main() {
       expect(find.text('Today'), findsWidgets);
       expect(find.text('AI Recap'), findsOneWidget);
       expect(find.text('Check-up'), findsOneWidget);
+      expect(find.text('Recent check-ups'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-checkup-entry-1')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('home-alert-alert-1')), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Profiles'),
         300,
@@ -219,19 +225,19 @@ void main() {
       expect(find.text('Anna Bianchi · Primary'), findsOneWidget);
       expect(find.textContaining('Luca'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('Go To'),
+        find.text('Quick actions'),
         400,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('Go To'), findsOneWidget);
+      expect(find.text('Quick actions'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('More'),
+        find.text('Secondary tools'),
         400,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('More'), findsOneWidget);
+      expect(find.text('Secondary tools'), findsOneWidget);
       expect(find.text('Documents'), findsOneWidget);
       expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Prevention'), findsOneWidget);
@@ -302,6 +308,7 @@ void main() {
             ),
           ),
           alertsProvider.overrideWith((ref) async => const []),
+          dailyEntriesProvider.overrideWith((ref) async => const []),
           unreadNotificationsProvider.overrideWith((ref) async => false),
           pendingMedicationDosesProvider.overrideWith((ref) async => false),
         ],

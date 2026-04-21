@@ -35,6 +35,28 @@ class LocalDocumentVaultService {
   final Map<String, _LocalStructuredData> _structuredDataCache = {};
   final Map<String, Future<_LocalStructuredData>> _inFlightStructuredData = {};
   Future<void> _parseQueueTail = Future<void>.value();
+  final Map<String, LocalDocumentParseProgress> _parseProgressByDocumentId = {};
+  final StreamController<LocalDocumentParseProgressSnapshot>
+  _parseProgressController =
+      StreamController<LocalDocumentParseProgressSnapshot>.broadcast();
+
+  Stream<LocalDocumentParseProgressSnapshot> watchParseProgress() async* {
+    yield currentParseProgress();
+    yield* _parseProgressController.stream;
+  }
+
+  LocalDocumentParseProgressSnapshot currentParseProgress() {
+    return LocalDocumentParseProgressSnapshot(
+      updatedAt: DateTime.now().toUtc(),
+      items: Map<String, LocalDocumentParseProgress>.unmodifiable(
+        _parseProgressByDocumentId,
+      ),
+    );
+  }
+
+  void dispose() {
+    _parseProgressController.close();
+  }
 
   Future<List<ClinicalDocumentSummary>> fetchDocuments() async {
     throw UnimplementedError('Use scoped fetchDocumentsForScope.');
@@ -786,7 +808,13 @@ class LocalDocumentVaultService {
       return inFlight;
     }
 
+    _setParseProgress(documentId: document.id, stage: 'queued', progress: 0.1);
     final future = _enqueueParseTask(() async {
+      _setParseProgress(
+        documentId: document.id,
+        stage: 'processing',
+        progress: 0.45,
+      );
       final parsed = await _labTextParser.parse(
         documentId: document.id,
         documentType: document.documentType,
@@ -797,6 +825,12 @@ class LocalDocumentVaultService {
       final isParsed = parsed.parsedStatus == 'parsed';
       final requiresStructuredData = _requiresStructuredData(
         document.documentType,
+      );
+
+      _setParseProgress(
+        documentId: document.id,
+        stage: 'finalizing',
+        progress: 0.9,
       );
 
       return _LocalStructuredData(
@@ -820,7 +854,39 @@ class LocalDocumentVaultService {
       return resolved;
     } finally {
       _inFlightStructuredData.remove(cacheKey);
+      _clearParseProgress(document.id);
     }
+  }
+
+  Future<_LocalStructuredData> _resolveStructuredDataForView(
+    _StoredDocument document,
+  ) async {
+    final text = document.ocrText?.trim();
+    if (text == null || text.isEmpty) {
+      if (_requiresStructuredData(document.documentType)) {
+        return const _LocalStructuredData(
+          parsedStatus: 'review_required',
+          processingError:
+              'No text could be extracted locally from this file. Open Manual review to add values.',
+        );
+      }
+      return const _LocalStructuredData();
+    }
+
+    final cacheKey = _structuredDataCacheKey(document, text);
+    final cached = _structuredDataCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    if (!_inFlightStructuredData.containsKey(cacheKey)) {
+      unawaited(_resolveStructuredData(document));
+    }
+
+    return const _LocalStructuredData(
+      parsedStatus: 'processing',
+      processingError: 'Local parsing is running in background.',
+    );
   }
 
   Future<void> _warmStructuredData(_StoredDocument document) async {
@@ -857,11 +923,43 @@ class LocalDocumentVaultService {
     for (final key in inFlightKeys) {
       _inFlightStructuredData.remove(key);
     }
+
+    _clearParseProgress(documentId);
   }
 
   void _clearStructuredDataCache() {
     _structuredDataCache.clear();
     _inFlightStructuredData.clear();
+    _parseProgressByDocumentId.clear();
+    _emitParseProgress();
+  }
+
+  void _setParseProgress({
+    required String documentId,
+    required String stage,
+    required double progress,
+  }) {
+    final normalizedProgress = progress.clamp(0.0, 1.0);
+    _parseProgressByDocumentId[documentId] = LocalDocumentParseProgress(
+      documentId: documentId,
+      stage: stage,
+      progress: normalizedProgress,
+      updatedAt: DateTime.now().toUtc(),
+    );
+    _emitParseProgress();
+  }
+
+  void _clearParseProgress(String documentId) {
+    if (_parseProgressByDocumentId.remove(documentId) != null) {
+      _emitParseProgress();
+    }
+  }
+
+  void _emitParseProgress() {
+    if (_parseProgressController.isClosed) {
+      return;
+    }
+    _parseProgressController.add(currentParseProgress());
   }
 
   Future<T> _enqueueParseTask<T>(Future<T> Function() task) {
@@ -968,7 +1066,7 @@ class LocalDocumentVaultService {
       return document.toSummary(folderName: folderName);
     }
 
-    final structuredData = await _resolveStructuredData(document);
+    final structuredData = await _resolveStructuredDataForView(document);
     return document.toSummary(
       folderName: folderName,
       parsedStatusOverride: structuredData.parsedStatus,
@@ -1389,4 +1487,38 @@ class _LocalStructuredData {
   final DateTime? processedAt;
   final List<LabPanelItem> labPanels;
   final List<ImagingReportItem> imagingReports;
+}
+
+class LocalDocumentParseProgressSnapshot {
+  const LocalDocumentParseProgressSnapshot({
+    required this.updatedAt,
+    required this.items,
+  });
+
+  const LocalDocumentParseProgressSnapshot.empty()
+    : updatedAt = null,
+      items = const <String, LocalDocumentParseProgress>{};
+
+  final DateTime? updatedAt;
+  final Map<String, LocalDocumentParseProgress> items;
+
+  int get activeCount => items.length;
+
+  LocalDocumentParseProgress? progressFor(String documentId) {
+    return items[documentId];
+  }
+}
+
+class LocalDocumentParseProgress {
+  const LocalDocumentParseProgress({
+    required this.documentId,
+    required this.stage,
+    required this.progress,
+    required this.updatedAt,
+  });
+
+  final String documentId;
+  final String stage;
+  final double progress;
+  final DateTime updatedAt;
 }

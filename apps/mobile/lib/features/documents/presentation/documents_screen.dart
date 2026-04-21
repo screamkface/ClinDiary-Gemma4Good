@@ -1,5 +1,6 @@
 import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -19,6 +20,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   final _searchController = TextEditingController();
   String? _currentFolderId;
   String? _appliedQuery;
+  int _lastParseActiveCount = 0;
 
   DocumentArchiveQuery get _archiveQuery => DocumentArchiveQuery(
     folderId: _currentFolderId,
@@ -211,7 +213,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     }
   }
 
-  void _openUpload(DocumentArchiveView archive) {
+  void _openUpload(
+    DocumentArchiveView archive, {
+    bool captureFromCamera = false,
+  }) {
     final uri = Uri(
       path: '/app/documents/upload',
       queryParameters: {
@@ -219,7 +224,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           'folderId': archive.currentFolder!.id,
         if (archive.currentFolder != null)
           'folderName': archive.currentFolder!.pathLabel,
-        'storageMode': archive.storageLocation,
+        if (captureFromCamera) 'capture': 'camera',
       },
     );
     context.push(uri.toString());
@@ -241,6 +246,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     final archiveAsync = ref.watch(documentArchiveProvider(_archiveQuery));
+    final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
+    final parseProgressAsync = ref.watch(localDocumentParseProgressProvider);
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
 
     return Scaffold(
@@ -254,227 +261,358 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         ],
       ),
       body: archiveAsync.when(
-        data: (archive) => RefreshIndicator(
-          onRefresh: _refreshAll,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              SectionCard(
-                title: archive.currentFolder?.name ?? 'Archive',
-                subtitle: archive.isSearch
-                    ? (archive.isLocal
-                          ? 'Local search across files saved on this device.'
-                          : 'Search across all documents uploaded to the cloud.')
-                    : (archive.isLocal
-                          ? 'Folders and files saved locally on this device.'
-                          : 'Folders and files in a tidy cloud archive.'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: _searchController,
-                      onSubmitted: (_) => _applySearch(),
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        labelText: 'Search files',
-                        hintText: archive.isLocal
-                            ? 'Title, folder, source, file name...'
-                            : 'Title, file name, extracted text...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _appliedQuery == null
-                            ? IconButton(
-                                onPressed: _applySearch,
-                                icon: const Icon(Icons.arrow_forward),
-                              )
-                            : IconButton(
-                                onPressed: _clearSearch,
-                                icon: const Icon(Icons.close),
-                              ),
+        data: (archive) {
+          final pendingSyncCount =
+              pendingOperationsAsync.asData?.value.length ?? 0;
+          final parseSnapshot =
+              parseProgressAsync.asData?.value ??
+              const LocalDocumentParseProgressSnapshot.empty();
+
+          if (_lastParseActiveCount > 0 && parseSnapshot.activeCount == 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              ref.invalidate(documentsProvider);
+              ref.invalidate(documentArchiveProvider);
+            });
+          }
+          _lastParseActiveCount = parseSnapshot.activeCount;
+
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          const storageAccent = Colors.teal;
+          final storageChipBackground = isDark
+              ? storageAccent.shade900.withValues(alpha: 0.36)
+              : storageAccent.shade50;
+          final storageChipForeground = isDark
+              ? storageAccent.shade100
+              : storageAccent.shade900;
+          final storageButtonBackground = isDark
+              ? storageAccent.shade500
+              : storageAccent.shade700;
+          final cameraButtonBackground = isDark
+              ? Colors.orange.shade500
+              : Colors.orange.shade700;
+          final folderButtonForeground = isDark
+              ? Colors.indigo.shade200
+              : Colors.indigo.shade700;
+          final folderButtonBorder = isDark
+              ? Colors.indigo.shade400.withValues(alpha: 0.65)
+              : Colors.indigo.shade200;
+          final askButtonForeground = isDark
+              ? Colors.cyan.shade200
+              : Colors.cyan.shade700;
+          final askButtonBorder = isDark
+              ? Colors.cyan.shade400.withValues(alpha: 0.65)
+              : Colors.cyan.shade200;
+          final localInfoBackground = isDark
+              ? Colors.teal.shade900.withValues(alpha: 0.36)
+              : Colors.teal.shade50;
+          final localInfoForeground = isDark
+              ? Colors.teal.shade100
+              : Colors.teal.shade900;
+          final folderAvatarBackground = isDark
+              ? Colors.indigo.shade900.withValues(alpha: 0.36)
+              : Colors.indigo.shade50;
+          final folderAvatarForeground = isDark
+              ? Colors.indigo.shade100
+              : Colors.indigo.shade700;
+
+          return RefreshIndicator(
+            onRefresh: _refreshAll,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                SectionCard(
+                  title: archive.currentFolder?.name ?? 'Archive',
+                  subtitle: archive.isSearch
+                      ? 'Search files saved on this device.'
+                      : 'Your encrypted local archive.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        onSubmitted: (_) => _applySearch(),
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          labelText: 'Search files',
+                          hintText: 'Title, folder, source, file name...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _appliedQuery == null
+                              ? IconButton(
+                                  onPressed: _applySearch,
+                                  icon: const Icon(Icons.arrow_forward),
+                                )
+                              : IconButton(
+                                  onPressed: _clearSearch,
+                                  icon: const Icon(Icons.close),
+                                ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        Chip(
-                          avatar: Icon(
-                            archive.isLocal
-                                ? Icons.phone_android_outlined
-                                : Icons.cloud_outlined,
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Chip(
+                            backgroundColor: storageChipBackground,
+                            avatar: Icon(
+                              Icons.phone_android_outlined,
+                              color: storageChipForeground,
+                            ),
+                            label: Text(
+                              documentStorageLabel(archive.storageLocation),
+                              style: TextStyle(
+                                color: storageChipForeground,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                          label: Text(
-                            documentStorageLabel(archive.storageLocation),
+                          FilledButton.icon(
+                            onPressed: () => _openUpload(archive),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: storageButtonBackground,
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.save_alt_outlined),
+                            label: Text(
+                              archive.currentFolder == null
+                                  ? 'Upload file'
+                                  : 'Save here',
+                            ),
                           ),
-                        ),
-                        FilledButton.tonalIcon(
-                          onPressed: _createFolder,
-                          icon: const Icon(Icons.create_new_folder_outlined),
-                          label: const Text('New folder'),
-                        ),
-                        FilledButton.icon(
-                          onPressed: () => _openUpload(archive),
-                          icon: Icon(
-                            archive.isLocal
-                                ? Icons.save_alt_outlined
-                                : Icons.upload_file,
+                          FilledButton.tonalIcon(
+                            onPressed: () =>
+                                _openUpload(archive, captureFromCamera: true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cameraButtonBackground,
+                              foregroundColor: Colors.white,
+                            ),
+                            icon: const Icon(Icons.camera_alt_outlined),
+                            label: const Text('Take photo'),
                           ),
-                          label: Text(
-                            archive.currentFolder == null
-                                ? (archive.isLocal
-                                      ? 'Save file'
-                                      : 'Upload file')
-                                : (archive.isLocal
-                                      ? 'Save here'
-                                      : 'Upload here'),
+                          OutlinedButton.icon(
+                            onPressed: _createFolder,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: folderButtonForeground,
+                              side: BorderSide(color: folderButtonBorder),
+                            ),
+                            icon: const Icon(Icons.create_new_folder_outlined),
+                            label: const Text('New folder'),
                           ),
-                        ),
-                        FilledButton.tonalIcon(
-                          onPressed: () => _openDocumentQuery(archive),
-                          icon: const Icon(Icons.chat_bubble_outline),
-                          label: const Text('Ask files'),
-                        ),
-                      ],
-                    ),
-                    if (archive.isLocal)
+                          OutlinedButton.icon(
+                            onPressed: () => _openDocumentQuery(archive),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: askButtonForeground,
+                              side: BorderSide(color: askButtonBorder),
+                            ),
+                            icon: const Icon(Icons.chat_bubble_outline),
+                            label: const Text('Ask files'),
+                          ),
+                        ],
+                      ),
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          'Files are encrypted locally on this device. Ask Files runs against local snippets and keeps processing on-device when available.',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.secondary,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: localInfoBackground,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.lock_outline,
+                                size: 18,
+                                color: localInfoForeground,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Files stay encrypted on this device.',
+                                  style: TextStyle(color: localInfoForeground),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        Chip(label: Text('${archive.folders.length} folders')),
-                        Chip(
-                          label: Text(
-                            '${archive.documents.length + archive.legacyCloudDocuments.length} files',
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Chip(
+                            avatar: Icon(
+                              pendingSyncCount > 0
+                                  ? Icons.sync_problem_outlined
+                                  : Icons.cloud_done_outlined,
+                              size: 18,
+                            ),
+                            label: Text(
+                              pendingSyncCount > 0
+                                  ? 'Sync pending: $pendingSyncCount'
+                                  : 'Local sync up to date',
+                            ),
                           ),
-                        ),
-                        if (archive.isSearch)
-                          const Chip(label: Text('Search active')),
-                      ],
-                    ),
-                  ],
+                          if (parseSnapshot.activeCount > 0)
+                            Chip(
+                              avatar: const Icon(
+                                Icons.auto_fix_high_outlined,
+                                size: 18,
+                              ),
+                              label: Text(
+                                'Background parsing: ${parseSnapshot.activeCount}',
+                              ),
+                            ),
+                          Chip(
+                            label: Text('${archive.folders.length} folders'),
+                          ),
+                          Chip(
+                            label: Text('${archive.documents.length} files'),
+                          ),
+                          if (archive.isSearch)
+                            const Chip(label: Text('Search active')),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _ArchiveBreadcrumbs(
-                archive: archive,
-                onOpenRoot: () => _openFolder(null),
-                onOpenFolder: _openFolder,
-                onClearSearch: _clearSearch,
-              ),
-              if (archive.folders.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                SectionCard(
-                  title: 'Folders',
-                  subtitle: archive.isSearch
-                      ? 'Folders remain available as destinations.'
-                      : 'Open a folder to see only its files.',
-                  child: Column(
-                    children: archive.folders
-                        .map(
-                          (folder) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Card.outlined(
-                              margin: EdgeInsets.zero,
-                              child: ListTile(
-                                onTap: () => _openFolder(folder.id),
-                                leading: const CircleAvatar(
-                                  child: Icon(Icons.folder_outlined),
-                                ),
-                                title: Text(
-                                  folder.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  '${folder.childFolderCount} subfolders • ${folder.documentCount} files',
-                                ),
-                                trailing: const Icon(
-                                  Icons.chevron_right_rounded,
+                _ArchiveBreadcrumbs(
+                  archive: archive,
+                  onOpenRoot: () => _openFolder(null),
+                  onOpenFolder: _openFolder,
+                  onClearSearch: _clearSearch,
+                ),
+                if (archive.folders.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SectionCard(
+                    title: 'Folders',
+                    subtitle: archive.isSearch
+                        ? 'Folders remain available as destinations.'
+                        : 'Open a folder to see only its files.',
+                    child: Column(
+                      children: archive.folders
+                          .map(
+                            (folder) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Card.outlined(
+                                margin: EdgeInsets.zero,
+                                child: ListTile(
+                                  onTap: () => _openFolder(folder.id),
+                                  leading: CircleAvatar(
+                                    backgroundColor: folderAvatarBackground,
+                                    child: Icon(
+                                      Icons.folder_outlined,
+                                      color: folderAvatarForeground,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    folder.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${folder.childFolderCount} subfolders • ${folder.documentCount} files',
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        )
-                        .toList(),
+                          )
+                          .toList(),
+                    ),
                   ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              if (archive.documents.isEmpty &&
-                  archive.folders.isEmpty &&
-                  !archive.hasLegacyCloudDocuments)
-                SectionCard(
-                  title: archive.isSearch ? 'No results' : 'Empty archive',
-                  child: Text(
-                    archive.isSearch
-                        ? 'Try different words or clear the search.'
-                        : 'Create a folder or upload your first document.',
-                  ),
-                )
-              else if (archive.documents.isNotEmpty)
-                SectionCard(
-                  title: archive.isSearch ? 'Found files' : 'Files',
-                  subtitle: archive.isSearch
-                      ? 'Results found across the entire archive.'
-                      : 'Open a file or move it to another folder.',
-                  child: Column(
-                    children: archive.documents
-                        .map(
-                          (document) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _DocumentArchiveTile(
-                              document: document,
-                              dateFormat: dateFormat,
-                              showFolderName: archive.isSearch,
-                              allowMove: true,
-                              onOpen: () =>
-                                  context.push('/app/documents/${document.id}'),
-                              onMove: () => _moveDocument(document),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              if (archive.hasLegacyCloudDocuments) ...[
+                ],
                 const SizedBox(height: 12),
-                SectionCard(
-                  title: 'Cloud archive read-only',
-                  subtitle:
-                      'These files were already in the cloud. They remain viewable, but edits are disabled while local-only mode is active.',
-                  child: Column(
-                    children: archive.legacyCloudDocuments
-                        .map(
-                          (document) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _DocumentArchiveTile(
-                              document: document,
-                              dateFormat: dateFormat,
-                              showFolderName: true,
-                              allowMove: false,
-                              onOpen: () =>
-                                  context.push('/app/documents/${document.id}'),
-                              onMove: () {},
+                if (archive.documents.isEmpty && archive.folders.isEmpty)
+                  SectionCard(
+                    title: archive.isSearch ? 'No results' : 'Empty archive',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          archive.isSearch
+                              ? 'Try different words or clear the search.'
+                              : 'Start by saving a file or creating a folder.',
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (archive.isSearch)
+                              FilledButton.tonalIcon(
+                                onPressed: _clearSearch,
+                                icon: const Icon(Icons.close),
+                                label: const Text('Clear search'),
+                              )
+                            else ...[
+                              FilledButton.icon(
+                                onPressed: () => _openUpload(archive),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: storageButtonBackground,
+                                  foregroundColor: Colors.white,
+                                ),
+                                icon: const Icon(Icons.save_alt_outlined),
+                                label: const Text('Upload file'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _createFolder,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: folderButtonForeground,
+                                  side: BorderSide(color: folderButtonBorder),
+                                ),
+                                icon: const Icon(
+                                  Icons.create_new_folder_outlined,
+                                ),
+                                label: const Text('New folder'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  )
+                else if (archive.documents.isNotEmpty)
+                  SectionCard(
+                    title: archive.isSearch ? 'Found files' : 'Files',
+                    subtitle: archive.isSearch
+                        ? 'Results found across the entire archive.'
+                        : 'Open a file or move it to another folder.',
+                    child: Column(
+                      children: archive.documents
+                          .map(
+                            (document) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _DocumentArchiveTile(
+                                document: document,
+                                parseProgress: parseSnapshot.progressFor(
+                                  document.id,
+                                ),
+                                dateFormat: dateFormat,
+                                showFolderName: archive.isSearch,
+                                allowMove: true,
+                                onOpen: () => context.push(
+                                  '/app/documents/${document.id}',
+                                ),
+                                onMove: () => _moveDocument(document),
+                              ),
                             ),
-                          ),
-                        )
-                        .toList(),
+                          )
+                          .toList(),
+                    ),
                   ),
-                ),
               ],
-            ],
-          ),
-        ),
+            ),
+          );
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Padding(
@@ -536,6 +674,7 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
 class _DocumentArchiveTile extends StatelessWidget {
   const _DocumentArchiveTile({
     required this.document,
+    this.parseProgress,
     required this.dateFormat,
     required this.showFolderName,
     required this.allowMove,
@@ -544,6 +683,7 @@ class _DocumentArchiveTile extends StatelessWidget {
   });
 
   final ClinicalDocumentSummary document;
+  final LocalDocumentParseProgress? parseProgress;
   final DateFormat dateFormat;
   final bool showFolderName;
   final bool allowMove;
@@ -552,7 +692,15 @@ class _DocumentArchiveTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = documentStatusColor(context, document.parsedStatus);
+    final isParsing = parseProgress != null;
+    final onDeviceBackground = isDark
+        ? Colors.teal.shade900.withValues(alpha: 0.36)
+        : Colors.teal.shade50;
+    final onDeviceForeground = isDark
+        ? Colors.teal.shade100
+        : Colors.teal.shade900;
 
     return Card.outlined(
       margin: EdgeInsets.zero,
@@ -594,7 +742,10 @@ class _DocumentArchiveTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-            if (document.isLocal || document.isOld || document.pendingSync)
+            if (document.isLocal ||
+                document.isOld ||
+                document.pendingSync ||
+                isParsing)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Wrap(
@@ -602,8 +753,15 @@ class _DocumentArchiveTile extends StatelessWidget {
                   runSpacing: 4,
                   children: [
                     if (document.isLocal)
-                      const Chip(
-                        label: Text('On device'),
+                      Chip(
+                        label: Text(
+                          'On device',
+                          style: TextStyle(
+                            color: onDeviceForeground,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        backgroundColor: onDeviceBackground,
                         visualDensity: VisualDensity.compact,
                       ),
                     if (document.isOld)
@@ -621,6 +779,16 @@ class _DocumentArchiveTile extends StatelessWidget {
                         backgroundColor: Theme.of(
                           context,
                         ).colorScheme.tertiaryContainer,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (isParsing)
+                      Chip(
+                        label: Text(
+                          'Parsing ${(parseProgress!.progress * 100).round()}%',
+                        ),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.7),
                         visualDensity: VisualDensity.compact,
                       ),
                   ],
@@ -646,6 +814,11 @@ class _DocumentArchiveTile extends StatelessWidget {
                     color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
+              ),
+            if (isParsing)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: LinearProgressIndicator(value: parseProgress!.progress),
               ),
           ],
         ),

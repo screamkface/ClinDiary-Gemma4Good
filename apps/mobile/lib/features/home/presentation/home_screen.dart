@@ -1,10 +1,18 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
+import 'package:clindiary/features/alerts/presentation/alert_ui.dart';
+import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+T _byBrightness<T>(BuildContext context, {required T light, required T dark}) {
+  return Theme.of(context).brightness == Brightness.dark ? dark : light;
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -12,6 +20,8 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final alertsAsync = ref.watch(alertsProvider);
+    final dailyEntriesAsync = ref.watch(dailyEntriesProvider);
+    final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final unreadNotificationsAsync = ref.watch(unreadNotificationsProvider);
     final pendingMedicationsAsync = ref.watch(pendingMedicationDosesProvider);
     final profileAsync = ref.watch(profileBundleProvider);
@@ -23,6 +33,7 @@ class HomeScreen extends ConsumerWidget {
         unreadNotificationsAsync.asData?.value ?? false;
     final hasPendingMedications =
         pendingMedicationsAsync.asData?.value ?? false;
+    final pendingSyncCount = pendingOperationsAsync.asData?.value.length ?? 0;
     final config = ref.read(appConfigProvider);
     final isDemoMode = config.hackathonDemoMode || config.localOnlyMode;
 
@@ -55,7 +66,7 @@ class HomeScreen extends ConsumerWidget {
                             Text(
                               bundle == null
                                   ? l10n.completeOnboardingToStart
-                                  : l10n.chooseRecapOrSaveCheckUp,
+                                  : 'Start with one action below.',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -74,6 +85,44 @@ class HomeScreen extends ConsumerWidget {
                         icon: alertsCount == 0
                             ? Icons.check_circle_outline
                             : Icons.notification_important_outlined,
+                        onTap: () => context.push('/app/home/alerts'),
+                        tone: alertsCount == 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.green.shade50,
+                                dark: Colors.green.shade900.withValues(
+                                  alpha: 0.36,
+                                ),
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.red.shade50,
+                                dark: Colors.red.shade900.withValues(
+                                  alpha: 0.36,
+                                ),
+                              ),
+                        iconColor: alertsCount == 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.green.shade700,
+                                dark: Colors.green.shade100,
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.red.shade700,
+                                dark: Colors.red.shade100,
+                              ),
+                        labelColor: alertsCount == 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.green.shade900,
+                                dark: Colors.green.shade100,
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.red.shade900,
+                                dark: Colors.red.shade100,
+                              ),
                         label: Text(
                           alertsCount == 0
                               ? l10n.alertsAllClear
@@ -84,6 +133,24 @@ class HomeScreen extends ConsumerWidget {
                         icon: hasUnreadNotifications
                             ? Icons.mark_email_unread_outlined
                             : Icons.notifications_none_outlined,
+                        onTap: () => context.push('/app/home/notifications'),
+                        tone: _byBrightness(
+                          context,
+                          light: Colors.lightBlue.shade50,
+                          dark: Colors.lightBlue.shade900.withValues(
+                            alpha: 0.36,
+                          ),
+                        ),
+                        iconColor: _byBrightness(
+                          context,
+                          light: Colors.lightBlue.shade700,
+                          dark: Colors.lightBlue.shade100,
+                        ),
+                        labelColor: _byBrightness(
+                          context,
+                          light: Colors.lightBlue.shade900,
+                          dark: Colors.lightBlue.shade100,
+                        ),
                         label: Text(
                           hasUnreadNotifications
                               ? l10n.notificationsUnread
@@ -91,9 +158,74 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                       _StatusPill(
+                        icon: pendingSyncCount > 0
+                            ? Icons.sync_problem_outlined
+                            : Icons.cloud_done_outlined,
+                        onTap: () =>
+                            context.push('/app/profile/settings/privacy-ai'),
+                        tone: pendingSyncCount > 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.deepOrange.shade50,
+                                dark: Colors.deepOrange.shade900.withValues(
+                                  alpha: 0.34,
+                                ),
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.teal.shade50,
+                                dark: Colors.teal.shade900.withValues(
+                                  alpha: 0.34,
+                                ),
+                              ),
+                        iconColor: pendingSyncCount > 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.deepOrange.shade700,
+                                dark: Colors.deepOrange.shade100,
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.teal.shade700,
+                                dark: Colors.teal.shade100,
+                              ),
+                        labelColor: pendingSyncCount > 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.deepOrange.shade900,
+                                dark: Colors.deepOrange.shade100,
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.teal.shade900,
+                                dark: Colors.teal.shade100,
+                              ),
+                        label: Text(
+                          pendingSyncCount > 0
+                              ? 'Sync pending: $pendingSyncCount'
+                              : 'Local sync up to date',
+                        ),
+                      ),
+                      _StatusPill(
                         icon: hasPendingMedications
                             ? Icons.medication_outlined
                             : Icons.checklist_outlined,
+                        onTap: () => context.push('/app/home/medications'),
+                        tone: _byBrightness(
+                          context,
+                          light: Colors.amber.shade50,
+                          dark: Colors.amber.shade900.withValues(alpha: 0.34),
+                        ),
+                        iconColor: _byBrightness(
+                          context,
+                          light: Colors.amber.shade800,
+                          dark: Colors.amber.shade100,
+                        ),
+                        labelColor: _byBrightness(
+                          context,
+                          light: Colors.amber.shade900,
+                          dark: Colors.amber.shade100,
+                        ),
                         label: Text(
                           hasPendingMedications
                               ? l10n.medicationsDue
@@ -103,39 +235,26 @@ class HomeScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isCompact = constraints.maxWidth < 380;
-                      final aiButton = FilledButton.icon(
-                        onPressed: () => context.go('/app/ai'),
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        label: Text(l10n.aiRecap),
-                      );
-                      final checkUpButton = FilledButton.tonalIcon(
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      FilledButton.icon(
                         onPressed: () => context.push('/app/diary/check-up'),
                         icon: const Icon(Icons.add_circle_outline),
                         label: Text(l10n.checkUp),
-                      );
-
-                      if (isCompact) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            aiButton,
-                            const SizedBox(height: 12),
-                            checkUpButton,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          Expanded(child: aiButton),
-                          const SizedBox(width: 12, height: 12),
-                          Expanded(child: checkUpButton),
-                        ],
-                      );
-                    },
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.go('/app/ai'),
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        label: Text(l10n.aiRecap),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => context.push('/app/home/history'),
+                        icon: const Icon(Icons.event_note_outlined),
+                        label: const Text('History'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -200,8 +319,31 @@ class HomeScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 12),
+          alertsAsync.when(
+            data: (alerts) => _HomeAlertsSection(alerts: alerts),
+            loading: () => const SectionCard(
+              title: 'Alerts',
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) =>
+                SectionCard(title: 'Alerts', child: Text(error.toString())),
+          ),
+          const SizedBox(height: 12),
+          dailyEntriesAsync.when(
+            data: (entries) => _RecentCheckUpsSection(entries: entries),
+            loading: () => const SectionCard(
+              title: 'Recent check-ups',
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => SectionCard(
+              title: 'Recent check-ups',
+              child: Text(error.toString()),
+            ),
+          ),
+          const SizedBox(height: 12),
           SectionCard(
-            title: l10n.goTo,
+            title: 'Quick actions',
+            subtitle: 'Use these most of the time.',
             child: GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -212,35 +354,38 @@ class HomeScreen extends ConsumerWidget {
               children: [
                 _DashboardActionCard(
                   title: l10n.documents,
-                  subtitle: l10n.reports,
+                  subtitle: 'Save and review files',
                   icon: Icons.description_outlined,
+                  accentColor: _byBrightness(
+                    context,
+                    light: Colors.blue.shade700,
+                    dark: Colors.blue.shade300,
+                  ),
                   onTap: () => context.go('/app/documents'),
                 ),
                 _DashboardActionCard(
                   title: l10n.medications,
-                  subtitle: l10n.treatments,
+                  subtitle: 'Today and schedule',
                   icon: Icons.medication_outlined,
+                  accentColor: _byBrightness(
+                    context,
+                    light: Colors.green.shade700,
+                    dark: Colors.green.shade300,
+                  ),
                   onTap: () => context.push('/app/home/medications'),
                   showBadge: hasPendingMedications,
                   badgeKey: const ValueKey('home-medications-badge'),
                 ),
                 _DashboardActionCard(
                   title: l10n.prevention,
-                  subtitle: l10n.checkups,
+                  subtitle: 'Next recommended checks',
                   icon: Icons.health_and_safety_outlined,
+                  accentColor: _byBrightness(
+                    context,
+                    light: Colors.orange.shade700,
+                    dark: Colors.orange.shade300,
+                  ),
                   onTap: () => context.push('/app/home/prevention-center'),
-                ),
-                _DashboardActionCard(
-                  title: l10n.devices,
-                  subtitle: 'Wave 1',
-                  icon: Icons.device_hub_outlined,
-                  onTap: () => context.push('/app/home/devices'),
-                ),
-                _DashboardActionCard(
-                  title: l10n.dossier,
-                  subtitle: l10n.history,
-                  icon: Icons.folder_shared_outlined,
-                  onTap: () => context.push('/app/home/dossier'),
                 ),
               ],
             ),
@@ -251,7 +396,18 @@ class HomeScreen extends ConsumerWidget {
               if (bundle == null) {
                 return SectionCard(
                   title: l10n.profiles,
-                  child: Text(l10n.completeOnboardingToStart),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.completeOnboardingToStart),
+                      const SizedBox(height: 12),
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.push('/app/profile/family'),
+                        icon: const Icon(Icons.add_circle_outline),
+                        label: const Text('Add profile'),
+                      ),
+                    ],
+                  ),
                 );
               }
               final selectedId = activeProfileIdAsync.asData?.value;
@@ -300,12 +456,22 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           SectionCard(
-            title: l10n.more,
-            subtitle: l10n.secondaryTools,
+            title: 'Secondary tools',
+            subtitle: 'Less frequent actions and settings.',
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
+                _MiniActionChip(
+                  label: l10n.devices,
+                  icon: Icons.device_hub_outlined,
+                  onPressed: () => context.push('/app/home/devices'),
+                ),
+                _MiniActionChip(
+                  label: l10n.dossier,
+                  icon: Icons.folder_shared_outlined,
+                  onPressed: () => context.push('/app/home/dossier'),
+                ),
                 _MiniActionChip(
                   label: l10n.timeline,
                   icon: Icons.timeline_outlined,
@@ -412,6 +578,7 @@ class _DashboardActionCard extends StatelessWidget {
     this.subtitle,
     required this.icon,
     required this.onTap,
+    this.accentColor,
     this.showBadge = false,
     this.badgeKey,
   });
@@ -420,12 +587,15 @@ class _DashboardActionCard extends StatelessWidget {
   final String? subtitle;
   final IconData icon;
   final VoidCallback onTap;
+  final Color? accentColor;
   final bool showBadge;
   final Key? badgeKey;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
+    final effectiveAccent = accentColor ?? colorScheme.primary;
     return Card.outlined(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -443,10 +613,12 @@ class _DashboardActionCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.08),
+                      color: effectiveAccent.withValues(
+                        alpha: isDark ? 0.28 : 0.14,
+                      ),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icon, color: colorScheme.primary),
+                    child: Icon(icon, color: effectiveAccent),
                   ),
                   if (showBadge)
                     Positioned(
@@ -489,6 +661,193 @@ class _DashboardActionCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HomeAlertsSection extends StatelessWidget {
+  const _HomeAlertsSection({required this.alerts});
+
+  final List<ClinicalAlert> alerts;
+
+  @override
+  Widget build(BuildContext context) {
+    final openAlerts = alerts.where((alert) => !alert.isResolved).toList();
+    if (openAlerts.isEmpty) {
+      return SectionCard(
+        title: 'Alerts',
+        subtitle: 'Everything looks stable right now.',
+        action: TextButton.icon(
+          onPressed: () => context.push('/app/home/alerts'),
+          icon: const Icon(Icons.open_in_new_outlined),
+          label: const Text('Open center'),
+        ),
+        child: const Text('No active alerts to review.'),
+      );
+    }
+
+    final topAlerts = openAlerts.take(3).toList();
+    final dateFormat = DateFormat('dd MMM · HH:mm', 'en_US');
+
+    return SectionCard(
+      title: 'Alerts',
+      subtitle: 'Tap an alert to open the relevant section.',
+      action: TextButton.icon(
+        onPressed: () => context.push('/app/home/alerts'),
+        icon: const Icon(Icons.open_in_new_outlined),
+        label: const Text('View all'),
+      ),
+      child: Column(
+        children: topAlerts
+            .map(
+              (alert) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Card.outlined(
+                  margin: EdgeInsets.zero,
+                  child: ListTile(
+                    key: ValueKey('home-alert-${alert.id}'),
+                    onTap: () => context.push(_routeForAlert(alert)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor: alertSeverityColor(
+                        context,
+                        alert.severity,
+                      ).withValues(alpha: 0.14),
+                      child: Icon(
+                        alertSeverityIcon(alert.severity),
+                        color: alertSeverityColor(context, alert.severity),
+                      ),
+                    ),
+                    title: Text(
+                      alert.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          alert.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${alertSeverityLabel(alert.severity)} · ${dateFormat.format(alert.triggeredAt.toLocal())}',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ],
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  String _routeForAlert(ClinicalAlert alert) {
+    final marker =
+        '${alert.alertType} ${alert.ruleCode ?? ''} ${alert.title} ${alert.description}'
+            .toLowerCase();
+    final isCheckUpAlert =
+        marker.contains('check-up') ||
+        marker.contains('check up') ||
+        marker.contains('checkup') ||
+        marker.contains('screening') ||
+        marker.contains('annual visit') ||
+        marker.contains('prevention');
+    return isCheckUpAlert ? '/app/home/screenings' : '/app/home/alerts';
+  }
+}
+
+class _RecentCheckUpsSection extends StatelessWidget {
+  const _RecentCheckUpsSection({required this.entries});
+
+  final List<DailyEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.isEmpty) {
+      return SectionCard(
+        title: 'Recent check-ups',
+        subtitle: 'The latest check-ins appear here right after saving.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('No check-up saved yet.'),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => context.push('/app/diary/check-up'),
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Create first check-up'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final sortedEntries = [...entries]
+      ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
+    final previewEntries = sortedEntries.take(3).toList();
+    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final checkUpAvatarBackground = _byBrightness(
+      context,
+      light: Colors.teal.shade50,
+      dark: Colors.teal.shade900.withValues(alpha: 0.36),
+    );
+    final checkUpAvatarColor = _byBrightness(
+      context,
+      light: Colors.teal.shade700,
+      dark: Colors.teal.shade100,
+    );
+
+    return SectionCard(
+      title: 'Recent check-ups',
+      subtitle: 'Latest saved check-ins in your diary.',
+      action: TextButton.icon(
+        onPressed: () => context.push('/app/diary'),
+        icon: const Icon(Icons.open_in_new_outlined),
+        label: const Text('Open diary'),
+      ),
+      child: Column(
+        children: previewEntries
+            .map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Card.outlined(
+                  margin: EdgeInsets.zero,
+                  child: ListTile(
+                    key: ValueKey('home-checkup-${entry.id}'),
+                    onTap: () => context.push('/app/diary/${entry.id}/symptom'),
+                    leading: CircleAvatar(
+                      backgroundColor: checkUpAvatarBackground,
+                      child: Icon(
+                        Icons.fact_check_outlined,
+                        color: checkUpAvatarColor,
+                      ),
+                    ),
+                    title: Text(dateFormat.format(entry.entryDate)),
+                    subtitle: Text(
+                      (entry.generalNotes ?? '').trim().isEmpty
+                          ? 'No notes'
+                          : entry.generalNotes!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }
@@ -577,35 +936,65 @@ class _MiniActionChip extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, this.icon});
+  const _StatusPill({
+    required this.label,
+    this.icon,
+    this.onTap,
+    this.tone,
+    this.iconColor,
+    this.labelColor,
+  });
 
   final Widget label;
   final IconData? icon;
+  final VoidCallback? onTap;
+  final Color? tone;
+  final Color? iconColor;
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final baseLabelStyle =
+        Theme.of(context).textTheme.labelMedium ?? const TextStyle();
+    final background =
+        tone ?? colorScheme.surfaceContainerHighest.withValues(alpha: 0.52);
+    final resolvedIconColor = iconColor ?? colorScheme.primary;
 
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.52),
+        color: background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: colorScheme.primary),
+            Icon(icon, size: 16, color: resolvedIconColor),
             const SizedBox(width: 6),
           ],
           DefaultTextStyle(
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium!.copyWith(fontWeight: FontWeight.w700),
+            style: baseLabelStyle.copyWith(
+              fontWeight: FontWeight.w700,
+              color: labelColor ?? baseLabelStyle.color,
+            ),
             child: label,
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: content,
       ),
     );
   }

@@ -24,13 +24,7 @@ const defaultAppConfig = AppConfig(
     'HACKATHON_DEMO_MODE',
     defaultValue: false,
   ),
-  localOnlyMode: bool.fromEnvironment(
-    'LOCAL_ONLY_MODE',
-    defaultValue: bool.fromEnvironment(
-      'HACKATHON_DEMO_MODE',
-      defaultValue: false,
-    ),
-  ),
+  localOnlyMode: true,
   googleAuthClientId: String.fromEnvironment(
     'GOOGLE_AUTH_CLIENT_ID',
     defaultValue: '',
