@@ -150,9 +150,6 @@ load_env_files() {
   export MINIO_SECURE="${MINIO_SECURE:-false}"
   export PYTHONPATH="$ROOT_DIR/apps/backend"
 
-  if [[ "${AI_PROVIDER:-}" == "regolo_ai" && -z "${REGOLO_API_KEY:-}" ]]; then
-    warn "AI_PROVIDER=regolo_ai ma REGOLO_API_KEY e vuota: ClinDiary usera il fallback deterministico."
-  fi
 }
 
 ensure_backend_environment() {

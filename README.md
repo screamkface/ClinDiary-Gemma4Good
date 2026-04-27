@@ -52,11 +52,11 @@ Completato fino a Fase 4:
 - processing asincrono via Celery con estrazione testo da PDF digitali e OCR configurabile per immagini/scansioni
 - parsing deterministico base per referti laboratorio e imaging
 - revisione manuale documenti con conferma/correzione di metadata, testo e parsing strutturato
-- retrieval documentale con chunking, embeddings Regolo, rerank e risposta con citazioni
+- retrieval documentale con chunking, embeddings locali Gemma, rerank `rule_based` e risposta con citazioni
 - retrieval documentale ottimizzato su PostgreSQL con full-text search indicizzata e ranking SQL dei candidati
 - baseline billing/entitlements con piani `free` e `AI Plus`, gating server-side delle feature AI e paywall mobile contestuale
 - archivio documenti differenziato per piano: `free` salva i file solo sul dispositivo con cartelle e ricerca locale; `AI Plus` usa il cloud ClinDiary con OCR, parsing, reindex e query documentale
-- modulo `Dispositivi` Wave 1 con catalogo provider per `OMRON`, `Withings`, `iHealth`, `A&D Medical` e `Dexcom`, connessioni profilo-scoped, import job tracciati e ingest manuale per i flussi gia` supportati
+- modulo `Dispositivi` Wave 1 con catalogo provider, connessioni profilo-scoped, import job tracciati e ingest manuale per i flussi gia` supportati
 - timeline documentale con eventi di upload e processing
 - insights prudenti giornalieri, settimanali e pre-visita
 - red flags engine separato dalla narrativa AI
@@ -83,7 +83,7 @@ Completato fino a Fase 4:
 
 Roadmap successiva:
 
-- validazione provider AI reale con tua chiave Regolo AI
+- validazione runtime Gemma locale su casi reali
 - integrazione nativa StoreKit / Google Play Billing sopra il baseline AI Plus gia presente
 - credenziali reali FCM/APNs/SMTP e test end-to-end dei canali esterni
 - validazione OCR su scansioni reali difficili e wearable su dispositivi veri
@@ -137,6 +137,8 @@ Se vuoi mostrare anche il percorso locale lato host come confronto tecnico:
 bash scripts/setup_local_gemma_ollama.sh --keep-server
 bash scripts/smoke_local_gemma_ollama.sh
 ```
+
+Questo profilo locale usa `embeddinggemma` per il retrieval e mantiene il reranking `rule_based`, cosi la demo resta piu veloce e leggera.
 
 ## Video Demo Path
 
@@ -262,8 +264,8 @@ python3 -m venv apps/backend/.venv
 apps/backend/.venv/bin/pip install -e apps/backend[dev]
 ```
 
-Se non hai ancora un file `.env`, puoi comunque avviare ClinDiary con i valori di default locali: il progetto parte lo stesso e usa il fallback rule-based.
-Per attivare Regolo AI o configurazioni personalizzate, crea prima `apps/backend/.env` copiando `apps/backend/.env.example`.
+Se non hai ancora un file `.env`, puoi comunque avviare ClinDiary con i valori di default locali: il progetto parte lo stesso e usa Gemma locale se disponibile, altrimenti il fallback rule-based.
+Per una configurazione locale esplicita, crea `apps/backend/.env` copiando `apps/backend/.env.example` oppure `apps/backend/.env.gemma-local.example`.
 
 Per attivare OCR con PaddleOCR:
 
@@ -273,55 +275,13 @@ apps/backend/.venv/bin/pip install -e apps/backend[dev,ocr]
 
 Per usare il fallback Tesseract sul tuo host installa anche il binario `tesseract` di sistema.
 
-Per usare un provider AI OpenAI-compatible:
+Per usare il profilo locale Gemma:
 
 ```bash
-export AI_PROVIDER=openai_compatible
-export AI_BASE_URL=https://your-provider.example/v1
-export AI_API_KEY=your-secret
+cp apps/backend/.env.gemma-local.example apps/backend/.env
 ```
 
-Per usare Regolo AI:
-
-1. Crea `apps/backend/.env` partendo da `apps/backend/.env.example`
-2. imposta almeno:
-
-```bash
-AI_PROVIDER=regolo_ai
-REGOLO_API_KEY=incolla-qui-la-tua-chiave
-REGOLO_BASE_URL=https://api.regolo.ai/v1
-REGOLO_MODEL_NAME=minimax-m2.5
-DOCUMENT_ANSWER_MODEL_NAME=qwen3-8b
-DOCUMENT_EMBEDDING_MODEL_NAME=qwen3-embedding-8b
-DOCUMENT_EMBEDDING_DIMENSIONS=1024
-DOCUMENT_RERANKER_MODEL_NAME=qwen3-reranker-4b
-WITHINGS_CLIENT_ID=...
-WITHINGS_CLIENT_SECRET=...
-WITHINGS_REDIRECT_URI=https://backend.example.com/oauth/withings/callback
-IHEALTH_CLIENT_ID=...
-IHEALTH_CLIENT_SECRET=...
-IHEALTH_REDIRECT_URI=https://backend.example.com/oauth/ihealth/callback
-DEXCOM_CLIENT_ID=...
-DEXCOM_CLIENT_SECRET=...
-DEXCOM_REDIRECT_URI=https://backend.example.com/oauth/dexcom/callback
-```
-
-`DOCUMENT_EMBEDDING_DIMENSIONS=1024` e il compromesso consigliato tra spazio, latenza e qualita. Se il provider non supporta il parametro, ClinDiary ritenta automaticamente senza `dimensions` e continua a funzionare.
-
-Per la `Wave 1` dei device clinici:
-
-- `OMRON` e` modellato come connettore partner/SDK-BLE, quindi richiede onboarding vendor o bridge mobile dedicato
-- `Withings`, `iHealth` e `Dexcom` usano credenziali OAuth server-side e possono essere bootstrap-ati anche con token manuali in ambienti partner/debug
-- `A&D Medical` supporta gia` salvataggio API key e ingest manuale dal client ClinDiary
-- senza credenziali/approval vendor il modulo `Dispositivi` resta comunque usabile per catalogo, setup guidato, bootstrap dei connettori e tracking degli import
-
-Se vuoi ancora usare Gemini, il blocco rimane supportato con:
-
-```bash
-AI_PROVIDER=gemini_ai_studio
-AI_MODEL_NAME=gemini-2.5-flash
-GEMINI_API_KEY=incolla-qui-la-tua-chiave
-```
+`DOCUMENT_EMBEDDING_DIMENSIONS=1024` resta il compromesso consigliato tra spazio e latenza. Se il runtime locale non supporta il parametro, ClinDiary ritenta automaticamente senza `dimensions` e continua a funzionare.
 
 Se usi Docker Compose puoi anche creare `.env` nella root partendo da [.env.example](/home/nicola/Documents/ClinDiary/.env.example), oppure lanciare:
 
@@ -426,7 +386,7 @@ Il flusso e:
 1. upload/process/review documento
 2. indicizzazione asincrona in `document_chunks`
 3. retrieval ibrido metadata-first
-4. embeddings + rerank Regolo
+4. embeddings locali Gemma + rerank `rule_based`
 5. risposta finale con citazioni apribili
 
 Per forzare una reindicizzazione:
@@ -479,8 +439,7 @@ flutter test
 - in Fase 2/Fase 5 l'estrazione testo usa `pypdf` per PDF digitali e provider OCR configurabile (`OCR_PROVIDER`) per immagini/scansioni
 - il build Docker di `backend` e `worker` verifica davvero il runtime OCR quando `INSTALL_OCR=true`
 - classificazione e parsing documentale sono deterministici e spiegabili, senza AI clinica
-- in Fase 3/Fase 5 la narrativa AI resta prudente e non diagnostica; prima vengono sempre considerate le regole red flags e il provider esterno degrada sempre sul fallback rule-based
-- oltre all'adapter OpenAI-compatible e ora disponibile anche `gemini_ai_studio` via API key Google AI Studio
+- in Fase 3/Fase 5 la narrativa AI resta prudente e non diagnostica; prima vengono sempre considerate le regole red flags e il runtime locale degrada sempre sul fallback rule-based
 - in Fase 4 screening, reminder e aderenza farmaci usano regole deterministiche e persistence separate (`rules/`, `services/`, `repositories/`)
 - le notifiche sono in-app inbox, con `read_status`, priorita e deduplica per evitare duplicazioni inutili; Fase 5 aggiunge canali adapter-ready `push/email`
 - le preferenze notifiche si gestiscono da app e il sync periodico puo girare in background tramite Celery Beat

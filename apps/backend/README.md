@@ -11,16 +11,16 @@ Copre attualmente:
 - query documentale RAG con chunking, embeddings, rerank e citazioni
 - query documentale RAG con retrieval SQL ottimizzato su PostgreSQL, chunking, embeddings, rerank e citazioni
 - OCR provider-agnostic per immagini/scansioni (default `paddleocr`, con fallback `ocr_pending`)
-- insights prudenti, alert clinici e report PDF con adapter `openai_compatible` o `gemini_ai_studio`
+- insights prudenti, alert clinici e report PDF con runtime locale Gemma o fallback `rule_based`
 - screenings, aderenza farmaci e notifiche
 - worker Celery e beat per sync periodico notifiche
 - hardening reale: request tracing HTTP, rate limiting auth Redis-backed con fallback, metriche `/metrics` e audit trail persistente
 - document hardening con hash SHA-256, validazione firma file e scan hook configurabile
-- notifiche adapter-ready con device registration, push `webhook/fcm/apns` ed email smtp/log-only
+- notifiche adapter-ready con device registration e canali push/email opzionali
 - scheduling farmaci avanzato con giorni specifici, cicli e pause
 - API per edit/pause/resume/delete degli schedule farmaci
 - il backend non genera reminder farmaci: i promemoria terapia sono pianificati localmente dall'app mobile
-- modulo `devices` Wave 1 con catalogo provider (`OMRON`, `Withings`, `iHealth`, `A&D Medical`, `Dexcom`), connessioni profilo-scoped, import job e ingest manuale dove supportato
+- modulo `devices` Wave 1 con catalogo provider, connessioni profilo-scoped, import job e ingest manuale dove supportato
 
 ## Hackathon MVP: Private / Local Daily Recap
 
@@ -122,26 +122,10 @@ Per usare anche il fallback OCR secondario:
 sudo apt-get install tesseract-ocr
 ```
 
-Per testare un provider AI OpenAI-compatible:
+Per usare Gemma locale:
 
 ```bash
-export AI_PROVIDER=openai_compatible
-export AI_BASE_URL=https://your-provider.example/v1
-export AI_API_KEY=your-secret
-```
-
-Per Gemini via Google AI Studio:
-
-```bash
-cp .env.example .env
-```
-
-Poi in `.env`:
-
-```bash
-AI_PROVIDER=gemini_ai_studio
-AI_MODEL_NAME=gemini-2.5-flash
-GEMINI_API_KEY=incolla-qui-la-tua-chiave
+cp .env.gemma-local.example .env
 ```
 
 Per accedere con Google:
@@ -152,41 +136,7 @@ GOOGLE_OAUTH_CLIENT_ID=il-tuo-client-id-web-o-android
 
 Il login Google usa un `id_token` verificato dal backend e poi emette i normali token ClinDiary.
 
-Per Regolo AI sui recap e sulla query documentale:
-
-```bash
-cp .env.example .env
-```
-
-Poi in `.env`:
-
-```bash
-AI_PROVIDER=regolo_ai
-REGOLO_API_KEY=incolla-qui-la-tua-chiave
-REGOLO_BASE_URL=https://api.regolo.ai/v1
-REGOLO_MODEL_NAME=minimax-m2.5
-DOCUMENT_ANSWER_MODEL_NAME=qwen3-8b
-DOCUMENT_EMBEDDING_MODEL_NAME=qwen3-embedding-8b
-DOCUMENT_EMBEDDING_DIMENSIONS=1024
-DOCUMENT_RERANKER_MODEL_NAME=qwen3-reranker-4b
-WITHINGS_CLIENT_ID=...
-WITHINGS_CLIENT_SECRET=...
-WITHINGS_REDIRECT_URI=https://backend.example.com/oauth/withings/callback
-IHEALTH_CLIENT_ID=...
-IHEALTH_CLIENT_SECRET=...
-IHEALTH_REDIRECT_URI=https://backend.example.com/oauth/ihealth/callback
-DEXCOM_CLIENT_ID=...
-DEXCOM_CLIENT_SECRET=...
-DEXCOM_REDIRECT_URI=https://backend.example.com/oauth/dexcom/callback
-```
-
 Se il provider embeddings non supporta il parametro `dimensions`, ClinDiary ritenta automaticamente senza quel campo e salva comunque la dimensione reale ritornata in `document_chunks.embedding_dimensions`.
-
-Per il modulo `devices`:
-
-- `Withings`, `iHealth` e `Dexcom` richiedono le rispettive credenziali client/redirect per il flusso live
-- `OMRON` resta un connettore partner/SDK-BLE: il backend conserva il setup del profilo, ma la sync live richiede onboarding vendor
-- `A&D Medical` puo` gia` essere bootstrap-ato con API key e ingest manuale
 
 2. Copia `.env.example` in `.env` se vuoi configurazione locale custom.
 
@@ -246,14 +196,14 @@ Smoke AI locale:
 
 ```bash
 clindiary-ai-smoke
-clindiary-ai-smoke --require-external-provider
-clindiary-ai-smoke --payload /percorso/payload.json --require-external-provider
+clindiary-ai-smoke --require-local-runtime
+clindiary-ai-smoke --payload /percorso/payload.json --require-local-runtime
 clindiary-ai-eval
 clindiary-ai-eval --inputs /percorso/casi-curati
-clindiary-ai-eval --inputs /percorso/casi-curati --require-external-provider
+clindiary-ai-eval --inputs /percorso/casi-curati --require-local-runtime
 ```
 
-Il comando AI usa un payload di prova interno se non ne passi uno. Con `--require-external-provider` fallisce se il provider configurato manca o se il backend ricade sul fallback `rule_based`.
+Il comando AI usa un payload di prova interno se non ne passi uno. Con `--require-local-runtime` fallisce se il runtime locale non e disponibile o se il backend ricade sul fallback `rule_based`.
 `clindiary-ai-eval` fa la stessa verifica su piu casi curati e controlla anche che il riepilogo rispetti la struttura clinica attesa.
 
 Per il recap locale Gemma:
@@ -261,6 +211,8 @@ Per il recap locale Gemma:
 ```bash
 bash ../scripts/setup_local_gemma_ollama.sh --keep-server
 ```
+
+Questo bootstrap locale usa `embeddinggemma` per il retrieval e lascia il reranking a `rule_based`, che e la scelta piu rapida per la demo.
 
 Per usare l'overlay locale senza modificare `.env`, avvia il mobile/backend con:
 
@@ -298,10 +250,10 @@ Smoke notifiche locale:
 ```bash
 clindiary-notification-smoke
 clindiary-notification-smoke --payload /percorso/notification.json
-clindiary-notification-smoke --payload /percorso/notification.json --require-external-provider
+clindiary-notification-smoke --payload /percorso/notification.json --require-delivery-provider
 
 clindiary-notification-audit
-clindiary-notification-audit --require-external-provider
+clindiary-notification-audit --require-delivery-provider
 
 clindiary-screening-links-audit
 clindiary-screening-links-audit --timeout 15
@@ -326,7 +278,7 @@ Esempio payload:
 }
 ```
 
-Con `--require-external-provider` il comando fallisce se il provider ricade su `log_only` oppure se nessun canale reale viene testato.
+Con `--require-delivery-provider` il comando fallisce se il provider ricade su `log_only` oppure se nessun canale reale viene testato.
 
 L'equivalente API per l'app e `POST /api/v1/notifications/test-delivery`.
 

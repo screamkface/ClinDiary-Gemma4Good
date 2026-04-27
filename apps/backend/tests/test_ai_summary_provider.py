@@ -1,18 +1,12 @@
 from datetime import date
-import json
-
-import httpx
 
 from app.ai.local_runtime_adapter import LocalAiRuntimeUnavailableError
 from app.ai.summary_provider import (
-    GeminiAiStudioSummaryProvider,
-    OpenAICompatibleSummaryProvider,
+    ResilientSummaryProvider,
     RuleBasedSummaryProvider,
-    RegoloAiSummaryProvider,
     SummaryGenerationInput,
     SummaryGenerationResult,
     SummaryProviderOverride,
-    ResilientSummaryProvider,
     build_summary_provider,
 )
 from app.core.config import Settings
@@ -60,220 +54,82 @@ def _payload() -> SummaryGenerationInput:
     )
 
 
-def test_openai_compatible_provider_extracts_summary():
+def test_build_summary_provider_uses_local_gemma_runtime(monkeypatch):
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "Sintesi prudente.\nNessuna diagnosi automatica.",
-                        }
-                    }
-                ]
-            },
-        )
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            captured["model_name"] = model_name
+            captured["system_prompt"] = system_prompt
+            captured["user_prompt"] = user_prompt
+            captured["max_output_tokens"] = max_output_tokens
+            return "Sintesi locale Gemma.\nNessuna diagnosi automatica."
 
-    transport = httpx.MockTransport(
-        handler
-    )
-    provider = OpenAICompatibleSummaryProvider(
-        base_url="https://llm.example.com/v1",
-        api_key="secret",
-        model_name="safe-model",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=400,
-        client=httpx.Client(transport=transport),
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
     )
 
-    result = provider.generate(_payload())
-
-    assert "Sintesi prudente" in result
-    assert "diagnosi automatica" in result
-    messages = captured["json"]["messages"]
-    assert "Usa esclusivamente i dati presenti nel payload JSON" in messages[0]["content"]
-    assert "Genera un riepilogo clinico prudente usando ESCLUSIVAMENTE" in messages[1]["content"]
-    assert "patient_snapshot" in messages[1]["content"]
-    assert "prior_daily_summaries" in messages[1]["content"]
-    assert "recent_lab_results" in messages[1]["content"]
-    assert "device_measurement_summaries" in messages[1]["content"]
-    assert captured["json"]["max_tokens"] == 2048
-
-
-def test_build_summary_provider_falls_back_to_rule_based_when_config_missing():
     settings = Settings(
-        ai_provider="openai_compatible",
-        ai_model_name="safe-model",
-        ai_base_url=None,
-        ai_api_key=None,
+        ai_provider="gemma",
+        summary_ai_runtime_mode="local",
+        local_llm_model_name="gemma-4-e2b",
+        ai_max_output_tokens=400,
+    )
+
+    provider = build_summary_provider(settings)
+    result = provider.generate_result(_payload())
+
+    assert provider.provider_name == "gemma"
+    assert provider.model_name == "gemma-4-e2b"
+    assert result.provider_name == "gemma"
+    assert result.model_name == "gemma-4-e2b"
+    assert "Sintesi locale Gemma" in result.content
+    assert captured["model_name"] == "gemma-4-e2b"
+    assert captured["max_output_tokens"] == 2048
+    assert "Usa esclusivamente i dati presenti nel payload JSON" in captured["system_prompt"]
+    assert "prior_daily_summaries" in captured["user_prompt"]
+
+
+def test_build_summary_provider_allows_local_runtime_without_external_consent(monkeypatch):
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            return "Sintesi locale disponibile anche senza consenso cloud."
+
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
+    )
+
+    settings = Settings(
+        ai_provider="gemma",
+        summary_ai_runtime_mode="local",
+        local_llm_model_name="gemma-4-e2b",
+    )
+
+    provider = build_summary_provider(settings, allow_external_provider=False)
+    result = provider.generate_result(_payload())
+
+    assert provider.provider_name == "gemma"
+    assert result.provider_name == "gemma"
+    assert result.used_fallback is False
+
+
+def test_build_summary_provider_falls_back_to_rule_based_when_runtime_missing(monkeypatch):
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: (_ for _ in ()).throw(LocalAiRuntimeUnavailableError("runtime offline")),
+    )
+
+    settings = Settings(
+        ai_provider="gemma",
+        summary_ai_runtime_mode="local",
+        local_llm_model_name="gemma-4-e2b",
     )
 
     provider = build_summary_provider(settings)
 
     assert isinstance(provider, RuleBasedSummaryProvider)
-
-
-def test_gemini_ai_studio_provider_extracts_summary():
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
-        return httpx.Response(
-            200,
-            json={
-                "candidates": [
-                    {
-                        "finishReason": "STOP",
-                        "content": {
-                            "parts": [
-                                {
-                                    "text": "Sintesi Gemini prudente.\nNessuna diagnosi automatica.",
-                                }
-                            ]
-                        },
-                    }
-                ]
-            },
-        )
-
-    transport = httpx.MockTransport(
-        handler
-    )
-    provider = GeminiAiStudioSummaryProvider(
-        api_key="secret",
-        model_name="gemini-2.5-flash",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=400,
-        client=httpx.Client(transport=transport),
-    )
-
-    result = provider.generate(_payload())
-
-    assert "Sintesi Gemini prudente" in result
-    assert "diagnosi automatica" in result
-    assert captured["json"]["generationConfig"]["thinkingConfig"]["thinkingBudget"] == 0
-    assert captured["json"]["generationConfig"]["maxOutputTokens"] == 2048
-    prompt = captured["json"]["contents"][0]["parts"][0]["text"]
-    assert "Usa esclusivamente i dati presenti nel payload JSON" in prompt
-    assert "DATI STRUTTURATI" in prompt
-    assert "prior_daily_summaries" in prompt
-
-
-def test_gemini_ai_studio_provider_rejects_truncated_summary():
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
-            200,
-            json={
-                "candidates": [
-                    {
-                        "finishReason": "MAX_TOKENS",
-                        "content": {
-                            "parts": [
-                                {
-                                    "text": "Gentile utente,\n\nDi seguito un riepilogo clinico prudente",
-                                }
-                            ]
-                        },
-                    }
-                ]
-            },
-        )
-    )
-    provider = GeminiAiStudioSummaryProvider(
-        api_key="secret",
-        model_name="gemini-2.5-flash",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=400,
-        client=httpx.Client(transport=transport),
-    )
-
-    try:
-        provider.generate(_payload())
-    except ValueError as exc:
-        assert "truncated" in str(exc)
-    else:
-        raise AssertionError("Expected a truncated Gemini response to raise")
-
-
-def test_build_summary_provider_supports_gemini_ai_studio():
-    settings = Settings(
-        ai_provider="gemini_ai_studio",
-        ai_model_name="gemini-2.5-flash",
-        gemini_api_key="gemini-secret",
-    )
-
-    provider = build_summary_provider(settings)
-
-    assert provider.provider_name == "gemini_ai_studio"
-
-
-def test_regolo_ai_provider_extracts_summary():
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "Sintesi Regolo prudente.\nNessuna diagnosi automatica.",
-                        }
-                    }
-                ]
-            },
-        )
-
-    transport = httpx.MockTransport(handler)
-    provider = RegoloAiSummaryProvider(
-        base_url="https://api.regolo.ai/v1",
-        api_key="secret",
-        model_name="minimax-m2.5",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=400,
-        client=httpx.Client(transport=transport),
-    )
-
-    result = provider.generate(_payload())
-
-    assert "Sintesi Regolo prudente" in result
-    assert "diagnosi automatica" in result
-    assert captured["json"]["model"] == "minimax-m2.5"
-    assert captured["json"]["messages"][0]["content"].startswith("Segui rigorosamente")
-
-
-def test_build_summary_provider_supports_regolo_ai():
-    settings = Settings(
-        ai_provider="regolo_ai",
-        regolo_api_key="regolo-secret",
-        regolo_model_name="minimax-m2.5",
-    )
-
-    provider = build_summary_provider(settings)
-
-    assert provider.provider_name == "regolo_ai"
-
-
-def test_build_summary_provider_supports_gemma_remote():
-    settings = Settings(
-        summary_ai_provider="gemma",
-        gemma_api_key="gemma-secret",
-        gemma_base_url="https://gemma.example.com/v1",
-    )
-
-    provider = build_summary_provider(settings)
-
-    assert provider.provider_name == "gemma"
-    assert provider.model_name == "gemma-4"
 
 
 def test_build_summary_provider_resolves_local_gemma4_override(monkeypatch):
@@ -286,12 +142,7 @@ def test_build_summary_provider_resolves_local_gemma4_override(monkeypatch):
         lambda settings: _Adapter(),
     )
 
-    settings = Settings(
-        summary_ai_provider="regolo_ai",
-        regolo_api_key="regolo-secret",
-        regolo_model_name="minimax-m2.5",
-        local_llm_model_name="gemma-4-e2b",
-    )
+    settings = Settings(local_llm_model_name="gemma-4-e2b")
 
     provider = build_summary_provider(
         settings,
@@ -310,37 +161,39 @@ def test_build_summary_provider_resolves_local_gemma4_override(monkeypatch):
     assert "Sintesi locale Gemma 4." in result.content
 
 
-def test_build_summary_provider_local_gemma4_falls_back_to_rule_based_when_runtime_missing(monkeypatch):
-    monkeypatch.setattr(
-        "app.ai.summary_provider.build_local_summary_runtime_adapter",
-        lambda settings: (_ for _ in ()).throw(LocalAiRuntimeUnavailableError("runtime offline")),
-    )
-
-    settings = Settings(local_llm_model_name="gemma-4-e2b")
-
-    provider = build_summary_provider(
-        settings,
-        override=SummaryProviderOverride(
-            provider_name="local_gemma4",
-            runtime_mode="local",
-            response_provider_name="local_gemma4",
-        ),
-    )
+def test_build_summary_provider_unknown_remote_provider_falls_back_to_rule_based():
+    provider = build_summary_provider(Settings(ai_provider="legacy_remote_provider"))
 
     assert isinstance(provider, RuleBasedSummaryProvider)
 
 
-def test_build_summary_provider_prefers_regolo_model_name_over_generic_ai_model_name():
-    settings = Settings(
-        ai_provider="regolo_ai",
-        ai_model_name="wrong-model",
-        regolo_api_key="regolo-secret",
-        regolo_model_name="MiniMax-M2.5-D",
+def test_local_runtime_provider_increases_budget_for_monthly_summary(monkeypatch):
+    captured: dict[str, object] = {}
+
+    class _Adapter:
+        def generate_summary(self, *, model_name, system_prompt, user_prompt, max_output_tokens):
+            captured["max_output_tokens"] = max_output_tokens
+            return "Sintesi mensile prudente."
+
+    monkeypatch.setattr(
+        "app.ai.summary_provider.build_local_summary_runtime_adapter",
+        lambda settings: _Adapter(),
     )
 
-    provider = build_summary_provider(settings)
+    provider = build_summary_provider(
+        Settings(
+            ai_provider="gemma",
+            summary_ai_runtime_mode="local",
+            local_llm_model_name="gemma-4-e2b",
+            ai_max_output_tokens=1200,
+        )
+    )
 
-    assert provider.model_name == "minimax-m2.5"
+    payload = _payload()
+    payload.summary_type = "monthly"
+    provider.generate_result(payload)
+
+    assert captured["max_output_tokens"] == 3072
 
 
 def test_rule_based_provider_mentions_medical_follow_up_without_diagnosis():
@@ -364,51 +217,14 @@ def test_rule_based_provider_prefers_tagged_note_digests_over_raw_notes():
     assert "Lavoro intenso e sonno ridotto" not in result
 
 
-def test_openai_compatible_provider_increases_budget_for_monthly_summary():
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["json"] = json.loads(request.content.decode())
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": "Sintesi mensile prudente.",
-                        }
-                    }
-                ]
-            },
-        )
-
-    transport = httpx.MockTransport(handler)
-    provider = OpenAICompatibleSummaryProvider(
-        base_url="https://llm.example.com/v1",
-        api_key="secret",
-        model_name="safe-model",
-        timeout_seconds=5,
-        temperature=0.1,
-        max_output_tokens=1200,
-        client=httpx.Client(transport=transport),
-    )
-
-    payload = _payload()
-    payload.summary_type = "monthly"
-
-    provider.generate(payload)
-
-    assert captured["json"]["max_tokens"] == 3072
-
-
 def test_resilient_provider_records_fallback_metrics_without_logging_payload(monkeypatch):
     metrics = get_metrics_registry()
     metrics.reset()
     log_events: list[tuple[str, dict[str, object]]] = []
 
     class _FailingProvider:
-        provider_name = "regolo_ai"
-        model_name = "minimax-m2.5"
+        provider_name = "gemma"
+        model_name = "gemma-4"
 
         def generate_result(self, payload):
             raise RuntimeError("provider timeout")
@@ -448,7 +264,7 @@ def test_resilient_provider_records_fallback_metrics_without_logging_payload(mon
 
     assert result.used_fallback is True
     rendered = metrics.render_prometheus()
-    assert 'clindiary_ai_summary_runs_total{provider="regolo_ai",model_name="minimax-m2.5",outcome="fallback_triggered",used_fallback="true"} 1' in rendered
-    assert 'clindiary_ai_summary_fallbacks_total{from_provider="regolo_ai",to_provider="rule_based"} 1' in rendered
+    assert 'clindiary_ai_summary_runs_total{provider="gemma",model_name="gemma-4",outcome="fallback_triggered",used_fallback="true"} 1' in rendered
+    assert 'clindiary_ai_summary_fallbacks_total{from_provider="gemma",to_provider="rule_based"} 1' in rendered
     assert all("journal_entries" not in str(kwargs) for _, kwargs in log_events)
     assert all("patient_snapshot" not in str(kwargs) for _, kwargs in log_events)

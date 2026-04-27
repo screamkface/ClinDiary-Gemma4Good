@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     document_scan_provider: str = "none"
     document_scan_webhook_url: str | None = None
     document_scan_fail_closed: bool = False
-    ai_provider: str = "rule_based"
+    ai_provider: str = "gemma"
     ai_model_name: str = "clindiary-safe-summary"
     ai_base_url: str | None = None
     ai_api_key: str | None = None
@@ -40,18 +40,18 @@ class Settings(BaseSettings):
     summary_ai_model_name: str | None = None
     summary_ai_base_url: str | None = None
     summary_ai_api_key: str | None = None
-    summary_ai_runtime_mode: str = "remote"
+    summary_ai_runtime_mode: str = "local"
     document_ai_runtime_mode: str | None = None
-    document_answer_provider: str | None = None
+    document_answer_provider: str | None = "gemma"
     document_answer_base_url: str | None = None
     document_answer_api_key: str | None = None
-    document_answer_runtime_mode: str = "remote"
+    document_answer_runtime_mode: str = "local"
     embedding_runtime_mode: str | None = None
-    document_embedding_provider: str | None = None
+    document_embedding_provider: str | None = "gemma"
     document_embedding_base_url: str | None = None
     document_embedding_api_key: str | None = None
-    document_embedding_runtime_mode: str = "remote"
-    document_reranker_provider: str | None = None
+    document_embedding_runtime_mode: str = "local"
+    document_reranker_provider: str | None = "rule_based"
     document_reranker_base_url: str | None = None
     document_reranker_api_key: str | None = None
     local_llm_backend: str = "ollama"
@@ -60,15 +60,12 @@ class Settings(BaseSettings):
     local_max_context_tokens: int = 8192
     local_embedding_model_name: str | None = None
     local_embedding_dimensions: int | None = 1024
-    regolo_api_key: str | None = None
-    regolo_base_url: str = "https://api.regolo.ai/v1"
-    regolo_model_name: str = "minimax-m2.5"
     gemma_api_key: str | None = None
     gemma_base_url: str | None = None
-    document_answer_model_name: str = "qwen3-8b"
-    document_embedding_model_name: str = "qwen3-embedding-8b"
+    document_answer_model_name: str = "gemma-4"
+    document_embedding_model_name: str = "embeddinggemma"
     document_embedding_dimensions: int | None = 1024
-    document_reranker_model_name: str = "qwen3-reranker-4b"
+    document_reranker_model_name: str = "rule_based"
     document_chunk_size_chars: int = 1200
     document_chunk_overlap_chars: int = 200
     document_candidate_limit: int = 48
@@ -83,8 +80,6 @@ class Settings(BaseSettings):
     dexcom_client_id: str | None = None
     dexcom_client_secret: str | None = None
     dexcom_redirect_uri: str | None = None
-    gemini_api_key: str | None = None
-    gemini_thinking_budget: int | None = 0
     ai_timeout_seconds: int = 60
     ai_temperature: float = 0.1
     ai_max_output_tokens: int = 2048
@@ -180,8 +175,6 @@ class Settings(BaseSettings):
         aliases = {
             "llama.cpp": "llama_cpp",
             "llamacpp": "llama_cpp",
-            "openai": "openai_compatible",
-            "openai_local": "openai_compatible",
         }
         return aliases.get(normalized, normalized or "ollama")
 

@@ -24,33 +24,27 @@ class ProviderCapability:
 
 _CAPABILITIES: tuple[ProviderCapability, ...] = (
     ProviderCapability("summary", "rule_based", supported_runtime_modes=("remote", "local")),
-    ProviderCapability("summary", "openai_compatible", supported_runtime_modes=("remote",)),
-    ProviderCapability("summary", "regolo_ai", supported_runtime_modes=("remote",)),
-    ProviderCapability("summary", "gemini_ai_studio", supported_runtime_modes=("remote",)),
     ProviderCapability(
         "summary",
         "gemma",
-        supported_runtime_modes=("remote", "local"),
-        notes="Gemma supports remote providers and backend-host local runtime adapters.",
+        supported_runtime_modes=("local",),
+        notes="Gemma is enabled only on backend-host local runtime adapters.",
     ),
     ProviderCapability("document_answer", "rule_based", supported_runtime_modes=("remote", "local")),
-    ProviderCapability("document_answer", "regolo_ai", supported_runtime_modes=("remote",)),
     ProviderCapability(
         "document_answer",
         "gemma",
-        supported_runtime_modes=("remote", "local"),
-        notes="Gemma supports remote providers and backend-host local runtime adapters.",
+        supported_runtime_modes=("local",),
+        notes="Gemma is enabled only on backend-host local runtime adapters.",
     ),
     ProviderCapability("document_embedding", "rule_based", supported_runtime_modes=("remote", "local")),
-    ProviderCapability("document_embedding", "regolo_ai", supported_runtime_modes=("remote",)),
     ProviderCapability(
         "document_embedding",
         "gemma",
-        supported_runtime_modes=("remote", "local"),
-        notes="EmbeddingGemma supports remote providers and backend-host local runtime adapters.",
+        supported_runtime_modes=("local",),
+        notes="EmbeddingGemma is enabled only on backend-host local runtime adapters.",
     ),
     ProviderCapability("document_reranker", "rule_based", supported_runtime_modes=("remote", "local")),
-    ProviderCapability("document_reranker", "regolo_ai", supported_runtime_modes=("remote",)),
 )
 
 

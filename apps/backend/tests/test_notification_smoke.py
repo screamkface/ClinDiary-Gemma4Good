@@ -68,7 +68,7 @@ def test_notification_smoke_prints_delivery_status(tmp_path, monkeypatch, capsys
     assert len(captured["device_tokens"]) == 1
 
 
-def test_notification_smoke_requires_external_provider(tmp_path, monkeypatch, capsys):
+def test_notification_smoke_requires_delivery_provider(tmp_path, monkeypatch, capsys):
     payload = {
         "title": "Smoke notification",
         "body": "Body for smoke test",
@@ -113,10 +113,10 @@ def test_notification_smoke_requires_external_provider(tmp_path, monkeypatch, ca
         [
             "--payload",
             str(payload_file),
-            "--require-external-provider",
+            "--require-delivery-provider",
         ]
     )
 
     assert exit_code == 4
     output = capsys.readouterr().out
-    assert "external_provider_required=true" in output
+    assert "delivery_provider_required=true" in output

@@ -46,8 +46,8 @@ def test_ai_smoke_runs_with_payload_file(tmp_path, monkeypatch, capsys):
     )
 
     class _FakeProvider:
-        provider_name = "gemini_ai_studio"
-        model_name = "gemini-2.5-flash"
+        provider_name = "gemma"
+        model_name = "gemma-4"
 
         def generate_result(self, payload):
             assert payload.summary_type == "daily"
@@ -59,18 +59,22 @@ def test_ai_smoke_runs_with_payload_file(tmp_path, monkeypatch, capsys):
                 model_name=self.model_name,
             )
 
-    monkeypatch.setattr(ai_smoke, "build_summary_provider", lambda settings: _FakeProvider())
+    monkeypatch.setattr(
+        ai_smoke,
+        "build_summary_provider",
+        lambda settings, override=None: _FakeProvider(),
+    )
 
     exit_code = ai_smoke.main(["--payload", str(payload_file)])
 
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "provider=gemini_ai_studio" in output
+    assert "provider=gemma" in output
     assert "used_fallback=false" in output
     assert "summary_length=" in output
 
 
-def test_ai_smoke_requires_external_provider(monkeypatch, capsys):
+def test_ai_smoke_requires_local_runtime(monkeypatch, capsys):
     class _FakeProvider:
         provider_name = "rule_based"
         model_name = "clindiary-safe-summary"
@@ -82,35 +86,44 @@ def test_ai_smoke_requires_external_provider(monkeypatch, capsys):
                 model_name=self.model_name,
             )
 
-    monkeypatch.setattr(ai_smoke, "build_summary_provider", lambda settings: _FakeProvider())
+    monkeypatch.setattr(
+        ai_smoke,
+        "build_summary_provider",
+        lambda settings, override=None: _FakeProvider(),
+    )
 
-    exit_code = ai_smoke.main(["--require-external-provider"])
+    exit_code = ai_smoke.main(["--require-local-runtime"])
 
     assert exit_code == 4
     output = capsys.readouterr().out
     assert "provider=rule_based" in output
-    assert "external_provider_required=true" in output
+    assert "local_runtime_required=true" in output
 
 
-def test_ai_smoke_supports_gemma_summary_profile(monkeypatch, capsys):
+def test_ai_smoke_supports_private_local_profile(monkeypatch, capsys):
     class _FakeProvider:
-        provider_name = "gemma"
-        model_name = "gemma-4"
+        provider_name = "local_gemma4"
+        model_name = "gemma-4-e2b"
 
         def generate_result(self, payload):
-            assert payload.summary_type == "pre_visit"
-            assert "2 misure da dispositivi clinici" in payload.data_considered
+            assert payload.summary_type == "daily"
+            assert "1 recap giornaliero precedente" in payload.data_considered
             return SummaryGenerationResult(
                 content="Sintesi Gemma prudente. " * 40,
                 provider_name=self.provider_name,
                 model_name=self.model_name,
             )
 
-    monkeypatch.setattr(ai_smoke, "build_summary_provider", lambda settings: _FakeProvider())
+    monkeypatch.setattr(
+        ai_smoke,
+        "build_summary_provider",
+        lambda settings, override=None: _FakeProvider(),
+    )
 
-    exit_code = ai_smoke.main(["--profile", "gemma_summary"])
+    exit_code = ai_smoke.main(["--profile", "private_local_daily"])
 
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "provider=gemma" in output
-    assert "model=gemma-4" in output
+    assert "profile=private_local_daily" in output
+    assert "provider=local_gemma4" in output
+    assert "model=gemma-4-e2b" in output

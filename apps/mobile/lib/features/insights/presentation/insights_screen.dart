@@ -94,16 +94,16 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         _openBilling(error.featureCode ?? _featureCodeForType(_summaryType));
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Regeneration failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Regeneration failed: $error')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Regeneration failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Regeneration failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isRegenerating = false);
@@ -146,9 +146,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Model import failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Model import failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isInstallingOnDeviceModel = false);
@@ -364,7 +364,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           const ClinicalScopeNotice(
             title: 'Cautious use',
             message:
-              'The AI recap organizes diary and recent document data, but it does not replace a clinician, diagnosis, or prescription.',
+                'The AI recap organizes diary and recent document data, but it does not replace a clinician, diagnosis, or prescription.',
             icon: Icons.health_and_safety_outlined,
           ),
           if (showLocalProof) ...[
@@ -415,10 +415,13 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                     providerLabelOverride:
                         summary.providerName == 'local_gemma4'
                         ? localStatusAsync?.asData?.value.activeProviderLabel ??
-                          'Private local mode'
+                              'Private local mode'
                         : summary.providerName == 'on_device_litertlm'
-                        ? onDeviceStatusAsync?.asData?.value.activeProviderLabel ??
-                          'Local on-device'
+                        ? onDeviceStatusAsync
+                                  ?.asData
+                                  ?.value
+                                  .activeProviderLabel ??
+                              'Local on-device'
                         : null,
                   ),
                 ],
@@ -745,9 +748,7 @@ class _LocalModeNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.18)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,9 +804,8 @@ class _OnDeviceStatusSection extends StatelessWidget {
       loading: () => const _LocalProofCardLoading(
         message: 'Checking on-device inference...',
       ),
-      error: (error, _) => _LocalProofCardError(
-        error: 'On-device proof unavailable: $error',
-      ),
+      error: (error, _) =>
+          _LocalProofCardError(error: 'On-device proof unavailable: $error'),
     );
   }
 }
@@ -833,16 +833,18 @@ class LocalProofCard extends StatelessWidget {
         children: [
           Text(
             'Local proof',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetaChip(label: 'Active provider: ${status.activeProviderLabel}'),
+              _MetaChip(
+                label: 'Active provider: ${status.activeProviderLabel}',
+              ),
               _MetaChip(label: 'Runtime: ${status.runtimeMode}'),
               _MetaChip(label: 'Backend: ${status.backend ?? '-'}'),
               _MetaChip(label: 'Modello: ${status.modelName ?? '-'}'),
@@ -859,9 +861,7 @@ class LocalProofCard extends StatelessWidget {
 }
 
 class _LocalProofCardLoading extends StatelessWidget {
-  const _LocalProofCardLoading({
-    this.message = 'Checking local runtime...',
-  });
+  const _LocalProofCardLoading({this.message = 'Checking local runtime...'});
 
   final String message;
 
@@ -873,9 +873,9 @@ class _LocalProofCardLoading extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(
-            alpha: 0.85,
-          ),
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.85),
         ),
       ),
       child: Row(
@@ -937,7 +937,7 @@ class _OnDeviceModeNote extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'On-device mode runs the daily recap directly on Android with LiteRT-LM. It reuses ClinDiary\'s cautious prompt but does not send the text to the cloud AI provider.',
+              'On-device mode runs the daily recap directly on Android with LiteRT-LM. It reuses ClinDiary\'s cautious prompt and keeps the generation on the device.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -978,24 +978,30 @@ class OnDeviceProofCard extends StatelessWidget {
         children: [
           Text(
             'On-device proof',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetaChip(label: 'Active provider: ${status.activeProviderLabel}'),
-                _MetaChip(label: 'Runtime: ${status.runtime}'),
-                _MetaChip(label: 'Preferred backend: ${status.backendPreference}'),
-                _MetaChip(label: 'Backend used: ${status.backendResolved ?? '-'}'),
+              _MetaChip(
+                label: 'Active provider: ${status.activeProviderLabel}',
+              ),
+              _MetaChip(label: 'Runtime: ${status.runtime}'),
+              _MetaChip(
+                label: 'Preferred backend: ${status.backendPreference}',
+              ),
+              _MetaChip(
+                label: 'Backend used: ${status.backendResolved ?? '-'}',
+              ),
               _MetaChip(label: 'Modello: ${status.modelName ?? '-'}'),
-                _MetaChip(label: 'Model status: $readiness'),
+              _MetaChip(label: 'Model status: $readiness'),
               _MetaChip(
                 label:
-                  'External cloud used: ${status.isCloudBypassedForThisRequest ? 'No' : 'Yes'}',
+                    'Local-only request: ${status.isCloudBypassedForThisRequest ? 'Yes' : 'No'}',
               ),
             ],
           ),
@@ -1013,13 +1019,14 @@ class OnDeviceProofCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
-          if (status.lastError != null && status.lastError!.trim().isNotEmpty) ...[
+          if (status.lastError != null &&
+              status.lastError!.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               status.lastError!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.error,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
             ),
           ],
           const SizedBox(height: 14),
@@ -1158,16 +1165,10 @@ String _providerLabel(String? providerName) {
       return 'On-device local';
     case 'local_gemma4':
       return 'Private local mode';
-    case 'regolo_ai':
-      return 'Regolo AI';
-    case 'gemini_ai_studio':
-      return 'Gemini AI Studio';
-    case 'openai_compatible':
-      return 'Compatible provider';
     case 'rule_based':
       return 'Cautious fallback';
     default:
-      return 'AI Recap';
+      return 'Local AI recap';
   }
 }
 
@@ -1179,10 +1180,6 @@ Color _providerAccent(ColorScheme colorScheme, String? providerName) {
       return colorScheme.primary;
     case 'rule_based':
       return colorScheme.tertiary;
-    case 'regolo_ai':
-      return colorScheme.primary;
-    case 'gemini_ai_studio':
-      return colorScheme.secondary;
     default:
       return colorScheme.primary;
   }

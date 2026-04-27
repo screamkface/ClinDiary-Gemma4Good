@@ -15,21 +15,21 @@ def test_capability_matrix_contains_gemma_paths():
 
 
 def test_gemma_runtime_support_includes_local_paths():
-    assert provider_supports_runtime("summary", "gemma", "remote") is True
+    assert provider_supports_runtime("summary", "gemma", "remote") is False
     assert provider_supports_runtime("summary", "gemma", "local") is True
     assert provider_plans_runtime("summary", "gemma", "local") is False
 
-    assert provider_supports_runtime("document_answer", "gemma", "remote") is True
+    assert provider_supports_runtime("document_answer", "gemma", "remote") is False
     assert provider_supports_runtime("document_answer", "gemma", "local") is True
     assert provider_plans_runtime("document_answer", "gemma", "local") is False
 
-    assert provider_supports_runtime("document_embedding", "gemma", "remote") is True
+    assert provider_supports_runtime("document_embedding", "gemma", "remote") is False
     assert provider_supports_runtime("document_embedding", "gemma", "local") is True
     assert provider_plans_runtime("document_embedding", "gemma", "local") is False
 
 
-def test_regolo_reranker_capability_is_explicit():
-    capability = get_provider_capability("document_reranker", "regolo_ai")
+def test_rule_based_reranker_capability_is_explicit():
+    capability = get_provider_capability("document_reranker", "rule_based")
 
     assert capability is not None
-    assert capability.supported_runtime_modes == ("remote",)
+    assert capability.supported_runtime_modes == ("remote", "local")

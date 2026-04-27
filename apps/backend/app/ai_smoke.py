@@ -128,9 +128,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Lunghezza minima accettata per il riepilogo generato",
     )
     parser.add_argument(
-        "--require-external-provider",
+        "--require-local-runtime",
         action="store_true",
-        help="Fallisce se il provider configurato manca o se viene usato il fallback rule-based",
+        help="Fallisce se il runtime locale non e disponibile o se viene usato il fallback rule-based",
     )
     args = parser.parse_args(argv)
 
@@ -170,10 +170,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"summary_length={len(content)}")
     print(f"summary_preview={preview}")
 
-    if args.require_external_provider and (
+    if args.require_local_runtime and (
         provider.provider_name == "rule_based" or result.used_fallback
     ):
-        print("external_provider_required=true")
+        print("local_runtime_required=true")
         return 4
 
     if len(content) < args.min_length:

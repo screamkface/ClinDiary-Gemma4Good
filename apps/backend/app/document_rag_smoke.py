@@ -56,9 +56,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Profilo smoke predefinito per il retrieval embeddings",
     )
     parser.add_argument(
-        "--require-external-provider",
+        "--require-local-runtime",
         action="store_true",
-        help="Fallisce se il provider embeddings configurato ricade sul fallback rule_based",
+        help="Fallisce se il runtime locale documentale ricade sul fallback rule_based",
     )
     args = parser.parse_args(argv)
 
@@ -81,8 +81,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"provider={provider.provider_name}")
         print(f"model={provider.model_name}")
         print(f"answer_preview={answer.answer[:160]}")
-        if args.require_external_provider and provider.provider_name == "rule_based":
-            print("external_provider_required=true")
+        if args.require_local_runtime and provider.provider_name == "rule_based":
+            print("local_runtime_required=true")
             return 4
         if not answer.answer.strip():
             print("answer_missing=true")
@@ -102,8 +102,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"model={provider.model_name}")
     print(f"items={len(embeddings)}")
 
-    if args.require_external_provider and provider.provider_name == "rule_based":
-        print("external_provider_required=true")
+    if args.require_local_runtime and provider.provider_name == "rule_based":
+        print("local_runtime_required=true")
         return 4
 
     if not embeddings or embeddings[0] is None:

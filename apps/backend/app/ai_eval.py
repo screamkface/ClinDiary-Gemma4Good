@@ -116,9 +116,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Minimum accepted summary length for each case",
     )
     parser.add_argument(
-        "--require-external-provider",
+        "--require-local-runtime",
         action="store_true",
-        help="Fail if the configured provider falls back to rule_based",
+        help="Fail if the local runtime is unavailable and the backend falls back to rule_based",
     )
     args = parser.parse_args(argv)
 
@@ -133,8 +133,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"provider={provider.provider_name}")
     print(f"model={getattr(provider, 'model_name', 'unknown')}")
 
-    if args.require_external_provider and provider.provider_name == "rule_based":
-        print("external_provider_required=true")
+    if args.require_local_runtime and provider.provider_name == "rule_based":
+        print("local_runtime_required=true")
         return 4
 
     results: list[EvalCaseResult] = []

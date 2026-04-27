@@ -5,8 +5,6 @@ from datetime import date
 import json
 from typing import Any, Protocol
 
-import httpx
-
 from app.core.config import Settings
 from app.core.logging import logger
 from app.core.metrics import get_metrics_registry
@@ -184,76 +182,6 @@ class RuleBasedSummaryProvider:
         return self.generate_result(payload).content
 
 
-class OpenAICompatibleSummaryProvider:
-    provider_name = "openai_compatible"
-
-    def __init__(
-        self,
-        *,
-        base_url: str,
-        api_key: str,
-        model_name: str,
-        timeout_seconds: int,
-        temperature: float,
-        max_output_tokens: int,
-        client: httpx.Client | None = None,
-    ) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
-        self.model_name = model_name
-        self.temperature = temperature
-        self.max_output_tokens = max_output_tokens
-        self._client = client or httpx.Client(timeout=timeout_seconds)
-
-    def generate_result(self, payload: SummaryGenerationInput) -> SummaryGenerationResult:
-        max_output_tokens = _effective_output_token_budget(
-            payload.summary_type,
-            self.max_output_tokens,
-        )
-        response = self._client.post(
-            f"{self.base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": self.model_name,
-                "temperature": self.temperature,
-                "max_tokens": max_output_tokens,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": _system_prompt(),
-                    },
-                    {
-                        "role": "user",
-                        "content": _user_prompt(payload),
-                    },
-                ],
-            },
-        )
-        response.raise_for_status()
-        content = _extract_openai_message_content(response.json())
-        if not content:
-            raise ValueError("AI provider returned an empty summary")
-        return SummaryGenerationResult(
-            content=content.strip(),
-            provider_name=self.provider_name,
-            model_name=self.model_name,
-        )
-
-    def generate(self, payload: SummaryGenerationInput) -> str:
-        return self.generate_result(payload).content
-
-
-class RegoloAiSummaryProvider(OpenAICompatibleSummaryProvider):
-    provider_name = "regolo_ai"
-
-
-class GemmaSummaryProvider(OpenAICompatibleSummaryProvider):
-    provider_name = "gemma"
-
-
 class LocalRuntimeSummaryProvider:
     def __init__(
         self,
@@ -281,80 +209,6 @@ class LocalRuntimeSummaryProvider:
         )
         if not content:
             raise ValueError("Local runtime returned an empty summary")
-        return SummaryGenerationResult(
-            content=content.strip(),
-            provider_name=self.provider_name,
-            model_name=self.model_name,
-        )
-
-    def generate(self, payload: SummaryGenerationInput) -> str:
-        return self.generate_result(payload).content
-
-
-class GeminiAiStudioSummaryProvider:
-    provider_name = "gemini_ai_studio"
-
-    def __init__(
-        self,
-        *,
-        api_key: str,
-        model_name: str,
-        timeout_seconds: int,
-        temperature: float,
-        max_output_tokens: int,
-        thinking_budget: int | None = 0,
-        base_url: str = "https://generativelanguage.googleapis.com/v1beta",
-        client: httpx.Client | None = None,
-    ) -> None:
-        self.api_key = api_key
-        self.model_name = model_name
-        self.temperature = temperature
-        self.max_output_tokens = max_output_tokens
-        self.thinking_budget = thinking_budget
-        self.base_url = base_url.rstrip("/")
-        self._client = client or httpx.Client(timeout=timeout_seconds)
-
-    def generate_result(self, payload: SummaryGenerationInput) -> SummaryGenerationResult:
-        max_output_tokens = _effective_output_token_budget(
-            payload.summary_type,
-            self.max_output_tokens,
-        )
-        generation_config: dict[str, Any] = {
-            "temperature": self.temperature,
-            "maxOutputTokens": max_output_tokens,
-        }
-        if self.thinking_budget is not None:
-            generation_config["thinkingConfig"] = {
-                "thinkingBudget": self.thinking_budget,
-            }
-
-        response = self._client.post(
-            f"{self.base_url}/models/{self.model_name}:generateContent",
-            headers={
-                "x-goog-api-key": self.api_key,
-                "Content-Type": "application/json",
-            },
-            json={
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "text": f"{_system_prompt()}\n\n{_user_prompt(payload)}",
-                            }
-                        ]
-                    }
-                ],
-                "generationConfig": generation_config,
-            },
-        )
-        response.raise_for_status()
-        response_payload = response.json()
-        finish_reason = _extract_gemini_finish_reason(response_payload)
-        content = _extract_gemini_message_content(response_payload)
-        if not content:
-            raise ValueError("Gemini provider returned an empty summary")
-        if finish_reason == "MAX_TOKENS":
-            raise ValueError("Gemini provider response was truncated by max tokens")
         return SummaryGenerationResult(
             content=content.strip(),
             provider_name=self.provider_name,
@@ -457,7 +311,7 @@ def build_summary_provider(
         override,
     )
 
-    if not allow_external_provider:
+    if not allow_external_provider and not (provider == "gemma" and runtime_mode == "local"):
         logger.info(
             "ai.external_provider_disabled_by_user",
             provider=provider,
@@ -498,140 +352,17 @@ def build_summary_provider(
             fallback=fallback,
         )
 
-    if provider in {"openai", "openai_compatible"}:
-        base_url = settings.summary_ai_base_url or settings.ai_base_url
-        api_key = settings.summary_ai_api_key or settings.ai_api_key
-        if not base_url or not api_key:
-            logger.warning(
-                "ai.provider_config_missing",
-                provider=provider,
-                ai_base_url=bool(base_url),
-                ai_api_key=bool(api_key),
-            )
-            metrics.record_ai_summary(
-                provider=provider,
-                model_name=resolved_model_name,
-                outcome="config_missing",
-                used_fallback=True,
-            )
-            return fallback
-
-        return ResilientSummaryProvider(
-            primary=OpenAICompatibleSummaryProvider(
-                base_url=base_url,
-                api_key=api_key,
-                model_name=resolved_model_name,
-                timeout_seconds=settings.ai_timeout_seconds,
-                temperature=settings.ai_temperature,
-                max_output_tokens=settings.ai_max_output_tokens,
-            ),
-            fallback=fallback,
-        )
-
-    if provider in {"regolo", "regolo_ai"}:
-        api_key = settings.summary_ai_api_key or settings.regolo_api_key or settings.ai_api_key
-        if not api_key:
-            logger.warning(
-                "ai.provider_config_missing",
-                provider=provider,
-                regolo_api_key=bool(settings.regolo_api_key),
-                ai_api_key=bool(settings.ai_api_key),
-                summary_ai_api_key=bool(settings.summary_ai_api_key),
-            )
-            metrics.record_ai_summary(
-                provider=provider,
-                model_name=resolved_model_name,
-                outcome="config_missing",
-                used_fallback=True,
-            )
-            return fallback
-
-        base_url = (
-            settings.summary_ai_base_url
-            or settings.regolo_base_url
-            or settings.ai_base_url
-            or "https://api.regolo.ai/v1"
-        )
-        return ResilientSummaryProvider(
-            primary=RegoloAiSummaryProvider(
-                base_url=base_url,
-                api_key=api_key,
-                model_name=resolved_model_name,
-                timeout_seconds=settings.ai_timeout_seconds,
-                temperature=settings.ai_temperature,
-                max_output_tokens=settings.ai_max_output_tokens,
-            ),
-            fallback=fallback,
-        )
-
-    if provider == "gemma":
-        api_key = settings.summary_ai_api_key or settings.gemma_api_key or settings.ai_api_key
-        base_url = settings.summary_ai_base_url or settings.gemma_base_url or settings.ai_base_url
-        if not api_key or not base_url:
-            logger.warning(
-                "ai.provider_config_missing",
-                provider=provider,
-                gemma_api_key=bool(settings.gemma_api_key),
-                ai_api_key=bool(settings.ai_api_key),
-                summary_ai_api_key=bool(settings.summary_ai_api_key),
-                gemma_base_url=bool(settings.gemma_base_url),
-                ai_base_url=bool(settings.ai_base_url),
-                summary_ai_base_url=bool(settings.summary_ai_base_url),
-            )
-            metrics.record_ai_summary(
-                provider=provider,
-                model_name=resolved_model_name,
-                outcome="config_missing",
-                used_fallback=True,
-            )
-            return fallback
-
-        return ResilientSummaryProvider(
-            primary=GemmaSummaryProvider(
-                base_url=base_url,
-                api_key=api_key,
-                model_name=resolved_model_name,
-                timeout_seconds=settings.ai_timeout_seconds,
-                temperature=settings.ai_temperature,
-                max_output_tokens=settings.ai_max_output_tokens,
-            ),
-            fallback=fallback,
-        )
-
-    if provider in {"gemini", "gemini_ai_studio", "google_ai_studio"}:
-        api_key = settings.gemini_api_key or settings.ai_api_key
-        if not api_key:
-            logger.warning(
-                "ai.provider_config_missing",
-                provider=provider,
-                gemini_api_key=bool(settings.gemini_api_key),
-                ai_api_key=bool(settings.ai_api_key),
-            )
-            metrics.record_ai_summary(
-                provider=provider,
-                model_name=resolved_model_name,
-                outcome="config_missing",
-                used_fallback=True,
-            )
-            return fallback
-
-        base_url = (
-            settings.summary_ai_base_url
-            or settings.ai_base_url
-            or "https://generativelanguage.googleapis.com/v1beta"
-        )
-        return ResilientSummaryProvider(
-            primary=GeminiAiStudioSummaryProvider(
-                api_key=api_key,
-                model_name=resolved_model_name,
-                base_url=base_url,
-                timeout_seconds=settings.ai_timeout_seconds,
-                temperature=settings.ai_temperature,
-                max_output_tokens=settings.ai_max_output_tokens,
-                thinking_budget=settings.gemini_thinking_budget,
-            ),
-            fallback=fallback,
-        )
+    logger.info(
+        "ai.remote_provider_disabled",
+        provider=provider,
+        runtime_mode=runtime_mode,
+    )
+    metrics.record_ai_summary(
+        provider=provider or fallback.provider_name,
+        model_name=resolved_model_name,
+        outcome="local_runtime_required",
+        used_fallback=True,
+    )
 
     return fallback
 
@@ -648,13 +379,13 @@ def _resolve_summary_provider_name(
     )
     normalized = configured.strip().lower()
     aliases = {
-        "openai": "openai_compatible",
-        "regolo": "regolo_ai",
-        "google_ai_studio": "gemini_ai_studio",
         "gemma_remote": "gemma",
         "local_gemma4": "gemma",
     }
-    return aliases.get(normalized, normalized or "rule_based")
+    normalized = aliases.get(normalized, normalized or "rule_based")
+    if normalized in {"gemma", "rule_based"}:
+        return normalized
+    return "rule_based"
 
 
 def _resolve_response_provider_name(
@@ -685,12 +416,6 @@ def _resolve_summary_model_name(
     if settings.summary_ai_model_name and settings.summary_ai_model_name.strip():
         return settings.summary_ai_model_name.strip()
 
-    if provider in {"regolo", "regolo_ai"}:
-        configured_model = (settings.regolo_model_name or "").strip()
-        if not configured_model:
-            configured_model = (settings.ai_model_name or "").strip()
-        return _normalize_regolo_model_name(configured_model)
-
     if provider == "gemma":
         configured_local_model = (settings.local_llm_model_name or "").strip()
         runtime_mode = _normalize_runtime_mode(
@@ -702,12 +427,6 @@ def _resolve_summary_model_name(
         if configured_model and configured_model != fallback.model_name:
             return configured_model
         return "gemma-4"
-
-    if provider in {"gemini", "gemini_ai_studio", "google_ai_studio"}:
-        configured_model = (settings.ai_model_name or "").strip()
-        if configured_model and configured_model != fallback.model_name:
-            return configured_model
-        return "gemini-2.5-flash"
 
     configured_model = (settings.ai_model_name or "").strip()
     return configured_model or fallback.model_name
@@ -722,15 +441,6 @@ def _normalize_runtime_mode(raw_value: str | None) -> str:
         "on_device": "local",
     }
     return aliases.get(normalized, normalized or "remote")
-
-
-def _normalize_regolo_model_name(model_name: str) -> str:
-    normalized = model_name.strip()
-    aliases = {
-        "minimax-m2.5-d": "minimax-m2.5",
-        "minimax-m2.5-draft": "minimax-m2.5",
-    }
-    return aliases.get(normalized.lower(), normalized or "minimax-m2.5")
 
 
 def _effective_output_token_budget(summary_type: str, configured_max_tokens: int) -> int:
@@ -955,63 +665,3 @@ def _journal_entry_line(entry: dict[str, Any]) -> str:
         parts.append(" - ".join(metrics))
     return ": ".join(parts)
 
-
-def _extract_openai_message_content(payload: dict[str, object]) -> str:
-    choices = payload.get("choices")
-    if not isinstance(choices, list) or not choices:
-        raise ValueError("AI provider response does not contain choices")
-
-    first = choices[0]
-    if not isinstance(first, dict):
-        raise ValueError("AI provider returned an invalid choice payload")
-
-    message = first.get("message")
-    if not isinstance(message, dict):
-        raise ValueError("AI provider response does not contain a message")
-
-    content = message.get("content")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts: list[str] = []
-        for item in content:
-            if isinstance(item, dict) and item.get("type") == "text" and isinstance(item.get("text"), str):
-                parts.append(item["text"])
-        return "\n".join(parts)
-    raise ValueError("AI provider returned an unsupported content payload")
-
-
-def _extract_gemini_message_content(payload: dict[str, object]) -> str:
-    candidates = payload.get("candidates")
-    if not isinstance(candidates, list) or not candidates:
-        raise ValueError("Gemini provider response does not contain candidates")
-
-    first = candidates[0]
-    if not isinstance(first, dict):
-        raise ValueError("Gemini provider returned an invalid candidate payload")
-
-    content = first.get("content")
-    if not isinstance(content, dict):
-        raise ValueError("Gemini provider response does not contain content")
-
-    parts = content.get("parts")
-    if not isinstance(parts, list):
-        raise ValueError("Gemini provider response does not contain parts")
-
-    text_parts: list[str] = []
-    for item in parts:
-        if isinstance(item, dict) and isinstance(item.get("text"), str):
-            text_parts.append(item["text"])
-    return "\n".join(text_parts)
-
-
-def _extract_gemini_finish_reason(payload: dict[str, object]) -> str | None:
-    candidates = payload.get("candidates")
-    if not isinstance(candidates, list) or not candidates:
-        return None
-
-    first = candidates[0]
-    if not isinstance(first, dict):
-        return None
-    finish_reason = first.get("finishReason")
-    return finish_reason if isinstance(finish_reason, str) else None

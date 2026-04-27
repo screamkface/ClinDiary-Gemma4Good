@@ -128,7 +128,7 @@ def _print_result(report: NotificationDeliveryReport) -> None:
     print(f"delivery_has_errors={str(report.has_errors).lower()}")
 
 
-def _requires_external_provider(report: NotificationDeliveryReport) -> bool:
+def _requires_delivery_provider(report: NotificationDeliveryReport) -> bool:
     requested = False
     for result in (report.push, report.email):
         if result is None:
@@ -147,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
     )
     parser.add_argument(
-        "--require-external-provider",
+        "--require-delivery-provider",
         action="store_true",
         help="Fallisce se il provider configurato ricade su log_only o se nessun canale reale viene testato",
     )
@@ -167,8 +167,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if not device_tokens and not preferences.email_address:
         print("delivery_skipped=true")
-        if args.require_external_provider:
-            print("external_provider_required=true")
+        if args.require_delivery_provider:
+            print("delivery_provider_required=true")
             return 4
         return 0
 
@@ -189,8 +189,8 @@ def main(argv: list[str] | None = None) -> int:
         print("delivery_failed=true")
         return 5
 
-    if args.require_external_provider and not _requires_external_provider(report):
-        print("external_provider_required=true")
+    if args.require_delivery_provider and not _requires_delivery_provider(report):
+        print("delivery_provider_required=true")
         return 4
 
     return 0

@@ -212,13 +212,13 @@ def _print_result(report: NotificationDeliveryAuditReport) -> None:
         if result.notes:
             print(f"{result.channel}_notes={', '.join(result.notes)}")
     print(f"delivery_config_ready={str(report.ready).lower()}")
-    print(f"delivery_external_ready={str(report.external_ready).lower()}")
+    print(f"delivery_provider_ready={str(report.external_ready).lower()}")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ClinDiary notification delivery config audit")
     parser.add_argument(
-        "--require-external-provider",
+        "--require-delivery-provider",
         action="store_true",
         help="Fallisce se push/email restano in log_only o se nessun canale reale e pronto.",
     )
@@ -227,8 +227,8 @@ def main(argv: list[str] | None = None) -> int:
     report = audit_notification_delivery_config(get_settings())
     _print_result(report)
 
-    if args.require_external_provider and not report.external_ready:
-        print("external_provider_required=true")
+    if args.require_delivery_provider and not report.external_ready:
+        print("delivery_provider_required=true")
         return 4 if report.ready else 1
 
     return 0 if report.ready else 1

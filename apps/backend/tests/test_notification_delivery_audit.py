@@ -45,16 +45,16 @@ def test_audit_notification_delivery_config_accepts_valid_external_providers() -
     assert report.email.ready is True
 
 
-def test_notification_delivery_audit_main_requires_external_provider(monkeypatch, capsys) -> None:
+def test_notification_delivery_audit_main_requires_delivery_provider(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         notification_delivery_audit,
         "get_settings",
         lambda: Settings(notification_push_provider="log_only", notification_email_provider="log_only"),
     )
 
-    exit_code = main(["--require-external-provider"])
+    exit_code = main(["--require-delivery-provider"])
 
     output = capsys.readouterr().out
     assert exit_code == 4
     assert "delivery_config_ready=true" in output
-    assert "external_provider_required=true" in output
+    assert "delivery_provider_required=true" in output

@@ -29,7 +29,7 @@ def test_document_rag_smoke_runs_embedding_profile(monkeypatch, capsys):
     assert "embedding_dimensions=3" in output
 
 
-def test_document_rag_smoke_requires_external_provider(monkeypatch, capsys):
+def test_document_rag_smoke_requires_local_runtime(monkeypatch, capsys):
     class _FakeEmbeddingProvider:
         provider_name = "rule_based"
         model_name = None
@@ -43,11 +43,11 @@ def test_document_rag_smoke_requires_external_provider(monkeypatch, capsys):
         lambda settings: _FakeEmbeddingProvider(),
     )
 
-    exit_code = document_rag_smoke.main(["--require-external-provider"])
+    exit_code = document_rag_smoke.main(["--require-local-runtime"])
 
     assert exit_code == 4
     output = capsys.readouterr().out
-    assert "external_provider_required=true" in output
+    assert "local_runtime_required=true" in output
 
 
 def test_document_rag_smoke_runs_answer_profile(monkeypatch, capsys):

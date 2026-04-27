@@ -48,8 +48,8 @@ def test_ai_eval_runs_multiple_curated_cases(tmp_path, monkeypatch, capsys):
     _write_payload(tmp_path / "weekly.json", "weekly")
 
     class _FakeProvider:
-        provider_name = "gemini_ai_studio"
-        model_name = "gemini-2.5-flash"
+        provider_name = "gemma"
+        model_name = "gemma-4"
 
         def generate_result(self, payload):
             return SummaryGenerationResult(
@@ -81,7 +81,7 @@ def test_ai_eval_runs_multiple_curated_cases(tmp_path, monkeypatch, capsys):
     assert "case=weekly" in output
 
 
-def test_ai_eval_requires_external_provider(tmp_path, monkeypatch, capsys):
+def test_ai_eval_requires_local_runtime(tmp_path, monkeypatch, capsys):
     _write_payload(tmp_path / "daily.json", "daily")
 
     class _FakeProvider:
@@ -97,8 +97,8 @@ def test_ai_eval_requires_external_provider(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(ai_eval, "build_summary_provider", lambda settings: _FakeProvider())
 
-    exit_code = ai_eval.main(["--inputs", str(tmp_path), "--require-external-provider"])
+    exit_code = ai_eval.main(["--inputs", str(tmp_path), "--require-local-runtime"])
 
     assert exit_code == 4
     output = capsys.readouterr().out
-    assert "external_provider_required=true" in output
+    assert "local_runtime_required=true" in output

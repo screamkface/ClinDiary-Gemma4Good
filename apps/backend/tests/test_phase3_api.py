@@ -192,8 +192,8 @@ def test_existing_daily_insight_is_reused_even_if_brief(client, auth_headers, db
         period_start=target_date,
         period_end=target_date,
         content="Di seguito un riepilogo clinico prudente basato sui dati disponibili.",
-        provider_name="gemini_ai_studio",
-        model_name="gemini-2.5-flash",
+        provider_name="local_gemma4",
+        model_name="gemma-4-e2b",
     )
     db_session.add(broken_summary)
     db_session.commit()
@@ -209,7 +209,7 @@ def test_existing_daily_insight_is_reused_even_if_brief(client, auth_headers, db
     body = response.json()
     assert body["id"] == str(broken_summary.id)
     assert body["content"] == original_content
-    assert body["provider_name"] == "gemini_ai_studio"
+    assert body["provider_name"] == "local_gemma4"
 
 
 def test_daily_insight_regenerate_endpoint_forces_new_generation(client, auth_headers):
@@ -380,8 +380,8 @@ def test_daily_insight_payload_includes_previous_15_day_recaps(client, auth_head
         period_start=date(2026, 3, 18),
         period_end=date(2026, 3, 18),
         content="Recap recente con energia bassa e sonno frammentato.",
-        provider_name="gemini_ai_studio",
-        model_name="gemini-2.5-flash",
+        provider_name="local_gemma4",
+        model_name="gemma-4-e2b",
     )
     old_summary = AiSummary(
         patient_id=user.profile.id,
@@ -389,8 +389,8 @@ def test_daily_insight_payload_includes_previous_15_day_recaps(client, auth_head
         period_start=date(2026, 3, 1),
         period_end=date(2026, 3, 1),
         content="Recap troppo lontano nel tempo.",
-        provider_name="gemini_ai_studio",
-        model_name="gemini-2.5-flash",
+        provider_name="local_gemma4",
+        model_name="gemma-4-e2b",
     )
     db_session.add_all([recent_summary, old_summary])
     db_session.commit()
