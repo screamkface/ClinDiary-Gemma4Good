@@ -13,6 +13,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterFragmentActivity() {
     private val onDeviceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val onDeviceGemmaRuntime by lazy { OnDeviceGemmaRuntime(this) }
+    private val onDeviceEmbeddingRuntime by lazy { OnDeviceEmbeddingRuntime(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -35,6 +36,11 @@ class MainActivity : FlutterFragmentActivity() {
                 "getStatus" -> runOnDevice(result) {
                     val modelPath = call.argument<String>("modelPath")
                     onDeviceGemmaRuntime.getStatus(modelPath)
+                }
+                
+                "getEmbeddingStatus" -> runOnDevice(result) {
+                    val modelPath = call.argument<String>("modelPath")
+                    onDeviceEmbeddingRuntime.getStatus(modelPath)
                 }
 
                 "generateDailyRecap" -> runOnDevice(result) {
@@ -63,8 +69,19 @@ class MainActivity : FlutterFragmentActivity() {
                     )
                 }
 
+                "generateEmbedding" -> runOnDevice(result) {
+                    val text = call.argument<String>("text")
+                        ?: throw IllegalArgumentException("text mancante")
+                    val modelPath = call.argument<String>("modelPath")
+                    onDeviceEmbeddingRuntime.generateEmbedding(
+                        modelPath = modelPath,
+                        text = text,
+                    )
+                }
+
                 "resetRuntime" -> runOnDevice(result) {
                     onDeviceGemmaRuntime.close()
+                    onDeviceEmbeddingRuntime.close()
                     mapOf("ok" to true)
                 }
 
@@ -75,6 +92,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onDestroy() {
         onDeviceGemmaRuntime.close()
+        onDeviceEmbeddingRuntime.close()
         onDeviceExecutor.shutdownNow()
         super.onDestroy()
     }

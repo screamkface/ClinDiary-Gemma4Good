@@ -16,6 +16,11 @@ class OnDeviceAiService {
   );
   static const String _gemma4ModelFileName = 'gemma-4-E2B-it.litertlm';
 
+  static final Uri _embeddingModelDownloadUri = Uri.parse(
+    'https://huggingface.co/litert-community/embeddinggemma-300m/resolve/main/embeddinggemma-300M_seq512_mixed-precision.tflite?download=true',
+  );
+  static const String _embeddingModelFileName = 'embeddinggemma-300m.tflite';
+
   Future<Map<String, dynamic>?> _invokePrompt(
     String method,
     Map<String, dynamic> arguments,
@@ -116,6 +121,30 @@ class OnDeviceAiService {
     }
   }
 
+  Future<List<double>> generateEmbedding({
+    required String text,
+    String? modelPath,
+  }) async {
+    try {
+      final response = await _invokePrompt('generateEmbedding', <String, dynamic>{
+        'text': text,
+        if (modelPath != null) 'modelPath': modelPath,
+      });
+      if (response == null) {
+        throw Exception('The on-device runtime did not return a response.');
+      }
+      final rawEmbedding = response['embedding'] as List<dynamic>?;
+      if (rawEmbedding == null || rawEmbedding.isEmpty) {
+        throw Exception('The on-device runtime returned empty embedding.');
+      }
+      return rawEmbedding.map((e) => (e as num).toDouble()).toList();
+    } on MissingPluginException {
+      throw Exception('On-device inference is available on Android only.');
+    } on PlatformException catch (error) {
+      throw Exception(error.message ?? 'On-device embedding generation failed.');
+    }
+  }
+
   Future<String?> importModelFromPicker() async {
     if (!Platform.isAndroid) {
       throw Exception('Model import is available on Android only.');
@@ -204,6 +233,67 @@ class OnDeviceAiService {
         targetDirectory,
         keepFileName: p.basename(targetFile.path),
       );
+      await resetRuntime();
+      return targetFile.path;
+    } catch (_) {
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+      rethrow;
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<String> downloadEmbeddingModel({
+    void Function(int receivedBytes, int? totalBytes)? onProgress,
+  }) async {
+    if (!Platform.isAndroid) {
+      throw Exception('Model download is available on Android only.');
+    }
+
+    final targetDirectory = await _resolveModelDirectory();
+    await targetDirectory.create(recursive: true);
+
+    final targetPath = p.join(targetDirectory.path, _embeddingModelFileName);
+    final targetFile = File(targetPath);
+    final tempFile = File('$targetPath.download');
+
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', _embeddingModelDownloadUri)
+        ..headers[HttpHeaders.userAgentHeader] = 'ClinDiary/1.0'
+        ..headers[HttpHeaders.acceptHeader] = 'application/octet-stream';
+      final response = await client.send(request);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Embedding model download failed: HTTP ${response.statusCode}');
+      }
+
+      final contentLength = response.contentLength;
+      final totalBytes = contentLength != null && contentLength > 0
+          ? contentLength
+          : null;
+      var receivedBytes = 0;
+      final sink = tempFile.openWrite();
+      try {
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          receivedBytes += chunk.length;
+          onProgress?.call(receivedBytes, totalBytes);
+        }
+      } finally {
+        await sink.close();
+      }
+
+      if (await targetFile.exists()) {
+        await targetFile.delete();
+      }
+
+      await tempFile.rename(targetFile.path);
       await resetRuntime();
       return targetFile.path;
     } catch (_) {

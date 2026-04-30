@@ -60,6 +60,22 @@ class HistoryRepository {
     }
   }
 
+  /// Cancella il cache locale per un giorno specifico, in modo che il prossimo
+  /// [fetchDay] recuperi dati aggiornati dal backend.
+  Future<void> evictDayCache(DateTime targetDate) async {
+    final day = DateFormat('yyyy-MM-dd').format(targetDate);
+    final scopedBase = await profileScopedCacheKey(
+      _localDatabase,
+      _cacheKey(day, false),
+    );
+    final scopedRollups = await profileScopedCacheKey(
+      _localDatabase,
+      _cacheKey(day, true),
+    );
+    await _localDatabase.removeCache(scopedBase);
+    await _localDatabase.removeCache(scopedRollups);
+  }
+
   Future<List<DateTime>> fetchActivityDates({
     required DateTime startDate,
     required DateTime endDate,

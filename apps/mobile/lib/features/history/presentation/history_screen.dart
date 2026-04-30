@@ -1,6 +1,7 @@
-﻿import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/history/domain/history_day.dart';
+import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/timeline/domain/timeline_event.dart';
 import 'package:clindiary/shared/widgets/compact_segmented_control.dart';
@@ -41,9 +42,43 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
     setState(() => _isRegeneratingDailyReport = true);
     try {
-      await ref.read(insightsRepositoryProvider).regenerateSummary(query);
+      final summary = await ref
+          .read(insightsRepositoryProvider)
+          .regenerateSummary(query);
+
+      // Salva il recap nel Gemma Center History
+      try {
+        final activeProfileId =
+            ref.read(activeProfileIdProvider).asData?.value?.trim();
+        if (activeProfileId != null && activeProfileId.isNotEmpty) {
+          await ref
+              .read(gemmaCenterHistoryStoreProvider)
+              .appendEntry(
+                GemmaCenterHistoryEntry.dailyRecap(
+                  response: summary.content,
+                  referenceDate: targetDate,
+                  createdAt: summary.generatedAt,
+                ),
+                profileScope: activeProfileId,
+              );
+          ref.invalidate(gemmaCenterHistoryProvider);
+        }
+      } catch (_) {
+        // Il salvataggio nel Gemma Center è best-effort
+      }
+
+      // Invalida il cache locale della history per quella data
+      // così il prossimo fetchDay recupererà i dati aggiornati dal backend
+      try {
+        await ref.read(historyRepositoryProvider).evictDayCache(targetDate);
+      } catch (_) {
+        // best-effort
+      }
+
+      // Aggiorna i provider di history e insights
       ref.invalidate(historyDayProvider(targetDate));
       ref.invalidate(insightSummaryProvider(query));
+
       if (!mounted) {
         return;
       }

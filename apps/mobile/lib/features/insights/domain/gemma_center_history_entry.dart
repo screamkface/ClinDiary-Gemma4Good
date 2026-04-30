@@ -71,6 +71,21 @@ class GemmaCenterHistoryEntry {
     );
   }
 
+  factory GemmaCenterHistoryEntry.dailyRecap({
+    required String response,
+    required DateTime referenceDate,
+    DateTime? createdAt,
+  }) {
+    return GemmaCenterHistoryEntry(
+      id: _buildId('daily_recap'),
+      kind: 'daily_recap',
+      title: 'Daily recap',
+      response: response.trim(),
+      createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+      referenceDate: referenceDate.toUtc(),
+    );
+  }
+
   factory GemmaCenterHistoryEntry.documentSummary({
     required String response,
     required String documentId,
@@ -102,6 +117,8 @@ class GemmaCenterHistoryEntry {
         return 'Pre-visit';
       case 'document_summary':
         return 'Document';
+      case 'daily_recap':
+        return 'Daily recap';
       default:
         return 'Gemma';
     }
@@ -205,6 +222,8 @@ class GemmaCenterHistoryEntry {
           return 'Pre-visit brief';
         case 'document_summary':
           return 'Document summary';
+        case 'daily_recap':
+          return 'Daily recap';
         default:
           return 'Gemma';
       }

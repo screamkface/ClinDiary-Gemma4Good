@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/api_client.dart';
@@ -357,13 +358,16 @@ class DocumentsRepository {
       );
     }
 
+    final questionEmbedding = await _onDeviceAiService.generateEmbedding(text: normalizedQuestion).catchError((_) => <double>[]);
+
     final ranked = <_LocalQueryCandidate>[];
     for (final summary in localDocuments) {
       final detail = await fetchDocumentDetail(summary.id);
-      final candidate = _buildLocalQueryCandidate(
+      final candidate = await _buildLocalQueryCandidate(
         summary,
         detail,
         normalizedQuestion,
+        questionEmbedding,
       );
       if (candidate.score > 0) {
         ranked.add(candidate);
@@ -386,8 +390,8 @@ class DocumentsRepository {
         citations: const [],
         providerName: 'on_device_litertlm',
         modelName: 'gemma-4-E2B-it.litertlm',
-        embeddingModelName: 'local-keyword-index',
-        rerankerModelName: 'local-heuristic-ranker',
+        embeddingModelName: 'on_device_mediapipe',
+        rerankerModelName: 'local-semantic-ranker',
         retrievedChunks: 0,
         retrievedDocuments: 0,
         searchScopeLabel: folderId == null
@@ -425,8 +429,8 @@ class DocumentsRepository {
       citations: citations,
       providerName: 'on_device_litertlm',
       modelName: 'gemma-4-E2B-it.litertlm',
-      embeddingModelName: 'local-keyword-index',
-      rerankerModelName: 'local-heuristic-ranker',
+      embeddingModelName: 'on_device_mediapipe',
+      rerankerModelName: 'local-semantic-ranker',
       retrievedChunks: limited.length,
       retrievedDocuments: limited.map((item) => item.summary.id).toSet().length,
       searchScopeLabel: folderId == null
@@ -437,46 +441,100 @@ class DocumentsRepository {
     );
   }
 
-  _LocalQueryCandidate _buildLocalQueryCandidate(
-    ClinicalDocumentSummary summary,
-    ClinicalDocumentDetail detail,
-    String question,
-  ) {
+  Future<List<double>> _getDocumentEmbedding(ClinicalDocumentDetail detail) async {
+    final cacheKey = 'doc_embed_${detail.id}';
+    final cached = await _localDatabase.readCache(cacheKey);
+    if (cached != null) {
+      try {
+        final decoded = jsonDecode(cached) as List<dynamic>;
+        return decoded.map((e) => (e as num).toDouble()).toList();
+      } catch (_) {}
+    }
+    
     final fragments = <String>[
-      summary.title,
-      summary.documentType,
-      if (summary.source != null) summary.source!,
-      if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
-        detail.ocrText!,
+      detail.title,
+      detail.documentType,
+      if (detail.source != null) detail.source!,
+      if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty) detail.ocrText!,
       for (final panel in detail.labPanels)
         '${panel.panelName} ${panel.results.map((item) => '${item.analyteName} ${item.value}${item.unit == null ? '' : ' ${item.unit}'}').join(' ')}',
       for (final report in detail.imagingReports)
         '${report.examType ?? 'imaging'} ${report.bodyPart ?? ''} ${report.impression ?? report.reportText}',
     ];
+    final corpus = fragments.join(' ');
+    
+    try {
+      final embedding = await _onDeviceAiService.generateEmbedding(text: corpus);
+      await _localDatabase.putCache(key: cacheKey, payload: jsonEncode(embedding));
+      return embedding;
+    } catch (_) {
+      return [];
+    }
+  }
 
-    final corpus = fragments.join(' ').toLowerCase();
-    final tokens = question
-        .toLowerCase()
-        .split(RegExp(r'[^a-z0-9]+'))
-        .where((item) => item.trim().length >= 3)
-        .toSet();
+  double _cosineSimilarity(List<double> a, List<double> b) {
+    if (a.isEmpty || b.isEmpty || a.length != b.length) return 0.0;
+    double dotProduct = 0.0;
+    double normA = 0.0;
+    double normB = 0.0;
+    for (int i = 0; i < a.length; i++) {
+      dotProduct += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    if (normA == 0 || normB == 0) return 0.0;
+    return dotProduct / (sqrt(normA) * sqrt(normB));
+  }
 
+  Future<_LocalQueryCandidate> _buildLocalQueryCandidate(
+    ClinicalDocumentSummary summary,
+    ClinicalDocumentDetail detail,
+    String question,
+    List<double> questionEmbedding,
+  ) async {
     var score = 0.0;
-    for (final token in tokens) {
-      if (corpus.contains(token)) {
-        score += 1.0;
-      }
-    }
+    
+    // Semantic search
+    if (questionEmbedding.isNotEmpty) {
+      final documentEmbedding = await _getDocumentEmbedding(detail);
+      score = _cosineSimilarity(questionEmbedding, documentEmbedding);
+    } else {
+      // Fallback: Keyword search
+      final fragments = <String>[
+        summary.title,
+        summary.documentType,
+        if (summary.source != null) summary.source!,
+        if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
+          detail.ocrText!,
+        for (final panel in detail.labPanels)
+          '${panel.panelName} ${panel.results.map((item) => '${item.analyteName} ${item.value}${item.unit == null ? '' : ' ${item.unit}'}').join(' ')}',
+        for (final report in detail.imagingReports)
+          '${report.examType ?? 'imaging'} ${report.bodyPart ?? ''} ${report.impression ?? report.reportText}',
+      ];
 
-    if (summary.title.toLowerCase().contains(question.toLowerCase())) {
-      score += 2.0;
-    }
-    if (detail.labPanels.isNotEmpty && question.toLowerCase().contains('lab')) {
-      score += 0.8;
-    }
-    if (detail.imagingReports.isNotEmpty &&
-        question.toLowerCase().contains('imaging')) {
-      score += 0.8;
+      final corpus = fragments.join(' ').toLowerCase();
+      final tokens = question
+          .toLowerCase()
+          .split(RegExp(r'[^a-z0-9]+'))
+          .where((item) => item.trim().length >= 3)
+          .toSet();
+
+      for (final token in tokens) {
+        if (corpus.contains(token)) {
+          score += 1.0;
+        }
+      }
+      
+      if (summary.title.toLowerCase().contains(question.toLowerCase())) {
+        score += 2.0;
+      }
+      if (detail.labPanels.isNotEmpty && question.toLowerCase().contains('lab')) {
+        score += 0.8;
+      }
+      if (detail.imagingReports.isNotEmpty &&
+          question.toLowerCase().contains('imaging')) {
+        score += 0.8;
+      }
     }
 
     final excerpt = _buildExcerpt(detail);
