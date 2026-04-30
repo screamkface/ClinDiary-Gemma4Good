@@ -88,7 +88,7 @@ String documentStorageLabel(String storageLocation) {
       return 'On device';
     case 'cloud':
     default:
-      return 'Cloud';
+      return 'Archived';
   }
 }
 

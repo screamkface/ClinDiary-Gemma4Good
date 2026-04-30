@@ -19,7 +19,7 @@ ClinDiary processes health and personal data to provide a clinical diary, histor
 ## Storage
 
 - free plan: new documents stay on the device
-- AI Plus plan: documents can be saved in the ClinDiary cloud
+- AI Plus plan: documents can be saved in the local archive with enhanced AI features
 
 ## User rights
 

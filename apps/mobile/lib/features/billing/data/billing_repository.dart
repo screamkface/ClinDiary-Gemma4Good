@@ -81,7 +81,7 @@ class BillingRepository {
         'id': 'plan-pro',
         'code': 'ai_plus_yearly',
         'name': 'AI Plus Annual',
-        'description': 'Full cloud + AI feature set for demo',
+        'description': 'Full AI feature set for demo',
         'billing_interval': 'yearly',
         'price_cents': 9900,
         'currency': 'EUR',

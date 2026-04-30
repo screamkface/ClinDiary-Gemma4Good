@@ -64,7 +64,7 @@ class DocumentsRepository {
         return ClinicalDocumentDetail.fromJson(cached);
       }
       throw ApiException(
-        'Cloud documents are read-only while local-only mode is active.',
+        'Archived documents are read-only while local-only mode is active.',
         statusCode: 409,
       );
     }
@@ -190,7 +190,7 @@ class DocumentsRepository {
         return ClinicalDocumentDetail.fromJson(cached);
       }
       throw ApiException(
-        'Cloud documents are read-only while local-only mode is active.',
+        'Archived documents are read-only while local-only mode is active.',
         statusCode: 409,
       );
     }
@@ -217,7 +217,7 @@ class DocumentsRepository {
         return ClinicalDocumentDetail.fromJson(cached);
       }
       throw ApiException(
-        'Cloud documents are read-only while local-only mode is active.',
+        'Archived documents are read-only while local-only mode is active.',
         statusCode: 409,
       );
     }
@@ -240,7 +240,7 @@ class DocumentsRepository {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
       throw ApiException(
-        'Cloud documents are read-only while local-only mode is active.',
+        'Archived documents are read-only while local-only mode is active.',
         statusCode: 409,
       );
     }
@@ -263,7 +263,7 @@ class DocumentsRepository {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
       throw ApiException(
-        'Cloud documents are read-only while local-only mode is active.',
+        'Archived documents are read-only while local-only mode is active.',
         statusCode: 409,
       );
     }
@@ -286,7 +286,7 @@ class DocumentsRepository {
     final storageMode = await _getStorageMode();
     if (storageMode == _DocumentStorageMode.local) {
       throw ApiException(
-        'Cloud documents are read-only while local-only mode is active.',
+        'Archived documents are read-only while local-only mode is active.',
         statusCode: 409,
       );
     }

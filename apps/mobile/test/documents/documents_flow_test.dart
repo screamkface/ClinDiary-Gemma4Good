@@ -197,9 +197,21 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Parsed'));
+      final documentScrollView = find.byType(Scrollable).first;
+      final parsedButtons = find.byType(PopupMenuButton);
+      for (
+        var attempts = 0;
+        attempts < 5 && parsedButtons.evaluate().isEmpty;
+        attempts += 1
+      ) {
+        await tester.drag(documentScrollView, const Offset(0, -300));
+        await tester.pumpAndSettle();
+      }
+      final parsedChip = parsedButtons.last;
+      await tester.tap(parsedChip);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Move file').last);
+      final moveFileAction = find.text('Move file').last;
+      await tester.tap(moveFileAction);
       await tester.pump();
       await tester.pumpAndSettle();
 

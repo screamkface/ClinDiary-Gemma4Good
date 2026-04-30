@@ -714,12 +714,12 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Read-only cloud document',
+                                'Read-only archived document',
                                 style: TextStyle(fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 6),
                               const Text(
-                                'Cloud files remain viewable, but editing is disabled while local-only mode is active.',
+                                'Archived files remain viewable, but editing is disabled while local-only mode is active.',
                               ),
                             ],
                           ),

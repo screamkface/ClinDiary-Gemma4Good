@@ -773,6 +773,16 @@ class _RecentCheckUpsSection extends StatelessWidget {
 
   final List<DailyEntry> entries;
 
+  DailyEntry? _todayEntry() {
+    final today = DateTime.now();
+    for (final entry in entries) {
+      if (DateUtils.isSameDay(entry.entryDate, today)) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
@@ -808,6 +818,7 @@ class _RecentCheckUpsSection extends StatelessWidget {
       light: Colors.teal.shade700,
       dark: Colors.teal.shade100,
     );
+    final todayEntry = _todayEntry();
 
     return SectionCard(
       title: 'Recent check-ups',
@@ -818,36 +829,78 @@ class _RecentCheckUpsSection extends StatelessWidget {
         label: const Text('Open diary'),
       ),
       child: Column(
-        children: previewEntries
-            .map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card.outlined(
-                  margin: EdgeInsets.zero,
-                  child: ListTile(
-                    key: ValueKey('home-checkup-${entry.id}'),
-                    onTap: () => context.push('/app/diary/${entry.id}/symptom'),
-                    leading: CircleAvatar(
-                      backgroundColor: checkUpAvatarBackground,
-                      child: Icon(
-                        Icons.fact_check_outlined,
-                        color: checkUpAvatarColor,
-                      ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _TodayCheckUpCard(entry: todayEntry),
+          const SizedBox(height: 12),
+          ...previewEntries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card.outlined(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  key: ValueKey('home-checkup-${entry.id}'),
+                  onTap: () => context.push('/app/diary/${entry.id}/symptom'),
+                  leading: CircleAvatar(
+                    backgroundColor: checkUpAvatarBackground,
+                    child: Icon(
+                      Icons.fact_check_outlined,
+                      color: checkUpAvatarColor,
                     ),
-                    title: Text(dateFormat.format(entry.entryDate)),
-                    subtitle: Text(
-                      (entry.generalNotes ?? '').trim().isEmpty
-                          ? 'No notes'
-                          : entry.generalNotes!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
                   ),
+                  title: Text(dateFormat.format(entry.entryDate)),
+                  subtitle: Text(
+                    (entry.generalNotes ?? '').trim().isEmpty
+                        ? 'No notes'
+                        : entry.generalNotes!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                 ),
               ),
-            )
-            .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayCheckUpCard extends StatelessWidget {
+  const _TodayCheckUpCard({required this.entry});
+
+  final DailyEntry? entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasEntry = entry != null;
+    final completedAt = hasEntry
+        ? DateFormat('HH:mm', 'en_US').format(entry!.entryDate.toLocal())
+        : null;
+
+    return SectionCard(
+      title: 'Today',
+      subtitle: hasEntry
+          ? 'Check-up completed for today.'
+          : 'Today still needs a check-up.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hasEntry
+                ? 'Completed at $completedAt'
+                : 'Complete it now to stop today\'s reminders.',
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => context.push('/app/diary/check-up'),
+            icon: Icon(
+              hasEntry ? Icons.edit_note_outlined : Icons.add_circle_outline,
+            ),
+            label: Text(hasEntry ? 'Update check-up' : 'Complete check-up'),
+          ),
+        ],
       ),
     );
   }
@@ -864,9 +917,7 @@ class _HomeAvatar extends StatelessWidget {
     final parts = label
         .trim()
         .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .toList();
+        .where((part) => part.isNotEmpty);
     final initials = parts.isEmpty
         ? 'CD'
         : parts.map((part) => part.substring(0, 1).toUpperCase()).join();

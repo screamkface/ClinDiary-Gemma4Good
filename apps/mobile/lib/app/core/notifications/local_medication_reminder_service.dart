@@ -13,6 +13,16 @@ const _medicationReminderChannelId = 'clindiary_medication_reminders';
 const _medicationReminderChannelName = 'Medication reminders';
 const _medicationReminderChannelDescription =
     'Local reminders generated on the device for medication therapy.';
+const _dailyCheckInReminderChannelId = 'clindiary_daily_checkin_reminders';
+const _dailyCheckInReminderChannelName = 'Check-in reminders';
+const _dailyCheckInReminderChannelDescription =
+    'Local reminders generated on the device for the daily check-up.';
+const _dailyCheckInReminderSlots = <({int hour, int minute})>[
+  (hour: 9, minute: 0),
+  (hour: 13, minute: 0),
+  (hour: 17, minute: 0),
+  (hour: 20, minute: 30),
+];
 
 @immutable
 class LocalMedicationReminderStatus {
@@ -106,6 +116,15 @@ class LocalMedicationReminderService {
         importance: Importance.high,
       ),
     );
+    await androidPlugin?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _dailyCheckInReminderChannelId,
+        _dailyCheckInReminderChannelName,
+        description: _dailyCheckInReminderChannelDescription,
+        importance: Importance.high,
+      ),
+    );
+    await androidPlugin?.requestExactAlarmsPermission();
 
     _initialized = true;
   }
@@ -150,6 +169,7 @@ class LocalMedicationReminderService {
         >();
     if (androidPlugin != null) {
       granted = await androidPlugin.requestNotificationsPermission() ?? false;
+      await androidPlugin.requestExactAlarmsPermission();
     } else {
       final iosPlugin = _plugin
           .resolvePlatformSpecificImplementation<
@@ -244,7 +264,7 @@ class LocalMedicationReminderService {
         id: item.id,
         scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
         notificationDetails: _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         title: item.title,
         body: item.body,
         payload: item.payload,
@@ -293,6 +313,100 @@ class LocalMedicationReminderService {
         await _plugin.cancel(id: request.id);
       }
     }
+  }
+
+  Future<LocalMedicationReminderStatus> syncDailyCheckInReminders({
+    required bool enabled,
+    required bool completedToday,
+    int horizonDays = 30,
+  }) async {
+    if (!isSupportedPlatform) {
+      return getStatus();
+    }
+
+    await initialize();
+    await _cancelDailyCheckInPendingRequests();
+
+    if (!enabled) {
+      _lastSyncedAt = DateTime.now().toUtc();
+      return LocalMedicationReminderStatus(
+        isSupported: true,
+        permissionGranted: await _isPermissionGranted(),
+        scheduledCount: 0,
+        lastSyncedAt: _lastSyncedAt,
+        message: 'Daily check-in reminders are disabled in preferences.',
+      );
+    }
+
+    if (!await _isPermissionGranted()) {
+      return LocalMedicationReminderStatus(
+        isSupported: true,
+        permissionGranted: false,
+        scheduledCount: 0,
+        lastSyncedAt: _lastSyncedAt,
+        message: 'Enable device notifications first to generate reminders.',
+      );
+    }
+
+    final plan = _buildDailyCheckInPlan(
+      from: DateTime.now(),
+      horizonDays: horizonDays,
+      completedToday: completedToday,
+    );
+
+    for (final item in plan) {
+      await _plugin.zonedSchedule(
+        id: item.id,
+        scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
+        notificationDetails: _dailyCheckInNotificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        title: item.title,
+        body: item.body,
+        payload: item.payload,
+      );
+    }
+
+    _lastSyncedAt = DateTime.now().toUtc();
+    return LocalMedicationReminderStatus(
+      isSupported: true,
+      permissionGranted: true,
+      scheduledCount: plan.length,
+      lastSyncedAt: _lastSyncedAt,
+      message: plan.isEmpty
+          ? 'No daily check-in reminders can be scheduled right now.'
+          : 'Daily check-in reminders synchronized on the device.',
+    );
+  }
+
+  Future<void> cancelDailyCheckInReminders() async {
+    if (!isSupportedPlatform) {
+      return;
+    }
+
+    await initialize();
+    await _cancelDailyCheckInPendingRequests();
+    _lastSyncedAt = DateTime.now().toUtc();
+  }
+
+  Future<void> cancelDailyCheckInRemindersForDate({
+    required DateTime targetDate,
+  }) async {
+    if (!isSupportedPlatform) {
+      return;
+    }
+
+    await initialize();
+    final targetKey = _dateKey(targetDate);
+    for (final request in await _listDailyCheckInPendingRequests()) {
+      final payload = _decodePayload(request.payload);
+      if (payload == null) {
+        continue;
+      }
+      if (payload['occurrence_date'] == targetKey) {
+        await _plugin.cancel(id: request.id);
+      }
+    }
+    _lastSyncedAt = DateTime.now().toUtc();
   }
 
   List<ScheduledMedicationReminder> buildSchedulePlan({
@@ -391,6 +505,29 @@ class LocalMedicationReminderService {
     );
   }
 
+  NotificationDetails _dailyCheckInNotificationDetails() {
+    return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _dailyCheckInReminderChannelId,
+        _dailyCheckInReminderChannelName,
+        channelDescription: _dailyCheckInReminderChannelDescription,
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      ),
+      macOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+  }
+
   Future<void> _configureTimezone() async {
     try {
       final timezoneInfo = await FlutterTimezone.getLocalTimezone();
@@ -406,7 +543,11 @@ class LocalMedicationReminderService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (androidPlugin != null) {
-      return await androidPlugin.areNotificationsEnabled() ?? false;
+      final notificationsEnabled =
+          await androidPlugin.areNotificationsEnabled() ?? false;
+      final exactAlarmsGranted =
+          await androidPlugin.canScheduleExactNotifications() ?? false;
+      return notificationsEnabled && exactAlarmsGranted;
     }
     return true;
   }
@@ -417,12 +558,27 @@ class LocalMedicationReminderService {
     }
   }
 
+  Future<void> _cancelDailyCheckInPendingRequests() async {
+    for (final request in await _listDailyCheckInPendingRequests()) {
+      await _plugin.cancel(id: request.id);
+    }
+  }
+
   Future<List<PendingNotificationRequest>>
   _listMedicationPendingRequests() async {
     final requests = await _plugin.pendingNotificationRequests();
     return requests.where((item) {
       final payload = _decodePayload(item.payload);
       return payload != null && payload['type'] == 'medication_reminder';
+    }).toList();
+  }
+
+  Future<List<PendingNotificationRequest>>
+  _listDailyCheckInPendingRequests() async {
+    final requests = await _plugin.pendingNotificationRequests();
+    return requests.where((item) {
+      final payload = _decodePayload(item.payload);
+      return payload != null && payload['type'] == 'daily_checkin_reminder';
     }).toList();
   }
 
@@ -540,6 +696,57 @@ class LocalMedicationReminderService {
   String _dateKey(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
+  List<_DailyCheckInReminderPlanItem> _buildDailyCheckInPlan({
+    required DateTime from,
+    int horizonDays = 30,
+    required bool completedToday,
+  }) {
+    final plan = <_DailyCheckInReminderPlanItem>[];
+    final anchor = DateTime(from.year, from.month, from.day);
+    final minimumAllowed = from.add(const Duration(minutes: 1));
+
+    for (var offset = 0; offset < horizonDays; offset++) {
+      final day = anchor.add(Duration(days: offset));
+      if (offset == 0 && completedToday) {
+        continue;
+      }
+
+      for (final slot in _dailyCheckInReminderSlots) {
+        final scheduledAt = DateTime(
+          day.year,
+          day.month,
+          day.day,
+          slot.hour,
+          slot.minute,
+        );
+        if (offset == 0 && !scheduledAt.isAfter(minimumAllowed)) {
+          continue;
+        }
+
+        plan.add(
+          _DailyCheckInReminderPlanItem(
+            id: _notificationId(
+              medicationId: 'daily-checkin',
+              scheduleId: 'daily-checkin-${slot.hour}-${slot.minute}',
+              occurrence: scheduledAt,
+            ),
+            scheduledAt: scheduledAt,
+            title: 'Daily check-up',
+            body: 'You still have not completed today\'s check-up.',
+            payload: jsonEncode({
+              'type': 'daily_checkin_reminder',
+              'occurrence_date': _dateKey(day),
+              'scheduled_time':
+                  '${_twoDigits(slot.hour)}:${_twoDigits(slot.minute)}',
+            }),
+          ),
+        );
+      }
+    }
+
+    return plan;
+  }
+
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
   Set<String> _completedOccurrenceKeys(List<MedicationLogItem> logs) {
@@ -565,4 +772,20 @@ class LocalMedicationReminderService {
   }) {
     return '$medicationId|${_dateKey(occurrenceDate)}';
   }
+}
+
+class _DailyCheckInReminderPlanItem {
+  const _DailyCheckInReminderPlanItem({
+    required this.id,
+    required this.scheduledAt,
+    required this.title,
+    required this.body,
+    required this.payload,
+  });
+
+  final int id;
+  final DateTime scheduledAt;
+  final String title;
+  final String body;
+  final String payload;
 }

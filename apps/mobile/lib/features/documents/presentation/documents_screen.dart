@@ -21,6 +21,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   String? _currentFolderId;
   String? _appliedQuery;
   int _lastParseActiveCount = 0;
+  _DocumentArchiveFilter _documentFilter = _DocumentArchiveFilter.all;
 
   DocumentArchiveQuery get _archiveQuery => DocumentArchiveQuery(
     folderId: _currentFolderId,
@@ -57,6 +58,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       _searchController.clear();
       _appliedQuery = null;
     });
+  }
+
+  void _setDocumentFilter(_DocumentArchiveFilter filter) {
+    setState(() => _documentFilter = filter);
   }
 
   Future<void> _createFolder() async {
@@ -315,6 +320,24 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           final folderAvatarForeground = isDark
               ? Colors.indigo.shade100
               : Colors.indigo.shade700;
+          final filteredDocuments = archive.documents.where((document) {
+            final parseProgress = parseSnapshot.progressFor(document.id);
+            switch (_documentFilter) {
+              case _DocumentArchiveFilter.all:
+                return true;
+              case _DocumentArchiveFilter.needsReview:
+                return document.parsedStatus == 'review_required' ||
+                    (document.processingError != null &&
+                        document.processingError!.isNotEmpty);
+              case _DocumentArchiveFilter.parsing:
+                return parseProgress != null ||
+                    document.parsedStatus == 'processing';
+              case _DocumentArchiveFilter.ready:
+                return document.parsedStatus == 'parsed' &&
+                    parseProgress == null &&
+                    !document.pendingSync;
+            }
+          }).toList();
 
           return RefreshIndicator(
             onRefresh: _refreshAll,
@@ -407,6 +430,46 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             ),
                             icon: const Icon(Icons.chat_bubble_outline),
                             label: const Text('Ask files'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('All'),
+                            selected:
+                                _documentFilter == _DocumentArchiveFilter.all,
+                            onSelected: (_) =>
+                                _setDocumentFilter(_DocumentArchiveFilter.all),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Needs review'),
+                            selected:
+                                _documentFilter ==
+                                _DocumentArchiveFilter.needsReview,
+                            onSelected: (_) => _setDocumentFilter(
+                              _DocumentArchiveFilter.needsReview,
+                            ),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Parsing'),
+                            selected:
+                                _documentFilter ==
+                                _DocumentArchiveFilter.parsing,
+                            onSelected: (_) => _setDocumentFilter(
+                              _DocumentArchiveFilter.parsing,
+                            ),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Ready'),
+                            selected:
+                                _documentFilter == _DocumentArchiveFilter.ready,
+                            onSelected: (_) => _setDocumentFilter(
+                              _DocumentArchiveFilter.ready,
+                            ),
                           ),
                         ],
                       ),
@@ -580,14 +643,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       ],
                     ),
                   )
-                else if (archive.documents.isNotEmpty)
+                else if (filteredDocuments.isNotEmpty)
                   SectionCard(
                     title: archive.isSearch ? 'Found files' : 'Files',
                     subtitle: archive.isSearch
                         ? 'Results found across the entire archive.'
                         : 'Open a file or move it to another folder.',
                     child: Column(
-                      children: archive.documents
+                      children: filteredDocuments
                           .map(
                             (document) => Padding(
                               padding: const EdgeInsets.only(bottom: 8),
@@ -607,6 +670,28 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             ),
                           )
                           .toList(),
+                    ),
+                  )
+                else if (archive.documents.isNotEmpty)
+                  SectionCard(
+                    title: 'No matching files',
+                    subtitle: 'Try another filter or clear the search.',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: () =>
+                              _setDocumentFilter(_DocumentArchiveFilter.all),
+                          icon: const Icon(Icons.filter_alt_off_outlined),
+                          label: const Text('Reset filter'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _clearSearch,
+                          icon: const Icon(Icons.close),
+                          label: const Text('Clear search'),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -861,6 +946,8 @@ class _DocumentArchiveTile extends StatelessWidget {
     );
   }
 }
+
+enum _DocumentArchiveFilter { all, needsReview, parsing, ready }
 
 class _FolderChoiceTile extends StatelessWidget {
   const _FolderChoiceTile({

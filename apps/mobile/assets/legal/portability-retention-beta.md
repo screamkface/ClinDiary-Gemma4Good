@@ -12,7 +12,7 @@ ClinDiary already exposes technical tools for data portability and lifecycle.
 
 Account deletion removes:
 
-- cloud accounts and profiles
+- linked accounts and profiles
 - AI recaps and share links
 - tokens
 - cache and local documents for the account on the device

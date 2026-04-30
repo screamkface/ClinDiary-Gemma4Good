@@ -1264,7 +1264,7 @@ String _categoryLabel(String value) {
 String _integrationLabel(String value) {
   switch (value) {
     case 'cloud_api':
-      return 'Cloud API';
+      return 'Remote API';
     case 'api_key':
       return 'API key';
     case 'partner_platform':

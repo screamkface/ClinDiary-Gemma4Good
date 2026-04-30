@@ -703,7 +703,7 @@ class _LocalModeNote extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'The local private mode uses a local/private runtime for the daily recap. The text can be shorter than the cloud mode.',
+              'The local private mode uses a local/private runtime for the daily recap. The text is intentionally shorter and stays on the device.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),

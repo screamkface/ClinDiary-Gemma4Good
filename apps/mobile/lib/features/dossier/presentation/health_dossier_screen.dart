@@ -321,7 +321,7 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Secure cloud links are disabled while local-only mode is active.',
+              'Secure share links are disabled while local-only mode is active.',
             ),
           ),
         );
@@ -1194,7 +1194,7 @@ class HealthDossierScreen extends ConsumerWidget {
                     SectionCard(
                       title: 'Local-only transfers',
                       subtitle:
-                          'Cloud share links are disabled. Use encrypted local exports and backup restore.',
+                          'Share links are disabled. Use encrypted local exports and backup restore.',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

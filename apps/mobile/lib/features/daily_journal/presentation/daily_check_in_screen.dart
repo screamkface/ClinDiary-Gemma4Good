@@ -512,6 +512,11 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
             ? null
             : _notesController.text.trim(),
       });
+      if (DateUtils.isSameDay(entry.entryDate, DateTime.now())) {
+        await ref
+            .read(localMedicationReminderServiceProvider)
+            .cancelDailyCheckInRemindersForDate(targetDate: entry.entryDate);
+      }
       final voiceSymptoms =
           _voiceDraft?.symptoms ?? const <VoiceCheckInSymptomDraft>[];
       if (voiceSymptoms.isNotEmpty) {
