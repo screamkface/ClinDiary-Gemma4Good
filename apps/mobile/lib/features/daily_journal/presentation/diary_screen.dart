@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -151,20 +150,13 @@ class DiaryScreen extends ConsumerWidget {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Check-up deleted')));
-        } on ApiException catch (error) {
+        } catch (error) {
           if (!context.mounted) {
             return;
           }
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(error.message)));
-        } catch (_) {
-          if (!context.mounted) {
-            return;
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to delete check-up now')),
-          );
+          ).showSnackBar(SnackBar(content: Text(error.toString())));
         }
     }
   }

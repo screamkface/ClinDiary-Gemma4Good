@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/features/documents/data/local_lab_text_parser.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_cipher.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
@@ -243,7 +242,7 @@ class LocalDocumentVaultService {
     required Map<String, String> fields,
   }) async {
     if (file.bytes.length > maxSingleFileBytes) {
-      throw ApiException('Local files can be at most 10 MB.', statusCode: 413);
+      throw Exception('Local files can be at most 10 MB.');
     }
 
     final state = await _loadState(
@@ -251,20 +250,16 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     if (state.documents.length >= maxDocumentCount) {
-      throw ApiException(
-        'You have reached the local limit of 80 documents.',
-        statusCode: 409,
-      );
+      throw Exception(
+        'You have reached the local limit of 80 documents.');
     }
     final totalBytes = state.documents.fold<int>(
       0,
       (sum, item) => sum + item.fileSizeBytes,
     );
     if (totalBytes + file.bytes.length > maxTotalBytes) {
-      throw ApiException(
-        'You have reached the local storage limit of 200 MB.',
-        statusCode: 409,
-      );
+      throw Exception(
+        'You have reached the local storage limit of 200 MB.');
     }
 
     final normalizedFolderId = _normalizeText(fields['folder_id']);
@@ -345,7 +340,7 @@ class LocalDocumentVaultService {
   }) async {
     final normalizedName = name.trim();
     if (normalizedName.isEmpty) {
-      throw ApiException('Folder name cannot be empty.');
+      throw Exception('Folder name cannot be empty.');
     }
 
     final state = await _loadState(
@@ -363,10 +358,8 @@ class LocalDocumentVaultService {
           folder.name.toLowerCase() == normalizedName.toLowerCase(),
     );
     if (siblingExists) {
-      throw ApiException(
-        'A folder with this name already exists in this path.',
-        statusCode: 409,
-      );
+      throw Exception(
+        'A folder with this name already exists in this path.');
     }
 
     final folder = _StoredFolder(
@@ -425,7 +418,7 @@ class LocalDocumentVaultService {
     }).toList();
 
     if (!updatedDocuments.any((item) => item.id == documentId)) {
-      throw ApiException('Document not found.', statusCode: 404);
+      throw Exception('Document not found.');
     }
 
     final nextState = state.copyWith(documents: updatedDocuments);
@@ -458,7 +451,7 @@ class LocalDocumentVaultService {
   }) async {
     final normalizedStatus = contextStatus.trim().toLowerCase();
     if (normalizedStatus != 'active' && normalizedStatus != 'old') {
-      throw ApiException('Invalid document status.', statusCode: 422);
+      throw Exception('Invalid document status.');
     }
 
     final state = await _loadState(
@@ -472,7 +465,7 @@ class LocalDocumentVaultService {
       return item.copyWith(contextStatus: normalizedStatus);
     }).toList();
     if (!updatedDocuments.any((item) => item.id == documentId)) {
-      throw ApiException('Document not found.', statusCode: 404);
+      throw Exception('Document not found.');
     }
 
     final nextState = state.copyWith(documents: updatedDocuments);
@@ -600,7 +593,7 @@ class LocalDocumentVaultService {
     final document = _requireDocument(state, documentId);
     final sourceFile = File(document.localFilePath);
     if (!await sourceFile.exists()) {
-      throw ApiException('Local file not found.', statusCode: 404);
+      throw Exception('Local file not found.');
     }
     final encryptedBytes = await sourceFile.readAsBytes();
     final clearBytes = await _cipher.decryptDocument(
@@ -986,14 +979,14 @@ class LocalDocumentVaultService {
   _StoredFolder _requireFolder(_LocalVaultState state, String folderId) {
     return state.folders.firstWhere(
       (folder) => folder.id == folderId,
-      orElse: () => throw ApiException('Folder not found.', statusCode: 404),
+      orElse: () => throw Exception('Folder not found.'),
     );
   }
 
   _StoredDocument _requireDocument(_LocalVaultState state, String documentId) {
     return state.documents.firstWhere(
       (document) => document.id == documentId,
-      orElse: () => throw ApiException('Document not found.', statusCode: 404),
+      orElse: () => throw Exception('Document not found.'),
     );
   }
 
@@ -1132,10 +1125,8 @@ class LocalDocumentVaultService {
 
     final parsed = DateTime.tryParse(trimmed);
     if (parsed == null) {
-      throw ApiException(
-        'Exam date is invalid. Use ISO format YYYY-MM-DD.',
-        statusCode: 422,
-      );
+      throw Exception(
+        'Exam date is invalid. Use ISO format YYYY-MM-DD.');
     }
     return parsed.toIso8601String();
   }

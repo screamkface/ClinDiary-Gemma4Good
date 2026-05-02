@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/shared/widgets/metric_slider.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -111,11 +110,11 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       context.pop();
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _saving = false);

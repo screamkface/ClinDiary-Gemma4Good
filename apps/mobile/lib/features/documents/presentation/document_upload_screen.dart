@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -126,11 +125,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       context.pushReplacement('/app/documents/${document.id}');
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _uploading = false);

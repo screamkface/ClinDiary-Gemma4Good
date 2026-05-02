@@ -1,218 +1,57 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
-import 'package:clindiary/app/core/storage/local_database.dart';
+import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 
 class DailyJournalRepository {
   DailyJournalRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
   static const _cacheKey = 'daily_entries';
-  static const _localShadowUntilKey = '_local_shadow_until';
+  static const _localShadowUntilKey = 'local_shadow_until';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<List<DailyEntry>> fetchEntries() async {
-    try {
-      final response = await _apiClient.getJsonList('/api/v1/daily-entries');
-      final remoteEntries = response
-          .map(
-            (item) => Map<String, dynamic>.from(item as Map<String, dynamic>),
-          )
-          .toList();
-      final cachedEntries =
-          await _readCachedEntriesJson() ?? const <Map<String, dynamic>>[];
-      final mergedEntries = _mergeRemoteWithCachedEntries(
-        remoteEntries: remoteEntries,
-        cachedEntries: cachedEntries,
-      );
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(_localDatabase, _cacheKey),
-        payload: jsonEncode(mergedEntries),
-      );
-      return _decodeEntries(mergedEntries);
-    } on ApiException catch (error) {
-      final cached = await _readCachedEntriesJson();
-      if (cached == null) {
-        if (_isLocalOnlyError(error)) {
-          return const <DailyEntry>[];
-        }
-        rethrow;
-      }
-      return _decodeEntries(cached);
-    } catch (_) {
-      final cached = await _readCachedEntriesJson();
-      if (cached == null) rethrow;
-      return _decodeEntries(cached);
-    }
+    final cachedEntries =
+        await _readCachedEntriesJson() ?? const <Map<String, dynamic>>[];
+    return _decodeEntries(cachedEntries);
   }
 
   Future<DailyEntry> createEntry(Map<String, dynamic> payload) async {
-    try {
-      final response = await _apiClient.postJson(
-        '/api/v1/daily-entries',
-        body: payload,
-      );
-      await _upsertEntryInCache({
-        ...response,
-        _localShadowUntilKey: _buildLocalShadowUntilIso(),
-      });
-      return DailyEntry.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      final pendingEntry = _buildPendingEntry(payload);
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: '/api/v1/daily-entries',
-          body: payload,
-          lastError: error.message,
-        );
-      }
-      await _upsertEntryInCache(pendingEntry);
-      return DailyEntry.fromJson(pendingEntry);
-    } catch (error) {
-      final pendingEntry = _buildPendingEntry(payload);
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: '/api/v1/daily-entries',
-        body: payload,
-        lastError: error.toString(),
-      );
-      await _upsertEntryInCache(pendingEntry);
-      return DailyEntry.fromJson(pendingEntry);
-    }
+    final entry = _buildPendingEntry(payload);
+    // Assegna un vero ID invece di "pending-"
+    entry['id'] = 'local-entry-${DateTime.now().microsecondsSinceEpoch}';
+    entry['pending_sync'] = false;
+    
+    await _upsertEntryInCache(entry);
+    return DailyEntry.fromJson(entry);
   }
 
   Future<void> addSymptom({
     required String entryId,
     required Map<String, dynamic> payload,
   }) async {
-    final path = '/api/v1/daily-entries/$entryId/symptoms';
-    try {
-      final response = await _apiClient.postJson(path, body: payload);
-      await _upsertSymptomInCache(entryId, response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error) && !_isPendingId(entryId)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-        );
-      }
-      await _upsertSymptomInCache(entryId, _buildPendingSymptom(payload));
-    } catch (error) {
-      if (!_isPendingId(entryId)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.toString(),
-        );
-      }
-      await _upsertSymptomInCache(entryId, _buildPendingSymptom(payload));
-    }
+    final symptom = _buildPendingSymptom(payload);
+    symptom['id'] = 'local-symptom-${DateTime.now().microsecondsSinceEpoch}';
+    symptom['pending_sync'] = false;
+    await _upsertSymptomInCache(entryId, symptom);
   }
 
   Future<void> addVital({
     required String entryId,
     required Map<String, dynamic> payload,
   }) async {
-    final path = '/api/v1/daily-entries/$entryId/vitals';
-    try {
-      final response = await _apiClient.postJson(path, body: payload);
-      await _upsertVitalInCache(entryId, response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error) && !_isPendingId(entryId)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-        );
-      }
-      await _upsertVitalInCache(entryId, _buildPendingVital(payload));
-    } catch (error) {
-      if (!_isPendingId(entryId)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.toString(),
-        );
-      }
-      await _upsertVitalInCache(entryId, _buildPendingVital(payload));
-    }
+    final vital = _buildPendingVital(payload);
+    vital['id'] = 'local-vital-${DateTime.now().microsecondsSinceEpoch}';
+    vital['pending_sync'] = false;
+    await _upsertVitalInCache(entryId, vital);
   }
 
   Future<void> deleteEntry({required String entryId}) async {
-    final removedEntry = await _removeEntryFromCache(entryId);
-    final removedEntryDate = removedEntry?['entry_date']?.toString();
-    final profileScope = await activeProfileCacheScope(_localDatabase);
-
-    if (_isPendingId(entryId)) {
-      await _discardMatchingPendingCreates(
-        entryDate: removedEntryDate,
-        profileScope: profileScope,
-      );
-      return;
-    }
-
-    final path = '/api/v1/daily-entries/$entryId';
-    try {
-      await _apiClient.delete(path);
-      await _discardMatchingPendingCreates(
-        entryDate: removedEntryDate,
-        profileScope: profileScope,
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        if (removedEntry != null) {
-          await _upsertEntryInCache(removedEntry);
-        }
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'DELETE',
-          path: path,
-          body: const <String, dynamic>{},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _discardMatchingPendingCreates(
-        entryDate: removedEntryDate,
-        profileScope: profileScope,
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'DELETE',
-        path: path,
-        body: const <String, dynamic>{},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _discardMatchingPendingCreates(
-        entryDate: removedEntryDate,
-        profileScope: profileScope,
-      );
-    }
+    await _removeEntryFromCache(entryId);
   }
 
   Future<void> _upsertEntryInCache(Map<String, dynamic> entry) async {
@@ -231,49 +70,7 @@ class DailyJournalRepository {
     await _writeCachedEntriesJson(entries);
   }
 
-  List<Map<String, dynamic>> _mergeRemoteWithCachedEntries({
-    required List<Map<String, dynamic>> remoteEntries,
-    required List<Map<String, dynamic>> cachedEntries,
-  }) {
-    final merged = remoteEntries.map(_normalizeEntry).toList();
-    final seenIds = merged
-        .map((entry) => entry['id']?.toString())
-        .whereType<String>()
-        .toSet();
-    final nowUtc = DateTime.now().toUtc();
 
-    for (final cachedEntry in cachedEntries) {
-      final normalized = _normalizeEntry(cachedEntry);
-      final id = normalized['id']?.toString();
-      if (id == null || id.isEmpty || seenIds.contains(id)) {
-        continue;
-      }
-      if (_shouldKeepCachedEntry(normalized, nowUtc)) {
-        merged.add(normalized);
-        seenIds.add(id);
-      }
-    }
-
-    _sortEntriesDescending(merged);
-    return merged;
-  }
-
-  bool _shouldKeepCachedEntry(Map<String, dynamic> entry, DateTime nowUtc) {
-    final entryId = entry['id']?.toString() ?? '';
-    if (_isPendingId(entryId) || entry['pending_sync'] == true) {
-      return true;
-    }
-
-    final shadowUntilRaw = entry[_localShadowUntilKey]?.toString();
-    if (shadowUntilRaw == null || shadowUntilRaw.trim().isEmpty) {
-      return false;
-    }
-    final shadowUntil = DateTime.tryParse(shadowUntilRaw.trim());
-    if (shadowUntil == null) {
-      return false;
-    }
-    return shadowUntil.toUtc().isAfter(nowUtc);
-  }
 
   Future<void> _upsertSymptomInCache(
     String entryId,
@@ -365,57 +162,7 @@ class DailyJournalRepository {
     return removed;
   }
 
-  Future<void> _discardMatchingPendingCreates({
-    required String? entryDate,
-    required String? profileScope,
-  }) async {
-    if (entryDate == null || entryDate.trim().isEmpty) {
-      return;
-    }
 
-    final queued = await _localDatabase.listPendingOperations(limit: 500);
-    for (final operation in queued) {
-      if (operation.method.toUpperCase() != 'POST' ||
-          operation.path != '/api/v1/daily-entries') {
-        continue;
-      }
-      if (!_sameProfileScope(operation.profileId, profileScope)) {
-        continue;
-      }
-
-      final payload = operation.payload;
-      if (payload == null || payload.trim().isEmpty) {
-        continue;
-      }
-
-      try {
-        final decoded = jsonDecode(payload);
-        if (decoded is! Map) {
-          continue;
-        }
-        final pendingDate = decoded['entry_date']?.toString().trim();
-        if (pendingDate == null || pendingDate.isEmpty) {
-          continue;
-        }
-        if (pendingDate == entryDate.trim()) {
-          await _localDatabase.markPendingOperationSynced(operation.id);
-        }
-      } catch (_) {
-        // Best effort cleanup for orphaned pending create operations.
-      }
-    }
-  }
-
-  bool _sameProfileScope(String? left, String? right) {
-    final normalizedLeft = left?.trim();
-    final normalizedRight = right?.trim();
-    final leftEmpty = normalizedLeft == null || normalizedLeft.isEmpty;
-    final rightEmpty = normalizedRight == null || normalizedRight.isEmpty;
-    if (leftEmpty && rightEmpty) {
-      return true;
-    }
-    return normalizedLeft == normalizedRight;
-  }
 
   List<DailyEntry> _decodeEntries(List<Map<String, dynamic>> entries) {
     return entries.map(DailyEntry.fromJson).toList();
@@ -648,13 +395,7 @@ class DailyJournalRepository {
     return double.tryParse(value.toString());
   }
 
-  bool _isPendingId(String value) => value.startsWith('pending-');
-
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
-
   String _pendingId(String prefix) {
-    return 'pending-$prefix-${DateTime.now().microsecondsSinceEpoch}';
+    return 'local-$prefix-${DateTime.now().microsecondsSinceEpoch}';
   }
-
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

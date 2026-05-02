@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -48,11 +47,11 @@ class HealthDossierScreen extends ConsumerWidget {
             subject: 'ClinDiary health dossier',
           ),
         );
-      } on ApiException catch (error) {
+      } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -78,11 +77,11 @@ class HealthDossierScreen extends ConsumerWidget {
             subject: 'ClinDiary structured backup',
           ),
         );
-      } on ApiException catch (error) {
+      } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -108,11 +107,11 @@ class HealthDossierScreen extends ConsumerWidget {
             subject: 'ClinDiary emergency card',
           ),
         );
-      } on ApiException catch (error) {
+      } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -275,11 +274,11 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('JSON backup imported.')));
-      } on ApiException catch (error) {
+      } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -350,11 +349,11 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Secure link created.')));
-      } on ApiException catch (error) {
+      } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -393,11 +392,11 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Link revoked.')));
-      } on ApiException catch (error) {
+      } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
 

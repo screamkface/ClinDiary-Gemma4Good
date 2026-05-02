@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/domain/italian_regions.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
@@ -310,11 +309,11 @@ class ProfileScreen extends ConsumerWidget {
     try {
       await ref.read(profileRepositoryProvider).deleteAllergy(allergyId);
       ref.invalidate(profileBundleProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -334,11 +333,11 @@ class ProfileScreen extends ConsumerWidget {
     try {
       await ref.read(profileRepositoryProvider).deleteCondition(conditionId);
       ref.invalidate(profileBundleProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -377,11 +376,11 @@ class ProfileScreen extends ConsumerWidget {
       ref.invalidate(localMedicationReminderStatusProvider);
       ref.invalidate(medicationLogsProvider);
       ref.invalidate(timelineEventsProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -403,11 +402,11 @@ class ProfileScreen extends ConsumerWidget {
           .read(profileRepositoryProvider)
           .deleteFamilyHistory(familyHistoryId);
       ref.invalidate(profileBundleProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -957,11 +956,11 @@ class ProfileScreen extends ConsumerWidget {
                   if (context.mounted) {
                     Navigator.of(context, rootNavigator: true).maybePop();
                   }
-                } on ApiException catch (error) {
+                } catch (error) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
               child: const Text('Save'),
@@ -1024,11 +1023,11 @@ class ProfileScreen extends ConsumerWidget {
                   });
                   ref.invalidate(profileBundleProvider);
                   if (context.mounted) Navigator.of(context).pop();
-                } on ApiException catch (error) {
+                } catch (error) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
               child: const Text('Save'),
@@ -1096,11 +1095,11 @@ class ProfileScreen extends ConsumerWidget {
                   });
                   ref.invalidate(profileBundleProvider);
                   if (context.mounted) Navigator.of(context).pop();
-                } on ApiException catch (error) {
+                } catch (error) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
               child: const Text('Save'),
@@ -1239,11 +1238,11 @@ class ProfileScreen extends ConsumerWidget {
                   ref.invalidate(localMedicationReminderStatusProvider);
                   ref.invalidate(timelineEventsProvider);
                   if (context.mounted) Navigator.of(context).pop();
-                } on ApiException catch (error) {
+                } catch (error) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
               child: const Text('Save'),
@@ -1295,11 +1294,11 @@ class ProfileScreen extends ConsumerWidget {
                 });
                 ref.invalidate(profileBundleProvider);
                 if (context.mounted) Navigator.of(context).pop();
-              } on ApiException catch (error) {
+              } catch (error) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text(error.message)));
+                ).showSnackBar(SnackBar(content: Text(error.toString())));
               }
             },
             child: const Text('Save'),

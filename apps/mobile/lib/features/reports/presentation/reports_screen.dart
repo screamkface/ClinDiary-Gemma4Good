@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/reports/domain/clinical_report.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
@@ -44,11 +43,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       setState(() => _latestReport = report);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);

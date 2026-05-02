@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/dossier/data/dossier_repository.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -59,13 +58,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
           ),
         ),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _savingAiPrivacy = false);
@@ -108,13 +107,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(successMessage)));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } catch (error) {
       if (!mounted) {
         return;
@@ -199,13 +198,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
         return;
       }
       context.go('/');
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } catch (error) {
       if (!mounted) {
         return;
@@ -240,13 +239,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
           ),
         ),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } catch (error) {
       if (!mounted) {
         return;
@@ -307,13 +306,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
           content: Text('Encrypted backup restored: ${result.fileName}.'),
         ),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } catch (error) {
       if (!mounted) {
         return;

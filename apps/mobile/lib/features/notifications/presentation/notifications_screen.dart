@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
@@ -26,11 +25,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     try {
       await ref.read(notificationsRepositoryProvider).markRead(item.id);
       ref.invalidate(notificationsProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _markingReadId = null);
@@ -49,11 +48,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       if (field == 'medication_reminders_enabled') {
         await _syncLocalMedicationReminders(showFeedback: false);
       }
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _savingPreferences = false);
@@ -92,11 +91,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
         ),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _syncingLocalReminders = false);
@@ -136,11 +135,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(_formatDeliveryReport(report))));
       ref.invalidate(notificationsProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _sendingTestDelivery = false);

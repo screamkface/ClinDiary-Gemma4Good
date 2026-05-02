@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -32,11 +31,11 @@ class _ClinicalEpisodesScreenState
       }
       ref.invalidate(profileBundleProvider);
       ref.invalidate(healthDossierProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -68,11 +67,11 @@ class _ClinicalEpisodesScreenState
       await ref.read(profileRepositoryProvider).deleteClinicalEpisode(item.id);
       ref.invalidate(profileBundleProvider);
       ref.invalidate(healthDossierProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 

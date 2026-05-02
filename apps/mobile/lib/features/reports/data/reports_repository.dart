@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:clindiary/app/core/app_config.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
@@ -11,13 +10,11 @@ import 'package:clindiary/features/reports/domain/clinical_report.dart';
 
 class ReportsRepository {
   ReportsRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
     AppConfig appConfig = defaultAppConfig,
     OnDeviceAiService? onDeviceAiService,
     OnDevicePromptBuilder? onDevicePromptBuilder,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase,
+  }) : _localDatabase = localDatabase,
        _appConfig = appConfig,
        _onDeviceAiService = onDeviceAiService ?? OnDeviceAiService(),
        _onDevicePromptBuilder =
@@ -26,7 +23,6 @@ class ReportsRepository {
 
   static const _lastReportCacheKey = 'reports_last_generated';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
   final AppConfig _appConfig;
   final OnDeviceAiService _onDeviceAiService;
@@ -36,24 +32,12 @@ class ReportsRepository {
     required String reportType,
     DateTime? referenceDate,
   }) async {
-    final response = _appConfig.localOnlyMode
-        ? _buildReportJson(
-            await _generateLocalReport(
-              reportType: reportType,
-              referenceDate: referenceDate ?? DateTime.now(),
-            ),
-          )
-        : await _apiClient.postJson(
-            '/api/v1/reports/generate',
-            body: {
-              'report_type': reportType,
-              if (referenceDate != null)
-                'reference_date': referenceDate
-                    .toIso8601String()
-                    .split('T')
-                    .first,
-            },
-          );
+    final response = _buildReportJson(
+      await _generateLocalReport(
+        reportType: reportType,
+        referenceDate: referenceDate ?? DateTime.now(),
+      ),
+    );
     await _localDatabase.putCache(
       key: await _cacheKeyForCurrentProfile(),
       payload: jsonEncode(response),

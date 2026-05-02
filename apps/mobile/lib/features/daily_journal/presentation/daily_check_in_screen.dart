@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/daily_journal/domain/voice_check_in_draft.dart';
 import 'package:clindiary/shared/widgets/metric_slider.dart';
@@ -562,11 +561,11 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
       } else {
         context.pop();
       }
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _saving = false);

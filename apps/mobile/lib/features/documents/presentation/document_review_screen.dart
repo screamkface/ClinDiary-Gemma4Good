@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_manual_review.dart';
@@ -113,13 +112,13 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
         const SnackBar(content: Text('Manual review saved.')),
       );
       Navigator.of(context).maybePop();
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _saving = false);

@@ -1,50 +1,39 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
 
 class PreventionCenterRepository {
   PreventionCenterRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
   static const _cacheKey = 'prevention_center';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<PreventionCenterData> fetchCenter({String? regionCode}) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJson(
-        _preventionCenterPath(resolvedRegionCode),
-      );
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(
-          _localDatabase,
-          _cacheKeyForRegion(resolvedRegionCode),
+    final cached = await _readCachedCenter(resolvedRegionCode);
+    if (cached == null) {
+      return PreventionCenterData(
+        statusSummary: const PreventionStatusSummary(
+          overallStatus: 'up_to_date',
+          totalScreenings: 0,
+          completedScreenings: 0,
+          overdueScreenings: 0,
+          recommendedScreenings: 0,
+          nextScreeningDate: null,
+          nextScreeningName: null,
         ),
-        payload: jsonEncode(response),
-      );
-      return PreventionCenterData.fromJson(response);
-    } on ApiException {
-      final cached = await _readCachedCenter(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return PreventionCenterData.fromJson(
-        jsonDecode(cached) as Map<String, dynamic>,
-      );
-    } catch (error) {
-      final cached = await _readCachedCenter(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return PreventionCenterData.fromJson(
-        jsonDecode(cached) as Map<String, dynamic>,
+        actions: const <PreventionActionItem>[],
+        categories: const <PreventionCategorySummary>[],
       );
     }
+    return PreventionCenterData.fromJson(
+      jsonDecode(cached) as Map<String, dynamic>,
+    );
   }
 
   String _preventionCenterPath(String regionCode) {

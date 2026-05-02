@@ -1,5 +1,4 @@
 import 'package:clindiary/app/core/app_config.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
@@ -60,15 +59,6 @@ final sessionExpiryNotifierProvider =
       (ref) => SessionExpiryNotifier(),
     );
 
-final apiClientProvider = Provider<ApiClient>(
-  (ref) => ApiClient(
-    client: ref.watch(httpClientProvider),
-    config: ref.watch(appConfigProvider),
-    tokenStorage: ref.watch(secureTokenStorageProvider),
-    sessionExpiryNotifier: ref.watch(sessionExpiryNotifierProvider),
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
-);
 
 final localMedicationReminderServiceProvider =
     Provider<LocalMedicationReminderService>(
@@ -81,10 +71,8 @@ final wearableHealthServiceProvider = Provider<WearableHealthService>(
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(
-    apiClient: ref.watch(apiClientProvider),
     tokenStorage: ref.watch(secureTokenStorageProvider),
     localDatabase: ref.watch(localDatabaseProvider),
-    appConfig: ref.watch(appConfigProvider),
     localDocumentVaultService: ref.watch(localDocumentVaultServiceProvider),
     localMedicationReminderService: ref.watch(
       localMedicationReminderServiceProvider,
@@ -94,32 +82,27 @@ final authRepositoryProvider = Provider<AuthRepository>(
 
 final devicesRepositoryProvider = Provider<DevicesRepository>(
   (ref) => DevicesRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ProfileRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final dailyJournalRepositoryProvider = Provider<DailyJournalRepository>(
   (ref) => DailyJournalRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final insightsRepositoryProvider = Provider<InsightsRepository>(
   (ref) => InsightsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
     onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
-    appConfig: ref.watch(appConfigProvider),
   ),
 );
 
@@ -160,28 +143,24 @@ final onDevicePromptBuilderProvider = Provider<OnDevicePromptBuilder>(
 
 final historyRepositoryProvider = Provider<HistoryRepository>(
   (ref) => HistoryRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final alertsRepositoryProvider = Provider<AlertsRepository>(
   (ref) => AlertsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final timelineRepositoryProvider = Provider<TimelineRepository>(
   (ref) => TimelineRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final documentsRepositoryProvider = Provider<DocumentsRepository>(
   (ref) => DocumentsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
     appConfig: ref.watch(appConfigProvider),
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
@@ -191,28 +170,24 @@ final documentsRepositoryProvider = Provider<DocumentsRepository>(
 
 final screeningsRepositoryProvider = Provider<ScreeningsRepository>(
   (ref) => ScreeningsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final medicationsRepositoryProvider = Provider<MedicationsRepository>(
   (ref) => MedicationsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final notificationsRepositoryProvider = Provider<NotificationsRepository>(
   (ref) => NotificationsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final reportsRepositoryProvider = Provider<ReportsRepository>(
   (ref) => ReportsRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
     appConfig: ref.watch(appConfigProvider),
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
@@ -222,7 +197,6 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
 
 final wearablesRepositoryProvider = Provider<WearablesRepository>(
   (ref) => WearablesRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
@@ -243,16 +217,13 @@ final localDocumentVaultServiceProvider = Provider<LocalDocumentVaultService>((
 
 final preventionCenterRepositoryProvider = Provider<PreventionCenterRepository>(
   (ref) => PreventionCenterRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
   ),
 );
 
 final dossierRepositoryProvider = Provider<DossierRepository>(
   (ref) => DossierRepository(
-    apiClient: ref.watch(apiClientProvider),
     localDatabase: ref.watch(localDatabaseProvider),
-    appConfig: ref.watch(appConfigProvider),
   ),
 );
 

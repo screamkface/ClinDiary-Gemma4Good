@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -48,11 +47,11 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
           .read(screeningsRepositoryProvider)
           .recompute(regionCode: regionCode);
       invalidateScreeningProviders(ref, includeCatalog: true);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _isRecomputing = false);
@@ -69,11 +68,11 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
           .read(screeningsRepositoryProvider)
           .markDone(item.id, regionCode: regionCode);
       invalidateScreeningProviders(ref);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScreeningId = null);
@@ -98,11 +97,11 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
             .markDone(item.id, regionCode: regionCode);
       }
       invalidateScreeningProviders(ref);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScreeningId = null);

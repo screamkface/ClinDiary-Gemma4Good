@@ -1,49 +1,23 @@
 import 'dart:convert';
 
 import 'package:clindiary/app/core/json/json_deep_copy.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 
 class MedicationsRepository {
   MedicationsRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
   static const _logsCacheKey = 'medication_logs';
   static const _profileBundleCacheKey = 'profile_bundle';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<List<MedicationLogItem>> fetchLogs() async {
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJsonList('/api/v1/medications/logs');
-      final logs = response
-          .map(
-            (item) => MedicationLogItem.fromJson(item as Map<String, dynamic>),
-          )
-          .toList();
-      await _cacheLogs(logs);
-      return logs;
-    } on ApiException catch (error) {
-      final cached = await _readCachedLogs();
-      if (cached == null) {
-        if (_isLocalOnlyError(error)) {
-          return const <MedicationLogItem>[];
-        }
-        rethrow;
-      }
-      return cached;
-    } catch (_) {
-      final cached = await _readCachedLogs();
-      if (cached == null) rethrow;
-      return cached;
-    }
+    final cached = await _readCachedLogs();
+    return cached ?? const <MedicationLogItem>[];
   }
 
   Future<MedicationLogItem> logMedication({
@@ -57,37 +31,14 @@ class MedicationsRepository {
       'status': status,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     };
-    try {
-      final response = await _apiClient.postJson(
-        '/api/v1/medications/$medicationId/log',
-        body: payload,
-      );
-      return MedicationLogItem.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueMedicationLog(
-        medicationId: medicationId,
-        medicationName: medicationName,
-        medicationDosage: medicationDosage,
-        status: status,
-        notes: notes,
-        lastError: error.message,
-        payload: payload,
-        enqueueOperation: !_isLocalOnlyError(error),
-      );
-    } catch (error) {
-      return _queueMedicationLog(
-        medicationId: medicationId,
-        medicationName: medicationName,
-        medicationDosage: medicationDosage,
-        status: status,
-        notes: notes,
-        lastError: error.toString(),
-        payload: payload,
-      );
-    }
+    return _queueMedicationLog(
+      medicationId: medicationId,
+      medicationName: medicationName,
+      medicationDosage: medicationDosage,
+      status: status,
+      notes: notes,
+      payload: payload,
+    );
   }
 
   Future<MedicationLogItem> _queueMedicationLog({
@@ -97,17 +48,7 @@ class MedicationsRepository {
     required Map<String, dynamic> payload,
     String? notes,
     String? medicationDosage,
-    String? lastError,
-    bool enqueueOperation = true,
   }) async {
-    if (enqueueOperation) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: '/api/v1/medications/$medicationId/log',
-        body: payload,
-        lastError: lastError,
-      );
-    }
     final pendingItem = MedicationLogItem(
       id: 'pending-${DateTime.now().microsecondsSinceEpoch}',
       medicationId: medicationId,
@@ -129,55 +70,14 @@ class MedicationsRepository {
     required String scheduleId,
     required Map<String, dynamic> body,
   }) async {
-    final path = '/api/v1/medications/$medicationId/schedules/$scheduleId';
-    try {
-      await _apiClient.putJson(path, body: body);
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: body,
-        ),
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'PUT',
-          path: path,
-          body: body,
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: body,
-        ),
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'PUT',
-        path: path,
-        body: body,
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: body,
-        ),
-      );
-    }
+    await _patchProfileBundle(
+      (bundle) => _updateScheduleInBundle(
+        bundle,
+        medicationId: medicationId,
+        scheduleId: scheduleId,
+        payload: body,
+      ),
+    );
   }
 
   Future<void> pauseSchedule({
@@ -185,205 +85,50 @@ class MedicationsRepository {
     required String scheduleId,
     required DateTime pausedUntil,
   }) async {
-    final path =
-        '/api/v1/medications/$medicationId/schedules/$scheduleId/pause';
     final payload = {
       'paused_until': pausedUntil.toIso8601String().split('T').first,
     };
-    try {
-      await _apiClient.postJson(path, body: payload);
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: payload,
-        ),
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: payload,
-        ),
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: payload,
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: payload,
-        ),
-      );
-    }
+    await _patchProfileBundle(
+      (bundle) => _updateScheduleInBundle(
+        bundle,
+        medicationId: medicationId,
+        scheduleId: scheduleId,
+        payload: payload,
+      ),
+    );
   }
 
   Future<void> resumeSchedule({
     required String medicationId,
     required String scheduleId,
   }) async {
-    final path =
-        '/api/v1/medications/$medicationId/schedules/$scheduleId/resume';
-    const payload = <String, dynamic>{};
-    try {
-      await _apiClient.postJson(path, body: payload);
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: const {'paused_until': null},
-        ),
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: const {'paused_until': null},
-        ),
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: payload,
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _patchProfileBundle(
-        (bundle) => _updateScheduleInBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-          payload: const {'paused_until': null},
-        ),
-      );
-    }
+    await _patchProfileBundle(
+      (bundle) => _updateScheduleInBundle(
+        bundle,
+        medicationId: medicationId,
+        scheduleId: scheduleId,
+        payload: const {'paused_until': null},
+      ),
+    );
   }
 
   Future<void> deleteSchedule({
     required String medicationId,
     required String scheduleId,
   }) async {
-    final path = '/api/v1/medications/$medicationId/schedules/$scheduleId';
-    try {
-      await _apiClient.delete(path);
-      await _patchProfileBundle(
-        (bundle) => _removeScheduleFromBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-        ),
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'DELETE',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _patchProfileBundle(
-        (bundle) => _removeScheduleFromBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-        ),
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'DELETE',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _patchProfileBundle(
-        (bundle) => _removeScheduleFromBundle(
-          bundle,
-          medicationId: medicationId,
-          scheduleId: scheduleId,
-        ),
-      );
-    }
+    await _patchProfileBundle(
+      (bundle) => _removeScheduleFromBundle(
+        bundle,
+        medicationId: medicationId,
+        scheduleId: scheduleId,
+      ),
+    );
   }
 
   Future<void> deleteMedication(String medicationId) async {
-    final path = '/api/v1/profile/medications/$medicationId';
-    try {
-      await _apiClient.delete(path);
-      await _patchProfileBundle(
-        (bundle) => _removeMedicationFromBundle(bundle, medicationId),
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'DELETE',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _patchProfileBundle(
-        (bundle) => _removeMedicationFromBundle(bundle, medicationId),
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'DELETE',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _patchProfileBundle(
-        (bundle) => _removeMedicationFromBundle(bundle, medicationId),
-      );
-    }
+    await _patchProfileBundle(
+      (bundle) => _removeMedicationFromBundle(bundle, medicationId),
+    );
   }
 
   Future<void> _patchProfileBundle(
@@ -543,7 +288,5 @@ class MedicationsRepository {
     return profileScopedCacheKey(_localDatabase, _logsCacheKey);
   }
 
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
 
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

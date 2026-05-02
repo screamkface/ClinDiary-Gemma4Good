@@ -1,97 +1,35 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 
 class AlertsRepository {
   AlertsRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
   static const _alertsCacheKey = 'alerts_list';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<List<ClinicalAlert>> fetchAlerts() async {
-    try {
-      final response = await _apiClient.getJsonList('/api/v1/alerts');
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(_localDatabase, _alertsCacheKey),
-        payload: jsonEncode(response),
-      );
-      return response
-          .map((item) => ClinicalAlert.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } on ApiException catch (error) {
-      final cached = await _readCachedAlertsJson();
-      if (cached == null) {
-        if (_isLocalOnlyError(error)) {
-          return const <ClinicalAlert>[];
-        }
-        rethrow;
-      }
-      return cached.map(ClinicalAlert.fromJson).toList();
-    } catch (_) {
-      final cached = await _readCachedAlertsJson();
-      if (cached == null) rethrow;
-      return cached.map(ClinicalAlert.fromJson).toList();
+    final cached = await _readCachedAlertsJson();
+    if (cached == null) {
+      return const <ClinicalAlert>[];
     }
+    return cached.map(ClinicalAlert.fromJson).toList();
   }
 
   Future<ClinicalAlert> resolveAlert(
     String alertId, {
     String? resolutionNotes,
   }) async {
-    final path = '/api/v1/alerts/$alertId/resolve';
-    final payload = {
-      if (resolutionNotes != null && resolutionNotes.isNotEmpty)
-        'resolution_notes': resolutionNotes,
-    };
-    try {
-      final response = await _apiClient.postJson(path, body: payload);
-      final updated = await _upsertResolvedAlertInCache(
-        alertId: alertId,
-        resolutionNotes: resolutionNotes,
-        serverAlert: response,
-      );
-      return ClinicalAlert.fromJson(updated);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      final updated = await _upsertResolvedAlertInCache(
-        alertId: alertId,
-        resolutionNotes: resolutionNotes,
-      );
-      return ClinicalAlert.fromJson(updated);
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: payload,
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      final updated = await _upsertResolvedAlertInCache(
-        alertId: alertId,
-        resolutionNotes: resolutionNotes,
-      );
-      return ClinicalAlert.fromJson(updated);
-    }
+    final updated = await _upsertResolvedAlertInCache(
+      alertId: alertId,
+      resolutionNotes: resolutionNotes,
+    );
+    return ClinicalAlert.fromJson(updated);
   }
 
   Future<List<Map<String, dynamic>>?> _readCachedAlertsJson() async {
@@ -168,7 +106,5 @@ class AlertsRepository {
     return fallback;
   }
 
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
 
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

@@ -1,134 +1,48 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 
 class ScreeningsRepository {
   ScreeningsRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
   static const _catalogCacheKey = 'screenings_catalog';
   static const _statusCacheKey = 'screenings_me';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<List<ScreeningCatalogItem>> fetchCatalog({String? regionCode}) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJsonList(
-        _screeningsPath('/api/v1/screenings/catalog', resolvedRegionCode),
-      );
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(
-          _localDatabase,
-          _catalogCacheKeyForRegion(resolvedRegionCode),
-        ),
-        payload: jsonEncode(response),
-      );
-      return _decodeCatalogItems(response);
-    } on ApiException {
-      final cached = await _readCatalogCache(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return _decodeCatalogCache(jsonDecode(cached) as List<dynamic>);
-    } catch (_) {
-      final cached = await _readCatalogCache(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return _decodeCatalogCache(jsonDecode(cached) as List<dynamic>);
+    final cached = await _readCatalogCache(resolvedRegionCode);
+    if (cached == null) {
+      return const <ScreeningCatalogItem>[];
     }
+    return _decodeCatalogCache(jsonDecode(cached) as List<dynamic>);
   }
 
   Future<List<PatientScreeningStatusItem>> fetchMyScreenings({
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJsonList(
-        _screeningsPath('/api/v1/screenings/me', resolvedRegionCode),
-      );
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(
-          _localDatabase,
-          _statusCacheKeyForRegion(resolvedRegionCode),
-        ),
-        payload: jsonEncode(response),
-      );
-      return _decodeStatusItems(response);
-    } on ApiException catch (error) {
-      final cached = await _readStatusCache(resolvedRegionCode);
-      if (cached == null) {
-        if (_isLocalOnlyError(error)) {
-          return const <PatientScreeningStatusItem>[];
-        }
-        rethrow;
-      }
-      return _decodeStatusItems(jsonDecode(cached) as List<dynamic>);
-    } catch (_) {
-      final cached = await _readStatusCache(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return _decodeStatusItems(jsonDecode(cached) as List<dynamic>);
+    final cached = await _readStatusCache(resolvedRegionCode);
+    if (cached == null) {
+      return const <PatientScreeningStatusItem>[];
     }
+    return _decodeStatusItems(jsonDecode(cached) as List<dynamic>);
   }
 
   Future<List<PatientScreeningStatusItem>> recompute({
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    final path = _screeningsPath(
-      '/api/v1/screenings/recompute',
-      resolvedRegionCode,
-    );
-    try {
-      final response = await _apiClient.postJson(path);
-      final items = _decodeStatusItems(response['items'] as List<dynamic>);
-      await _writeStatusCacheJson(
-        resolvedRegionCode,
-        (response['items'] as List<dynamic>)
-            .map(
-              (item) => Map<String, dynamic>.from(item as Map<String, dynamic>),
-            )
-            .toList(),
-      );
-      return items;
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      final cached = await _readStatusCacheJson(resolvedRegionCode);
-      if (cached == null) {
-        return const <PatientScreeningStatusItem>[];
-      }
-      return _decodeStatusItems(cached);
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      final cached = await _readStatusCacheJson(resolvedRegionCode);
-      if (cached == null) {
-        rethrow;
-      }
-      return _decodeStatusItems(cached);
+    final cached = await _readStatusCacheJson(resolvedRegionCode);
+    if (cached == null) {
+      return const <PatientScreeningStatusItem>[];
     }
+    return _decodeStatusItems(cached);
   }
 
   Future<PatientScreeningStatusItem> markDone(
@@ -136,43 +50,8 @@ class ScreeningsRepository {
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    final path = _screeningsPath(
-      '/api/v1/screenings/$screeningId/mark-done',
-      resolvedRegionCode,
-    );
-    try {
-      final response = await _apiClient.postJson(path, body: const {});
-      await _upsertStatusItemInCache(
-        resolvedRegionCode,
-        Map<String, dynamic>.from(response),
-      );
-      return PatientScreeningStatusItem.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      final fallback = await _markDoneInCache(resolvedRegionCode, screeningId);
-      return PatientScreeningStatusItem.fromJson(fallback);
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      final fallback = await _markDoneInCache(resolvedRegionCode, screeningId);
-      return PatientScreeningStatusItem.fromJson(fallback);
-    }
+    final fallback = await _markDoneInCache(resolvedRegionCode, screeningId);
+    return PatientScreeningStatusItem.fromJson(fallback);
   }
 
   Future<PatientScreeningStatusItem> clearCurrentYearCompletion(
@@ -180,49 +59,11 @@ class ScreeningsRepository {
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    final path = _screeningsPath(
-      '/api/v1/screenings/$screeningId/current-year-completion',
+    final fallback = await _clearCurrentYearInCache(
       resolvedRegionCode,
+      screeningId,
     );
-    try {
-      final response = await _apiClient.deleteJson(path);
-      await _upsertStatusItemInCache(
-        resolvedRegionCode,
-        Map<String, dynamic>.from(response),
-      );
-      return PatientScreeningStatusItem.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'DELETE',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      final fallback = await _clearCurrentYearInCache(
-        resolvedRegionCode,
-        screeningId,
-      );
-      return PatientScreeningStatusItem.fromJson(fallback);
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'DELETE',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      final fallback = await _clearCurrentYearInCache(
-        resolvedRegionCode,
-        screeningId,
-      );
-      return PatientScreeningStatusItem.fromJson(fallback);
-    }
+    return PatientScreeningStatusItem.fromJson(fallback);
   }
 
   Future<List<Map<String, dynamic>>?> _readStatusCacheJson(
@@ -420,7 +261,5 @@ class ScreeningsRepository {
         .toList();
   }
 
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
 
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

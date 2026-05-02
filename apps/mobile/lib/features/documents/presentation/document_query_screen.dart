@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
@@ -75,11 +74,11 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
         return;
       }
       setState(() => _result = result);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      setState(() => _errorMessage = error.message);
+      setState(() => _errorMessage = error.toString());
     } catch (error) {
       if (!mounted) {
         return;

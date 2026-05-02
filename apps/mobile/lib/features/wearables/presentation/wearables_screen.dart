@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/wearables/domain/wearable_day_summary.dart';
 import 'package:clindiary/features/wearables/domain/wearable_sync.dart';
@@ -129,11 +128,11 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
         ).showSnackBar(SnackBar(content: Text(message)));
       }
       return syncedCount;
-    } on ApiException catch (error) {
+    } catch (error) {
       if (mounted && showFeedback) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } catch (error) {
       if (mounted && showFeedback) {

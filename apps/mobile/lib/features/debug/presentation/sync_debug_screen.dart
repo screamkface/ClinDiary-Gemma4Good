@@ -1,4 +1,4 @@
-﻿import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
@@ -17,22 +17,13 @@ class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
   bool _clearing = false;
 
   Future<void> _flushQueue() async {
-    setState(() => _flushing = true);
-    try {
-      final synced = await ref
-          .read(apiClientProvider)
-          .flushPendingOperations(limit: 50);
-      ref.invalidate(pendingOperationsProvider);
-      ref.invalidate(requestTracesProvider);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Operations synced: $synced')));
-    } finally {
-      if (mounted) {
-        setState(() => _flushing = false);
-      }
-    }
+    // Network sync is disabled in local-only mode.
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('App is in local-only mode — no operations to sync.'),
+      ),
+    );
   }
 
   Future<void> _clearLocalDebugData() async {

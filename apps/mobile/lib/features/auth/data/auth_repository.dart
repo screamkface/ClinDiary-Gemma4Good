@@ -1,134 +1,51 @@
-import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/demo_seed_data.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthRepository {
   AuthRepository({
-    required ApiClient apiClient,
     required SecureTokenStorage tokenStorage,
     required LocalDatabase localDatabase,
-    required AppConfig appConfig,
     required LocalDocumentVaultService localDocumentVaultService,
     required LocalMedicationReminderService localMedicationReminderService,
-  }) : _apiClient = apiClient,
-       _tokenStorage = tokenStorage,
+  }) : _tokenStorage = tokenStorage,
        _localDatabase = localDatabase,
-       _hackathonDemoMode = appConfig.hackathonDemoMode,
-       _localOnlyMode = appConfig.localOnlyMode,
-       _googleAuthClientId = appConfig.googleAuthClientId.trim(),
        _localDocumentVaultService = localDocumentVaultService,
        _localMedicationReminderService = localMedicationReminderService;
 
-  final ApiClient _apiClient;
   final SecureTokenStorage _tokenStorage;
   final LocalDatabase _localDatabase;
-  final bool _hackathonDemoMode;
-  final bool _localOnlyMode;
-  final String _googleAuthClientId;
   final LocalDocumentVaultService _localDocumentVaultService;
   final LocalMedicationReminderService _localMedicationReminderService;
-  Future<void>? _googleSignInInitialization;
-
-  bool get _shouldBypassAuth => _hackathonDemoMode || _localOnlyMode;
 
   Future<AuthSession?> restoreSession() async {
-    if (_shouldBypassAuth) {
-      return _restoreOrCreateBypassSession();
-    }
-
-    final session = await _tokenStorage.readSession();
-    if (session != null) {
-      final now = DateTime.now().toUtc();
-      if (session.refreshTokenExpiresAt.isBefore(
-        now.add(const Duration(seconds: 30)),
-      )) {
-        await clearLocalSessionState();
-        return null;
-      }
-      await _persistSessionContext(session);
-    }
-    return session;
+    return _restoreOrCreateBypassSession();
   }
 
   Future<AuthSession> login({
     required String email,
     required String password,
   }) async {
-    if (_shouldBypassAuth) {
-      return _restoreOrCreateBypassSession();
-    }
-
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/login',
-      authenticated: false,
-      body: {'email': email, 'password': password},
-    );
-    final session = AuthSession.fromJson(response);
-    await _tokenStorage.saveSession(session);
-    await _persistSessionContext(session);
-    return session;
+    return _restoreOrCreateBypassSession();
   }
 
   Future<AuthSession> loginWithGoogle({required String idToken}) async {
-    if (_shouldBypassAuth) {
-      return _restoreOrCreateBypassSession();
-    }
-
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/google',
-      authenticated: false,
-      body: {'id_token': idToken},
-    );
-    final session = AuthSession.fromJson(response);
-    await _tokenStorage.saveSession(session);
-    await _persistSessionContext(session);
-    return session;
+    return _restoreOrCreateBypassSession();
   }
 
   Future<AuthSession> register({
     required String email,
     required String password,
   }) async {
-    if (_shouldBypassAuth) {
-      return _restoreOrCreateBypassSession();
-    }
-
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/register',
-      authenticated: false,
-      body: {'email': email, 'password': password},
-    );
-    final session = AuthSession.fromJson(response);
-    await _tokenStorage.saveSession(session);
-    await _persistSessionContext(session);
-    return session;
+    return _restoreOrCreateBypassSession();
   }
 
   Future<void> logout() async {
-    final session = await _tokenStorage.readSession();
-    try {
-      if (session != null && session.user.authProvider == 'google') {
-        await _disconnectGoogleSession();
-      }
-      if (session != null) {
-        await _apiClient.postJson(
-          '/api/v1/auth/logout',
-          authenticated: false,
-          body: {'refresh_token': session.refreshToken},
-        );
-      }
-    } catch (_) {
-      // Logout best-effort: we still clear the local session below.
-    } finally {
-      await clearLocalSessionState();
-    }
+    await clearLocalSessionState();
   }
 
   Future<void> clearLocalSessionState() async {
@@ -141,31 +58,10 @@ class AuthRepository {
 
   Future<void> deleteAccount({required String confirmationText}) async {
     final session = await _tokenStorage.readSession();
-    if (session == null) {
-      return;
-    }
-
-    if (_shouldBypassAuth) {
-      await clearLocalSessionState();
-      await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
-      return;
-    }
-
-    await _apiClient.postJson(
-      '/api/v1/auth/account/delete',
-      body: {'confirmation_text': confirmationText},
-    );
-
-    try {
-      if (session.user.authProvider == 'google') {
-        await _disconnectGoogleSession();
-      }
-    } catch (_) {
-      // Continue local cleanup even if provider disconnect fails.
-    }
-
     await clearLocalSessionState();
-    await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
+    if (session != null) {
+      await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
+    }
   }
 
   Future<void> updateUser(UserSummary user) async {
@@ -178,16 +74,8 @@ class AuthRepository {
   }
 
   Future<String?> requestPasswordReset(String email) async {
-    if (_shouldBypassAuth) {
-      return null;
-    }
-
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/password-reset/request',
-      authenticated: false,
-      body: {'email': email},
-    );
-    return response['preview_token'] as String?;
+    // No-op in local-only mode.
+    return null;
   }
 
   Future<AuthSession> _restoreOrCreateBypassSession() async {
@@ -204,33 +92,6 @@ class AuthRepository {
       localDocumentVaultService: _localDocumentVaultService,
     );
     return session;
-  }
-
-  Future<void> _disconnectGoogleSession() async {
-    if (_googleAuthClientId.isEmpty) {
-      return;
-    }
-    try {
-      await _ensureGoogleSignInInitialized();
-      await GoogleSignIn.instance.disconnect();
-    } catch (_) {
-      try {
-        await GoogleSignIn.instance.signOut();
-      } catch (_) {
-        // Ignore Google sign-out failures during app logout.
-      }
-    }
-  }
-
-  Future<void> _ensureGoogleSignInInitialized() {
-    final existing = _googleSignInInitialization;
-    if (existing != null) {
-      return existing;
-    }
-    _googleSignInInitialization = GoogleSignIn.instance.initialize(
-      serverClientId: _googleAuthClientId,
-    );
-    return _googleSignInInitialization!;
   }
 
   Future<void> _persistSessionContext(AuthSession session) {

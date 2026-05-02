@@ -1,150 +1,44 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/devices/domain/device_hub.dart';
 
 class DevicesRepository {
   DevicesRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
   static const _overviewCacheKey = 'devices_overview';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<DeviceOverview> fetchOverview() async {
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJson('/api/v1/devices/overview');
-      await _writeOverviewCache(response);
-      return DeviceOverview.fromJson(response);
-    } on ApiException catch (error) {
-      final cached = await _readOverviewCacheJson();
-      if (cached != null) {
-        return DeviceOverview.fromJson(cached);
-      }
-      if (_isLocalOnlyError(error)) {
-        final empty = _emptyOverviewJson();
-        await _writeOverviewCache(empty);
-        return DeviceOverview.fromJson(empty);
-      }
-      rethrow;
-    } catch (_) {
-      final cached = await _readOverviewCacheJson();
-      if (cached != null) {
-        return DeviceOverview.fromJson(cached);
-      }
-      rethrow;
+    final cached = await _readOverviewCacheJson();
+    if (cached != null) {
+      return DeviceOverview.fromJson(cached);
     }
+    final empty = _emptyOverviewJson();
+    await _writeOverviewCache(empty);
+    return DeviceOverview.fromJson(empty);
   }
 
   Future<DeviceLinkResult> linkProvider({
     required String providerCode,
     Map<String, dynamic> payload = const {},
   }) async {
-    final path = '/api/v1/devices/providers/$providerCode/link';
-    try {
-      final response = await _apiClient.postJson(path, body: payload);
-      await _applyLinkResponseToCache(response);
-      return DeviceLinkResult.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      return _buildLocalLinkResult(
-        providerCode: providerCode,
-        payload: payload,
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: payload,
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      return _buildLocalLinkResult(
-        providerCode: providerCode,
-        payload: payload,
-      );
-    }
+    return _buildLocalLinkResult(
+      providerCode: providerCode,
+      payload: payload,
+    );
   }
 
   Future<void> disconnectConnection(String connectionId) async {
-    final path = '/api/v1/devices/connections/$connectionId';
-    try {
-      await _apiClient.delete(path);
-      await _removeConnectionFromCache(connectionId);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'DELETE',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _removeConnectionFromCache(connectionId);
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'DELETE',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _removeConnectionFromCache(connectionId);
-    }
+    await _removeConnectionFromCache(connectionId);
   }
 
   Future<DeviceSyncResult> syncConnection(String connectionId) async {
-    final path = '/api/v1/devices/connections/$connectionId/sync';
-    try {
-      final response = await _apiClient.postJson(path, body: const {});
-      await _applySyncResponseToCache(response, connectionId: connectionId);
-      return DeviceSyncResult.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: const {},
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      return _buildLocalSyncResult(connectionId);
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: const {},
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      return _buildLocalSyncResult(connectionId);
-    }
+    return _buildLocalSyncResult(connectionId);
   }
 
   Future<int> ingestMeasurements({
@@ -154,45 +48,10 @@ class DevicesRepository {
     if (items.isEmpty) {
       return 0;
     }
-
-    final path = '/api/v1/devices/connections/$connectionId/measurements';
-    final payload = {'items': items};
-    try {
-      final response = await _apiClient.postJson(path, body: payload);
-      final createdCount = response['created_count'] as int? ?? items.length;
-      await _appendMeasurementsToCache(
-        connectionId: connectionId,
-        items: items,
-      );
-      return createdCount;
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-        );
-      }
-      return _appendMeasurementsToCache(
-        connectionId: connectionId,
-        items: items,
-      );
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: payload,
-        lastError: error.toString(),
-      );
-      return _appendMeasurementsToCache(
-        connectionId: connectionId,
-        items: items,
-      );
-    }
+    return _appendMeasurementsToCache(
+      connectionId: connectionId,
+      items: items,
+    );
   }
 
   Future<Map<String, dynamic>?> _readOverviewCacheJson() async {
@@ -622,7 +481,5 @@ class DevicesRepository {
     };
   }
 
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
 
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

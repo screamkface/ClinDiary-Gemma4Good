@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
 import 'package:clindiary/features/profile/domain/italian_regions.dart';
@@ -111,11 +110,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       context.go('/app/home');
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

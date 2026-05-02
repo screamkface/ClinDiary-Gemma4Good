@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
@@ -48,11 +47,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go(
         session.user.onboardingCompleted ? '/app/home' : '/onboarding',
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.signInFailed(error.message))));
+      ).showSnackBar(SnackBar(content: Text(l10n.signInFailed(error.toString()))));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,10 +100,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.googleSignInFailed(error.toString()))),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.googleSignInFailed(error.message))),
+        SnackBar(content: Text(l10n.googleSignInFailed(error.toString()))),
       );
     } catch (error) {
       if (!mounted) return;
@@ -149,10 +148,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.passwordResetFailed(error.message))),
+        SnackBar(content: Text(l10n.passwordResetFailed(error.toString()))),
       );
     } catch (error) {
       if (!mounted) return;

@@ -1,63 +1,23 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/features/billing/domain/billing_status.dart';
 
 class BillingRepository {
-  BillingRepository({required ApiClient apiClient}) : _apiClient = apiClient;
-
-  final ApiClient _apiClient;
+  BillingRepository();
 
   Future<BillingStatus> fetchStatus() async {
-    try {
-      final response = await _apiClient.getJson('/api/v1/billing/me');
-      return BillingStatus.fromJson(response);
-    } on ApiException catch (error) {
-      if (_isLocalOnlyError(error)) {
-        return BillingStatus.fromJson(_statusForPlan('ai_plus_yearly'));
-      }
-      rethrow;
-    }
+    return BillingStatus.fromJson(_statusForPlan('ai_plus_yearly'));
   }
 
   Future<List<BillingPlan>> fetchPlans() async {
-    try {
-      final response = await _apiClient.getJsonList('/api/v1/billing/plans');
-      return response
-          .map((item) => BillingPlan.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } on ApiException catch (error) {
-      if (_isLocalOnlyError(error)) {
-        final plans = _defaultPlansJson();
-        return plans.map(BillingPlan.fromJson).toList();
-      }
-      rethrow;
-    }
+    final plans = _defaultPlansJson();
+    return plans.map(BillingPlan.fromJson).toList();
   }
 
   Future<BillingStatus> activateDebugPlan(String planCode) async {
-    try {
-      final response = await _apiClient.postJson(
-        '/api/v1/billing/dev/activate',
-        body: {'plan_code': planCode},
-      );
-      return BillingStatus.fromJson(response['status'] as Map<String, dynamic>);
-    } on ApiException catch (error) {
-      if (_isLocalOnlyError(error)) {
-        return BillingStatus.fromJson(_statusForPlan(planCode));
-      }
-      rethrow;
-    }
+    return BillingStatus.fromJson(_statusForPlan(planCode));
   }
 
   Future<BillingStatus> cancelDebugPlan() async {
-    try {
-      final response = await _apiClient.postJson('/api/v1/billing/dev/cancel');
-      return BillingStatus.fromJson(response['status'] as Map<String, dynamic>);
-    } on ApiException catch (error) {
-      if (_isLocalOnlyError(error)) {
-        return BillingStatus.fromJson(_statusForPlan('free'));
-      }
-      rethrow;
-    }
+    return BillingStatus.fromJson(_statusForPlan('free'));
   }
 
   List<Map<String, dynamic>> _defaultPlansJson() {
@@ -124,5 +84,5 @@ class BillingRepository {
     };
   }
 
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
+
 }

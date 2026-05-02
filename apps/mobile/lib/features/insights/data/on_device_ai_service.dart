@@ -52,7 +52,7 @@ class OnDeviceAiService {
         provider: 'on_device_litertlm',
         activeProviderLabel: 'On-device not ready',
         backendPreference: 'GPU',
-        lastError: error.message,
+        lastError: error.toString(),
         isCloudBypassedForThisRequest: true,
       );
     }
@@ -91,7 +91,7 @@ class OnDeviceAiService {
     } on MissingPluginException {
       throw Exception('On-device inference is available on Android only.');
     } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'On-device generation failed.');
+      throw Exception(error.toString() ?? 'On-device generation failed.');
     }
   }
 
@@ -117,7 +117,7 @@ class OnDeviceAiService {
     } on MissingPluginException {
       throw Exception('On-device inference is available on Android only.');
     } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'On-device generation failed.');
+      throw Exception(error.toString() ?? 'On-device generation failed.');
     }
   }
 
@@ -141,7 +141,7 @@ class OnDeviceAiService {
     } on MissingPluginException {
       throw Exception('On-device inference is available on Android only.');
     } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'On-device embedding generation failed.');
+      throw Exception(error.toString() ?? 'On-device embedding generation failed.');
     }
   }
 

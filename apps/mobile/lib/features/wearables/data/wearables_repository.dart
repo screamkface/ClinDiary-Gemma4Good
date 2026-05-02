@@ -1,105 +1,39 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/wearables/domain/wearable_day_summary.dart';
 
 class WearablesRepository {
   WearablesRepository({
-    required ApiClient apiClient,
     required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  }) : _localDatabase = localDatabase;
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<List<WearableDaySummary>> fetchDailySummaries({int days = 30}) async {
     final safeDays = days.clamp(1, 90);
-    final path = '/api/v1/wearables/daily-summaries?days=$safeDays';
-
-    try {
-      final response = await _apiClient.getJsonList(path);
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(_localDatabase, _cacheKey(safeDays)),
-        payload: jsonEncode(response),
-      );
-      return response
-          .map(
-            (item) => WearableDaySummary.fromJson(item as Map<String, dynamic>),
-          )
-          .toList();
-    } on ApiException catch (error) {
-      final cached = await readProfileScopedCache(
-        _localDatabase,
-        _cacheKey(safeDays),
-      );
-      if (cached == null) {
-        if (_isLocalOnlyError(error)) {
-          return const <WearableDaySummary>[];
-        }
-        rethrow;
-      }
-      final payload = jsonDecode(cached) as List<dynamic>;
-      return payload
-          .map(
-            (item) => WearableDaySummary.fromJson(item as Map<String, dynamic>),
-          )
-          .toList();
-    } catch (_) {
-      final cached = await readProfileScopedCache(
-        _localDatabase,
-        _cacheKey(safeDays),
-      );
-      if (cached == null) {
-        rethrow;
-      }
-      final payload = jsonDecode(cached) as List<dynamic>;
-      return payload
-          .map(
-            (item) => WearableDaySummary.fromJson(item as Map<String, dynamic>),
-          )
-          .toList();
+    final cached = await readProfileScopedCache(
+      _localDatabase,
+      _cacheKey(safeDays),
+    );
+    if (cached == null) {
+      return const <WearableDaySummary>[];
     }
+    final payload = jsonDecode(cached) as List<dynamic>;
+    return payload
+        .map(
+          (item) => WearableDaySummary.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
   }
 
   Future<int> syncDailySummaries(List<WearableDaySummary> items) async {
     if (items.isEmpty) {
       return 0;
     }
-    const path = '/api/v1/wearables/sync-daily';
-    final payload = {'items': items.map((item) => item.toSyncJson()).toList()};
-    try {
-      final response = await _apiClient.postJson(path, body: payload);
-      await _mergeSummariesIntoCache(items, days: 30);
-      return response['synced_count'] as int? ?? items.length;
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      if (!_isLocalOnlyError(error)) {
-        await _apiClient.enqueueJsonOperation(
-          method: 'POST',
-          path: path,
-          body: payload,
-          lastError: error.message,
-          replaceExisting: true,
-        );
-      }
-      await _mergeSummariesIntoCache(items, days: 30);
-      return items.length;
-    } catch (error) {
-      await _apiClient.enqueueJsonOperation(
-        method: 'POST',
-        path: path,
-        body: payload,
-        lastError: error.toString(),
-        replaceExisting: true,
-      );
-      await _mergeSummariesIntoCache(items, days: 30);
-      return items.length;
-    }
+    await _mergeSummariesIntoCache(items, days: 30);
+    return items.length;
   }
 
   Future<void> _mergeSummariesIntoCache(
@@ -162,8 +96,4 @@ class WearablesRepository {
   }
 
   static String _cacheKey(int days) => 'wearables_recent_$days';
-
-  bool _isLocalOnlyError(ApiException error) => error.code == 'local_only_mode';
-
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

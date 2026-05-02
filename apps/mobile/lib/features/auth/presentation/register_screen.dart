@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -43,10 +42,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
       if (!mounted) return;
       context.go('/onboarding');
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.registrationFailed(error.message))),
+        SnackBar(content: Text(l10n.registrationFailed(error.toString()))),
       );
     } catch (error) {
       if (!mounted) return;

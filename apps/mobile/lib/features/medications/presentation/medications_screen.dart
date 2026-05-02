@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
@@ -75,11 +74,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           ),
         );
       }
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyMedicationId = null);
@@ -106,11 +105,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Schedule updated.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -151,11 +150,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           ),
         ),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -177,11 +176,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Reminder resumed.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -211,11 +210,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Schedule removed.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -243,11 +242,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${medication.name} removed from profile.')),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyMedicationId = null);
@@ -433,13 +432,13 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             onPressed: () async {
               try {
                 await _refreshMedicationState();
-              } on ApiException catch (error) {
+              } catch (error) {
                 if (!mounted) {
                   return;
                 }
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text(error.message)));
+                ).showSnackBar(SnackBar(content: Text(error.toString())));
               } catch (error) {
                 if (!mounted) {
                   return;

@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/local_ai_status.dart';
 import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
@@ -89,7 +88,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Report regenerated.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) {
         return;
       }

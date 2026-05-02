@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:clindiary/app/core/app_config.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_cipher.dart';
@@ -121,10 +120,8 @@ class EncryptedBackupService {
 
     final latest = await _findLatestBackup(accessToken);
     if (latest == null) {
-      throw ApiException(
-        'No encrypted backup found in Google Drive app data folder.',
-        statusCode: 404,
-      );
+      throw Exception(
+        'No encrypted backup found in Google Drive app data folder.');
     }
 
     final encryptedBytes = await _downloadBackupBytes(
@@ -159,16 +156,12 @@ class EncryptedBackupService {
 
   void _ensureBackupAllowed() {
     if (!_appConfig.localOnlyMode) {
-      throw ApiException(
-        'Encrypted Drive backup is available only while local-only mode is active.',
-        statusCode: 409,
-      );
+      throw Exception(
+        'Encrypted Drive backup is available only while local-only mode is active.');
     }
     if (_googleAuthClientId.isEmpty) {
-      throw ApiException(
-        'Google authentication is not configured. Missing GOOGLE_AUTH_CLIENT_ID.',
-        statusCode: 400,
-      );
+      throw Exception(
+        'Google authentication is not configured. Missing GOOGLE_AUTH_CLIENT_ID.');
     }
   }
 
@@ -188,20 +181,16 @@ class EncryptedBackupService {
           ]);
       final accessToken = authorization.accessToken;
       if (accessToken.isEmpty) {
-        throw ApiException(
-          'Unable to obtain a Google Drive access token. Re-authenticate and try again.',
-          statusCode: 401,
-        );
+        throw Exception(
+          'Unable to obtain a Google Drive access token. Re-authenticate and try again.');
       }
       return accessToken;
     } on GoogleSignInException catch (error) {
       if (error.code == GoogleSignInExceptionCode.canceled) {
-        throw ApiException('Google sign-in canceled by user.', statusCode: 400);
+        throw Exception('Google sign-in canceled by user.');
       }
-      throw ApiException(
-        'Google sign-in failed: ${error.description ?? error.code.name}.',
-        statusCode: 401,
-      );
+      throw Exception(
+        'Google sign-in failed: ${error.description ?? error.code.name}.');
     }
   }
 
@@ -253,7 +242,7 @@ class EncryptedBackupService {
     final streamed = await _httpClient.send(request);
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
+      throw Exception(
         'Drive upload failed (${response.statusCode}): ${response.body}',
         statusCode: response.statusCode,
       );
@@ -280,7 +269,7 @@ class EncryptedBackupService {
       headers: {'Authorization': 'Bearer $accessToken'},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
+      throw Exception(
         'Drive list failed (${response.statusCode}): ${response.body}',
         statusCode: response.statusCode,
       );
@@ -310,7 +299,7 @@ class EncryptedBackupService {
       headers: {'Authorization': 'Bearer $accessToken'},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
+      throw Exception(
         'Drive download failed (${response.statusCode}): ${response.body}',
         statusCode: response.statusCode,
       );
