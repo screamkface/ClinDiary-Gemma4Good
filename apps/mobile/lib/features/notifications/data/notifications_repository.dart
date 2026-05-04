@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 
 class NotificationsRepository {
-  NotificationsRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  NotificationsRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _notificationsCacheKey = 'family_notifications_list';
   static const _preferencesCacheKey = 'notifications_preferences';
@@ -89,9 +88,9 @@ class NotificationsRepository {
     Map<String, dynamic> body = const {},
   }) async {
     return NotificationDeliveryReport(
-      status: 'delivered_locally',
-      timestamp: DateTime.now().toUtc().toIso8601String(),
-      details: 'Test notification delivered successfully in local mode',
+      attempted: true,
+      delivered: true,
+      hasErrors: false,
     );
   }
 

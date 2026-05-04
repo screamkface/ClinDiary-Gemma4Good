@@ -332,6 +332,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
     final profileAsync = ref.watch(profileBundleProvider);
     final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final onDeviceStatusAsync = ref.watch(onDeviceAiStatusProvider);
+    final localOnlyMode = ref.read(appConfigProvider).localOnlyMode;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Privacy AI')),
@@ -350,8 +351,10 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: 'External AI consent',
-                subtitle: 'Control whether recaps may use external providers.',
+                title: localOnlyMode ? 'Local AI privacy' : 'AI privacy',
+                subtitle: localOnlyMode
+                    ? 'ClinDiary keeps recaps on the device by default.'
+                    : 'Control whether recaps may use external providers.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -361,12 +364,16 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       children: [
                         Chip(
                           label: Text(
-                            consentEnabled
+                            localOnlyMode
+                                ? 'Local AI only'
+                                : consentEnabled
                                 ? 'External AI enabled'
                                 : 'External AI disabled',
                           ),
                         ),
-                        if (consentEnabled && consentAt != null)
+                        if (!localOnlyMode &&
+                            consentEnabled &&
+                            consentAt != null)
                           Chip(
                             label: Text(
                               'Last consent ${_dateLabel(consentAt.toLocal())}',
@@ -382,35 +389,39 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                         OutlinedButton.icon(
                           onPressed: () => context.push('/legal/privacy'),
                           icon: const Icon(Icons.description_outlined),
-                          label: const Text('Beta privacy notice'),
+                          label: const Text('Privacy notice'),
                         ),
                         OutlinedButton.icon(
                           onPressed: () => context.push('/legal/ai'),
                           icon: const Icon(Icons.psychology_alt_outlined),
-                          label: const Text('Beta AI note'),
+                          label: const Text('AI note'),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: consentEnabled,
-                      onChanged: _savingAiPrivacy ? null : _updateAiPrivacy,
-                      title: const Text('Use external AI for recaps'),
-                      subtitle: Text(
-                        consentEnabled
-                            ? 'The backend may use a configured external provider.'
-                            : 'Recaps stay on the local cautious engine.',
+                    if (localOnlyMode) ...[
+                      const Text(
+                        'Recaps stay on the local cautious engine and no external provider is used.',
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.tonalIcon(
-                      onPressed: consentEnabled || _savingAiPrivacy
-                          ? () => _updateAiPrivacy(false)
-                          : null,
-                      icon: const Icon(Icons.block_outlined),
-                      label: const Text('Revoke AI consent'),
-                    ),
+                    ] else ...[
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: consentEnabled,
+                        onChanged: _savingAiPrivacy ? null : _updateAiPrivacy,
+                        title: const Text('Use external AI for recaps'),
+                        subtitle: const Text(
+                          'Recaps stay on the local cautious engine unless you explicitly enable external AI.',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: consentEnabled || _savingAiPrivacy
+                            ? () => _updateAiPrivacy(false)
+                            : null,
+                        icon: const Icon(Icons.block_outlined),
+                        label: const Text('Revoke AI consent'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -434,7 +445,9 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      consentEnabled
+                      localOnlyMode
+                          ? 'Recaps are kept local and use distinct payloads for day, week, month, and pre-visit.'
+                          : consentEnabled
                           ? 'For recaps we use distinct payloads for day, week, month, and pre-visit. Minor profiles stay on the local cautious engine.'
                           : 'Without external AI consent, recaps stay on the local cautious engine.',
                     ),

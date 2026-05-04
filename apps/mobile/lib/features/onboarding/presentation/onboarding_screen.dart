@@ -373,10 +373,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           setState(() => _aiConsent = value ?? false),
                       contentPadding: EdgeInsets.zero,
                       title: const Text(
-                        'I consent to the use of external AI providers',
+                        'I understand recaps stay local unless I enable external AI',
                       ),
                       subtitle: const Text(
-                        'If enabled, recaps can use external AI providers configured by the backend. If disabled, ClinDiary stays on the local cautious engine.',
+                        'ClinDiary stays on the local cautious engine by default.',
                       ),
                     ),
                     Align(

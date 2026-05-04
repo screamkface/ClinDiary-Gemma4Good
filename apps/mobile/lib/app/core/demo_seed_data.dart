@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
-import 'package:clindiary/app/core/storage/local_database.dart';
+import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';

@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
 
 class PreventionCenterRepository {
-  PreventionCenterRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  PreventionCenterRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'prevention_center';
 
@@ -18,17 +17,24 @@ class PreventionCenterRepository {
     final cached = await _readCachedCenter(resolvedRegionCode);
     if (cached == null) {
       return PreventionCenterData(
-        statusSummary: const PreventionStatusSummary(
-          overallStatus: 'up_to_date',
-          totalScreenings: 0,
-          completedScreenings: 0,
-          overdueScreenings: 0,
-          recommendedScreenings: 0,
-          nextScreeningDate: null,
-          nextScreeningName: null,
+        generatedAt: DateTime.now().toUtc(),
+        displayName: 'Clinical profile',
+        regionCode: resolvedRegionCode,
+        regionName: resolvedRegionCode == 'IT' ? 'Italy' : resolvedRegionCode,
+        overview: const PreventionCenterOverview(
+          actionableScreenings: 0,
+          vaccineReviews: 0,
+          vaccineRegistryItems: 0,
+          pregnancyItems: 0,
+          sharedDecisionItems: 0,
+          seasonalChecks: 0,
+          followUpItems: 0,
         ),
-        actions: const <PreventionActionItem>[],
-        categories: const <PreventionCategorySummary>[],
+        annualVisit: null,
+        visitsAndControls: const <PreventionRecommendationItem>[],
+        vaccines: const <PreventionRecommendationItem>[],
+        seasonalChecks: const <PreventionRecommendationItem>[],
+        followUpReminders: const <PreventionRecommendationItem>[],
       );
     }
     return PreventionCenterData.fromJson(

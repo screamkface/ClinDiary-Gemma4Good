@@ -1,7 +1,7 @@
 import 'package:clindiary/app/dependencies.dart';
 import 'package:clindiary/app/core/demo_seed_data.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
-import 'package:clindiary/app/core/storage/local_database.dart';
+import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
 import 'package:clindiary/features/auth/domain/auth_session.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/auth/presentation/auth_controller.dart';

@@ -121,7 +121,8 @@ class EncryptedBackupService {
     final latest = await _findLatestBackup(accessToken);
     if (latest == null) {
       throw Exception(
-        'No encrypted backup found in Google Drive app data folder.');
+        'No encrypted backup found in Google Drive app data folder.',
+      );
     }
 
     final encryptedBytes = await _downloadBackupBytes(
@@ -157,11 +158,13 @@ class EncryptedBackupService {
   void _ensureBackupAllowed() {
     if (!_appConfig.localOnlyMode) {
       throw Exception(
-        'Encrypted Drive backup is available only while local-only mode is active.');
+        'Encrypted Drive backup is available only while local-only mode is active.',
+      );
     }
     if (_googleAuthClientId.isEmpty) {
       throw Exception(
-        'Google authentication is not configured. Missing GOOGLE_AUTH_CLIENT_ID.');
+        'Google authentication is not configured. Missing GOOGLE_AUTH_CLIENT_ID.',
+      );
     }
   }
 
@@ -182,7 +185,8 @@ class EncryptedBackupService {
       final accessToken = authorization.accessToken;
       if (accessToken.isEmpty) {
         throw Exception(
-          'Unable to obtain a Google Drive access token. Re-authenticate and try again.');
+          'Unable to obtain a Google Drive access token. Re-authenticate and try again.',
+        );
       }
       return accessToken;
     } on GoogleSignInException catch (error) {
@@ -190,7 +194,8 @@ class EncryptedBackupService {
         throw Exception('Google sign-in canceled by user.');
       }
       throw Exception(
-        'Google sign-in failed: ${error.description ?? error.code.name}.');
+        'Google sign-in failed: ${error.description ?? error.code.name}.',
+      );
     }
   }
 
@@ -244,7 +249,6 @@ class EncryptedBackupService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Drive upload failed (${response.statusCode}): ${response.body}',
-        statusCode: response.statusCode,
       );
     }
 
@@ -271,7 +275,6 @@ class EncryptedBackupService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Drive list failed (${response.statusCode}): ${response.body}',
-        statusCode: response.statusCode,
       );
     }
 
@@ -301,7 +304,6 @@ class EncryptedBackupService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Drive download failed (${response.statusCode}): ${response.body}',
-        statusCode: response.statusCode,
       );
     }
     return response.bodyBytes;
