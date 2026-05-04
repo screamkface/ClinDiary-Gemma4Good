@@ -182,10 +182,6 @@ class ScreeningsRepository {
     };
   }
 
-  String _screeningsPath(String path, String regionCode) {
-    return '$path?region_code=${Uri.encodeQueryComponent(regionCode)}';
-  }
-
   String _normalizedRegionCode(String? regionCode) {
     final value = regionCode?.trim();
     if (value == null || value.isEmpty) {
@@ -246,10 +242,6 @@ class ScreeningsRepository {
           (item) => ScreeningCatalogItem.fromJson(item as Map<String, dynamic>),
         )
         .toList();
-  }
-
-  List<ScreeningCatalogItem> _decodeCatalogItems(List<dynamic> items) {
-    return _decodeCatalogCache(items);
   }
 
   List<PatientScreeningStatusItem> _decodeStatusItems(List<dynamic> items) {

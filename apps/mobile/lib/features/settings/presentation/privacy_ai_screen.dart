@@ -20,8 +20,6 @@ class PrivacyAiScreen extends ConsumerStatefulWidget {
 class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
   bool _savingAiPrivacy = false;
   bool _exporting = false;
-  bool _uploadingEncryptedBackup = false;
-  bool _restoringEncryptedBackup = false;
   bool _deletingAccount = false;
 
   Future<void> _updateAiPrivacy(bool enabled) async {
@@ -215,114 +213,6 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
     } finally {
       if (mounted) {
         setState(() => _deletingAccount = false);
-      }
-    }
-  }
-
-  Future<void> _uploadEncryptedBackupToDrive() async {
-    if (_uploadingEncryptedBackup) {
-      return;
-    }
-
-    setState(() => _uploadingEncryptedBackup = true);
-    try {
-      final result = await ref
-          .read(encryptedBackupServiceProvider)
-          .uploadEncryptedSnapshotToDrive();
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Encrypted backup uploaded: ${result.fileName} (${result.encryptedBytes} bytes).',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
-      if (mounted) {
-        setState(() => _uploadingEncryptedBackup = false);
-      }
-    }
-  }
-
-  Future<void> _restoreEncryptedBackupFromDrive() async {
-    if (_restoringEncryptedBackup) {
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Restore encrypted backup?'),
-        content: const Text(
-          'The latest encrypted backup from Google Drive app data will replace the local dossier snapshot for this profile.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            child: const Text('Restore'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) {
-      return;
-    }
-
-    setState(() => _restoringEncryptedBackup = true);
-    try {
-      final result = await ref
-          .read(encryptedBackupServiceProvider)
-          .restoreLatestEncryptedSnapshotFromDrive(replaceExisting: true);
-
-      invalidateRestoredSnapshotProviders(ref);
-
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Encrypted backup restored: ${result.fileName}.'),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
-      if (mounted) {
-        setState(() => _restoringEncryptedBackup = false);
       }
     }
   }

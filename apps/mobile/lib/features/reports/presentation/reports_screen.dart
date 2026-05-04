@@ -59,10 +59,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     if (report.downloadUrl == null || report.downloadUrl!.isEmpty) {
       return;
     }
-    final config = ref.read(appConfigProvider);
-    final uri = report.downloadUrl!.startsWith('http')
-        ? Uri.parse(report.downloadUrl!)
-        : Uri.parse('${config.apiBaseUrl}${report.downloadUrl!}');
+    if (!report.downloadUrl!.startsWith('http')) {
+      return;
+    }
+    final uri = Uri.parse(report.downloadUrl!);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

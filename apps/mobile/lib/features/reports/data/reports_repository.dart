@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
@@ -11,11 +10,9 @@ import 'package:clindiary/features/reports/domain/clinical_report.dart';
 class ReportsRepository {
   ReportsRepository({
     required LocalDatabase localDatabase,
-    AppConfig appConfig = defaultAppConfig,
     OnDeviceAiService? onDeviceAiService,
     OnDevicePromptBuilder? onDevicePromptBuilder,
   }) : _localDatabase = localDatabase,
-       _appConfig = appConfig,
        _onDeviceAiService = onDeviceAiService ?? OnDeviceAiService(),
        _onDevicePromptBuilder =
            onDevicePromptBuilder ??
@@ -24,7 +21,6 @@ class ReportsRepository {
   static const _lastReportCacheKey = 'reports_last_generated';
 
   final LocalDatabase _localDatabase;
-  final AppConfig _appConfig;
   final OnDeviceAiService _onDeviceAiService;
   final OnDevicePromptBuilder _onDevicePromptBuilder;
 

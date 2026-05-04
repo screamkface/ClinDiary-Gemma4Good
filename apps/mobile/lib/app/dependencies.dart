@@ -5,7 +5,6 @@ import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
 import 'package:clindiary/features/auth/data/auth_repository.dart';
 import 'package:clindiary/features/alerts/data/alerts_repository.dart';
-import 'package:clindiary/features/backup/data/encrypted_backup_service.dart';
 import 'package:clindiary/features/daily_journal/data/daily_journal_repository.dart';
 import 'package:clindiary/features/daily_journal/data/voice_check_in_assistant.dart';
 import 'package:clindiary/features/devices/data/devices_repository.dart';
@@ -30,7 +29,6 @@ import 'package:clindiary/features/wearables/data/wearable_health_service.dart';
 import 'package:clindiary/features/wearables/data/wearables_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 
 final appConfigProvider = Provider<AppConfig>((ref) => defaultAppConfig);
 
@@ -41,12 +39,6 @@ final flutterSecureStorageProvider = Provider<FlutterSecureStorage>(
 final secureTokenStorageProvider = Provider<SecureTokenStorage>(
   (ref) => SecureTokenStorage(ref.watch(flutterSecureStorageProvider)),
 );
-
-final httpClientProvider = Provider<http.Client>((ref) {
-  final client = http.Client();
-  ref.onDispose(client.close);
-  return client;
-});
 
 final localDatabaseProvider = Provider<LocalDatabase>((ref) {
   final database = LocalDatabase();
@@ -162,7 +154,6 @@ final timelineRepositoryProvider = Provider<TimelineRepository>(
 final documentsRepositoryProvider = Provider<DocumentsRepository>(
   (ref) => DocumentsRepository(
     localDatabase: ref.watch(localDatabaseProvider),
-    appConfig: ref.watch(appConfigProvider),
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
     localVaultService: ref.watch(localDocumentVaultServiceProvider),
   ),
@@ -189,7 +180,6 @@ final notificationsRepositoryProvider = Provider<NotificationsRepository>(
 final reportsRepositoryProvider = Provider<ReportsRepository>(
   (ref) => ReportsRepository(
     localDatabase: ref.watch(localDatabaseProvider),
-    appConfig: ref.watch(appConfigProvider),
     onDeviceAiService: ref.watch(onDeviceAiServiceProvider),
     onDevicePromptBuilder: ref.watch(onDevicePromptBuilderProvider),
   ),
@@ -227,12 +217,3 @@ final dossierRepositoryProvider = Provider<DossierRepository>(
   ),
 );
 
-final encryptedBackupServiceProvider = Provider<EncryptedBackupService>(
-  (ref) => EncryptedBackupService(
-    appConfig: ref.watch(appConfigProvider),
-    dossierRepository: ref.watch(dossierRepositoryProvider),
-    localDatabase: ref.watch(localDatabaseProvider),
-    secureStorage: ref.watch(flutterSecureStorageProvider),
-    httpClient: ref.watch(httpClientProvider),
-  ),
-);

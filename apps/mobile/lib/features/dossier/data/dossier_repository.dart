@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';

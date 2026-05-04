@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
@@ -13,16 +12,13 @@ import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
 class DocumentsRepository {
   DocumentsRepository({
     required LocalDatabase localDatabase,
-    AppConfig appConfig = defaultAppConfig,
     OnDeviceAiService? onDeviceAiService,
     LocalDocumentVaultService? localVaultService,
   }) : _localDatabase = localDatabase,
-       _appConfig = appConfig,
        _onDeviceAiService = onDeviceAiService ?? OnDeviceAiService(),
        _localVaultService = localVaultService ?? LocalDocumentVaultService();
 
   final LocalDatabase _localDatabase;
-  final AppConfig _appConfig;
   final OnDeviceAiService _onDeviceAiService;
   final LocalDocumentVaultService _localVaultService;
 

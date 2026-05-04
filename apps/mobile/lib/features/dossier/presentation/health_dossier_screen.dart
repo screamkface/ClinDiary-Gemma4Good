@@ -1198,7 +1198,7 @@ class HealthDossierScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'For emergency sharing, use the emergency PDF or NFC write flow. For full portability, use JSON export/import and encrypted Drive backup from Privacy AI.',
+                            'For emergency sharing, use the emergency PDF or NFC write flow. For full portability, use JSON export/import.',
                           ),
                           const SizedBox(height: 12),
                           Wrap(

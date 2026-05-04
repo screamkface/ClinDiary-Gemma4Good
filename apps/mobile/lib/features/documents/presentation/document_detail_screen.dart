@@ -159,10 +159,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     if (detail.viewerUrl == null || detail.viewerUrl!.isEmpty) {
       return;
     }
-    final config = ref.read(appConfigProvider);
-    final uri = detail.viewerUrl!.startsWith('http')
-        ? Uri.parse(detail.viewerUrl!)
-        : Uri.parse('${config.apiBaseUrl}${detail.viewerUrl!}');
+    if (!detail.viewerUrl!.startsWith('http')) {
+      return;
+    }
+    final uri = Uri.parse(detail.viewerUrl!);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

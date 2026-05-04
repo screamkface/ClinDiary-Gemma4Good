@@ -56,10 +56,7 @@ void main() {
       ProviderScope(
         overrides: [
           appConfigProvider.overrideWith(
-            (ref) => const AppConfig(
-              apiBaseUrl: 'http://example.com',
-              hackathonDemoMode: true,
-            ),
+            (ref) => const AppConfig(hackathonDemoMode: true),
           ),
           authControllerProvider.overrideWith(
             _SessionGateTestAuthController.new,
@@ -111,7 +108,7 @@ void main() {
       ProviderScope(
         overrides: [
           appConfigProvider.overrideWith(
-            (ref) => const AppConfig(apiBaseUrl: 'http://example.com'),
+            (ref) => const AppConfig(),
           ),
           authControllerProvider.overrideWith(
             _SessionGateTestAuthController.new,

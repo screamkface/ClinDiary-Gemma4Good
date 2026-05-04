@@ -255,10 +255,7 @@ void main() {
         overrides: [
           activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
           appConfigProvider.overrideWith(
-            (ref) => const AppConfig(
-              apiBaseUrl: 'http://localhost:8000',
-              hackathonDemoMode: true,
-            ),
+            (ref) => const AppConfig(hackathonDemoMode: true),
           ),
           profileBundleProvider.overrideWith(
             (ref) async => ProfileBundle(

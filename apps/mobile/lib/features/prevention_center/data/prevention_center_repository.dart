@@ -42,10 +42,6 @@ class PreventionCenterRepository {
     );
   }
 
-  String _preventionCenterPath(String regionCode) {
-    return '/api/v1/prevention-center?region_code=${Uri.encodeQueryComponent(regionCode)}';
-  }
-
   String _normalizedRegionCode(String? regionCode) {
     final value = regionCode?.trim();
     if (value == null || value.isEmpty) {
