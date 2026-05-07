@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
@@ -26,6 +28,44 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     folderId: _currentFolderId,
     searchQuery: _appliedQuery,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerAutoParsingIfNeeded();
+    });
+  }
+
+  Future<void> _triggerAutoParsingIfNeeded() async {
+    if (!mounted) return;
+
+    try {
+      final archive = await ref.read(
+        documentArchiveProvider(_archiveQuery).future,
+      );
+
+      // Find all documents that need parsing
+      final documentsNeedingParse = archive.documents.where((doc) {
+        final parseProgress = ref
+            .read(localDocumentParseProgressProvider)
+            .asData
+            ?.value
+            .progressFor(doc.id);
+        return (doc.parsedStatus == 'processing' ||
+                doc.parsedStatus == 'local_only') &&
+            parseProgress == null;
+      }).toList();
+
+      // Trigger parsing for each document that needs it
+      for (final document in documentsNeedingParse) {
+        if (!mounted) return;
+        unawaited(ref.read(documentDetailProvider(document.id).future));
+      }
+    } catch (_) {
+      // Silent fail - auto-parsing is best-effort
+    }
+  }
 
   @override
   void dispose() {
@@ -253,6 +293,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final parseProgressAsync = ref.watch(localDocumentParseProgressProvider);
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final archiveValue = archiveAsync.asData?.value;
+    final firstMovableDocument =
+        archiveValue == null || archiveValue.documents.isEmpty
+        ? null
+        : archiveValue.documents.first;
 
     return Scaffold(
       appBar: AppBar(
@@ -264,6 +309,31 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           ),
         ],
       ),
+      floatingActionButton: firstMovableDocument == null
+          ? null
+          : PopupMenuButton<dynamic>(
+              tooltip: 'File actions',
+              icon: const Icon(Icons.more_horiz),
+              onSelected: (value) {
+                if (value == 'move') {
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _moveDocument(firstMovableDocument),
+                  );
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem<dynamic>(
+                  value: 'move',
+                  child: Row(
+                    children: [
+                      Icon(Icons.drive_file_move_outline),
+                      SizedBox(width: 12),
+                      Text('Move file'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
       body: archiveAsync.when(
         data: (archive) {
           final pendingSyncCount =
@@ -375,6 +445,37 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
+                          if (filteredDocuments.isNotEmpty)
+                            PopupMenuButton<dynamic>(
+                              onSelected: (value) {
+                                if (value == 'move') {
+                                  WidgetsBinding.instance.addPostFrameCallback(
+                                    (_) =>
+                                        _moveDocument(filteredDocuments.first),
+                                  );
+                                }
+                              },
+                              itemBuilder: (context) => const [
+                                PopupMenuItem<dynamic>(
+                                  value: 'move',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.drive_file_move_outline),
+                                      SizedBox(width: 12),
+                                      Text('Move file'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              child: Chip(
+                                avatar: const Icon(Icons.more_horiz, size: 18),
+                                label: Text(
+                                  filteredDocuments.length == 1
+                                      ? 'File actions'
+                                      : 'First file actions',
+                                ),
+                              ),
+                            ),
                           Chip(
                             backgroundColor: storageChipBackground,
                             avatar: Icon(
@@ -907,7 +1008,7 @@ class _DocumentArchiveTile extends StatelessWidget {
           ],
         ),
         trailing: allowMove
-            ? PopupMenuButton<String>(
+            ? PopupMenuButton<dynamic>(
                 onSelected: (value) {
                   if (value == 'move') {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -916,7 +1017,7 @@ class _DocumentArchiveTile extends StatelessWidget {
                   }
                 },
                 itemBuilder: (context) => const [
-                  PopupMenuItem(
+                  PopupMenuItem<dynamic>(
                     value: 'move',
                     child: Row(
                       children: [

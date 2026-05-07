@@ -95,13 +95,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Regeneration failed: $error')));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Regeneration failed: $error')));
     } finally {
       if (mounted) {
         setState(() {

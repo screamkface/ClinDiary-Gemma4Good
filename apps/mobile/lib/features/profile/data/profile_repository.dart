@@ -6,9 +6,8 @@ import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 
 class ProfileRepository {
-  ProfileRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  ProfileRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'profile_bundle';
 
@@ -174,8 +173,7 @@ class ProfileRepository {
 
   Future<void> deleteVaccination(String vaccinationId) async {
     await _queueBundleMutation(
-      patch: (bundle) =>
-          _removeResource(bundle, 'vaccinations', vaccinationId),
+      patch: (bundle) => _removeResource(bundle, 'vaccinations', vaccinationId),
     );
   }
 
@@ -191,20 +189,6 @@ class ProfileRepository {
       key: _cacheKeyForActiveProfile(bundle),
       payload: jsonEncode(bundle),
     );
-  }
-
-  Future<void> _ensureActiveProfileSelection(
-    Map<String, dynamic> bundle,
-  ) async {
-    final current = await getActiveProfileId();
-    if (current != null && current.trim().isNotEmpty) {
-      return;
-    }
-    final profile = bundle['profile'] as Map<String, dynamic>?;
-    final profileId = profile?['id']?.toString();
-    if (profileId != null && profileId.isNotEmpty) {
-      await setActiveProfileId(profileId);
-    }
   }
 
   Future<Map<String, dynamic>?> _readCachedBundleJson() async {
@@ -693,6 +677,4 @@ class ProfileRepository {
   String _pendingId(String prefix) {
     return 'pending-$prefix-${DateTime.now().microsecondsSinceEpoch}';
   }
-
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

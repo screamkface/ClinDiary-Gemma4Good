@@ -1792,10 +1792,7 @@ class _ProfileQuickFactsSection extends StatelessWidget {
       if (profile.fallsLastYear != null)
         ('Falls last year', profile.fallsLastYear.toString()),
       if (profile.feelsUnsteady) ('Instability', 'To review'),
-      (
-        'External AI',
-        bundle.onboarding.aiExternalConsent ? 'Enabled' : 'Disabled',
-      ),
+      ('AI', 'Local only'),
       if (pendingOperations > 0) ('Sync', '$pendingOperations pending'),
     ];
 
@@ -2006,11 +2003,7 @@ List<String> _summaryFacts(
   if (bundle.profile.currentlyPregnant) {
     facts.add('Pregnancy ongoing');
   }
-  facts.add(
-    bundle.onboarding.aiExternalConsent
-        ? 'External AI enabled'
-        : 'External AI disabled',
-  );
+  facts.add('AI: local only');
   if (pendingOperations > 0) {
     facts.add('Sync pending');
   }

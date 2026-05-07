@@ -47,11 +47,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.registrationFailed(error.toString()))),
       );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.registrationFailed(error.toString()))),
-      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

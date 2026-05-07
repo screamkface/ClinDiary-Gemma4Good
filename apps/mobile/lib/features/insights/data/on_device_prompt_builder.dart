@@ -121,8 +121,8 @@ class OnDevicePromptBuilder {
 
     final dataConsidered = <String>[
       '${entriesForDay.length} local check-ins',
-      '${entriesForDay.fold<int>(0, (total, entry) => total + (entry.symptoms.length as int))} symptoms',
-      '${entriesForDay.fold<int>(0, (total, entry) => total + (entry.vitals.length as int))} vital signs',
+      '${entriesForDay.fold<int>(0, (total, entry) => total + entry.symptoms.length)} symptoms',
+      '${entriesForDay.fold<int>(0, (total, entry) => total + entry.vitals.length)} vital signs',
       '${relevantLogs.length} medication logs',
       '${relevantWearables.length} wearable summaries',
       '${relevantTimeline.length} timeline events',
@@ -574,8 +574,8 @@ class OnDevicePromptBuilder {
 
     final dataConsidered = <String>[
       '${entriesForPeriod.length} local check-ins',
-      '${entriesForPeriod.fold<int>(0, (total, entry) => total + (entry.symptoms.length as int))} symptoms',
-      '${entriesForPeriod.fold<int>(0, (total, entry) => total + (entry.vitals.length as int))} vital signs',
+      '${entriesForPeriod.fold<int>(0, (total, entry) => total + entry.symptoms.length)} symptoms',
+      '${entriesForPeriod.fold<int>(0, (total, entry) => total + entry.vitals.length)} vital signs',
       '${logsForPeriod.length} medication logs',
       '${wearablesForPeriod.length} wearable summaries',
       '${timelineForPeriod.length} timeline events',

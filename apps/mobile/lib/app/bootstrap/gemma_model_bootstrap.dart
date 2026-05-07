@@ -86,9 +86,31 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
           modelPath != null &&
           modelPath.isNotEmpty &&
           await File(modelPath).exists();
-          
-      final embeddingModelPath = '${modelDirectory ?? ''}/embeddinggemma-300m.tflite';
+
+      final embeddingModelPath =
+          '${modelDirectory ?? ''}/embeddinggemma-300m.tflite';
       final embeddingModelExists = await File(embeddingModelPath).exists();
+      final activeGemmaDownload = await service.fetchGemma4DownloadProgress();
+
+      if (activeGemmaDownload != null) {
+        state = GemmaModelBootstrapState.downloading(
+          message: 'Downloading Gemma 4 E2B...',
+          modelDirectory: modelDirectory,
+          downloadedBytes: activeGemmaDownload.downloadedBytes,
+          totalBytes: activeGemmaDownload.totalBytes,
+        );
+
+        await service.downloadGemma4Model(
+          onProgress: (receivedBytes, totalBytes) {
+            state = GemmaModelBootstrapState.downloading(
+              message: 'Downloading Gemma 4 E2B...',
+              modelDirectory: modelDirectory,
+              downloadedBytes: receivedBytes,
+              totalBytes: totalBytes,
+            );
+          },
+        );
+      }
 
       if (!status.isSupported) {
         state = GemmaModelBootstrapState.ready(
@@ -99,7 +121,10 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
         return;
       }
 
-      if (!forceDownload && status.isReady && modelFileExists && embeddingModelExists) {
+      if (!forceDownload &&
+          status.isReady &&
+          modelFileExists &&
+          embeddingModelExists) {
         state = GemmaModelBootstrapState.ready(
           message: 'On-device AI models are ready.',
           modelDirectory: modelDirectory,
@@ -163,7 +188,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
           },
         );
       }
-      
+
       if (!embeddingModelExists || forceDownload) {
         state = GemmaModelBootstrapState.downloading(
           message: 'Downloading EmbeddingGemma 300M from Hugging Face...',

@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 
 class DailyJournalRepository {
-  DailyJournalRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  DailyJournalRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'daily_entries';
   static const _localShadowUntilKey = 'local_shadow_until';
@@ -25,7 +24,7 @@ class DailyJournalRepository {
     // Assegna un vero ID invece di "pending-"
     entry['id'] = 'local-entry-${DateTime.now().microsecondsSinceEpoch}';
     entry['pending_sync'] = false;
-    
+
     await _upsertEntryInCache(entry);
     return DailyEntry.fromJson(entry);
   }
@@ -69,8 +68,6 @@ class DailyJournalRepository {
     _sortEntriesDescending(entries);
     await _writeCachedEntriesJson(entries);
   }
-
-
 
   Future<void> _upsertSymptomInCache(
     String entryId,
@@ -161,8 +158,6 @@ class DailyJournalRepository {
     await _writeCachedEntriesJson(entries);
     return removed;
   }
-
-
 
   List<DailyEntry> _decodeEntries(List<Map<String, dynamic>> entries) {
     return entries.map(DailyEntry.fromJson).toList();
@@ -361,12 +356,6 @@ class DailyJournalRepository {
 
   String _todayIsoDate() {
     return DateTime.now().toUtc().toIso8601String().split('T').first;
-  }
-
-  String _buildLocalShadowUntilIso({
-    Duration ttl = const Duration(minutes: 10),
-  }) {
-    return DateTime.now().toUtc().add(ttl).toIso8601String();
   }
 
   int? _asInt(dynamic value) {

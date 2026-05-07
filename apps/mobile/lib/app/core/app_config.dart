@@ -2,10 +2,7 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class AppConfig {
-  const AppConfig({
-    this.hackathonDemoMode = false,
-    this.localOnlyMode = true,
-  });
+  const AppConfig({this.hackathonDemoMode = false, this.localOnlyMode = false});
 
   final bool hackathonDemoMode;
   final bool localOnlyMode;
@@ -16,5 +13,5 @@ const defaultAppConfig = AppConfig(
     'HACKATHON_DEMO_MODE',
     defaultValue: false,
   ),
-  localOnlyMode: true,
+  localOnlyMode: bool.fromEnvironment('LOCAL_ONLY_MODE', defaultValue: true),
 );

@@ -433,14 +433,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
               try {
                 await _refreshMedicationState();
               } catch (error) {
-                if (!mounted) {
-                  return;
-                }
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(error.toString())));
-              } catch (error) {
-                if (!mounted) {
+                if (!context.mounted) {
                   return;
                 }
                 ScaffoldMessenger.of(

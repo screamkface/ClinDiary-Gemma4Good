@@ -25,9 +25,6 @@ class AppSettingsScreen extends ConsumerWidget {
               );
             }
 
-            final aiConsent = bundle.onboarding.aiExternalConsent;
-            final aiConsentAt = bundle.onboarding.aiExternalConsentedAt;
-
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -154,27 +151,16 @@ class AppSettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SectionCard(
                   title: 'Privacy and AI',
-                  subtitle: 'Consent, export and beta legal notes.',
+                  subtitle: 'Local AI and legal notes.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Wrap(
+                      const Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          Chip(
-                            label: Text(
-                              aiConsent
-                                  ? 'External AI enabled'
-                                  : 'External AI disabled',
-                            ),
-                          ),
-                          if (aiConsent && aiConsentAt != null)
-                            Chip(
-                              label: Text(
-                                'Last consent ${_dateLabel(aiConsentAt.toLocal())}',
-                              ),
-                            ),
+                          Chip(label: Text('Local AI only')),
+                          Chip(label: Text('No external providers')),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -182,7 +168,7 @@ class AppSettingsScreen extends ConsumerWidget {
                         onPressed: () =>
                             context.push('/app/profile/settings/privacy-ai'),
                         icon: const Icon(Icons.privacy_tip_outlined),
-                        label: const Text('Open AI Privacy'),
+                        label: const Text('Open Local AI'),
                       ),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
@@ -239,15 +225,6 @@ class AppSettingsScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-String _dateLabel(DateTime value) {
-  final day = value.day.toString().padLeft(2, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final year = value.year.toString();
-  final hour = value.hour.toString().padLeft(2, '0');
-  final minute = value.minute.toString().padLeft(2, '0');
-  return '$day/$month/$year $hour:$minute';
 }
 
 String _fontLabel(double scale) {

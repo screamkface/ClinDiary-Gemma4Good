@@ -7,6 +7,7 @@ import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/auth/presentation/auth_controller.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/devices/domain/device_hub.dart';
+import 'package:clindiary/features/documents/domain/document_query_history_entry.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
@@ -501,6 +502,15 @@ final documentDetailProvider =
             .fetchDocumentDetail(documentId),
         demoValue: () => DemoSeedData.demoDocumentDetail(documentId),
       );
+    });
+
+final documentQueryHistoryProvider =
+    FutureProvider<List<DocumentQueryHistoryEntry>>((ref) async {
+      final session = await ref.watch(authControllerProvider.future);
+      if (session == null) {
+        return const [];
+      }
+      return ref.watch(documentQueryHistoryStoreProvider).readEntries();
     });
 
 void invalidateMedicationProviders(

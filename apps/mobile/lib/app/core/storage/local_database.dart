@@ -87,8 +87,8 @@ class Medications extends Table {
 class MedicationSchedules extends Table {
   TextColumn get id => text()();
   TextColumn get medicationId => text().references(Medications, #id)();
-  TextColumn get scheduleType => text()(); 
-  TextColumn get timeOfDay => text()(); 
+  TextColumn get scheduleType => text()();
+  TextColumn get timeOfDay => text()();
   RealColumn get dose => real()();
   TextColumn get specificDaysJson => text().nullable()();
   DateTimeColumn get startDate => dateTime()();
@@ -122,7 +122,7 @@ class DocumentChunks extends Table {
   TextColumn get documentId => text().references(Documents, #id)();
   IntColumn get chunkIndex => integer()();
   TextColumn get content => text()();
-  TextColumn get embeddingJson => text().nullable()(); 
+  TextColumn get embeddingJson => text().nullable()();
 }
 
 class TimelineEvents extends Table {
@@ -185,21 +185,23 @@ class RequestTraces extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [
-  Profiles,
-  DailyEntries,
-  Symptoms,
-  Vitals,
-  Medications,
-  MedicationSchedules,
-  Documents,
-  DocumentChunks,
-  TimelineEvents,
-  Alerts,
-  CacheEntries,
-  PendingOperations,
-  RequestTraces,
-])
+@DriftDatabase(
+  tables: [
+    Profiles,
+    DailyEntries,
+    Symptoms,
+    Vitals,
+    Medications,
+    MedicationSchedules,
+    Documents,
+    DocumentChunks,
+    TimelineEvents,
+    Alerts,
+    CacheEntries,
+    PendingOperations,
+    RequestTraces,
+  ],
+)
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());
 
@@ -214,21 +216,13 @@ class LocalDatabase extends _$LocalDatabase {
       await migrator.createAll();
     },
     onUpgrade: (migrator, from, to) async {
-      await customStatement('DROP TABLE IF EXISTS alerts');
-      await customStatement('DROP TABLE IF EXISTS timeline_events');
-      await customStatement('DROP TABLE IF EXISTS document_chunks');
-      await customStatement('DROP TABLE IF EXISTS documents');
-      await customStatement('DROP TABLE IF EXISTS medication_schedules');
-      await customStatement('DROP TABLE IF EXISTS medications');
-      await customStatement('DROP TABLE IF EXISTS vitals');
-      await customStatement('DROP TABLE IF EXISTS symptoms');
-      await customStatement('DROP TABLE IF EXISTS daily_entries');
-      await customStatement('DROP TABLE IF EXISTS profiles');
-      
-      await customStatement('DROP TABLE IF EXISTS request_traces');
-      await customStatement('DROP TABLE IF EXISTS pending_operations');
-      await customStatement('DROP TABLE IF EXISTS cache_entries');
+      // Never drop local health data during an app upgrade. Future schema
+      // changes should add targeted migrations here.
       await migrator.createAll();
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement('PRAGMA journal_mode = WAL');
     },
   );
 

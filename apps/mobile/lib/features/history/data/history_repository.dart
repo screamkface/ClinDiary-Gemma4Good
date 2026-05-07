@@ -6,9 +6,8 @@ import 'package:clindiary/features/history/domain/history_day.dart';
 import 'package:intl/intl.dart';
 
 class HistoryRepository {
-  HistoryRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  HistoryRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   final LocalDatabase _localDatabase;
 
@@ -42,10 +41,7 @@ class HistoryRepository {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    return _buildLocalActivityDates(
-      startDate: startDate,
-      endDate: endDate,
-    );
+    return _buildLocalActivityDates(startDate: startDate, endDate: endDate);
   }
 
   static String _cacheKey(String day, bool includeRollups) =>
@@ -212,11 +208,4 @@ class HistoryRepository {
     }
     return DateFormat('yyyy-MM-dd').format(parsed.toUtc());
   }
-
-  List<DateTime> _decodeActivityDates(Map<String, dynamic> response) {
-    return (response['activity_dates'] as List<dynamic>? ?? const [])
-        .map((item) => DateTime.parse(item.toString()))
-        .toList();
-  }
-
 }

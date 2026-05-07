@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
+import 'package:clindiary/features/documents/domain/document_query_history_entry.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -54,6 +57,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
 
   Future<void> _submit() async {
     final question = _questionController.text.trim();
+    FocusManager.instance.primaryFocus?.unfocus();
     if (question.length < 3) {
       setState(
         () => _errorMessage = 'Write a slightly more specific question.',
@@ -73,12 +77,22 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
       if (!mounted) {
         return;
       }
+
+      // Save to history
+      final historyEntry = DocumentQueryHistoryEntry.fromQueryResult(
+        question: question,
+        result: result,
+      );
+      unawaited(
+        ref
+            .read(documentQueryHistoryStoreProvider)
+            .appendEntry(historyEntry)
+            .catchError((_) {
+              // Query results should remain visible even if the local history cache is unavailable.
+            }),
+      );
+
       setState(() => _result = result);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _errorMessage = error.toString());
     } catch (error) {
       if (!mounted) {
         return;
@@ -127,6 +141,10 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
     context.push('/app/documents/${citation.documentId}');
   }
 
+  void _openHistory() {
+    context.push('/app/documents/ask/history');
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
@@ -135,6 +153,11 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
       appBar: AppBar(
         title: const Text('Ask files'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_outlined),
+            tooltip: 'View history',
+            onPressed: _openHistory,
+          ),
           TextButton.icon(
             onPressed: _isReindexing ? null : _reindex,
             icon: _isReindexing

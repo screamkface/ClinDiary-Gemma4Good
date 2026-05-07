@@ -1,6 +1,5 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/app/core/app_config.dart';
-import 'package:clindiary/app/dependencies.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';

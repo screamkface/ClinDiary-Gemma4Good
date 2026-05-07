@@ -94,7 +94,7 @@ class InsightsRepository {
     final referenceDate = query.referenceDate ?? DateTime.now();
     final dateStr = DateFormat('yyyy-MM-dd').format(referenceDate);
     return OnDeviceRecapPrompt(
-      summaryType: query.summaryType ?? 'daily',
+      summaryType: query.summaryType,
       periodStart: referenceDate.subtract(const Duration(days: 1)),
       periodEnd: referenceDate,
       systemPrompt: 'You are a helpful AI assistant running locally.',

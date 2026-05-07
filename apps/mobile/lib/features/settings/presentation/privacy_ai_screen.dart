@@ -18,57 +18,8 @@ class PrivacyAiScreen extends ConsumerStatefulWidget {
 }
 
 class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
-  bool _savingAiPrivacy = false;
   bool _exporting = false;
   bool _deletingAccount = false;
-
-  Future<void> _updateAiPrivacy(bool enabled) async {
-    if (_savingAiPrivacy) {
-      return;
-    }
-
-    setState(() => _savingAiPrivacy = true);
-    try {
-      final bundle = await ref
-          .read(profileRepositoryProvider)
-          .updateAiPrivacyConsent(enabled);
-      final currentSession = ref.read(authControllerProvider).valueOrNull;
-      if (currentSession != null) {
-        await ref
-            .read(authControllerProvider.notifier)
-            .updateUser(
-              currentSession.user.copyWith(
-                aiExternalConsent: bundle.onboarding.aiExternalConsent,
-                aiExternalConsentedAt: bundle.onboarding.aiExternalConsentedAt,
-              ),
-            );
-      }
-      ref.invalidate(profileBundleProvider);
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            enabled
-                ? 'External AI consent updated.'
-                : 'External AI consent revoked.',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
-      if (mounted) {
-        setState(() => _savingAiPrivacy = false);
-      }
-    }
-  }
 
   Future<void> _shareExport({
     required Future<List<int>> Function(DossierRepository repository) loadBytes,
@@ -105,13 +56,6 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(successMessage)));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } catch (error) {
       if (!mounted) {
         return;
@@ -203,13 +147,6 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _deletingAccount = false);
@@ -220,55 +157,34 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
-    final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final onDeviceStatusAsync = ref.watch(onDeviceAiStatusProvider);
-    final localOnlyMode = ref.read(appConfigProvider).localOnlyMode;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Privacy AI')),
+      appBar: AppBar(title: const Text('Local AI')),
       body: profileAsync.when(
         data: (bundle) {
           if (bundle == null) {
             return const Center(
-              child: Text('Completa l\'autenticazione per gestire la privacy.'),
+              child: Text('Complete sign-in to manage settings.'),
             );
           }
-
-          final consentEnabled = bundle.onboarding.aiExternalConsent;
-          final consentAt = bundle.onboarding.aiExternalConsentedAt;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: localOnlyMode ? 'Local AI privacy' : 'AI privacy',
-                subtitle: localOnlyMode
-                    ? 'ClinDiary keeps recaps on the device by default.'
-                    : 'Control whether recaps may use external providers.',
+                title: 'Local AI',
+                subtitle: 'All AI processing stays on your device.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
+                    const Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(
-                          label: Text(
-                            localOnlyMode
-                                ? 'Local AI only'
-                                : consentEnabled
-                                ? 'External AI enabled'
-                                : 'External AI disabled',
-                          ),
-                        ),
-                        if (!localOnlyMode &&
-                            consentEnabled &&
-                            consentAt != null)
-                          Chip(
-                            label: Text(
-                              'Last consent ${_dateLabel(consentAt.toLocal())}',
-                            ),
-                          ),
+                        Chip(label: Text('Local AI only')),
+                        Chip(label: Text('No external providers')),
+                        Chip(label: Text('No data leaves device')),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -289,43 +205,23 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    if (localOnlyMode) ...[
-                      const Text(
-                        'Recaps stay on the local cautious engine and no external provider is used.',
-                      ),
-                    ] else ...[
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        value: consentEnabled,
-                        onChanged: _savingAiPrivacy ? null : _updateAiPrivacy,
-                        title: const Text('Use external AI for recaps'),
-                        subtitle: const Text(
-                          'Recaps stay on the local cautious engine unless you explicitly enable external AI.',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      FilledButton.tonalIcon(
-                        onPressed: consentEnabled || _savingAiPrivacy
-                            ? () => _updateAiPrivacy(false)
-                            : null,
-                        icon: const Icon(Icons.block_outlined),
-                        label: const Text('Revoke AI consent'),
-                      ),
-                    ],
+                    const Text(
+                      'Recaps are generated on-device by Gemma via LiteRT. No recap content or health data is sent to any external server.',
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               SectionCard(
                 title: 'What AI can see',
-                subtitle: 'Send only the minimum context needed for the recap.',
+                subtitle: 'Minimum context passed to the on-device model.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
+                    const Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: const [
+                      children: [
                         Chip(label: Text('Clinical context')),
                         Chip(label: Text('Diary and symptoms')),
                         Chip(label: Text('Wearable')),
@@ -334,21 +230,16 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      localOnlyMode
-                          ? 'Recaps are kept local and use distinct payloads for day, week, month, and pre-visit.'
-                          : consentEnabled
-                          ? 'For recaps we use distinct payloads for day, week, month, and pre-visit. Minor profiles stay on the local cautious engine.'
-                          : 'Without external AI consent, recaps stay on the local cautious engine.',
+                    const Text(
+                      'Distinct payloads for day, week, month, and pre-visit recaps. All processing runs locally — Gemma runs on-device via LiteRT.',
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               SectionCard(
-                title: 'Local-only diagnostics',
-                subtitle:
-                    'Quick health check for offline/local-first execution readiness.',
+                title: 'On-device AI status',
+                subtitle: 'Local-first execution readiness.',
                 action: TextButton.icon(
                   onPressed: () {
                     ref.invalidate(onDeviceAiStatusProvider);
@@ -364,16 +255,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(
-                          label: const Text('Local-only mode: always active'),
-                        ),
-                        Chip(
-                          label: Text(
-                            pendingOperationsAsync.asData == null
-                                ? 'Pending sync: checking...'
-                                : 'Pending sync: ${pendingOperationsAsync.asData!.value.length}',
-                          ),
-                        ),
+                        const Chip(label: Text('Local-only: always active')),
                         Chip(
                           label: Text(
                             onDeviceStatusAsync.asData == null
@@ -390,6 +272,29 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       onDeviceStatusAsync.asData?.value.activeProviderLabel ??
                           'No on-device provider detected yet.',
                       style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
+                title: 'Document search models',
+                subtitle: 'Semantic search and ranking for clinical documents.',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(label: Text('Embedding: Gemma 300M')),
+                        Chip(label: Text('Provider: MediaPipe')),
+                        Chip(label: Text('Ranking: On-device')),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'When you ask questions about your documents, the app uses Embedding Gemma 300M (via MediaPipe TextEmbedder) to understand semantic meaning. The embedding model runs entirely on-device — your question and document context are never sent to external servers. Results are ranked locally and passed to Gemma 4 for answer generation with citations.',
                     ),
                   ],
                 ),
@@ -480,7 +385,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'If you delete the account, we remove local data, tokens, recaps, share links, cache, reminders, and local documents saved for this account.',
+                      'Deleting the account removes all local data, tokens, AI recaps, cache, reminders, and local documents on this device.',
                     ),
                     const SizedBox(height: 12),
                     FilledButton.tonalIcon(
@@ -509,13 +414,4 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       ),
     );
   }
-}
-
-String _dateLabel(DateTime value) {
-  final day = value.day.toString().padLeft(2, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final year = value.year.toString();
-  final hour = value.hour.toString().padLeft(2, '0');
-  final minute = value.minute.toString().padLeft(2, '0');
-  return '$day/$month/$year $hour:$minute';
 }

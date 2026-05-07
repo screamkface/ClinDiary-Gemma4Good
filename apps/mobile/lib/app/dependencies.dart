@@ -1,5 +1,6 @@
 import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
+import 'package:clindiary/app/core/notifications/gemma_download_notification_service.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
@@ -12,6 +13,7 @@ import 'package:clindiary/features/dossier/data/dossier_repository.dart';
 import 'package:clindiary/features/documents/data/document_picker_service.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/data/documents_repository.dart';
+import 'package:clindiary/features/documents/data/document_query_history_store.dart';
 import 'package:clindiary/features/history/data/history_repository.dart';
 import 'package:clindiary/features/insights/data/insights_repository.dart';
 import 'package:clindiary/features/insights/data/gemma_center_history_store.dart';
@@ -51,10 +53,14 @@ final sessionExpiryNotifierProvider =
       (ref) => SessionExpiryNotifier(),
     );
 
-
 final localMedicationReminderServiceProvider =
     Provider<LocalMedicationReminderService>(
       (ref) => LocalMedicationReminderService(),
+    );
+
+final gemmaDownloadNotificationServiceProvider =
+    Provider<GemmaDownloadNotificationService>(
+      (ref) => GemmaDownloadNotificationService(),
     );
 
 final wearableHealthServiceProvider = Provider<WearableHealthService>(
@@ -73,21 +79,16 @@ final authRepositoryProvider = Provider<AuthRepository>(
 );
 
 final devicesRepositoryProvider = Provider<DevicesRepository>(
-  (ref) => DevicesRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => DevicesRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
-  (ref) => ProfileRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => ProfileRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final dailyJournalRepositoryProvider = Provider<DailyJournalRepository>(
-  (ref) => DailyJournalRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) =>
+      DailyJournalRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final insightsRepositoryProvider = Provider<InsightsRepository>(
@@ -128,27 +129,27 @@ final gemmaCenterHistoryStoreProvider = Provider<GemmaCenterHistoryStore>(
       GemmaCenterHistoryStore(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
+final documentQueryHistoryStoreProvider = Provider<DocumentQueryHistoryStore>(
+  (ref) => DocumentQueryHistoryStore(
+    localDatabase: ref.watch(localDatabaseProvider),
+  ),
+);
+
 final onDevicePromptBuilderProvider = Provider<OnDevicePromptBuilder>(
   (ref) =>
       OnDevicePromptBuilder(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final historyRepositoryProvider = Provider<HistoryRepository>(
-  (ref) => HistoryRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => HistoryRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final alertsRepositoryProvider = Provider<AlertsRepository>(
-  (ref) => AlertsRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => AlertsRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final timelineRepositoryProvider = Provider<TimelineRepository>(
-  (ref) => TimelineRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => TimelineRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final documentsRepositoryProvider = Provider<DocumentsRepository>(
@@ -160,21 +161,18 @@ final documentsRepositoryProvider = Provider<DocumentsRepository>(
 );
 
 final screeningsRepositoryProvider = Provider<ScreeningsRepository>(
-  (ref) => ScreeningsRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) =>
+      ScreeningsRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final medicationsRepositoryProvider = Provider<MedicationsRepository>(
-  (ref) => MedicationsRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) =>
+      MedicationsRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final notificationsRepositoryProvider = Provider<NotificationsRepository>(
-  (ref) => NotificationsRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) =>
+      NotificationsRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final reportsRepositoryProvider = Provider<ReportsRepository>(
@@ -186,9 +184,7 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
 );
 
 final wearablesRepositoryProvider = Provider<WearablesRepository>(
-  (ref) => WearablesRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => WearablesRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
 
 final documentPickerServiceProvider = Provider<DocumentPickerService>(
@@ -212,8 +208,5 @@ final preventionCenterRepositoryProvider = Provider<PreventionCenterRepository>(
 );
 
 final dossierRepositoryProvider = Provider<DossierRepository>(
-  (ref) => DossierRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => DossierRepository(localDatabase: ref.watch(localDatabaseProvider)),
 );
-

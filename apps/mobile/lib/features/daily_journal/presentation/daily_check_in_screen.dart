@@ -31,6 +31,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
   );
   final _sleepHoursController = TextEditingController(text: '7');
   final _notesController = TextEditingController();
+  final _voiceTranscriptController = TextEditingController();
 
   double _sleepQuality = 7;
   double _energy = 6;
@@ -92,6 +93,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
     _dateController.dispose();
     _sleepHoursController.dispose();
     _notesController.dispose();
+    _voiceTranscriptController.dispose();
     super.dispose();
   }
 
@@ -147,6 +149,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
     unawaited(_speechToText.stop());
     setState(() {
       _voiceTranscript = '';
+      _voiceTranscriptController.text = '';
       _voiceError = null;
       _voiceDraft = null;
       _listening = false;
@@ -220,7 +223,10 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
 
   String _buildSymptomExtractionTranscript() {
     final notes = _notesController.text.trim();
-    final transcript = _voiceTranscript.trim();
+    // Prefer the editable transcript controller so user edits are used
+    final transcript = _voiceTranscriptController.text.trim().isNotEmpty
+        ? _voiceTranscriptController.text.trim()
+        : _voiceTranscript.trim();
     if (notes.isEmpty && transcript.isEmpty) {
       return '';
     }
@@ -358,11 +364,14 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
 
     final available = await _speechToText.initialize(
       onStatus: (status) {
-        if (!mounted) {
-          return;
-        }
+        // Don't auto-finalize when the runtime stops listening; allow the user
+        // to review and explicitly send the transcript to Gemma.
+        if (!mounted) return;
+        // keep _listening flag in sync if runtime reports notListening/done
         if ((status == 'done' || status == 'notListening') && _listening) {
-          unawaited(_finalizeVoiceCapture());
+          setState(() {
+            _listening = false;
+          });
         }
       },
       onError: _handleSpeechError,
@@ -388,7 +397,12 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
 
     if (_listening) {
       await _speechToText.stop();
-      await _finalizeVoiceCapture();
+      // Stop listening but do not auto-send; user will review and press "Send to Gemma"
+      if (mounted) {
+        setState(() {
+          _listening = false;
+        });
+      }
       return;
     }
 
@@ -399,6 +413,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
 
     setState(() {
       _voiceTranscript = '';
+      _voiceTranscriptController.text = '';
       _voiceError = null;
       _voiceDraft = null;
       _listening = true;
@@ -408,17 +423,16 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
       localeId: 'en_US',
       listenFor: _speechListenFor,
       pauseFor: _speechPauseFor,
-      partialResults: true,
+      listenOptions: SpeechListenOptions(partialResults: true),
       onResult: (result) {
         if (!mounted) {
           return;
         }
         setState(() {
           _voiceTranscript = result.recognizedWords;
+          _voiceTranscriptController.text = _voiceTranscript;
         });
-        if (result.finalResult) {
-          unawaited(_finalizeVoiceCapture());
-        }
+        // Do not auto-finalize on finalResult; wait for user confirmation
       },
     );
   }
@@ -428,7 +442,8 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
       return;
     }
 
-    final transcript = _voiceTranscript.trim();
+    // Use the (possibly edited) transcript from the controller so user edits are respected
+    final transcript = _voiceTranscriptController.text.trim();
     if (transcript.isEmpty) {
       if (mounted) {
         setState(() {
@@ -605,21 +620,34 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                                 ? Icons.stop_circle_outlined
                                 : Icons.mic_none_outlined,
                           ),
-                          label: Text(
-                            _listening ? 'Stop and fill in' : 'Speak',
-                          ),
+                          label: Text(_listening ? 'Stop' : 'Speak'),
                         ),
                         OutlinedButton.icon(
                           onPressed:
                               (_listening ||
                                   _parsingVoice ||
-                                  (_voiceTranscript.isEmpty &&
+                                  (_voiceTranscriptController.text.isEmpty &&
                                       _voiceDraft == null &&
                                       _voiceError == null))
                               ? null
                               : _clearVoiceDraft,
                           icon: const Icon(Icons.delete_outline),
                           label: const Text('Clear'),
+                        ),
+                        FilledButton.icon(
+                          onPressed:
+                              (_listening ||
+                                  _parsingVoice ||
+                                  _voiceTranscriptController.text
+                                      .trim()
+                                      .isEmpty)
+                              ? null
+                              : () async {
+                                  // Explicitly send edited transcript to Gemma
+                                  await _finalizeVoiceCapture();
+                                },
+                          icon: const Icon(Icons.send_outlined),
+                          label: const Text('Send to Gemma'),
                         ),
                         PopupMenuButton<_GemmaSymptomMenuAction>(
                           enabled: !_saving && !_parsingVoice && !_listening,
@@ -683,23 +711,28 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                       const SizedBox(height: 8),
                       const Text('Gemma is filling in the fields...'),
                     ],
-                    if (_voiceTranscript.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        'Transcript',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Transcript (edit before sending)',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _voiceTranscriptController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: SelectableText(_voiceTranscript),
+                        hintText:
+                            'Your transcript will appear here after recording. Edit as needed before sending to Gemma.',
                       ),
-                    ],
+                      onChanged: (v) => setState(() => _voiceTranscript = v),
+                    ),
                     if (_voiceDraft != null) ...[
                       const SizedBox(height: 12),
                       Text(

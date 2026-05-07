@@ -48,6 +48,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       if (field == 'medication_reminders_enabled') {
         await _syncLocalMedicationReminders(showFeedback: false);
       }
+      if (field == 'daily_checkin_enabled') {
+        // Sync daily check-in reminders to device whenever user toggles this preference
+        await ref
+            .read(localMedicationReminderServiceProvider)
+            .syncDailyCheckInReminders(enabled: value, completedToday: false);
+        ref.invalidate(localMedicationReminderStatusProvider);
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -270,10 +277,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
                     value: preferences.dailyCheckinEnabled,
-                    onChanged: preferences.inAppEnabled
-                        ? (value) =>
-                              _updatePreference('daily_checkin_enabled', value)
-                        : null,
+                    onChanged: (value) =>
+                        _updatePreference('daily_checkin_enabled', value),
                     title: const Text('Check-in reminders'),
                   ),
                   SwitchListTile.adaptive(

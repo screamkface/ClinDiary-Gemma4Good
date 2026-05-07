@@ -32,29 +32,31 @@ Entro 1 ora:
 
 ## Contenimento tecnico
 
-### Auth / token
+### Auth / sessione locale
 
-- ruotare `JWT_SECRET_KEY`
-- invalidare refresh token attivi
-- invalidare password reset token
-- verificare log auth e rate limit
+- cancellare sessione locale e secure storage sul device coinvolto
+- verificare che il flusso demo/local-only non esponga dati di altri profili
+- se in futuro viene ripristinato un backend, aggiungere rotazione token/segreti e invalidazione sessioni server
 
-### Documenti / share links
+### Documenti / vault locale
 
-- revocare immediatamente i dossier share link attivi
-- disattivare temporaneamente la creazione di nuovi link
-- verificare bucket/storage e access log
+- sospendere export/share locali se il problema riguarda file temporanei o vault
+- verificare cifratura AES-GCM e chiavi `flutter_secure_storage`
+- cancellare copie temporanee decrittate dove presenti
+- se in futuro vengono ripristinati share link server, aggiungere revoca immediata, TTL e access log
 
-### AI / vendor esterni
+### AI on-device / vendor futuri
 
-- passare `AI_PROVIDER=rule_based` se serve isolamento rapido
-- sospendere `document query` se il problema riguarda RAG o citazioni
-- bloccare il provider compromesso a livello env/config
+- rimuovere o disabilitare il modello locale se il problema riguarda output AI anomali
+- usare fallback locale prudente quando il runtime on-device non e affidabile
+- sospendere `document query` se il problema riguarda citazioni o recupero locale
+- se in futuro viene attivato un provider esterno, bloccarlo a livello config e seguire il DPA/vendor runbook
 
-### Notifiche / email / push
+### Notifiche locali / canali futuri
 
-- disattivare provider `smtp`, `fcm`, `apns` se la compromissione riguarda canali outbound
-- lasciare solo `log_only` fino a rotazione chiavi
+- disattivare reminder locali se generano contenuto errato o sensibile sul lock screen
+- verificare permessi notifiche e contenuto visualizzato
+- se in futuro vengono attivati `smtp`, `fcm`, `apns`, disattivarli fino a rotazione chiavi
 
 ## Verifica impatto dati
 
@@ -95,10 +97,9 @@ Entro 5 giorni lavorativi:
 
 ## Repo touchpoints utili
 
-- `apps/backend/app/core/config.py`
-- `apps/backend/app/main.py`
-- `apps/backend/app/core/logging.py`
-- `apps/backend/app/services/dossier_service.py`
-- `apps/backend/app/services/retention_service.py`
-- `apps/backend/app/ai/summary_provider.py`
-- `apps/backend/app/services/document_rag_service.py`
+- `apps/mobile/lib/app/core/storage/local_database.dart`
+- `apps/mobile/lib/features/documents/data/local_document_vault_service.dart`
+- `apps/mobile/lib/features/documents/data/local_document_vault_cipher.dart`
+- `apps/mobile/lib/features/insights/data/on_device_ai_service.dart`
+- `apps/mobile/lib/features/settings/presentation/privacy_ai_screen.dart`
+- `apps/mobile/lib/app/core/notifications/local_medication_reminder_service.dart`

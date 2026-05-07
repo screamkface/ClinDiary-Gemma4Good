@@ -402,6 +402,19 @@ class DocumentQueryCitation {
         score: (json['score'] as num?)?.toDouble(),
         viewerUrl: json['viewer_url'] as String?,
       );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'document_id': documentId,
+    'document_title': documentTitle,
+    'document_type': documentType,
+    'folder_name': folderName,
+    'exam_date': examDate?.toIso8601String(),
+    'chunk_kind': chunkKind,
+    'chunk_label': chunkLabel,
+    'excerpt': excerpt,
+    'score': score,
+    'viewer_url': viewerUrl,
+  };
 }
 
 class DocumentQueryResult {

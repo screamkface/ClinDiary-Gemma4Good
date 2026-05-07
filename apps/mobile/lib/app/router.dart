@@ -12,6 +12,7 @@ import 'package:clindiary/features/debug/presentation/sync_debug_screen.dart';
 import 'package:clindiary/features/dossier/presentation/health_dossier_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_detail_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_query_screen.dart';
+import 'package:clindiary/features/documents/presentation/document_query_history_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_review_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_upload_screen.dart';
 import 'package:clindiary/features/documents/presentation/documents_screen.dart';
@@ -266,6 +267,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       initialFolderName:
                           state.uri.queryParameters['folderName'],
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'history',
+                        builder: (context, state) =>
+                            const DocumentQueryHistoryScreen(),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'upload',

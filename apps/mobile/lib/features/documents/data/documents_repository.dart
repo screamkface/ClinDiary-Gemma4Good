@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
-import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_manual_review.dart';
@@ -172,6 +171,21 @@ class DocumentsRepository {
     );
   }
 
+  /// Query local documents using semantic search with Embedding Gemma 300M.
+  ///
+  /// Flow:
+  /// 1. Generate embedding for user question using Embedding Gemma 300M (MediaPipe TextEmbedder)
+  /// 2. For each local document: extract clinical fragments and generate embedding
+  /// 3. Rank documents by cosine similarity between question and document embeddings
+  /// 4. Pass top 3-8 most relevant documents to Gemma 4 (LiteRT) for answer generation
+  /// 5. Return DocumentQueryResult with answer and citations
+  ///
+  /// Models used:
+  /// - Embedding: Embedding Gemma 300M via MediaPipe (on_device_mediapipe)
+  /// - Generation: Gemma 4 E2B via LiteRT (on_device_litertlm)
+  /// - Ranking: Local cosine similarity + heuristics (local-semantic-ranker)
+  ///
+  /// All processing happens on-device. No data is sent to external servers.
   Future<DocumentQueryResult> _queryLocalDocuments({
     required String question,
     String? folderId,
@@ -212,7 +226,9 @@ class DocumentsRepository {
       );
     }
 
-    final questionEmbedding = await _onDeviceAiService.generateEmbedding(text: normalizedQuestion).catchError((_) => <double>[]);
+    final questionEmbedding = await _onDeviceAiService
+        .generateEmbedding(text: normalizedQuestion)
+        .catchError((_) => <double>[]);
 
     final ranked = <_LocalQueryCandidate>[];
     for (final summary in localDocuments) {
@@ -244,7 +260,7 @@ class DocumentsRepository {
         citations: const [],
         providerName: 'on_device_litertlm',
         modelName: 'gemma-4-E2B-it.litertlm',
-        embeddingModelName: 'on_device_mediapipe',
+        embeddingModelName: 'embeddinggemma-300m',
         rerankerModelName: 'local-semantic-ranker',
         retrievedChunks: 0,
         retrievedDocuments: 0,
@@ -283,7 +299,7 @@ class DocumentsRepository {
       citations: citations,
       providerName: 'on_device_litertlm',
       modelName: 'gemma-4-E2B-it.litertlm',
-      embeddingModelName: 'on_device_mediapipe',
+      embeddingModelName: 'embeddinggemma-300m',
       rerankerModelName: 'local-semantic-ranker',
       retrievedChunks: limited.length,
       retrievedDocuments: limited.map((item) => item.summary.id).toSet().length,
@@ -295,7 +311,18 @@ class DocumentsRepository {
     );
   }
 
-  Future<List<double>> _getDocumentEmbedding(ClinicalDocumentDetail detail) async {
+  /// Generate embedding vector for clinical document using Embedding Gemma 300M.
+  ///
+  /// Extracts clinical fragments (title, OCR, lab results, imaging reports) and
+  /// generates a semantic embedding using Embedding Gemma 300M via MediaPipe TextEmbedder.
+  /// Results are cached in local SQLite to avoid redundant computation.
+  ///
+  /// Model: Embedding Gemma 300M (300-dimensional dense vectors)
+  /// Provider: MediaPipe Text Embedder (on-device, no network)
+  /// Cache: SQLite with key 'doc_embed_{documentId}'
+  Future<List<double>> _getDocumentEmbedding(
+    ClinicalDocumentDetail detail,
+  ) async {
     final cacheKey = 'doc_embed_${detail.id}';
     final cached = await _localDatabase.readCache(cacheKey);
     if (cached != null) {
@@ -304,28 +331,41 @@ class DocumentsRepository {
         return decoded.map((e) => (e as num).toDouble()).toList();
       } catch (_) {}
     }
-    
+
     final fragments = <String>[
       detail.title,
       detail.documentType,
       if (detail.source != null) detail.source!,
-      if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty) detail.ocrText!,
+      if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
+        detail.ocrText!,
       for (final panel in detail.labPanels)
         '${panel.panelName} ${panel.results.map((item) => '${item.analyteName} ${item.value}${item.unit == null ? '' : ' ${item.unit}'}').join(' ')}',
       for (final report in detail.imagingReports)
         '${report.examType ?? 'imaging'} ${report.bodyPart ?? ''} ${report.impression ?? report.reportText}',
     ];
     final corpus = fragments.join(' ');
-    
+
     try {
-      final embedding = await _onDeviceAiService.generateEmbedding(text: corpus);
-      await _localDatabase.putCache(key: cacheKey, payload: jsonEncode(embedding));
+      final embedding = await _onDeviceAiService.generateEmbedding(
+        text: corpus,
+      );
+      await _localDatabase.putCache(
+        key: cacheKey,
+        payload: jsonEncode(embedding),
+      );
       return embedding;
     } catch (_) {
       return [];
     }
   }
 
+  /// Compute cosine similarity between two Embedding Gemma 300M vectors.
+  ///
+  /// Formula: similarity(A, B) = (A · B) / (||A|| × ||B||)
+  /// Range: 0.0 (orthogonal/dissimilar) to 1.0 (identical)
+  ///
+  /// Used for ranking documents by semantic relevance to user questions.
+  /// Higher scores indicate better semantic match.
   double _cosineSimilarity(List<double> a, List<double> b) {
     if (a.isEmpty || b.isEmpty || a.length != b.length) return 0.0;
     double dotProduct = 0.0;
@@ -340,6 +380,17 @@ class DocumentsRepository {
     return dotProduct / (sqrt(normA) * sqrt(normB));
   }
 
+  /// Build a ranked candidate document for local query using Embedding Gemma 300M.
+  ///
+  /// Scoring strategy:
+  /// 1. PRIMARY: Semantic search using Embedding Gemma 300M
+  ///    - Generate embeddings for both question and document
+  ///    - Compute cosine similarity (0.0 to 1.0)
+  /// 2. FALLBACK: If embeddings fail, use keyword matching
+  /// 3. HEURISTICS: Boost scores for lab/imaging relevance
+  ///
+  /// Result score determines ranking in final answer.
+  /// Candidates with score > 0 are included in top-K results.
   Future<_LocalQueryCandidate> _buildLocalQueryCandidate(
     ClinicalDocumentSummary summary,
     ClinicalDocumentDetail detail,
@@ -347,8 +398,8 @@ class DocumentsRepository {
     List<double> questionEmbedding,
   ) async {
     var score = 0.0;
-    
-    // Semantic search
+
+    // Semantic search using Embedding Gemma 300M
     if (questionEmbedding.isNotEmpty) {
       final documentEmbedding = await _getDocumentEmbedding(detail);
       score = _cosineSimilarity(questionEmbedding, documentEmbedding);
@@ -378,11 +429,12 @@ class DocumentsRepository {
           score += 1.0;
         }
       }
-      
+
       if (summary.title.toLowerCase().contains(question.toLowerCase())) {
         score += 2.0;
       }
-      if (detail.labPanels.isNotEmpty && question.toLowerCase().contains('lab')) {
+      if (detail.labPanels.isNotEmpty &&
+          question.toLowerCase().contains('lab')) {
         score += 0.8;
       }
       if (detail.imagingReports.isNotEmpty &&
@@ -425,10 +477,17 @@ class DocumentsRepository {
 
     final systemPrompt =
         'You are a careful clinical assistant. Use only the provided local document context. '
-        'Do not invent data, and clearly mention uncertainty when information is incomplete.';
+        'Do not invent data, and clearly mention uncertainty when information is incomplete. '
+        'When you see lab values marked with [ABNORMAL] or reference ranges like (ref: 70-100), '
+        'you MUST identify and clearly report these as out-of-range values in your answer. '
+        'If the user asks about abnormal/out-of-range values, explicitly list which values are abnormal. '
+        'Do not say "no abnormal values" if the documents contain values marked [ABNORMAL].';
     final userPrompt =
         'Question: $question\n\n'
         'Local document context:\n$context\n\n'
+        'IMPORTANT: Lab values marked with [ABNORMAL] are out of range. '
+        'Reference ranges are shown as (ref: min-max). '
+        'If the question asks about abnormal/out-of-range values, always explicitly report them.\n\n'
         'Write a concise answer in English using plain text only.\n'
         'Do not use Markdown, LaTeX, \$, code fences, or special formatting markers.\n'
         'Use exactly these lines:\n'
@@ -455,38 +514,6 @@ class DocumentsRepository {
     final profileId = await _localDatabase.readCache(activeProfileIdCacheKey);
     return _LocalVaultScope(userId: userId, profileId: profileId);
   }
-
-  bool _isLocalDocumentId(String documentId) =>
-      documentId.startsWith('local-doc-');
-
-  Future<List<ClinicalDocumentSummary>> _fetchReadOnlyCloudDocuments({
-    String? query,
-  }) async {
-    try {
-      final scope = await _resolveLocalScope();
-      final documents = await _localVaultService.fetchDocumentsForScope(
-        userScopeId: scope.userId,
-        profileScopeId: scope.profileId,
-      );
-      final normalizedQuery = query?.trim().toLowerCase();
-      if (normalizedQuery == null || normalizedQuery.isEmpty) {
-        return documents;
-      }
-      return documents.where((document) {
-        final haystack = [
-          document.title,
-          document.originalFilename,
-          document.source,
-          document.folderName,
-          document.documentType,
-        ].whereType<String>().join(' ').toLowerCase();
-        return haystack.contains(normalizedQuery);
-      }).toList();
-    } catch (_) {
-      return const [];
-    }
-  }
-
 }
 
 class _LocalQueryCandidate {
@@ -514,7 +541,11 @@ String _buildExcerpt(ClinicalDocumentDetail detail) {
         .take(3)
         .map((item) {
           final unit = item.unit == null ? '' : ' ${item.unit}';
-          return '${item.analyteName}: ${item.value}$unit';
+          final range = item.refMin != null && item.refMax != null
+              ? ' (ref: ${item.refMin}-${item.refMax})'
+              : '';
+          final abnormalLabel = item.abnormalFlag == true ? ' [ABNORMAL]' : '';
+          return '${item.analyteName}: ${item.value}$unit$range$abnormalLabel';
         })
         .join('; ');
     return '${panel.panelName}. $values';

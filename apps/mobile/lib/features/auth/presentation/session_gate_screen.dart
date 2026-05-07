@@ -24,7 +24,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
-    final l10n = AppLocalizations.of(context);
+    final l10n = Localizations.of<AppLocalizations>(context, AppLocalizations);
     final appConfig = ref.read(appConfigProvider);
     final shouldBypassAuth =
         appConfig.hackathonDemoMode || appConfig.localOnlyMode;
@@ -37,7 +37,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
             const ClinDiaryLogo(size: 86),
             const SizedBox(height: 18),
             Text(
-              l10n.appTitle,
+              l10n?.appTitle ?? 'ClinDiary',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
@@ -56,7 +56,9 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
         data: (session) {
           if (shouldBypassAuth && session == null) {
             _redirectAfterFrame('/app/home');
-            return loadingBody(l10n.verifyingSession);
+            return loadingBody(
+              l10n?.verifyingSession ?? 'Verifying session...',
+            );
           }
 
           final target = session == null
@@ -65,12 +67,14 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
               ? '/app/home'
               : '/onboarding';
           _redirectAfterFrame(target);
-          return loadingBody(l10n.verifyingSession);
+          return loadingBody(l10n?.verifyingSession ?? 'Verifying session...');
         },
-        loading: () => loadingBody(l10n.startingApp),
+        loading: () => loadingBody(l10n?.startingApp ?? 'Starting app...'),
         error: (_, _) {
           _redirectAfterFrame(shouldBypassAuth ? '/app/home' : '/login');
-          return loadingBody(l10n.redirectingToLogin);
+          return loadingBody(
+            l10n?.redirectingToLogin ?? 'Redirecting to login...',
+          );
         },
       ),
     );

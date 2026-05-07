@@ -25,6 +25,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   late DateTime _selectedDate;
   late DateTime _focusedMonth;
   bool _isRegeneratingDailyReport = false;
+  InsightSummary? _overrideDailySummary;
 
   @override
   void initState() {
@@ -45,11 +46,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       final summary = await ref
           .read(insightsRepositoryProvider)
           .regenerateSummary(query);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _overrideDailySummary = summary);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Daily report regenerated for ${DateFormat('dd/MM/yyyy').format(targetDate)}.',
+          ),
+        ),
+      );
 
       // Salva il recap nel Gemma Center History
       try {
-        final activeProfileId =
-            ref.read(activeProfileIdProvider).asData?.value?.trim();
+        final activeProfileId = ref
+            .read(activeProfileIdProvider)
+            .asData
+            ?.value
+            ?.trim();
         if (activeProfileId != null && activeProfileId.isNotEmpty) {
           await ref
               .read(gemmaCenterHistoryStoreProvider)
@@ -79,16 +95,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       ref.invalidate(historyDayProvider(targetDate));
       ref.invalidate(insightSummaryProvider(query));
 
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Daily report regenerated for ${DateFormat('dd/MM/yyyy').format(targetDate)}.',
-          ),
-        ),
-      );
+      if (!mounted) return;
     } catch (error) {
       if (!mounted) {
         return;
@@ -118,6 +125,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     setState(() {
       _selectedDate = today;
       _focusedMonth = DateTime(today.year, today.month, 1);
+      _overrideDailySummary = null;
     });
   }
 
@@ -127,10 +135,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final activityDatesAsync = ref.watch(
       historyActivityDatesProvider(_focusedMonth),
     );
+    // Watch the daily summary separately
+    final dailySummaryQuery = InsightSummaryQuery(
+      summaryType: 'daily',
+      referenceDate: _selectedDate,
+    );
+    final dailySummaryAsync = ref.watch(
+      insightSummaryProvider(dailySummaryQuery),
+    );
+
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
     Future<void> refreshHistory() async {
       ref.invalidate(historyDayProvider(_selectedDate));
       ref.invalidate(historyActivityDatesProvider(_focusedMonth));
+      ref.invalidate(insightSummaryProvider(dailySummaryQuery));
     }
 
     return DefaultTabController(
@@ -170,11 +188,22 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 historyAsync.when(
                   data: (history) => _HistoryContent(
                     history: history,
+                    dailySummaryAsync: dailySummaryAsync,
                     dateFormat: dateFormat,
                     isRegeneratingDailyReport: _isRegeneratingDailyReport,
-                    onCopyDailyReport: history.dailySummary == null
+                    overrideDailySummary: _overrideDailySummary,
+                    onCopyDailyReport:
+                        (_overrideDailySummary ??
+                                dailySummaryAsync.asData?.value ??
+                                history.dailySummary) ==
+                            null
                         ? null
-                        : () => _copyDailyReport(history.dailySummary!.content),
+                        : () => _copyDailyReport(
+                            (_overrideDailySummary ??
+                                    dailySummaryAsync.asData?.value ??
+                                    history.dailySummary)!
+                                .content,
+                          ),
                     onRegenerateDailyReport: _regenerateDailyReport,
                   ),
                   loading: () => const SectionCard(
@@ -205,6 +234,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             focused.month,
                             1,
                           );
+                          _overrideDailySummary = null;
                         });
                       },
                       onPageChanged: (focused) {
@@ -346,21 +376,29 @@ class _HistoryCalendar extends StatelessWidget {
 class _HistoryContent extends StatelessWidget {
   const _HistoryContent({
     required this.history,
+    required this.dailySummaryAsync,
     required this.dateFormat,
     required this.isRegeneratingDailyReport,
+    required this.overrideDailySummary,
     required this.onCopyDailyReport,
     required this.onRegenerateDailyReport,
   });
 
   final HistoryDay history;
+  final AsyncValue<InsightSummary> dailySummaryAsync;
   final DateFormat dateFormat;
   final bool isRegeneratingDailyReport;
+  final InsightSummary? overrideDailySummary;
   final VoidCallback? onCopyDailyReport;
   final VoidCallback onRegenerateDailyReport;
 
   @override
   Widget build(BuildContext context) {
     final entry = history.dailyEntry;
+    final dailySummary =
+        overrideDailySummary ??
+        dailySummaryAsync.asData?.value ??
+        history.dailySummary;
 
     return Column(
       children: [
@@ -375,7 +413,7 @@ class _HistoryContent extends StatelessWidget {
               _SummaryChip(label: entry == null ? 'No check-up' : 'Check-up'),
               _SummaryChip(label: '${history.timelineEvents.length} eventi'),
               _SummaryChip(label: '${history.documents.length} documents'),
-              if (history.dailySummary != null)
+              if (dailySummary != null)
                 const _SummaryChip(label: 'Recap available'),
               if (history.wearableSummary != null)
                 const _SummaryChip(label: 'Wearable'),
@@ -385,6 +423,7 @@ class _HistoryContent extends StatelessWidget {
         const SizedBox(height: 12),
         _HistoryDetailSwitcher(
           history: history,
+          dailySummary: dailySummary,
           entry: entry,
           isRegeneratingDailyReport: isRegeneratingDailyReport,
           onCopyDailyReport: onCopyDailyReport,
@@ -400,6 +439,7 @@ enum _HistoryDetailTab { recap, checkup, events, documents, wearable }
 class _HistoryDetailSwitcher extends StatefulWidget {
   const _HistoryDetailSwitcher({
     required this.history,
+    required this.dailySummary,
     required this.entry,
     required this.isRegeneratingDailyReport,
     required this.onCopyDailyReport,
@@ -407,6 +447,7 @@ class _HistoryDetailSwitcher extends StatefulWidget {
   });
 
   final HistoryDay history;
+  final InsightSummary? dailySummary;
   final DailyEntry? entry;
   final bool isRegeneratingDailyReport;
   final VoidCallback? onCopyDailyReport;
@@ -493,10 +534,10 @@ class _HistoryDetailSwitcherState extends State<_HistoryDetailSwitcher> {
                 ),
               ],
             ),
-            child: widget.history.dailySummary == null
+            child: widget.dailySummary == null
                 ? const Text('No recap available.')
                 : SummaryContentView(
-                    content: widget.history.dailySummary!.content,
+                    content: widget.dailySummary!.content,
                     maxHeightFactor: 0.48,
                   ),
           ),

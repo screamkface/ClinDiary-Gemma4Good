@@ -13,7 +13,7 @@ class SyncDebugScreen extends ConsumerStatefulWidget {
 }
 
 class _SyncDebugScreenState extends ConsumerState<SyncDebugScreen> {
-  bool _flushing = false;
+  final bool _flushing = false;
   bool _clearing = false;
 
   Future<void> _flushQueue() async {

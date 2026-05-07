@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 
 class ScreeningsRepository {
-  ScreeningsRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  ScreeningsRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _catalogCacheKey = 'screenings_catalog';
   static const _statusCacheKey = 'screenings_me';
@@ -90,23 +89,6 @@ class ScreeningsRepository {
       ),
       payload: jsonEncode(items),
     );
-  }
-
-  Future<void> _upsertStatusItemInCache(
-    String regionCode,
-    Map<String, dynamic> item,
-  ) async {
-    final items =
-        await _readStatusCacheJson(regionCode) ?? <Map<String, dynamic>>[];
-    final index = items.indexWhere(
-      (existing) => existing['id']?.toString() == item['id']?.toString(),
-    );
-    if (index == -1) {
-      items.add(item);
-    } else {
-      items[index] = item;
-    }
-    await _writeStatusCacheJson(regionCode, items);
   }
 
   Future<Map<String, dynamic>> _markDoneInCache(
@@ -252,6 +234,4 @@ class ScreeningsRepository {
         )
         .toList();
   }
-
-
 }

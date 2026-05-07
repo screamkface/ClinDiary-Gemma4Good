@@ -124,7 +124,6 @@ class LocalMedicationReminderService {
         importance: Importance.high,
       ),
     );
-    await androidPlugin?.requestExactAlarmsPermission();
 
     _initialized = true;
   }
@@ -169,7 +168,6 @@ class LocalMedicationReminderService {
         >();
     if (androidPlugin != null) {
       granted = await androidPlugin.requestNotificationsPermission() ?? false;
-      await androidPlugin.requestExactAlarmsPermission();
     } else {
       final iosPlugin = _plugin
           .resolvePlatformSpecificImplementation<
@@ -264,7 +262,7 @@ class LocalMedicationReminderService {
         id: item.id,
         scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
         notificationDetails: _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         title: item.title,
         body: item.body,
         payload: item.payload,
@@ -359,7 +357,7 @@ class LocalMedicationReminderService {
         id: item.id,
         scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
         notificationDetails: _dailyCheckInNotificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         title: item.title,
         body: item.body,
         payload: item.payload,
@@ -543,11 +541,7 @@ class LocalMedicationReminderService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     if (androidPlugin != null) {
-      final notificationsEnabled =
-          await androidPlugin.areNotificationsEnabled() ?? false;
-      final exactAlarmsGranted =
-          await androidPlugin.canScheduleExactNotifications() ?? false;
-      return notificationsEnabled && exactAlarmsGranted;
+      return await androidPlugin.areNotificationsEnabled() ?? false;
     }
     return true;
   }

@@ -134,12 +134,6 @@ class _WearablesScreenState extends ConsumerState<WearablesScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
-    } catch (error) {
-      if (mounted && showFeedback) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
-      }
     } finally {
       if (mounted) {
         setState(() => _syncing = false);

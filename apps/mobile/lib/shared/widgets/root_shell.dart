@@ -1,4 +1,5 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/core/notifications/gemma_download_notification_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,27 @@ class _RootShellState extends ConsumerState<RootShell> {
   void initState() {
     super.initState();
     _preloadLocalExperience();
+    _listenToGemmaDownloadRoute();
+  }
+
+  void _listenToGemmaDownloadRoute() {
+    gemmaDownloadRouteNotifier.addListener(_handleGemmaDownloadRoute);
+  }
+
+  void _handleGemmaDownloadRoute() {
+    final route = gemmaDownloadRouteNotifier.value;
+    if (route != null && route.contains('/app/ai')) {
+      // Navigate to AI branch (index 2) instead of relying on router redirect
+      widget.navigationShell.goBranch(2, initialLocation: false);
+      // Clear the notifier so it doesn't trigger again
+      gemmaDownloadRouteNotifier.value = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    gemmaDownloadRouteNotifier.removeListener(_handleGemmaDownloadRoute);
+    super.dispose();
   }
 
   void _preloadLocalExperience() {

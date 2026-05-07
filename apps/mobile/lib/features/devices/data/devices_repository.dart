@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/devices/domain/device_hub.dart';
 
 class DevicesRepository {
-  DevicesRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  DevicesRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _overviewCacheKey = 'devices_overview';
 
@@ -27,10 +26,7 @@ class DevicesRepository {
     required String providerCode,
     Map<String, dynamic> payload = const {},
   }) async {
-    return _buildLocalLinkResult(
-      providerCode: providerCode,
-      payload: payload,
-    );
+    return _buildLocalLinkResult(providerCode: providerCode, payload: payload);
   }
 
   Future<void> disconnectConnection(String connectionId) async {
@@ -48,10 +44,7 @@ class DevicesRepository {
     if (items.isEmpty) {
       return 0;
     }
-    return _appendMeasurementsToCache(
-      connectionId: connectionId,
-      items: items,
-    );
+    return _appendMeasurementsToCache(connectionId: connectionId, items: items);
   }
 
   Future<Map<String, dynamic>?> _readOverviewCacheJson() async {
@@ -72,32 +65,6 @@ class DevicesRepository {
       key: await profileScopedCacheKey(_localDatabase, _overviewCacheKey),
       payload: jsonEncode(overview),
     );
-  }
-
-  Future<void> _applyLinkResponseToCache(Map<String, dynamic> response) async {
-    final overview = await _readOverviewCacheJson() ?? _emptyOverviewJson();
-    final providers = _providersFromOverview(overview);
-    final provider = Map<String, dynamic>.from(
-      response['provider'] as Map<String, dynamic>? ??
-          const <String, dynamic>{},
-    );
-    if (provider.isNotEmpty) {
-      _upsertById(providers, provider, idKey: 'code');
-      overview['providers'] = providers;
-    }
-
-    final connection = response['connection'];
-    if (connection is Map<String, dynamic>) {
-      final connections = _connectionsFromOverview(overview);
-      _upsertById(
-        connections,
-        Map<String, dynamic>.from(connection),
-        idKey: 'id',
-      );
-      overview['connections'] = connections;
-    }
-
-    await _writeOverviewCache(overview);
   }
 
   Future<DeviceLinkResult> _buildLocalLinkResult({
@@ -135,63 +102,6 @@ class DevicesRepository {
     final connections = _connectionsFromOverview(overview)
       ..removeWhere((item) => item['id']?.toString() == connectionId);
     overview['connections'] = connections;
-    await _writeOverviewCache(overview);
-  }
-
-  Future<void> _applySyncResponseToCache(
-    Map<String, dynamic> response, {
-    required String connectionId,
-  }) async {
-    final overview = await _readOverviewCacheJson() ?? _emptyOverviewJson();
-    final nowIso = DateTime.now().toUtc().toIso8601String();
-
-    final jobs = _jobsFromOverview(overview);
-    final job = Map<String, dynamic>.from(
-      response['job'] as Map<String, dynamic>? ??
-          {
-            'id': 'local-job-${DateTime.now().microsecondsSinceEpoch}',
-            'provider_code': _providerCodeForConnection(overview, connectionId),
-            'status': 'succeeded',
-            'started_at': nowIso,
-            'connection_id': connectionId,
-            'completed_at': nowIso,
-            'item_count': response['imported_count'] as int? ?? 0,
-            'summary': 'Sync completed',
-            'error_message': null,
-          },
-    );
-    _upsertById(jobs, job, idKey: 'id');
-    overview['recent_jobs'] = jobs.take(10).toList();
-
-    final items = (response['items'] as List<dynamic>? ?? const <dynamic>[])
-        .map((item) => Map<String, dynamic>.from(item as Map<String, dynamic>))
-        .toList();
-    if (items.isNotEmpty) {
-      final measurements = _measurementsFromOverview(overview);
-      measurements.insertAll(0, items);
-      overview['recent_measurements'] = measurements.take(25).toList();
-    }
-
-    final connections = _connectionsFromOverview(overview);
-    final connectionIndex = connections.indexWhere(
-      (item) => item['id']?.toString() == connectionId,
-    );
-    if (connectionIndex != -1) {
-      final connection = Map<String, dynamic>.from(
-        connections[connectionIndex],
-      );
-      connection['last_synced_at'] = nowIso;
-      connection['status'] = 'connected';
-      if (items.isNotEmpty) {
-        connection['latest_measurement'] = items.first;
-      }
-      final importedCount = response['imported_count'] as int? ?? items.length;
-      connection['measurement_count'] =
-          (connection['measurement_count'] as int? ?? 0) + importedCount;
-      connections[connectionIndex] = connection;
-      overview['connections'] = connections;
-    }
-
     await _writeOverviewCache(overview);
   }
 
@@ -480,6 +390,4 @@ class DevicesRepository {
       'recent_jobs': const <Map<String, dynamic>>[],
     };
   }
-
-
 }

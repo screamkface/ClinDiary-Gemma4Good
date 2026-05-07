@@ -30,7 +30,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _smoker = false;
   String _regionCode = 'IT';
   bool _consent = false;
-  bool _aiConsent = false;
   bool _isSubmitting = false;
 
   @override
@@ -60,7 +59,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           .completeOnboarding(
             payload: {
               'health_data_consent': _consent,
-              'ai_external_consent': _aiConsent,
+              'ai_external_consent': false,
               'first_name': _firstNameController.text.trim(),
               'last_name': _lastNameController.text.trim(),
               'birth_date': _birthDateController.text.trim(),
@@ -365,18 +364,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         onPressed: () => context.push('/legal/privacy'),
                         icon: const Icon(Icons.description_outlined),
                         label: const Text('Read the beta privacy notice'),
-                      ),
-                    ),
-                    CheckboxListTile(
-                      value: _aiConsent,
-                      onChanged: (value) =>
-                          setState(() => _aiConsent = value ?? false),
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text(
-                        'I understand recaps stay local unless I enable external AI',
-                      ),
-                      subtitle: const Text(
-                        'ClinDiary stays on the local cautious engine by default.',
                       ),
                     ),
                     Align(

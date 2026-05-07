@@ -2,7 +2,7 @@
 
 Data: **1 aprile 2026**
 
-## Perimetro AI attuale
+## Perimetro AI attuale nel repository pubblico
 
 ClinDiary usa modelli AI per:
 
@@ -13,27 +13,25 @@ ClinDiary usa modelli AI per:
 - report narrativi AI
 - query documentale con citazioni
 
-## Regole operative gia implementate
+Nel checkout pubblico corrente queste funzioni sono progettate per il flusso mobile local-first. La generazione testuale Android passa da Gemma in formato LiteRT-LM quando il modello e disponibile sul device; in caso contrario l'app usa fallback locali prudenti.
+
+## Regole operative gia implementate / richieste
 
 - fallback `rule_based`
-- consenso separato per AI esterna
-- gating backend per minori / managed profile policy
+- nessun invio di dati sanitari a provider esterni nel flusso mobile local-only
+- gestione modello esplicita: import, download o provisioning manuale
 - no decisione clinica automatica nella prevenzione
-- dati device e wearable inviati come aggregati, non stream grezzi
-- document query con citazioni obbligatorie
+- dati device e wearable usati come aggregati locali, non stream grezzi verso servizi esterni
+- document query con citazioni obbligatorie quando sono disponibili fonti locali
 
-## Provider attuale
+## Provider attuale nel codice pubblico
 
-- provider di default: `regolo_ai`
-- modello summary/report: `minimax-m2.5`
-- modelli RAG documentale:
-  - `qwen3-8b`
-  - `qwen3-embedding-8b`
-  - `qwen3-reranker-4b`
+- provider generazione Android: `on_device_litertlm`
+- modello target: `gemma-4-E2B-it.litertlm`
+- embeddings documentali locali: `embeddinggemma-300m.tflite` dove disponibile
+- fallback: `rule_based` / fallback locale prudente
 
-Dettaglio tecnico in:
-
-- `docs/legal/ai-provider-register.md`
+Provider cloud, Regolo o pipeline backend non sono parte del flusso pubblico corrente salvo ripristino esplicito di sorgenti backend e contratti/vendor pack.
 
 ## Guardrail di prodotto
 
@@ -59,8 +57,8 @@ Dettaglio tecnico in:
 
 ## Touchpoints tecnici
 
-- `apps/backend/app/ai/summary_provider.py`
-- `apps/backend/app/ai/document_rag_provider.py`
-- `apps/backend/app/services/insight_service.py`
-- `apps/backend/app/services/document_rag_service.py`
+- `apps/mobile/lib/features/insights/data/on_device_ai_service.dart`
+- `apps/mobile/lib/features/insights/data/on_device_prompt_builder.dart`
+- `apps/mobile/lib/features/insights/data/insights_repository.dart`
+- `apps/mobile/lib/features/documents/data/documents_repository.dart`
 - `apps/mobile/lib/shared/widgets/clinical_scope_notice.dart`

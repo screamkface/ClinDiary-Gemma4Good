@@ -52,11 +52,6 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
-      } catch (error) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
 
@@ -82,11 +77,6 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
-      } catch (error) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
 
@@ -107,11 +97,6 @@ class HealthDossierScreen extends ConsumerWidget {
             subject: 'ClinDiary emergency card',
           ),
         );
-      } catch (error) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -279,11 +264,6 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
-      } catch (error) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
 
@@ -349,11 +329,6 @@ class HealthDossierScreen extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Secure link created.')));
-      } catch (error) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
       } catch (error) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(
@@ -1191,9 +1166,9 @@ class HealthDossierScreen extends ConsumerWidget {
                 children: [
                   if (localOnlyMode)
                     SectionCard(
-                      title: 'Local-only transfers',
+                      title: 'Secure shares',
                       subtitle:
-                          'Share links are disabled. Use encrypted local exports and backup restore.',
+                          'Share links are disabled in local-only mode. Use encrypted local exports and backup restore.',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
