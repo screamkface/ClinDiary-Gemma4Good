@@ -13,6 +13,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterFragmentActivity() {
     private val onDeviceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val onDeviceGemmaRuntime by lazy { OnDeviceGemmaRuntime(this) }
+    private val androidModelDownloader by lazy { AndroidModelDownloader(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -27,10 +28,11 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
 
-        MethodChannel(
+        val onDeviceChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "clindiary/on_device_ai"
-        ).setMethodCallHandler { call, result ->
+        )
+        onDeviceChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> runOnDevice(result) {
                     val modelPath = call.argument<String>("modelPath")
@@ -66,6 +68,22 @@ class MainActivity : FlutterFragmentActivity() {
                 "resetRuntime" -> runOnDevice(result) {
                     onDeviceGemmaRuntime.close()
                     mapOf("ok" to true)
+                }
+
+                "downloadGemma4Model" -> runOnDevice(result) {
+                    onDeviceGemmaRuntime.close()
+                    val downloadedPath = androidModelDownloader.downloadGemma4Model { receivedBytes, totalBytes ->
+                        runOnUiThread {
+                            onDeviceChannel.invokeMethod(
+                                "modelDownloadProgress",
+                                mapOf(
+                                    "receivedBytes" to receivedBytes,
+                                    "totalBytes" to totalBytes,
+                                ),
+                            )
+                        }
+                    }
+                    mapOf("path" to downloadedPath)
                 }
 
                 else -> result.notImplemented()

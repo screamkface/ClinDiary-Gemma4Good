@@ -106,9 +106,7 @@ class OnDeviceAiService {
       }
       final content = response['content']?.toString().trim() ?? '';
       if (content.isEmpty) {
-        throw Exception(
-          'The on-device runtime returned empty content.',
-        );
+        throw Exception('The on-device runtime returned empty content.');
       }
       return content;
     } on MissingPluginException {
@@ -167,6 +165,35 @@ class OnDeviceAiService {
     final targetFile = File(targetPath);
     final tempFile = File('$targetPath.download');
 
+    try {
+      _channel.setMethodCallHandler((call) async {
+        if (call.method != 'modelDownloadProgress') {
+          return null;
+        }
+        final arguments = Map<String, dynamic>.from(call.arguments as Map);
+        final receivedBytes = arguments['receivedBytes'];
+        final totalBytes = arguments['totalBytes'];
+        onProgress?.call(
+          receivedBytes is int ? receivedBytes : (receivedBytes as num).toInt(),
+          totalBytes == null ? null : (totalBytes as num).toInt(),
+        );
+        return null;
+      });
+      final response = await _channel.invokeMapMethod<String, dynamic>(
+        'downloadGemma4Model',
+      );
+      final downloadedPath = response?['path']?.toString().trim();
+      if (downloadedPath == null || downloadedPath.isEmpty) {
+        throw Exception('Model download completed without a file path.');
+      }
+      await resetRuntime();
+      return downloadedPath;
+    } on MissingPluginException {
+      // Fall back to the Dart downloader on non-Android test hosts.
+    } finally {
+      _channel.setMethodCallHandler(null);
+    }
+
     if (await tempFile.exists()) {
       await tempFile.delete();
     }
@@ -178,9 +205,7 @@ class OnDeviceAiService {
         ..headers[HttpHeaders.acceptHeader] = 'application/octet-stream';
       final response = await client.send(request);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Model download failed: HTTP ${response.statusCode}',
-        );
+        throw Exception('Model download failed: HTTP ${response.statusCode}');
       }
 
       final contentLength = response.contentLength;
