@@ -129,36 +129,9 @@ class ProfileScreen extends ConsumerWidget {
                             ).map((label) => _InfoChip(label: label)).toList(),
                           ),
                           const SizedBox(height: 14),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _ProfileActionChip(
-                                onPressed: () =>
-                                    context.push('/app/profile/vaccinations'),
-                                icon: const Icon(Icons.vaccines_outlined),
-                                label: 'Vaccinations',
-                              ),
-                              _ProfileActionChip(
-                                onPressed: () =>
-                                    context.push('/app/profile/problems'),
-                                icon: const Icon(Icons.topic_outlined),
-                                label: 'Issues',
-                              ),
-                              _ProfileActionChip(
-                                onPressed: () =>
-                                    context.push('/app/profile/settings'),
-                                icon: const Icon(Icons.tune_outlined),
-                                label: 'Settings',
-                              ),
-                              _ProfileActionChip(
-                                onPressed: () =>
-                                    context.push('/app/profile/family'),
-                                icon: const Icon(Icons.groups_outlined),
-                                label: 'Profiles',
-                              ),
-                            ],
-                          ),
+                          const Text('Go straight to what you need:'),
+                          const SizedBox(height: 10),
+                          const _ProfileShortcutGrid(),
                         ],
                       ),
                     ),
@@ -1678,27 +1651,126 @@ class _ProfileMetricCard extends StatelessWidget {
   }
 }
 
+class _ProfileShortcutGrid extends StatelessWidget {
+  const _ProfileShortcutGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 560 ? 4 : 2;
+        final spacing = 10.0;
+        final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            _ProfileActionChip(
+              width: width,
+              label: 'Vaccines',
+              subtitle: 'History',
+              icon: Icons.vaccines_rounded,
+              color: const Color(0xFFFF7A59),
+              onPressed: () => context.push('/app/profile/vaccinations'),
+            ),
+            _ProfileActionChip(
+              width: width,
+              label: 'Issues',
+              subtitle: 'Clinical',
+              icon: Icons.topic_rounded,
+              color: const Color(0xFF5B5CE2),
+              onPressed: () => context.push('/app/profile/problems'),
+            ),
+            _ProfileActionChip(
+              width: width,
+              label: 'Family',
+              subtitle: 'Profiles',
+              icon: Icons.groups_rounded,
+              color: const Color(0xFF18A999),
+              onPressed: () => context.push('/app/profile/family'),
+            ),
+            _ProfileActionChip(
+              width: width,
+              label: 'Settings',
+              subtitle: 'Privacy',
+              icon: Icons.tune_rounded,
+              color: const Color(0xFFF4A62A),
+              onPressed: () => context.push('/app/profile/settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ProfileActionChip extends StatelessWidget {
   const _ProfileActionChip({
+    required this.width,
     required this.label,
+    required this.subtitle,
     required this.icon,
+    required this.color,
     required this.onPressed,
   });
 
+  final double width;
   final String label;
-  final Widget icon;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ActionChip(
-      avatar: IconTheme(
-        data: IconThemeData(color: colorScheme.primary, size: 18),
-        child: icon,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      width: width,
+      child: Material(
+        color: color.withValues(alpha: isDark ? 0.22 : 0.1),
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 21),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      label: Text(label),
-      onPressed: onPressed,
     );
   }
 }

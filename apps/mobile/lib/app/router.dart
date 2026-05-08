@@ -6,6 +6,7 @@ import 'package:clindiary/features/auth/presentation/register_screen.dart';
 import 'package:clindiary/features/auth/presentation/session_gate_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/daily_check_in_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/diary_screen.dart';
+import 'package:clindiary/features/daily_journal/presentation/symptom_follow_up_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/symptom_entry_screen.dart';
 import 'package:clindiary/features/devices/presentation/devices_screen.dart';
 import 'package:clindiary/features/debug/presentation/sync_debug_screen.dart';
@@ -55,8 +56,7 @@ final _profileBranchNavigatorKey = GlobalKey<NavigatorState>(
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
   final appConfig = ref.read(appConfigProvider);
-  final shouldBypassAuth =
-      appConfig.hackathonDemoMode || appConfig.localOnlyMode;
+  final shouldBypassAuth = appConfig.hackathonDemoMode;
 
   bool isPublicRoute(String location) {
     return location == '/' ||
@@ -228,6 +228,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'check-up',
                     builder: (context, state) => const DailyCheckInScreen(),
+                  ),
+                  GoRoute(
+                    path: 'symptom-follow-up',
+                    builder: (context, state) => SymptomFollowUpScreen(
+                      sourceEntryId:
+                          state.uri.queryParameters['sourceEntryId'] ?? '',
+                      sourceSymptomId:
+                          state.uri.queryParameters['sourceSymptomId'] ?? '',
+                      initialResponse: state.uri.queryParameters['response'],
+                    ),
                   ),
                   GoRoute(
                     path: ':entryId/symptom',

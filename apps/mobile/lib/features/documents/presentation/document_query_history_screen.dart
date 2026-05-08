@@ -125,17 +125,11 @@ class _DocumentQueryHistoryScreenState
                         runSpacing: 8,
                         children: [
                           Chip(label: Text(entry.searchScopeLabel)),
-                          Chip(label: Text('Provider: ${entry.providerName}')),
-                          Chip(label: Text('Model: ${entry.modelName}')),
-                          if (entry.embeddingModelName != null)
-                            Chip(
-                              label: Text(
-                                'Embedding: ${entry.embeddingModelName}',
-                              ),
-                            ),
                           Chip(
                             label: Text(
-                              '${entry.retrievedDocuments} documents',
+                              entry.retrievedDocuments == 1
+                                  ? '1 file'
+                                  : '${entry.retrievedDocuments} files',
                             ),
                           ),
                         ],

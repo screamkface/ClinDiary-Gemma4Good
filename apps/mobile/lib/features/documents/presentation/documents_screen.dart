@@ -293,12 +293,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final parseProgressAsync = ref.watch(localDocumentParseProgressProvider);
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
-    final archiveValue = archiveAsync.asData?.value;
-    final firstMovableDocument =
-        archiveValue == null || archiveValue.documents.isEmpty
-        ? null
-        : archiveValue.documents.first;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Documents'),
@@ -309,31 +303,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           ),
         ],
       ),
-      floatingActionButton: firstMovableDocument == null
-          ? null
-          : PopupMenuButton<dynamic>(
-              tooltip: 'File actions',
-              icon: const Icon(Icons.more_horiz),
-              onSelected: (value) {
-                if (value == 'move') {
-                  WidgetsBinding.instance.addPostFrameCallback(
-                    (_) => _moveDocument(firstMovableDocument),
-                  );
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem<dynamic>(
-                  value: 'move',
-                  child: Row(
-                    children: [
-                      Icon(Icons.drive_file_move_outline),
-                      SizedBox(width: 12),
-                      Text('Move file'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+      floatingActionButton: null,
       body: archiveAsync.when(
         data: (archive) {
           final pendingSyncCount =
@@ -353,12 +323,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
           final isDark = Theme.of(context).brightness == Brightness.dark;
           const storageAccent = Colors.teal;
-          final storageChipBackground = isDark
-              ? storageAccent.shade900.withValues(alpha: 0.36)
-              : storageAccent.shade50;
-          final storageChipForeground = isDark
-              ? storageAccent.shade100
-              : storageAccent.shade900;
           final storageButtonBackground = isDark
               ? storageAccent.shade500
               : storageAccent.shade700;
@@ -371,18 +335,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           final folderButtonBorder = isDark
               ? Colors.indigo.shade400.withValues(alpha: 0.65)
               : Colors.indigo.shade200;
-          final askButtonForeground = isDark
-              ? Colors.cyan.shade200
-              : Colors.cyan.shade700;
-          final askButtonBorder = isDark
-              ? Colors.cyan.shade400.withValues(alpha: 0.65)
-              : Colors.cyan.shade200;
-          final localInfoBackground = isDark
-              ? Colors.teal.shade900.withValues(alpha: 0.36)
-              : Colors.teal.shade50;
-          final localInfoForeground = isDark
-              ? Colors.teal.shade100
-              : Colors.teal.shade900;
           final folderAvatarBackground = isDark
               ? Colors.indigo.shade900.withValues(alpha: 0.36)
               : Colors.indigo.shade50;
@@ -416,8 +368,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 SectionCard(
                   title: archive.currentFolder?.name ?? 'Archive',
                   subtitle: archive.isSearch
-                      ? 'Search files saved on this device.'
-                      : 'Your encrypted local archive.',
+                      ? 'Search your files.'
+                      : 'Everything important in one place.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -445,51 +397,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          if (filteredDocuments.isNotEmpty)
-                            PopupMenuButton<dynamic>(
-                              onSelected: (value) {
-                                if (value == 'move') {
-                                  WidgetsBinding.instance.addPostFrameCallback(
-                                    (_) =>
-                                        _moveDocument(filteredDocuments.first),
-                                  );
-                                }
-                              },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem<dynamic>(
-                                  value: 'move',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.drive_file_move_outline),
-                                      SizedBox(width: 12),
-                                      Text('Move file'),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              child: Chip(
-                                avatar: const Icon(Icons.more_horiz, size: 18),
-                                label: Text(
-                                  filteredDocuments.length == 1
-                                      ? 'File actions'
-                                      : 'First file actions',
-                                ),
-                              ),
-                            ),
-                          Chip(
-                            backgroundColor: storageChipBackground,
-                            avatar: Icon(
-                              Icons.phone_android_outlined,
-                              color: storageChipForeground,
-                            ),
-                            label: Text(
-                              documentStorageLabel(archive.storageLocation),
-                              style: TextStyle(
-                                color: storageChipForeground,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
                           FilledButton.icon(
                             onPressed: () => _openUpload(archive),
                             style: FilledButton.styleFrom(
@@ -522,14 +429,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             icon: const Icon(Icons.create_new_folder_outlined),
                             label: const Text('New folder'),
                           ),
-                          OutlinedButton.icon(
+                          _GlowingAskFilesButton(
                             onPressed: () => _openDocumentQuery(archive),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: askButtonForeground,
-                              side: BorderSide(color: askButtonBorder),
-                            ),
-                            icon: const Icon(Icons.chat_bubble_outline),
-                            label: const Text('Ask files'),
                           ),
                         ],
                       ),
@@ -573,54 +474,19 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           ),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: localInfoBackground,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.lock_outline,
-                                size: 18,
-                                color: localInfoForeground,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Files stay encrypted on this device.',
-                                  style: TextStyle(color: localInfoForeground),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          Chip(
-                            avatar: Icon(
-                              pendingSyncCount > 0
-                                  ? Icons.sync_problem_outlined
-                                  : Icons.cloud_done_outlined,
-                              size: 18,
+                          if (pendingSyncCount > 0)
+                            Chip(
+                              avatar: const Icon(
+                                Icons.sync_problem_outlined,
+                                size: 18,
+                              ),
+                              label: Text('Waiting: $pendingSyncCount'),
                             ),
-                            label: Text(
-                              pendingSyncCount > 0
-                                  ? 'Sync pending: $pendingSyncCount'
-                                  : 'Local sync up to date',
-                            ),
-                          ),
                           if (parseSnapshot.activeCount > 0)
                             Chip(
                               avatar: const Icon(
@@ -655,9 +521,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   const SizedBox(height: 12),
                   SectionCard(
                     title: 'Folders',
-                    subtitle: archive.isSearch
-                        ? 'Folders remain available as destinations.'
-                        : 'Open a folder to see only its files.',
+                    subtitle: 'Tap a folder to open it.',
                     child: Column(
                       children: archive.folders
                           .map(
@@ -746,9 +610,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 else if (filteredDocuments.isNotEmpty)
                   SectionCard(
                     title: archive.isSearch ? 'Found files' : 'Files',
-                    subtitle: archive.isSearch
-                        ? 'Results found across the entire archive.'
-                        : 'Open a file or move it to another folder.',
+                    subtitle: archive.isSearch ? 'Search results.' : null,
                     child: Column(
                       children: filteredDocuments
                           .map(
@@ -856,6 +718,72 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
   }
 }
 
+class _GlowingAskFilesButton extends StatelessWidget {
+  const _GlowingAskFilesButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const glow = Color(0xFF8E5CF7);
+    const accent = Color(0xFF23A6D5);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: glow.withValues(alpha: isDark ? 0.38 : 0.26),
+            blurRadius: 22,
+            spreadRadius: 2,
+          ),
+          BoxShadow(
+            color: accent.withValues(alpha: isDark ? 0.22 : 0.16),
+            blurRadius: 14,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: LinearGradient(
+            colors: [
+              glow.withValues(alpha: isDark ? 0.22 : 0.12),
+              accent.withValues(alpha: isDark ? 0.2 : 0.1),
+            ],
+          ),
+          border: Border.all(color: glow.withValues(alpha: 0.62), width: 1.4),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, color: glow, size: 19),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Ask files',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: isDark ? Colors.white : glow,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DocumentArchiveTile extends StatelessWidget {
   const _DocumentArchiveTile({
     required this.document,
@@ -877,15 +805,8 @@ class _DocumentArchiveTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = documentStatusColor(context, document.parsedStatus);
     final isParsing = parseProgress != null;
-    final onDeviceBackground = isDark
-        ? Colors.teal.shade900.withValues(alpha: 0.36)
-        : Colors.teal.shade50;
-    final onDeviceForeground = isDark
-        ? Colors.teal.shade100
-        : Colors.teal.shade900;
 
     return Card.outlined(
       margin: EdgeInsets.zero,
@@ -927,28 +848,13 @@ class _DocumentArchiveTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-            if (document.isLocal ||
-                document.isOld ||
-                document.pendingSync ||
-                isParsing)
+            if (document.isOld || document.pendingSync || isParsing)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    if (document.isLocal)
-                      Chip(
-                        label: Text(
-                          'On device',
-                          style: TextStyle(
-                            color: onDeviceForeground,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        backgroundColor: onDeviceBackground,
-                        visualDensity: VisualDensity.compact,
-                      ),
                     if (document.isOld)
                       Chip(
                         label: const Text('Old'),
@@ -1007,41 +913,51 @@ class _DocumentArchiveTile extends StatelessWidget {
               ),
           ],
         ),
-        trailing: allowMove
-            ? PopupMenuButton<dynamic>(
-                onSelected: (value) {
-                  if (value == 'move') {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      onMove();
-                    });
-                  }
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem<dynamic>(
-                    value: 'move',
-                    child: Row(
-                      children: [
-                        Icon(Icons.drive_file_move_outline),
-                        SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            'Move file',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                child: Chip(
-                  label: Text(documentStatusLabel(document.parsedStatus)),
-                  backgroundColor: statusColor.withValues(alpha: 0.12),
-                ),
-              )
-            : Chip(
-                label: Text(documentStatusLabel(document.parsedStatus)),
-                backgroundColor: statusColor.withValues(alpha: 0.12),
-              ),
+        trailing: _DocumentTileActions(
+          statusLabel: documentStatusLabel(document.parsedStatus),
+          statusColor: statusColor,
+          allowMove: allowMove,
+          onMove: onMove,
+        ),
+      ),
+    );
+  }
+}
+
+class _DocumentTileActions extends StatelessWidget {
+  const _DocumentTileActions({
+    required this.statusLabel,
+    required this.statusColor,
+    required this.allowMove,
+    required this.onMove,
+  });
+
+  final String statusLabel;
+  final Color statusColor;
+  final bool allowMove;
+  final VoidCallback onMove;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Chip(
+            label: Text(statusLabel),
+            backgroundColor: statusColor.withValues(alpha: 0.12),
+          ),
+          if (allowMove) ...[
+            const SizedBox(width: 4),
+            IconButton.filledTonal(
+              tooltip: 'Move file',
+              onPressed: onMove,
+              icon: const Icon(Icons.drive_file_move_outline),
+            ),
+          ],
+        ],
       ),
     );
   }

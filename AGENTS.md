@@ -241,3 +241,34 @@ When updating documentation:
 ## Ownership
 
 Primary repo maintainer: Nicola, the local workspace owner. For architecture, release or legal changes, consult the relevant docs and keep public documentation conservative and source-backed.
+
+## Execution Rules
+
+Before coding:
+
+- Read this file.
+- Read `REMAINING_WORK.md` if present.
+- Understand the current architecture before editing.
+
+Workflow:
+
+- Work in small phases.
+- Do not implement unrelated features.
+- After each completed task, update `REMAINING_WORK.md` with:
+  - what was completed
+  - what is still missing
+  - known bugs
+  - next recommended step
+
+Quality:
+
+- Run lint/analyze/tests before saying the task is done.
+- Prefer simple architecture over overengineering.
+- Do not introduce new frameworks, databases, or services unless strictly necessary.
+
+Safety:
+
+- Ask before destructive commands.
+- Never commit secrets.
+- Never rewrite large parts of the app without explaining why.
+- Treat project `opencode.json` and `.opencode/` as executable-trust surface: review MCP `command` entries before running OpenCode in unknown repositories.

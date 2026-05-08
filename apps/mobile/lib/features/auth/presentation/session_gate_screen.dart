@@ -26,8 +26,7 @@ class _SessionGateScreenState extends ConsumerState<SessionGateScreen> {
     final authState = ref.watch(authControllerProvider);
     final l10n = Localizations.of<AppLocalizations>(context, AppLocalizations);
     final appConfig = ref.read(appConfigProvider);
-    final shouldBypassAuth =
-        appConfig.hackathonDemoMode || appConfig.localOnlyMode;
+    final shouldBypassAuth = appConfig.hackathonDemoMode;
 
     Widget loadingBody(String message) {
       return Center(

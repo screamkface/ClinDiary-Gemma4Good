@@ -1,12 +1,13 @@
+import 'dart:async';
+
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
-import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
 import 'package:clindiary/shared/widgets/generation_phase_label.dart';
-import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -29,6 +30,8 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   ];
 
   final _questionController = TextEditingController();
+  final _chatScrollController = ScrollController();
+  final _pageScrollController = ScrollController(keepScrollOffset: false);
   DateTime _referenceDate = DateUtils.dateOnly(DateTime.now());
   bool _isAskingQuestion = false;
   bool _isGeneratingTrend = false;
@@ -38,7 +41,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   DateTime? _trendGenerationStartedAt;
   DateTime? _preVisitGenerationStartedAt;
   DateTime? _documentGenerationStartedAt;
-  String? _questionResult;
   String? _trendResult;
   String? _preVisitResult;
   String? _documentResult;
@@ -48,10 +50,14 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   String? _documentError;
   String? _observedActiveProfileId;
   bool _hasCompletedInitialProfileSync = false;
+  List<_GemmaChatMessage> _chatMessages = const <_GemmaChatMessage>[];
+  Timer? _questionStreamingTimer;
+  bool _chatAutoSnapEnabled = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _snapPageToChat());
     if (widget.initialQuestion != null &&
         widget.initialQuestion!.trim().isNotEmpty) {
       _questionController.text = widget.initialQuestion!.trim();
@@ -60,8 +66,18 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
 
   @override
   void dispose() {
+    _questionStreamingTimer?.cancel();
+    _pageScrollController.dispose();
+    _chatScrollController.dispose();
     _questionController.dispose();
     super.dispose();
+  }
+
+  void _snapPageToChat() {
+    if (!_pageScrollController.hasClients) {
+      return;
+    }
+    _pageScrollController.jumpTo(0);
   }
 
   void _syncProfileScope(String? activeProfileId) {
@@ -90,10 +106,11 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       }
       setState(() {
         _questionController.clear();
-        _questionResult = null;
         _trendResult = null;
         _preVisitResult = null;
         _documentResult = null;
+        _chatMessages = const <_GemmaChatMessage>[];
+        _chatAutoSnapEnabled = true;
         _questionError = null;
         _trendError = null;
         _preVisitError = null;
@@ -124,7 +141,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     if (picked != null) {
       setState(() {
         _referenceDate = DateUtils.dateOnly(picked);
-        _questionResult = null;
         _trendResult = null;
         _preVisitResult = null;
       });
@@ -163,11 +179,20 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     final profileScopeAtStart = _observedActiveProfileId;
 
     final startedAt = DateTime.now();
+    _questionStreamingTimer?.cancel();
     setState(() {
       _isAskingQuestion = true;
       _questionError = null;
       _questionGenerationStartedAt = startedAt;
+      _questionController.clear();
+      _chatMessages = [
+        ..._chatMessages,
+        _GemmaChatMessage.user(question),
+        const _GemmaChatMessage.assistant('', isStreaming: true),
+      ];
     });
+    _scrollChatToBottom();
+    var streamingStarted = false;
     try {
       final answer = await ref
           .read(gemmaCoachServiceProvider)
@@ -175,7 +200,8 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
         return;
       }
-      setState(() => _questionResult = answer);
+      streamingStarted = true;
+      _streamAssistantAnswer(answer);
       await _recordHistoryEntry(
         GemmaCenterHistoryEntry.question(
           question: question,
@@ -188,17 +214,87 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
         return;
       }
-      setState(
-        () => _questionError = error.toString().replaceFirst('Exception: ', ''),
-      );
+      setState(() {
+        _questionError = error.toString().replaceFirst('Exception: ', '');
+        _replaceLastAssistantMessage(
+          'I could not answer this time. $_questionError',
+          isStreaming: false,
+        );
+      });
     } finally {
-      if (mounted && profileScopeAtStart == _observedActiveProfileId) {
+      if (mounted &&
+          profileScopeAtStart == _observedActiveProfileId &&
+          !streamingStarted) {
         setState(() {
           _isAskingQuestion = false;
           _questionGenerationStartedAt = null;
         });
       }
     }
+  }
+
+  void _streamAssistantAnswer(String answer) {
+    _questionStreamingTimer?.cancel();
+    var index = 0;
+    final chunkSize = answer.length > 900 ? 10 : 5;
+    _questionStreamingTimer = Timer.periodic(const Duration(milliseconds: 24), (
+      timer,
+    ) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      index = (index + chunkSize).clamp(0, answer.length);
+      final completed = index >= answer.length;
+      setState(() {
+        _replaceLastAssistantMessage(
+          answer.substring(0, index),
+          isStreaming: !completed,
+        );
+        if (completed) {
+          _isAskingQuestion = false;
+          _questionGenerationStartedAt = null;
+        }
+      });
+      _scrollChatToBottom();
+      if (completed) {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _replaceLastAssistantMessage(String text, {required bool isStreaming}) {
+    final messages = [..._chatMessages];
+    for (var index = messages.length - 1; index >= 0; index--) {
+      if (!messages[index].isUser) {
+        messages[index] = _GemmaChatMessage.assistant(
+          text,
+          isStreaming: isStreaming,
+        );
+        _chatMessages = messages;
+        return;
+      }
+    }
+    _chatMessages = [
+      ...messages,
+      _GemmaChatMessage.assistant(text, isStreaming: isStreaming),
+    ];
+  }
+
+  void _scrollChatToBottom() {
+    if (!_chatAutoSnapEnabled) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_chatScrollController.hasClients) {
+        return;
+      }
+      _chatScrollController.animateTo(
+        _chatScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   Future<void> _generateTrend() async {
@@ -323,59 +419,105 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     }
   }
 
-  Widget _buildStatusCard() {
-    final statusAsync = ref.watch(onDeviceAiStatusProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
-
-    return statusAsync.when(
-      data: (status) => SectionCard(
-        title: 'Gemma 4 on device',
-        subtitle: status.isReady
-            ? 'Ready for questions, pre-visit prep and documents.'
-            : 'The runtime is not ready on the device yet.',
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            Chip(label: Text(status.activeProviderLabel)),
-            if (status.modelName != null && status.modelName!.trim().isNotEmpty)
-              Chip(label: Text(status.modelName!)),
-            Chip(label: Text('Backend ${status.backendPreference}')),
-            if (status.lastError != null && status.lastError!.trim().isNotEmpty)
-              Chip(label: Text(status.lastError!)),
-            Chip(label: Text('Updated ${dateFormat.format(DateTime.now())}')),
-          ],
-        ),
-      ),
-      loading: () => const SectionCard(
-        title: 'Gemma 4 on device',
-        child: LinearProgressIndicator(),
-      ),
-      error: (error, _) => SectionCard(
-        title: 'Gemma 4 on device',
-        subtitle: 'Unable to read the runtime status.',
-        child: Text(error.toString()),
-      ),
-    );
-  }
-
   Widget _buildQuestionSection() {
-    return SectionCard(
-      title: 'Ask your history',
-      subtitle:
-          'Open questions about symptoms, trends, medications and clinical context.',
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final chatHeight = _snappedChatHeight(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? const [Color(0xFF202544), Color(0xFF15192B)]
+              : const [Color(0xFFF0F2FF), Color(0xFFFFF4EF)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: _questionController,
-            minLines: 3,
-            maxLines: 6,
-            textInputAction: TextInputAction.newline,
-            decoration: const InputDecoration(
-              labelText: 'Question',
-              hintText:
-                  'E.g. How has my condition been over the last few days?',
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Talk with Gemma',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'A calm place to understand your diary. You stay in control.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _GemmaSafetyPill(icon: Icons.lock_outline, label: 'Local first'),
+              _GemmaSafetyPill(
+                icon: Icons.health_and_safety_outlined,
+                label: 'No diagnosis',
+              ),
+              _GemmaSafetyPill(
+                icon: Icons.fact_check_outlined,
+                label: 'Safety checks stay separate',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            height: chatHeight,
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: isDark ? 0.62 : 0.78),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: NotificationListener<UserScrollNotification>(
+              onNotification: (notification) {
+                if (notification.direction != ScrollDirection.idle &&
+                    _chatAutoSnapEnabled) {
+                  setState(() => _chatAutoSnapEnabled = false);
+                }
+                return false;
+              },
+              child: _chatMessages.isEmpty
+                  ? const _GemmaWelcomePanel()
+                  : ListView.builder(
+                      controller: _chatScrollController,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _chatMessages.length,
+                      itemBuilder: (context, index) {
+                        return _GemmaChatBubble(message: _chatMessages[index]);
+                      },
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -388,40 +530,59 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                       padding: const EdgeInsets.only(right: 8),
                       child: ActionChip(
                         label: Text(item),
-                        onPressed: () =>
-                            setState(() => _questionController.text = item),
+                        onPressed: _isAskingQuestion
+                            ? null
+                            : () => setState(
+                                () => _questionController.text = item,
+                              ),
                       ),
                     ),
                   )
                   .toList(),
             ),
           ),
-          if (_questionError != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _questionError!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isAskingQuestion ? null : _askQuestion,
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: GenerationPhaseLabel(
-                isActive: _isAskingQuestion,
-                startedAt: _questionGenerationStartedAt,
-                idleLabel: 'Ask Gemma',
-                showProgress: true,
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _questionController,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.newline,
+                  decoration: const InputDecoration(
+                    labelText: 'Ask anything about your diary',
+                    hintText: 'Example: what changed this week?',
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: _isAskingQuestion ? null : _askQuestion,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: _isAskingQuestion
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.arrow_upward_rounded),
+              ),
+            ],
           ),
-          if (_questionResult != null) ...[
-            const SizedBox(height: 16),
-            SummaryContentView(
-              content: _questionResult!,
-              constrainHeight: false,
+          if (_isAskingQuestion) ...[
+            const SizedBox(height: 8),
+            GenerationPhaseLabel(
+              isActive: true,
+              startedAt: _questionGenerationStartedAt,
+              idleLabel: 'Gemma is thinking',
+              showProgress: true,
             ),
           ],
         ],
@@ -429,15 +590,31 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     );
   }
 
+  double _snappedChatHeight(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final pageHeight =
+        media.size.height -
+        media.padding.top -
+        media.padding.bottom -
+        kToolbarHeight -
+        40 -
+        32;
+    final compactWidth = media.size.width < 380;
+    final fixedChrome = compactWidth ? 280.0 : 252.0;
+    return (pageHeight - fixedChrome).clamp(170.0, 360.0);
+  }
+
   Widget _buildTrendSection() {
-    return SectionCard(
-      title: 'Explain the trend',
-      subtitle: 'Gemma compares recent data and highlights patterns.',
+    return _GemmaToolCard(
+      title: 'Spot patterns',
+      subtitle: 'Look for simple changes in your recent diary.',
+      icon: Icons.trending_up_rounded,
+      color: const Color(0xFF18A999),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Use the selected date as the reference point for the analysis period.',
+            'Pick a day and Gemma will explain what changed around it.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -481,15 +658,16 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Widget _buildPreVisitSection() {
-    return SectionCard(
-      title: 'Pre-visit brief',
-      subtitle:
-          'Prepare a note to bring to the doctor with questions and key points.',
+    return _GemmaToolCard(
+      title: 'Prepare your visit',
+      subtitle: 'Turn your diary into a short note for the doctor.',
+      icon: Icons.assignment_rounded,
+      color: const Color(0xFFFF7A59),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Gemma condenses local data into a practical note for the visit.',
+            'Gemma creates a practical summary with points to discuss.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -510,7 +688,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 label: GenerationPhaseLabel(
                   isActive: _isGeneratingPreVisit,
                   startedAt: _preVisitGenerationStartedAt,
-                  idleLabel: 'Build brief',
+                  idleLabel: 'Prepare note',
                   showProgress: true,
                 ),
               ),
@@ -541,11 +719,13 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         ? null
         : ref.watch(documentDetailProvider(documentId));
 
-    return SectionCard(
-      title: 'Current document',
+    return _GemmaToolCard(
+      title: 'Explain a file',
       subtitle: documentId == null
-          ? 'Open a document detail to summarize it with Gemma.'
-          : 'Gemma reads OCR and extracted structure from the selected document.',
+          ? 'Open a file and ask Gemma to explain it here.'
+          : 'Gemma can summarize the selected file in simple words.',
+      icon: Icons.description_rounded,
+      color: const Color(0xFF23A6D5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -593,7 +773,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
             )
           else
             Text(
-              'From a document detail you can open this screen and ask Gemma to explain it in simple terms.',
+              'Open any file from Documents, then ask Gemma to explain it.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           if (_documentError != null) ...[
@@ -645,9 +825,11 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   Widget _buildHistorySection(
     AsyncValue<List<GemmaCenterHistoryEntry>> historyAsync,
   ) {
-    return SectionCard(
-      title: 'Profile history',
-      subtitle: 'Responses stay separated by the active profile.',
+    return _GemmaToolCard(
+      title: 'Past answers',
+      subtitle: 'Previous Gemma replies for this profile.',
+      icon: Icons.history_rounded,
+      color: const Color(0xFF8E5CF7),
       action: TextButton.icon(
         onPressed: _observedActiveProfileId == null
             ? null
@@ -715,17 +897,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         ],
       ),
       body: ListView(
+        controller: _pageScrollController,
         padding: const EdgeInsets.all(16),
         children: [
-          const ClinicalScopeNotice(
-            title: 'Gemma for support and summaries',
-            message:
-                'Gemma reorganizes local data for questions, pre-visit prep and documents. It does not replace the doctor and it does not replace deterministic safety checks.',
-            icon: Icons.auto_awesome_outlined,
-          ),
-          const SizedBox(height: 12),
-          _buildStatusCard(),
-          const SizedBox(height: 12),
           _buildQuestionSection(),
           const SizedBox(height: 12),
           _buildTrendSection(),
@@ -735,6 +909,276 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           _buildDocumentSection(),
           const SizedBox(height: 12),
           _buildHistorySection(historyAsync),
+        ],
+      ),
+    );
+  }
+}
+
+class _GemmaToolCard extends StatelessWidget {
+  const _GemmaToolCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.child,
+    this.action,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final Widget child;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.18 : 0.08),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              if (action != null) action!,
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _GemmaChatMessage {
+  const _GemmaChatMessage._({
+    required this.text,
+    required this.isUser,
+    this.isStreaming = false,
+  });
+
+  const _GemmaChatMessage.user(String text) : this._(text: text, isUser: true);
+
+  const _GemmaChatMessage.assistant(String text, {bool isStreaming = false})
+    : this._(text: text, isUser: false, isStreaming: isStreaming);
+
+  final String text;
+  final bool isUser;
+  final bool isStreaming;
+}
+
+class _GemmaWelcomePanel extends StatelessWidget {
+  const _GemmaWelcomePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Ask one question at a time.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Gemma can summarize patterns and prepare questions for your doctor, but it will not diagnose or prescribe.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GemmaChatBubble extends StatelessWidget {
+  const _GemmaChatBubble({required this.message});
+
+  final _GemmaChatMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isUser = message.isUser;
+    final bubbleColor = isUser
+        ? colorScheme.primary
+        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.72);
+    final foreground = isUser ? colorScheme.onPrimary : colorScheme.onSurface;
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
+              bottomLeft: Radius.circular(isUser ? 20 : 6),
+              bottomRight: Radius.circular(isUser ? 6 : 20),
+            ),
+          ),
+          child: message.isStreaming && message.text.isEmpty
+              ? const _GemmaTypingDots()
+              : SelectableText(
+                  message.isStreaming ? '${message.text}|' : message.text,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: foreground,
+                    height: 1.42,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GemmaTypingDots extends StatefulWidget {
+  const _GemmaTypingDots();
+
+  @override
+  State<_GemmaTypingDots> createState() => _GemmaTypingDotsState();
+}
+
+class _GemmaTypingDotsState extends State<_GemmaTypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final active = (_controller.value * 3).floor();
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final isActive = index == active;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: isActive ? 8 : 6,
+              height: isActive ? 8 : 6,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: isActive ? 0.9 : 0.35),
+                shape: BoxShape.circle,
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _GemmaSafetyPill extends StatelessWidget {
+  const _GemmaSafetyPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
         ],
       ),
     );

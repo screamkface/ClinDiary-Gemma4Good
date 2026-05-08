@@ -86,6 +86,7 @@ class NotificationPreferences {
   const NotificationPreferences({
     required this.inAppEnabled,
     required this.dailyCheckinEnabled,
+    required this.symptomFollowUpEnabled,
     required this.medicationRemindersEnabled,
     required this.screeningRemindersEnabled,
     required this.documentFollowUpEnabled,
@@ -99,6 +100,7 @@ class NotificationPreferences {
 
   final bool inAppEnabled;
   final bool dailyCheckinEnabled;
+  final bool symptomFollowUpEnabled;
   final bool medicationRemindersEnabled;
   final bool screeningRemindersEnabled;
   final bool documentFollowUpEnabled;
@@ -110,11 +112,13 @@ class NotificationPreferences {
   final String? emailAddress;
 
   factory NotificationPreferences.fromJson(Map<String, dynamic> json) {
-    return NotificationPreferences(
-      inAppEnabled: json['in_app_enabled'] as bool? ?? true,
-      dailyCheckinEnabled: json['daily_checkin_enabled'] as bool? ?? true,
-      medicationRemindersEnabled:
-          json['medication_reminders_enabled'] as bool? ?? true,
+      return NotificationPreferences(
+        inAppEnabled: json['in_app_enabled'] as bool? ?? true,
+        dailyCheckinEnabled: json['daily_checkin_enabled'] as bool? ?? true,
+        symptomFollowUpEnabled:
+            json['symptom_follow_up_enabled'] as bool? ?? true,
+        medicationRemindersEnabled:
+            json['medication_reminders_enabled'] as bool? ?? true,
       screeningRemindersEnabled:
           json['screening_reminders_enabled'] as bool? ?? true,
       documentFollowUpEnabled:
@@ -132,6 +136,7 @@ class NotificationPreferences {
     return {
       'in_app_enabled': inAppEnabled,
       'daily_checkin_enabled': dailyCheckinEnabled,
+      'symptom_follow_up_enabled': symptomFollowUpEnabled,
       'medication_reminders_enabled': medicationRemindersEnabled,
       'screening_reminders_enabled': screeningRemindersEnabled,
       'document_follow_up_enabled': documentFollowUpEnabled,
@@ -147,6 +152,7 @@ class NotificationPreferences {
   NotificationPreferences copyWith({
     bool? inAppEnabled,
     bool? dailyCheckinEnabled,
+    bool? symptomFollowUpEnabled,
     bool? medicationRemindersEnabled,
     bool? screeningRemindersEnabled,
     bool? documentFollowUpEnabled,
@@ -160,6 +166,8 @@ class NotificationPreferences {
     return NotificationPreferences(
       inAppEnabled: inAppEnabled ?? this.inAppEnabled,
       dailyCheckinEnabled: dailyCheckinEnabled ?? this.dailyCheckinEnabled,
+      symptomFollowUpEnabled:
+          symptomFollowUpEnabled ?? this.symptomFollowUpEnabled,
       medicationRemindersEnabled:
           medicationRemindersEnabled ?? this.medicationRemindersEnabled,
       screeningRemindersEnabled:

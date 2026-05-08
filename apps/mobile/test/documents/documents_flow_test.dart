@@ -198,20 +198,22 @@ void main() {
       await tester.pumpAndSettle();
 
       final documentScrollView = find.byType(Scrollable).first;
-      final parsedButtons = find.byType(PopupMenuButton);
+      final moveButtons = find.byTooltip('Move file');
       for (
         var attempts = 0;
-        attempts < 5 && parsedButtons.evaluate().isEmpty;
+        attempts < 5 && moveButtons.evaluate().isEmpty;
         attempts += 1
       ) {
         await tester.drag(documentScrollView, const Offset(0, -300));
         await tester.pumpAndSettle();
       }
-      final parsedChip = parsedButtons.last;
-      await tester.tap(parsedChip);
+      await tester.scrollUntilVisible(
+        moveButtons.first,
+        120,
+        scrollable: documentScrollView,
+      );
       await tester.pumpAndSettle();
-      final moveFileAction = find.text('Move file').last;
-      await tester.tap(moveFileAction);
+      await tester.tap(moveButtons.first);
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -417,10 +419,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('This document is saved only on the device.'),
-      findsOneWidget,
-    );
+    expect(find.text('Ready to use.'), findsOneWidget);
     expect(find.text('Manual review'), findsOneWidget);
     expect(find.text('Open file'), findsOneWidget);
   });
@@ -585,9 +584,14 @@ void main() {
       'Are there out-of-range values?',
     );
     await tester.pump();
-    await tester.drag(find.byType(ListView), const Offset(0, -240));
+    final askButton = find.byIcon(Icons.arrow_upward_rounded);
+    await tester.scrollUntilVisible(
+      askButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Search files'), warnIfMissed: false);
+    await tester.tap(askButton);
     await tester.pumpAndSettle();
 
     verify(
@@ -598,16 +602,17 @@ void main() {
       ),
     ).called(1);
     expect(find.textContaining('creatinine is elevated'), findsOneWidget);
-    expect(find.textContaining('1 document and 1 passage'), findsOneWidget);
+    expect(find.textContaining('1 file'), findsOneWidget);
+    expect(find.textContaining('1 useful part'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('April labs'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('April labs'), findsOneWidget);
-    expect(find.textContaining('qwen3-reranker-4b'), findsOneWidget);
+    expect(find.text('Files used'), findsOneWidget);
 
-    await tester.tap(find.text('Refresh index'), warnIfMissed: false);
+    await tester.tap(find.text('Refresh'), warnIfMissed: false);
     await tester.pump();
     verify(() => repository.reindexDocuments()).called(1);
   });

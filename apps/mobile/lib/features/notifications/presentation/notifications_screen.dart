@@ -55,6 +55,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             .syncDailyCheckInReminders(enabled: value, completedToday: false);
         ref.invalidate(localMedicationReminderStatusProvider);
       }
+      if (field == 'symptom_follow_up_enabled') {
+        final entries = await ref.read(dailyEntriesProvider.future);
+        await ref
+            .read(localMedicationReminderServiceProvider)
+            .syncSymptomFollowUpReminders(entries: entries, enabled: value);
+        ref.invalidate(localMedicationReminderStatusProvider);
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -85,6 +92,22 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             medications: bundle.medications,
             preferences: preferences,
             logs: logs,
+          );
+      final entries = await ref.read(dailyEntriesProvider.future);
+      final completedToday = entries.any(
+        (entry) => DateUtils.isSameDay(entry.entryDate, DateTime.now()),
+      );
+      await ref
+          .read(localMedicationReminderServiceProvider)
+          .syncDailyCheckInReminders(
+            enabled: preferences.dailyCheckinEnabled,
+            completedToday: completedToday,
+          );
+      await ref
+          .read(localMedicationReminderServiceProvider)
+          .syncSymptomFollowUpReminders(
+            entries: entries,
+            enabled: preferences.symptomFollowUpEnabled,
           );
       ref.invalidate(localMedicationReminderStatusProvider);
       if (!mounted || !showFeedback) {
@@ -283,6 +306,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
+                    value: preferences.symptomFollowUpEnabled,
+                    onChanged: preferences.inAppEnabled
+                        ? (value) => _updatePreference(
+                            'symptom_follow_up_enabled',
+                            value,
+                          )
+                        : null,
+                    title: const Text('Symptom follow-up reminders'),
+                  ),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
                     value: preferences.medicationRemindersEnabled,
                     onChanged: preferences.inAppEnabled
                         ? (value) => _updatePreference(
@@ -360,7 +394,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           const SizedBox(height: 16),
           localRemindersAsync.when(
             data: (status) => SectionCard(
-              title: 'Local medication reminders',
+              title: 'Local reminders',
               subtitle: 'Created on the device.',
               action: TextButton(
                 onPressed: _syncingLocalReminders
@@ -414,11 +448,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               ),
             ),
             loading: () => const SectionCard(
-              title: 'Local medication reminders',
+              title: 'Local reminders',
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => SectionCard(
-              title: 'Local medication reminders',
+              title: 'Local reminders',
               child: Text(error.toString()),
             ),
           ),

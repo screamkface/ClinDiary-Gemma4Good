@@ -1,4 +1,5 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/core/notifications/symptom_follow_up_response_store.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
@@ -17,14 +18,32 @@ class MedicationReminderBootstrap extends ConsumerStatefulWidget {
 }
 
 class _MedicationReminderBootstrapState
-    extends ConsumerState<MedicationReminderBootstrap> {
+    extends ConsumerState<MedicationReminderBootstrap>
+    with WidgetsBindingObserver {
   String? _lastFingerprint;
   bool _initializing = false;
+  bool _consumingPendingResponses = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _initializeService());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _consumePendingSymptomFollowUps();
+      });
+    }
   }
 
   Future<void> _initializeService() async {
@@ -33,8 +52,77 @@ class _MedicationReminderBootstrapState
     }
     _initializing = true;
     await ref.read(localMedicationReminderServiceProvider).initialize();
+    await _consumePendingSymptomFollowUps();
     ref.invalidate(localMedicationReminderStatusProvider);
     _initializing = false;
+  }
+
+  Future<void> _consumePendingSymptomFollowUps() async {
+    if (_consumingPendingResponses) {
+      return;
+    }
+
+    final session = ref.read(authControllerProvider).valueOrNull;
+    if (session == null) {
+      return;
+    }
+
+    _consumingPendingResponses = true;
+    try {
+      final pending = await SymptomFollowUpResponseStore().consumeAll();
+      if (pending.isEmpty) {
+        return;
+      }
+
+      final entries = await ref.read(dailyEntriesProvider.future);
+      final byKey = <String, PendingSymptomFollowUpResponse>{
+        for (final item in pending)
+          '${item.sourceEntryId}|${item.sourceSymptomId}': item,
+      };
+
+      for (final item in byKey.values) {
+        final source = _findSourceSymptom(
+          entries,
+          sourceEntryId: item.sourceEntryId,
+          sourceSymptomId: item.sourceSymptomId,
+        );
+        if (source == null) {
+          continue;
+        }
+        await ref.read(dailyJournalRepositoryProvider).recordSymptomFollowUp(
+          sourceEntryId: source.entry.id,
+          sourceEntryDate: source.entry.entryDate,
+          sourceSymptom: source.symptom,
+          stillPresent: item.response == 'still_present',
+          severity: item.response == 'still_present'
+              ? source.symptom.severity
+              : 0,
+        );
+      }
+
+      ref.invalidate(dailyEntriesProvider);
+      ref.invalidate(timelineEventsProvider);
+    } finally {
+      _consumingPendingResponses = false;
+    }
+  }
+
+  ({DailyEntry entry, SymptomEntry symptom})? _findSourceSymptom(
+    List<DailyEntry> entries, {
+    required String sourceEntryId,
+    required String sourceSymptomId,
+  }) {
+    for (final entry in entries) {
+      if (entry.id != sourceEntryId) {
+        continue;
+      }
+      for (final symptom in entry.symptoms) {
+        if (symptom.id == sourceSymptomId) {
+          return (entry: entry, symptom: symptom);
+        }
+      }
+    }
+    return null;
   }
 
   Future<void> _syncIfNeeded({
@@ -70,6 +158,12 @@ class _MedicationReminderBootstrapState
           enabled: preferences.dailyCheckinEnabled,
           completedToday: todayCompleted,
         );
+    await ref
+        .read(localMedicationReminderServiceProvider)
+        .syncSymptomFollowUpReminders(
+          entries: dailyEntries,
+          enabled: preferences.symptomFollowUpEnabled,
+        );
     ref.invalidate(localMedicationReminderStatusProvider);
   }
 
@@ -86,6 +180,7 @@ class _MedicationReminderBootstrapState
     final parts = <String>[
       preferences.medicationRemindersEnabled.toString(),
       preferences.dailyCheckinEnabled.toString(),
+      preferences.symptomFollowUpEnabled.toString(),
       todayCompleted.toString(),
       for (final medication in bundle.medications)
         [
@@ -110,6 +205,19 @@ class _MedicationReminderBootstrapState
           log.status,
           log.scheduledAt.toIso8601String(),
         ].join('|'),
+      for (final entry in dailyEntries.take(20))
+        [
+          entry.id,
+          entry.entryDate.toIso8601String(),
+          for (final symptom in entry.symptoms)
+            [
+              symptom.id,
+              symptom.symptomCode,
+              symptom.severity?.toString() ?? '',
+              symptom.metadataJson['follow_up_source_symptom_id']?.toString() ?? '',
+              symptom.metadataJson['follow_up_status']?.toString() ?? '',
+            ].join('|'),
+        ].join('::'),
     ];
     return parts.join('##');
   }

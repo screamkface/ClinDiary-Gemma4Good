@@ -150,16 +150,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               SectionCard(
                 title: 'File',
                 subtitle: widget.initialFolderName == null
-                    ? 'Choose a file to save on this device.'
-                    : 'The file will be saved in the current local folder.',
+                    ? 'Choose what you want to add.'
+                    : 'It will go in this folder.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Chip(
-                      avatar: const Icon(Icons.phone_android_outlined),
-                      label: const Text('On-device archive'),
-                    ),
-                    const SizedBox(height: 12),
                     if (widget.initialFolderName != null &&
                         widget.initialFolderName!.trim().isNotEmpty) ...[
                       Chip(

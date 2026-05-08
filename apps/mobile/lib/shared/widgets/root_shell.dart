@@ -1,5 +1,6 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/app/core/notifications/gemma_download_notification_service.dart';
+import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,6 +56,7 @@ class _RootShellState extends ConsumerState<RootShell> {
     super.initState();
     _preloadLocalExperience();
     _listenToGemmaDownloadRoute();
+    _listenToSymptomFollowUpRoute();
   }
 
   void _listenToGemmaDownloadRoute() {
@@ -71,9 +73,23 @@ class _RootShellState extends ConsumerState<RootShell> {
     }
   }
 
+  void _listenToSymptomFollowUpRoute() {
+    symptomFollowUpRouteNotifier.addListener(_handleSymptomFollowUpRoute);
+  }
+
+  void _handleSymptomFollowUpRoute() {
+    final route = symptomFollowUpRouteNotifier.value;
+    if (route == null || !route.contains('/app/diary/symptom-follow-up')) {
+      return;
+    }
+    GoRouter.of(context).go(route);
+    symptomFollowUpRouteNotifier.value = null;
+  }
+
   @override
   void dispose() {
     gemmaDownloadRouteNotifier.removeListener(_handleGemmaDownloadRoute);
+    symptomFollowUpRouteNotifier.removeListener(_handleSymptomFollowUpRoute);
     super.dispose();
   }
 

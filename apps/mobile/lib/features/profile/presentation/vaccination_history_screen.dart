@@ -82,155 +82,12 @@ class _VaccinationHistoryScreenState
   Future<Map<String, dynamic>?> _showVaccinationDialog({
     VaccinationRecordItem? initial,
   }) async {
-    final vaccineNameController = TextEditingController(
-      text: initial?.vaccineName ?? '',
-    );
-    final doseNumberController = TextEditingController(
-      text: initial?.doseNumber?.toString() ?? '',
-    );
-    final providerController = TextEditingController(
-      text: initial?.providerName ?? '',
-    );
-    final notesController = TextEditingController(text: initial?.notes ?? '');
-    DateTime? administeredOn = initial?.administeredOn;
-    DateTime? nextDueDate = initial?.nextDueDate;
-
-    final result = await showDialog<Map<String, dynamic>?>(
+    return showModalBottomSheet<Map<String, dynamic>?>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setState) => AlertDialog(
-          scrollable: true,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 24,
-          ),
-          title: Text(initial == null ? 'New vaccination' : 'Edit vaccination'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: vaccineNameController,
-                  decoration: const InputDecoration(labelText: 'Vaccine name'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: doseNumberController,
-                  decoration: const InputDecoration(labelText: 'Dose number'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Administration date'),
-                  subtitle: Text(
-                    administeredOn == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(administeredOn!),
-                  ),
-                  trailing: const Icon(Icons.event_outlined),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: dialogContext,
-                      initialDate: administeredOn ?? DateTime.now(),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime(2100),
-                      helpText: 'Select administration date',
-                    );
-                    if (picked != null) {
-                      setState(() => administeredOn = picked);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Next booster'),
-                  subtitle: Text(
-                    nextDueDate == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(nextDueDate!),
-                  ),
-                  trailing: const Icon(Icons.schedule_outlined),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: dialogContext,
-                      initialDate: nextDueDate ?? DateTime.now(),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime(2100),
-                      helpText: 'Select next booster',
-                    );
-                    if (picked != null) {
-                      setState(() => nextDueDate = picked);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: providerController,
-                  decoration: const InputDecoration(
-                    labelText: 'Facility / operator',
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(labelText: 'Note'),
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext, rootNavigator: true).pop(null),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final name = vaccineNameController.text.trim();
-                if (name.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Enter the vaccine name.')),
-                  );
-                  return;
-                }
-                Navigator.of(dialogContext, rootNavigator: true).pop({
-                  'vaccine_name': name,
-                  'administered_on': administeredOn
-                      ?.toIso8601String()
-                      .split('T')
-                      .first,
-                  'dose_number': doseNumberController.text.trim().isEmpty
-                      ? null
-                      : int.tryParse(doseNumberController.text.trim()),
-                  'next_due_date': nextDueDate
-                      ?.toIso8601String()
-                      .split('T')
-                      .first,
-                  'provider_name': providerController.text.trim().isEmpty
-                      ? null
-                      : providerController.text.trim(),
-                  'notes': notesController.text.trim().isEmpty
-                      ? null
-                      : notesController.text.trim(),
-                });
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _VaccinationFormSheet(initial: initial),
     );
-
-    vaccineNameController.dispose();
-    doseNumberController.dispose();
-    providerController.dispose();
-    notesController.dispose();
-    return result;
   }
 
   @override
@@ -266,6 +123,8 @@ class _VaccinationHistoryScreenState
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                _VaccinationHeroCard(onAdd: () => _saveVaccination()),
+                const SizedBox(height: 12),
                 preventionAsync.when(
                   data: (center) => SectionCard(
                     title: 'Vaccination registry',
@@ -369,6 +228,302 @@ class _VaccinationHistoryScreenState
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text(error.toString())),
+      ),
+    );
+  }
+}
+
+class _VaccinationFormSheet extends StatefulWidget {
+  const _VaccinationFormSheet({this.initial});
+
+  final VaccinationRecordItem? initial;
+
+  @override
+  State<_VaccinationFormSheet> createState() => _VaccinationFormSheetState();
+}
+
+class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
+  late final TextEditingController _vaccineNameController;
+  late final TextEditingController _doseNumberController;
+  late final TextEditingController _providerController;
+  late final TextEditingController _notesController;
+  DateTime? _administeredOn;
+  DateTime? _nextDueDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    _vaccineNameController = TextEditingController(
+      text: initial?.vaccineName ?? '',
+    );
+    _doseNumberController = TextEditingController(
+      text: initial?.doseNumber?.toString() ?? '',
+    );
+    _providerController = TextEditingController(
+      text: initial?.providerName ?? '',
+    );
+    _notesController = TextEditingController(text: initial?.notes ?? '');
+    _administeredOn = initial?.administeredOn;
+    _nextDueDate = initial?.nextDueDate;
+  }
+
+  @override
+  void dispose() {
+    _vaccineNameController.dispose();
+    _doseNumberController.dispose();
+    _providerController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate({required bool nextBooster}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: nextBooster
+          ? _nextDueDate ?? DateTime.now()
+          : _administeredOn ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+      helpText: nextBooster ? 'Select next booster' : 'Select date',
+    );
+    if (!mounted || picked == null) {
+      return;
+    }
+    setState(() {
+      if (nextBooster) {
+        _nextDueDate = picked;
+      } else {
+        _administeredOn = picked;
+      }
+    });
+  }
+
+  void _save() {
+    final name = _vaccineNameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter the vaccine name.')));
+      return;
+    }
+
+    Navigator.of(context).pop({
+      'vaccine_name': name,
+      'administered_on': _administeredOn?.toIso8601String().split('T').first,
+      'dose_number': _doseNumberController.text.trim().isEmpty
+          ? null
+          : int.tryParse(_doseNumberController.text.trim()),
+      'next_due_date': _nextDueDate?.toIso8601String().split('T').first,
+      'provider_name': _providerController.text.trim().isEmpty
+          ? null
+          : _providerController.text.trim(),
+      'notes': _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottomInset),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              widget.initial == null ? 'Add vaccine' : 'Edit vaccine',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Only the name is required. You can add dates later.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _vaccineNameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Vaccine name',
+                hintText: 'Example: Influenza',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _doseNumberController,
+              decoration: const InputDecoration(labelText: 'Dose'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            _VaccinationDateTile(
+              title: 'Date',
+              value: _administeredOn == null
+                  ? 'Choose date'
+                  : dateFormat.format(_administeredOn!),
+              icon: Icons.event_outlined,
+              onTap: () => _pickDate(nextBooster: false),
+            ),
+            const SizedBox(height: 8),
+            _VaccinationDateTile(
+              title: 'Next booster',
+              value: _nextDueDate == null
+                  ? 'Optional'
+                  : dateFormat.format(_nextDueDate!),
+              icon: Icons.schedule_outlined,
+              onTap: () => _pickDate(nextBooster: true),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _providerController,
+              decoration: const InputDecoration(labelText: 'Place or doctor'),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesController,
+              decoration: const InputDecoration(labelText: 'Note'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(null),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _save,
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VaccinationDateTile extends StatelessWidget {
+  const _VaccinationDateTile({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.48),
+      borderRadius: BorderRadius.circular(18),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(value),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+    );
+  }
+}
+
+class _VaccinationHeroCard extends StatelessWidget {
+  const _VaccinationHeroCard({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const color = Color(0xFFFF7A59);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.98, end: 1),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      builder: (context, scale, child) {
+        return Transform.scale(scale: scale, child: child);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.18 : 0.1),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: color.withValues(alpha: 0.16)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.vaccines_rounded,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add a vaccine in seconds',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Name, date, dose and next booster stay together here.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: onAdd,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Add vaccine'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

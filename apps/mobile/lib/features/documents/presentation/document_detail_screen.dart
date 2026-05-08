@@ -294,10 +294,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       return 'Open Manual review to add or confirm key values.';
     }
     if (detail.parsedStatus == 'parsed') {
-      return 'You can ask Gemma for a quick explanation or open the file.';
+      return 'Ask for a quick explanation or open the file.';
     }
     if (detail.isLocal && (detail.ocrText == null || detail.ocrText!.isEmpty)) {
-      return 'Add details with Manual review to improve local answers.';
+      return 'Add a few details so answers work better.';
     }
     return 'Open the file and confirm details if needed.';
   }
@@ -430,9 +430,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
             children: [
               SectionCard(
                 title: detail.title,
-                subtitle: detail.isLocal
-                    ? 'Saved on this device.'
-                    : 'Status and key info for this file.',
+                subtitle: 'Open it, move it, or ask for a quick explanation.',
                 action: FilledButton.tonalIcon(
                   onPressed:
                       (detail.isLocal ||
@@ -453,14 +451,9 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         Chip(
                           label: Text(documentTypeLabel(detail.documentType)),
                         ),
-                        Chip(
-                          label: Text(
-                            documentStorageLabel(detail.storageLocation),
-                          ),
-                        ),
                         if (detail.folderName != null &&
                             detail.folderName!.isNotEmpty)
-                          Chip(label: Text('Folder: ${detail.folderName}')),
+                          Chip(label: Text(detail.folderName!)),
                         Chip(
                           label: Text(documentStatusLabel(detail.parsedStatus)),
                         ),
@@ -550,26 +543,20 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       runSpacing: 12,
                       children: [
                         _InfoTile(
-                          label: 'Uploaded',
+                          label: 'Added',
                           value: dateFormat.format(detail.uploadDate.toLocal()),
                         ),
                         _InfoTile(
                           label: 'Exam',
                           value: detail.examDate == null
-                              ? 'N/A'
+                              ? 'Not added'
                               : detail.examDate!
                                     .toIso8601String()
                                     .split('T')
                                     .first,
                         ),
-                        _InfoTile(
-                          label: 'Source',
-                          value: detail.source ?? 'N/A',
-                        ),
-                        _InfoTile(
-                          label: 'File',
-                          value: detail.originalFilename,
-                        ),
+                        if (detail.source?.trim().isNotEmpty == true)
+                          _InfoTile(label: 'From', value: detail.source!),
                         _InfoTile(
                           label: 'Size',
                           value: formatFileSize(detail.fileSizeBytes),
@@ -625,7 +612,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       FilledButton.tonalIcon(
                         onPressed: () => _openGemmaCenter(detail),
                         icon: const Icon(Icons.auto_awesome_outlined),
-                        label: const Text('Explain with Gemma'),
+                        label: const Text('Ask about this file'),
                       ),
                     if (canAskGemmaAboutDocument) const SizedBox(height: 12),
                     if (detail.isCloud)
@@ -675,12 +662,12 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'This document is saved only on the device.',
+                                  'Ready to use.',
                                   style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                                 const SizedBox(height: 6),
                                 const Text(
-                                  'You can ask local questions on this file, open it externally, and keep it encrypted in the local vault.',
+                                  'You can open it, review it, or ask for a simple explanation.',
                                 ),
                               ],
                             ),
@@ -713,12 +700,12 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Read-only archived document',
+                                'View only',
                                 style: TextStyle(fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 6),
                               const Text(
-                                'Archived files remain viewable, but editing is disabled while local-only mode is active.',
+                                'You can read this file, but editing is disabled right now.',
                               ),
                             ],
                           ),

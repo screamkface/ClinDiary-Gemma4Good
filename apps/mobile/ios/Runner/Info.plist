@@ -28,6 +28,8 @@
 	<string>ClinDiary usa i dati Apple Health solo per sincronizzare riassunti giornalieri dentro il diario clinico.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ClinDiary usa la fotocamera per acquisire referti e salvarli nel tuo archivio clinico.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>ClinDiary usa Face ID per sbloccare i dati sanitari locali sul dispositivo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ClinDiary puo leggere immagini dal rullino per importare referti e documenti sanitari.</string>
 	<key>LSRequiresIPhoneOS</key>

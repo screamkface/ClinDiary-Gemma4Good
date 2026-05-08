@@ -39,6 +39,38 @@ class DailyJournalRepository {
     await _upsertSymptomInCache(entryId, symptom);
   }
 
+  Future<void> recordSymptomFollowUp({
+    required String sourceEntryId,
+    required DateTime sourceEntryDate,
+    required SymptomEntry sourceSymptom,
+    required bool stillPresent,
+    int? severity,
+    String? notes,
+  }) async {
+    final today = DateTime.now();
+    final entry = await _ensureEntryForDate(today);
+    final todayKey = _dateKey(today);
+    final metadata = <String, dynamic>{
+      'entry_mode': 'follow_up',
+      'follow_up_status': stillPresent ? 'still_present' : 'resolved',
+      'follow_up_source_entry_id': sourceEntryId,
+      'follow_up_source_symptom_id': sourceSymptom.id,
+      'follow_up_source_date': _dateKey(sourceEntryDate),
+      'follow_up_recorded_at': DateTime.now().toUtc().toIso8601String(),
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+    };
+
+    await _upsertSymptomInCache(entry.id, {
+      'id': 'followup-${sourceSymptom.id}-$todayKey',
+      'symptom_code': sourceSymptom.symptomCode,
+      'severity': stillPresent ? (severity ?? sourceSymptom.severity ?? 4) : 0,
+      'duration_minutes': sourceSymptom.durationMinutes,
+      'body_location': sourceSymptom.bodyLocation,
+      'metadata_json': metadata,
+      'pending_sync': false,
+    });
+  }
+
   Future<void> addVital({
     required String entryId,
     required Map<String, dynamic> payload,
@@ -157,6 +189,16 @@ class DailyJournalRepository {
     final removed = _normalizeEntry(entries.removeAt(index));
     await _writeCachedEntriesJson(entries);
     return removed;
+  }
+
+  Future<DailyEntry> _ensureEntryForDate(DateTime date) async {
+    final entries = await fetchEntries();
+    for (final entry in entries) {
+      if (_isSameDate(entry.entryDate, date)) {
+        return entry;
+      }
+    }
+    return createEntry({'entry_date': _dateKey(date)});
   }
 
   List<DailyEntry> _decodeEntries(List<Map<String, dynamic>> entries) {
@@ -356,6 +398,16 @@ class DailyJournalRepository {
 
   String _todayIsoDate() {
     return DateTime.now().toUtc().toIso8601String().split('T').first;
+  }
+
+  String _dateKey(DateTime value) {
+    return value.toUtc().toIso8601String().split('T').first;
+  }
+
+  bool _isSameDate(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 
   int? _asInt(dynamic value) {

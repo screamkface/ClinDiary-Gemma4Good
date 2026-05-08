@@ -25,9 +25,10 @@ flutter clean
 flutter pub get
 
 echo ""
-echo "🔨 Building release APK with demo mode..."
+echo "🔨 Building release APK with local demo mode..."
 flutter build apk --release \
   --dart-define=HACKATHON_DEMO_MODE=true \
+  --dart-define=LOCAL_ONLY_MODE=true \
   --dart-define=API_BASE_URL=http://localhost:8000 \
   -v
 
@@ -45,4 +46,4 @@ echo "   1. Install on device: adb install build/app/outputs/flutter-apk/app-rel
 echo "   2. Test the app (no internet required!)"
 echo "   3. Record demo video"
 echo ""
-echo "Remember: HACKATHON_DEMO_MODE=true means no backend server needed!"
+echo "Remember: demo/local mode does not require backend access."

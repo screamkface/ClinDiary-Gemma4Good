@@ -1293,6 +1293,7 @@ class DemoSeedData {
     return {
       'in_app_enabled': true,
       'daily_checkin_enabled': true,
+      'symptom_follow_up_enabled': true,
       'medication_reminders_enabled': true,
       'screening_reminders_enabled': true,
       'document_follow_up_enabled': true,

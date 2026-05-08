@@ -50,6 +50,7 @@ class NotificationsRepository {
         const NotificationPreferences(
           inAppEnabled: true,
           dailyCheckinEnabled: true,
+          symptomFollowUpEnabled: true,
           medicationRemindersEnabled: true,
           screeningRemindersEnabled: true,
           documentFollowUpEnabled: true,
@@ -68,6 +69,7 @@ class NotificationsRepository {
     final updated = current.copyWith(
       inAppEnabled: body['in_app_enabled'] as bool?,
       dailyCheckinEnabled: body['daily_checkin_enabled'] as bool?,
+      symptomFollowUpEnabled: body['symptom_follow_up_enabled'] as bool?,
       medicationRemindersEnabled: body['medication_reminders_enabled'] as bool?,
       screeningRemindersEnabled: body['screening_reminders_enabled'] as bool?,
       documentFollowUpEnabled: body['document_follow_up_enabled'] as bool?,

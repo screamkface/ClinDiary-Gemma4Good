@@ -78,6 +78,23 @@ flutter analyze
 flutter test
 ```
 
+## Build demo APK (local-only)
+
+Dalla root repository:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build_demo_apk.ps1
+```
+
+Oppure build manuale da `apps/mobile`:
+
+```bash
+flutter build apk --release \
+  --dart-define=HACKATHON_DEMO_MODE=true \
+  --dart-define=LOCAL_ONLY_MODE=true \
+  --dart-define=API_BASE_URL=http://localhost:8000
+```
+
 ## Dove modificare cosa
 
 - nuova schermata/modulo: `lib/features/<feature>/`

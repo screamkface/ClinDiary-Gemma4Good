@@ -206,12 +206,26 @@ void main() {
       expect(find.text('Today'), findsWidgets);
       expect(find.text('AI Recap'), findsOneWidget);
       expect(find.text('Check-up'), findsOneWidget);
+      expect(find.text('What do you need?'), findsOneWidget);
+      expect(find.text('Vaccines'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Alerts'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('home-alert-alert-1')), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Recent check-ups'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('Recent check-ups'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('home-checkup-entry-1')),
         findsOneWidget,
       );
-      expect(find.byKey(const ValueKey('home-alert-alert-1')), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Profiles'),
         300,
@@ -324,6 +338,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Demo Scenarios'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Demo Scenarios'), findsOneWidget);
     expect(find.textContaining('Scenario A'), findsOneWidget);
     expect(find.textContaining('Scenario B'), findsOneWidget);

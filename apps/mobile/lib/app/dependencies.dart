@@ -75,6 +75,7 @@ final authRepositoryProvider = Provider<AuthRepository>(
     localMedicationReminderService: ref.watch(
       localMedicationReminderServiceProvider,
     ),
+    appConfig: ref.watch(appConfigProvider),
   ),
 );
 

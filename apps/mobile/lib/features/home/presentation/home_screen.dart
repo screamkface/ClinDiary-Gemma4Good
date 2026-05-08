@@ -268,6 +268,8 @@ class HomeScreen extends ConsumerWidget {
               child: Text(error.toString()),
             ),
           ),
+          const SizedBox(height: 12),
+          const _FriendlyShortcutSection(),
           if (isDemoMode) ...[
             const SizedBox(height: 12),
             profileAsync.when(
@@ -569,6 +571,204 @@ Future<void> _setActiveProfile(
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(error.toString())));
+  }
+}
+
+class _FriendlyShortcutSection extends StatelessWidget {
+  const _FriendlyShortcutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final shortcuts = <_FriendlyShortcut>[
+      _FriendlyShortcut(
+        title: 'Add check-up',
+        subtitle: 'How are you today?',
+        icon: Icons.edit_note_rounded,
+        color: const Color(0xFF5B5CE2),
+        route: '/app/diary/check-up',
+      ),
+      _FriendlyShortcut(
+        title: 'Vaccines',
+        subtitle: 'History and boosters',
+        icon: Icons.vaccines_rounded,
+        color: const Color(0xFFFF7A59),
+        route: '/app/profile/vaccinations',
+      ),
+      _FriendlyShortcut(
+        title: 'Documents',
+        subtitle: 'Reports and files',
+        icon: Icons.folder_rounded,
+        color: const Color(0xFF23A6D5),
+        route: '/app/documents',
+        useGo: true,
+      ),
+      _FriendlyShortcut(
+        title: 'Ask AI',
+        subtitle: 'Summaries and help',
+        icon: Icons.auto_awesome_rounded,
+        color: const Color(0xFF8E5CF7),
+        route: '/app/ai',
+        useGo: true,
+      ),
+      _FriendlyShortcut(
+        title: 'Medications',
+        subtitle: 'Today schedule',
+        icon: Icons.medication_rounded,
+        color: const Color(0xFF18A999),
+        route: '/app/home/medications',
+      ),
+      _FriendlyShortcut(
+        title: 'Prevention',
+        subtitle: 'Checks to plan',
+        icon: Icons.health_and_safety_rounded,
+        color: const Color(0xFFF4A62A),
+        route: '/app/home/prevention-center',
+      ),
+    ];
+
+    return SectionCard(
+      title: 'What do you need?',
+      subtitle: 'The important sections are now one tap away.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final crossAxisCount = constraints.maxWidth >= 760 ? 3 : 2;
+          return GridView.builder(
+            itemCount: shortcuts.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: constraints.maxWidth >= 760 ? 1.9 : 1.24,
+            ),
+            itemBuilder: (context, index) {
+              final item = shortcuts[index];
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.96, end: 1),
+                duration: Duration(milliseconds: 260 + index * 36),
+                curve: Curves.easeOutCubic,
+                builder: (context, scale, child) {
+                  return Transform.scale(scale: scale, child: child);
+                },
+                child: _FriendlyShortcutCard(
+                  item: item,
+                  onTap: () {
+                    if (item.useGo) {
+                      context.go(item.route);
+                    } else {
+                      context.push(item.route);
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FriendlyShortcut {
+  const _FriendlyShortcut({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.route,
+    this.useGo = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final String route;
+  final bool useGo;
+}
+
+class _FriendlyShortcutCard extends StatelessWidget {
+  const _FriendlyShortcutCard({required this.item, required this.onTap});
+
+  final _FriendlyShortcut item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark ? Colors.white : const Color(0xFF20262F);
+    return Semantics(
+      button: true,
+      label: item.title,
+      child: Material(
+        color: item.color.withValues(alpha: isDark ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: item.color,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: item.color.withValues(alpha: 0.24),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Icon(item.icon, color: Colors.white),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: item.color,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: foreground,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: foreground.withValues(alpha: 0.72),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

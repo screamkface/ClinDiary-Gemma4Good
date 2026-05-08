@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 ThemeData buildClinDiaryTheme({required Brightness brightness}) {
   final isDark = brightness == Brightness.dark;
 
-  final background = isDark ? const Color(0xFF0F131A) : const Color(0xFFF5F7FA);
-  final surface = isDark ? const Color(0xFF171C24) : Colors.white;
-  final primary = isDark ? const Color(0xFF97B0E8) : const Color(0xFF334155);
-  final accent = isDark ? const Color(0xFFD0A27C) : const Color(0xFF8B6C55);
+  final background = isDark ? const Color(0xFF101322) : const Color(0xFFFBFAFF);
+  final surface = isDark ? const Color(0xFF181C2F) : Colors.white;
+  final primary = isDark ? const Color(0xFFAAB4FF) : const Color(0xFF5B5CE2);
+  final accent = isDark ? const Color(0xFFFFB085) : const Color(0xFFFF7A59);
   final ink = isDark ? const Color(0xFFF2F4F8) : const Color(0xFF20262F);
-  final outline = isDark ? const Color(0xFF313A48) : const Color(0xFFD9DEE6);
-  final fill = isDark ? const Color(0xFF202634) : const Color(0xFFF4F6F9);
+  final outline = isDark ? const Color(0xFF323A55) : const Color(0xFFE4E8F8);
+  final fill = isDark ? const Color(0xFF202641) : const Color(0xFFF4F6FF);
 
   final baseTheme = ThemeData(
     useMaterial3: true,
@@ -175,12 +175,14 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
     ),
     cardTheme: CardThemeData(
       color: surface,
-      elevation: 0,
-      shadowColor: Colors.transparent,
+      elevation: isDark ? 0 : 0.6,
+      shadowColor: isDark
+          ? Colors.transparent
+          : const Color(0xFF7B7FEA).withValues(alpha: 0.08),
       surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(color: outline, width: 1),
       ),
       margin: EdgeInsets.zero,

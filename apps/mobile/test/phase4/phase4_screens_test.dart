@@ -208,6 +208,7 @@ void main() {
             (ref) async => const NotificationPreferences(
               inAppEnabled: true,
               dailyCheckinEnabled: true,
+              symptomFollowUpEnabled: true,
               medicationRemindersEnabled: true,
               screeningRemindersEnabled: true,
               documentFollowUpEnabled: true,
@@ -236,12 +237,12 @@ void main() {
     expect(find.text('Reminder preferences'), findsOneWidget);
     expect(find.byTooltip('Send test notifications'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Local medication reminders'),
+      find.text('Local reminders'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Local medication reminders'), findsOneWidget);
+    expect(find.text('Local reminders'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Screening to schedule'),
       250,

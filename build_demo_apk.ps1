@@ -39,9 +39,10 @@ try {
     }
 
     Write-Host ""
-    Write-Host "🔨 Building release APK with demo mode..." -ForegroundColor Yellow
+    Write-Host "🔨 Building release APK with local demo mode..." -ForegroundColor Yellow
     flutter build apk --release `
       --dart-define=HACKATHON_DEMO_MODE=true `
+      --dart-define=LOCAL_ONLY_MODE=true `
       --dart-define=API_BASE_URL=http://localhost:8000 `
       -v
 
@@ -64,7 +65,7 @@ try {
     Write-Host "   2. Test the app (no internet required!)"
     Write-Host "   3. Record demo video"
     Write-Host ""
-    Write-Host "Remember: HACKATHON_DEMO_MODE=true means no backend server needed!" -ForegroundColor Green
+    Write-Host "Remember: demo/local mode does not require backend access." -ForegroundColor Green
 
 } finally {
     Pop-Location

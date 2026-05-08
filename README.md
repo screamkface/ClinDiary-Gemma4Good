@@ -175,6 +175,15 @@ powershell -ExecutionPolicy Bypass -File build_demo_apk.ps1
 bash build_demo_apk.sh
 ```
 
+Recommended demo build flags (local-only hackathon flow):
+
+```bash
+flutter build apk --release \
+  --dart-define=HACKATHON_DEMO_MODE=true \
+  --dart-define=LOCAL_ONLY_MODE=true \
+  --dart-define=API_BASE_URL=http://localhost:8000
+```
+
 See `RELEASE_APK_GUIDE.md` before producing a signed release. Treat any claim that the Gemma `.litertlm` model is bundled inside the APK as outdated unless the asset packaging has been explicitly changed.
 
 ## Repository Layout
