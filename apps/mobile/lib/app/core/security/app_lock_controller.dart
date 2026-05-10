@@ -49,7 +49,7 @@ class AppLockController extends AsyncNotifier<AppLockState> {
     }
     await service.setEnabled(enabled);
     final settings = await service.readSettings();
-    state = AsyncData(AppLockState(settings: settings, unlocked: !enabled));
+    state = AsyncData(AppLockState(settings: settings, unlocked: true));
   }
 
   Future<void> disable() async {

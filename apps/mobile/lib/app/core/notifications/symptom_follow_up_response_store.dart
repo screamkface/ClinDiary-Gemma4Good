@@ -30,7 +30,8 @@ class PendingSymptomFollowUpResponse {
       sourceEntryId: json['source_entry_id'].toString(),
       sourceSymptomId: json['source_symptom_id'].toString(),
       response: json['response'].toString(),
-      recordedAt: DateTime.tryParse(json['recorded_at'].toString())?.toUtc() ??
+      recordedAt:
+          DateTime.tryParse(json['recorded_at'].toString())?.toUtc() ??
           DateTime.now().toUtc(),
     );
   }
@@ -51,7 +52,7 @@ class SymptomFollowUpResponseStore {
   }
 
   Future<List<PendingSymptomFollowUpResponse>> consumeAll() async {
-    final items = await _readAll();
+    final items = List<PendingSymptomFollowUpResponse>.of(await _readAll());
     final file = await _resolveFile();
     if (await file.exists()) {
       await file.delete();
@@ -63,12 +64,12 @@ class SymptomFollowUpResponseStore {
   Future<List<PendingSymptomFollowUpResponse>> _readAll() async {
     final file = await _resolveFile();
     if (!await file.exists()) {
-      return const <PendingSymptomFollowUpResponse>[];
+      return <PendingSymptomFollowUpResponse>[];
     }
     try {
       final content = await file.readAsString();
       if (content.trim().isEmpty) {
-        return const <PendingSymptomFollowUpResponse>[];
+        return <PendingSymptomFollowUpResponse>[];
       }
       final decoded = jsonDecode(content) as List<dynamic>;
       return decoded
@@ -79,7 +80,7 @@ class SymptomFollowUpResponseStore {
           )
           .toList();
     } catch (_) {
-      return const <PendingSymptomFollowUpResponse>[];
+      return <PendingSymptomFollowUpResponse>[];
     }
   }
 
@@ -97,7 +98,9 @@ class SymptomFollowUpResponseStore {
       final directory = await getApplicationSupportDirectory();
       return File('${directory.path}${Platform.pathSeparator}$_fileName');
     } catch (_) {
-      return File('${Directory.systemTemp.path}${Platform.pathSeparator}$_fileName');
+      return File(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}$_fileName',
+      );
     }
   }
 

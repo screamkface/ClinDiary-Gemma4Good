@@ -1,4 +1,5 @@
 import 'package:clindiary/app/core/security/app_lock_controller.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,31 +13,15 @@ class AppLockGate extends ConsumerStatefulWidget {
   ConsumerState<AppLockGate> createState() => _AppLockGateState();
 }
 
-class _AppLockGateState extends ConsumerState<AppLockGate>
-    with WidgetsBindingObserver {
+class _AppLockGateState extends ConsumerState<AppLockGate> {
   final _pinController = TextEditingController();
   bool _submitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
+  bool _biometricPromptStarted = false;
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _pinController.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      ref.read(appLockControllerProvider.notifier).lock();
-    }
   }
 
   Future<void> _unlockWithPin() async {
@@ -56,9 +41,10 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
       _pinController.clear();
       return;
     }
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Incorrect PIN.')));
+    ).showSnackBar(SnackBar(content: Text(l10n.appLockGateIncorrectPin)));
   }
 
   Future<void> _unlockWithBiometrics() async {
@@ -74,10 +60,23 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
     }
     setState(() => _submitting = false);
     if (!success) {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unlock was not completed.')),
+        SnackBar(content: Text(l10n.appLockGateUnlockWasNotCompleted)),
       );
     }
+  }
+
+  void _startBiometricPromptIfNeeded(bool biometricAvailable) {
+    if (!biometricAvailable || _biometricPromptStarted || _submitting) {
+      return;
+    }
+    _biometricPromptStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _unlockWithBiometrics();
+      }
+    });
   }
 
   @override
@@ -86,8 +85,10 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
     return lockState.when(
       data: (state) {
         if (!state.shouldBlock) {
+          _biometricPromptStarted = false;
           return widget.child;
         }
+        _startBiometricPromptIfNeeded(state.settings.biometricAvailable);
         return _LockScreen(
           pinController: _pinController,
           submitting: _submitting,
@@ -119,6 +120,7 @@ class _LockScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(
@@ -143,42 +145,50 @@ class _LockScreen extends StatelessWidget {
                       const Center(child: ClinDiaryLogo(size: 72)),
                       const SizedBox(height: 16),
                       Text(
-                        'ClinDiary is locked',
+                        l10n.appLockGateClindiaryIsLocked,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Unlock to access local health data on this device.',
+                        l10n.appLockGateUnlockToAccessLocalHealthData,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 20),
+                      if (biometricAvailable) ...[
+                        FilledButton.icon(
+                          onPressed: submitting ? null : onBiometricPressed,
+                          icon: const Icon(Icons.fingerprint_outlined),
+                          label: Text(
+                            submitting
+                                ? l10n.appLockGateUnlocking
+                                : l10n.appLockGateUseBiometrics,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       TextField(
                         controller: pinController,
                         obscureText: true,
                         keyboardType: TextInputType.number,
                         maxLength: 6,
-                        decoration: const InputDecoration(
-                          labelText: '6 digit PIN',
+                        decoration: InputDecoration(
+                          labelText: l10n.appLockGate6DigitPin,
                           counterText: '',
                         ),
                         onSubmitted: (_) => onPinSubmitted(),
                       ),
                       const SizedBox(height: 12),
-                      FilledButton(
+                      OutlinedButton(
                         onPressed: submitting ? null : onPinSubmitted,
-                        child: Text(submitting ? 'Unlocking...' : 'Unlock'),
-                      ),
-                      if (biometricAvailable) ...[
-                        const SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          onPressed: submitting ? null : onBiometricPressed,
-                          icon: const Icon(Icons.fingerprint_outlined),
-                          label: const Text('Use biometrics'),
+                        child: Text(
+                          submitting
+                              ? l10n.appLockGateUnlocking
+                              : l10n.appLockGateUnlock,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),

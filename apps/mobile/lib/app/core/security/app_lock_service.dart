@@ -76,8 +76,8 @@ class AppLockService {
 
   Future<bool> canUseBiometrics() async {
     try {
-      return await _localAuthentication.canCheckBiometrics ||
-          await _localAuthentication.isDeviceSupported();
+      final biometrics = await _localAuthentication.getAvailableBiometrics();
+      return biometrics.isNotEmpty;
     } catch (_) {
       return false;
     }
@@ -88,7 +88,7 @@ class AppLockService {
       return _localAuthentication.authenticate(
         localizedReason: 'Unlock ClinDiary to access local health data.',
         options: const AuthenticationOptions(
-          biometricOnly: false,
+          biometricOnly: true,
           stickyAuth: true,
         ),
       );

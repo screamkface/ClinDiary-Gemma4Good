@@ -34,6 +34,10 @@
 - Changed wearable bootstrap refresh to a daily automatic check instead of repeated 15-minute polling while the app is open.
 - Invalidated AI insight summaries after symptom changes, symptom follow-up responses and check-up deletion so newly generated AI prompts read the latest local diary payload.
 - Updated medication, check-in and symptom follow-up reminder scheduling to try exact while idle delivery first and fall back to inexact scheduling, and added the Android exact-alarm permission for local medication reminders.
+- Fixed the notifications-entry crash when pending symptom follow-up storage is empty or unreadable by sorting a mutable copy of the response list.
+- Added regression coverage for consuming empty symptom follow-up response storage and sorted pending response replay.
+- Changed app lock so PIN/biometric unlock is required only at app start for the current process session, not after every lifecycle pause/inactive event or immediately after enabling the setting.
+- Made biometrics the primary app-lock path by auto-starting the biometric prompt when available and keeping the 6-digit PIN as an on-screen fallback.
 
 ### Still Missing
 - Review the remaining document review/manual-review screens for the same child-friendly visual language.
@@ -43,9 +47,12 @@
 - Wire a runtime prompt registry to consume the generated `ai_catalog_*.json` files directly if you want prompt text to come entirely from generated catalogs instead of code-side branching.
 - Continue replacing hardcoded UI strings in the next remaining screens beyond this slice, especially outside the four just-finished `documents` / `profile` screens.
 - Validate exact alarm behavior on a real Android device after granting notification permission, especially across app restarts and locked-screen idle periods.
+- Smoke test app lock on a physical Android device after a cold start, background/resume and settings toggle to confirm the biometric prompt only appears at startup.
 
 ### Known Bugs
 - No known blocking bug from the vaccine back flow after the regression test.
+- The notifications-entry crash caused by sorting an immutable empty symptom follow-up response list has been fixed; still worth smoke testing on device after notification taps and app resume.
+- Full `flutter test` currently fails in unrelated existing tests: `history_mock_test.dart` lacks initialized `intl` locale data, and `phase3/on_device_prompt_builder_test.dart` hits unmocked `SharedPreferences` language storage.
 - The original bulk-translated localization workfiles under `apps/mobile/build/localization/` are not safe to merge directly into ARB because they contain complex interpolated strings; use the filtered `build/localization_safe/` export instead.
 - Medication reminder timing now uses exact-while-idle scheduling with fallback, but OEM battery restrictions can still delay notifications until verified on target devices.
 
