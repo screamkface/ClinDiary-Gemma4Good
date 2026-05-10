@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_query_history_entry.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -26,13 +28,12 @@ class DocumentQueryScreen extends ConsumerStatefulWidget {
       _DocumentQueryScreenState();
 }
 
-class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
-  static const _questionSuggestions = <String>[
-    'Which recent tests mention creatinine or kidney function?',
-    'Are there documents with out-of-range values in the last few months?',
-    'Summarize the recent reports to bring to the doctor.',
-  ];
+AppLocalizations _l10nOf(BuildContext context) {
+  return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      lookupAppLocalizations(const Locale('en'));
+}
 
+class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
   late final TextEditingController _questionController;
   final _chatScrollController = ScrollController();
   DocumentQueryResult? _result;
@@ -61,12 +62,11 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = _l10nOf(context);
     final question = _questionController.text.trim();
     FocusManager.instance.primaryFocus?.unfocus();
     if (question.length < 3) {
-      setState(
-        () => _errorMessage = 'Write a slightly more specific question.',
-      );
+      setState(() => _errorMessage = l10n.documentsWriteSpecificQuestion);
       return;
     }
 
@@ -116,7 +116,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
       setState(() {
         _errorMessage = error.toString();
         _replaceLastAssistantMessage(
-          'I could not read the files this time. Try again or refresh the index.',
+          l10n.documentsCouldNotReadFilesTryAgain,
           isStreaming: false,
         );
       });
@@ -191,6 +191,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
   }
 
   Future<void> _reindex() async {
+    final l10n = _l10nOf(context);
     setState(() => _isReindexing = true);
     try {
       final queued = await ref
@@ -203,8 +204,8 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
         SnackBar(
           content: Text(
             queued == 1
-                ? 'Indexing started for 1 document.'
-                : 'Indexing started for $queued documents.',
+                ? l10n.documentsIndexingStartedOneDocument
+                : l10n.documentsIndexingStartedManyDocuments(queued.toString()),
           ),
         ),
       );
@@ -230,27 +231,51 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
     context.push('/app/documents/ask/history');
   }
 
-  String _sourceSummary(DocumentQueryResult result) {
+  void _usePastAnswer(DocumentQueryHistoryEntry entry) {
+    setState(() {
+      _result = entry.toQueryResult();
+      _errorMessage = null;
+      _isSubmitting = false;
+      _chatAutoSnapEnabled = true;
+      _messages = [
+        _DocumentChatMessage.user(entry.question),
+        _DocumentChatMessage.assistant(entry.answer),
+      ];
+    });
+    _scrollChatToBottom();
+  }
+
+  String _sourceSummary(DocumentQueryResult result, AppLocalizations l10n) {
     final files = result.retrievedDocuments == 1
-        ? '1 file'
-        : '${result.retrievedDocuments} files';
+        ? l10n.documentsFileSingular
+        : l10n.documentsFilesCount(result.retrievedDocuments.toString());
     final passages = result.retrievedChunks == 1
-        ? '1 useful part'
-        : '${result.retrievedChunks} useful parts';
-    return '$files • $passages';
+        ? l10n.documentsUsefulPartSingular
+        : l10n.documentsUsefulPartsCount(result.retrievedChunks.toString());
+    return l10n.documentsSourceSummary(files, passages);
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final l10n = _l10nOf(context);
+    final questionSuggestions = <String>[
+      l10n.documentsWhichRecentTestsMentionCreatinineOr,
+      l10n.documentsAreThereDocumentsWithOutOf,
+      l10n.documentsSummarizeTheRecentReportsToBring,
+    ];
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
+    final dateFormat = DateFormat('dd MMM yyyy', localeName);
+    final historyAsync = ref.watch(documentQueryHistoryProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ask files'),
+        title: Text(l10n.documentsAskFiles),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_outlined),
-            tooltip: 'View history',
+            tooltip: l10n.documentsViewHistory,
             onPressed: _openHistory,
           ),
           TextButton.icon(
@@ -262,7 +287,9 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.sync_outlined),
-            label: Text(_isReindexing ? 'Updating...' : 'Refresh'),
+            label: Text(
+              _isReindexing ? l10n.documentsUpdating : l10n.documentsRefresh,
+            ),
           ),
         ],
       ),
@@ -273,9 +300,10 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
             messages: _messages,
             controller: _chatScrollController,
             folderName: _folderName,
+            l10n: l10n,
             isSubmitting: _isSubmitting,
             questionController: _questionController,
-            suggestions: _questionSuggestions,
+            suggestions: questionSuggestions,
             errorMessage: _errorMessage,
             onSubmit: _submit,
             onUserScroll: () {
@@ -285,17 +313,53 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
             },
           ),
           const SizedBox(height: 12),
+          historyAsync.when(
+            data: (entries) {
+              if (entries.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              final recentEntries = entries.take(4).toList(growable: false);
+
+              return SectionCard(
+                title: l10n.documentsPastAnswers,
+                subtitle: l10n.documentsPastAnswersSubtitle,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.documentsTapToReuseAnswer,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    for (
+                      var index = 0;
+                      index < recentEntries.length;
+                      index++
+                    ) ...[
+                      _PastAnswerCard(
+                        entry: recentEntries[index],
+                        dateFormat: dateFormat,
+                        onTap: () => _usePastAnswer(recentEntries[index]),
+                      ),
+                      if (index < recentEntries.length - 1)
+                        const SizedBox(height: 8),
+                    ],
+                  ],
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 12),
           if (_result != null) ...[
             SectionCard(
-              title: 'Files used',
-              subtitle: _sourceSummary(_result!),
+              title: l10n.documentsFilesUsed,
+              subtitle: _sourceSummary(_result!, l10n),
               child: Column(
                 children: _result!.citations.isEmpty
-                    ? const [
-                        Text(
-                          'No citations available. Try refreshing the index or rephrasing the question.',
-                        ),
-                      ]
+                    ? [Text(l10n.documentsNoCitationsAvailable)]
                     : _result!.citations
                           .map(
                             (citation) => Padding(
@@ -401,6 +465,7 @@ class _DocumentChatPanel extends StatelessWidget {
     required this.messages,
     required this.controller,
     required this.folderName,
+    required this.l10n,
     required this.isSubmitting,
     required this.questionController,
     required this.suggestions,
@@ -412,6 +477,7 @@ class _DocumentChatPanel extends StatelessWidget {
   final List<_DocumentChatMessage> messages;
   final ScrollController controller;
   final String? folderName;
+  final AppLocalizations l10n;
   final bool isSubmitting;
   final TextEditingController questionController;
   final List<String> suggestions;
@@ -456,7 +522,7 @@ class _DocumentChatPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ask your files',
+                      l10n.documentsAskYourFiles,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
@@ -464,8 +530,8 @@ class _DocumentChatPanel extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       folderName == null
-                          ? 'Searching all your saved files.'
-                          : 'Searching in $folderName.',
+                          ? l10n.documentsSearchingAllSavedFiles
+                          : l10n.documentsSearchingInFolder(folderName!),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -480,15 +546,15 @@ class _DocumentChatPanel extends StatelessWidget {
             children: [
               _DocumentSafetyPill(
                 icon: Icons.folder_open_outlined,
-                label: folderName ?? 'All files',
+                label: folderName ?? l10n.documentsAllFiles,
               ),
-              const _DocumentSafetyPill(
+              _DocumentSafetyPill(
                 icon: Icons.link_outlined,
-                label: 'Shows sources',
+                label: l10n.documentsShowsSources,
               ),
-              const _DocumentSafetyPill(
+              _DocumentSafetyPill(
                 icon: Icons.health_and_safety_outlined,
-                label: 'No diagnosis',
+                label: l10n.documentsNoDiagnosis,
               ),
             ],
           ),
@@ -509,7 +575,7 @@ class _DocumentChatPanel extends StatelessWidget {
                 return false;
               },
               child: messages.isEmpty
-                  ? const _DocumentChatWelcome()
+                  ? _DocumentChatWelcome(l10n: l10n)
                   : ListView.builder(
                       controller: controller,
                       padding: const EdgeInsets.all(12),
@@ -552,9 +618,9 @@ class _DocumentChatPanel extends StatelessWidget {
                   minLines: 1,
                   maxLines: 4,
                   textInputAction: TextInputAction.newline,
-                  decoration: const InputDecoration(
-                    labelText: 'Ask about your files',
-                    hintText: 'Example: what should I bring to the doctor?',
+                  decoration: InputDecoration(
+                    labelText: l10n.documentsAskAboutYourFiles,
+                    hintText: l10n.documentsAskFilesExample,
                   ),
                 ),
               ),
@@ -584,7 +650,9 @@ class _DocumentChatPanel extends StatelessWidget {
 }
 
 class _DocumentChatWelcome extends StatelessWidget {
-  const _DocumentChatWelcome();
+  const _DocumentChatWelcome({required this.l10n});
+
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -606,7 +674,7 @@ class _DocumentChatWelcome extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Ask one simple question.',
+              l10n.documentsAskOneSimpleQuestion,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -614,7 +682,7 @@ class _DocumentChatWelcome extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'I will answer only from files I can cite back to you.',
+              l10n.documentsAskFilesOnlyCited,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -756,6 +824,57 @@ class _DocumentSafetyPill extends StatelessWidget {
             ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PastAnswerCard extends StatelessWidget {
+  const _PastAnswerCard({
+    required this.entry,
+    required this.dateFormat,
+    required this.onTap,
+  });
+
+  final DocumentQueryHistoryEntry entry;
+  final DateFormat dateFormat;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card.outlined(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                entry.question,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                dateFormat.format(entry.createdAt.toLocal()),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                entry.answer.replaceAll(RegExp(r'\s+'), ' ').trim(),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -335,11 +335,10 @@ class LocalMedicationReminderService {
     );
 
     for (final item in plan) {
-      await _plugin.zonedSchedule(
+      await _scheduleReminder(
         id: item.id,
         scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
         notificationDetails: _notificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         title: item.title,
         body: item.body,
         payload: item.payload,
@@ -430,11 +429,10 @@ class LocalMedicationReminderService {
     );
 
     for (final item in plan) {
-      await _plugin.zonedSchedule(
+      await _scheduleReminder(
         id: item.id,
         scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
         notificationDetails: _dailyCheckInNotificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         title: item.title,
         body: item.body,
         payload: item.payload,
@@ -516,13 +514,15 @@ class LocalMedicationReminderService {
       );
     }
 
-    final plan = _buildSymptomFollowUpPlan(entries: entries, from: DateTime.now());
+    final plan = _buildSymptomFollowUpPlan(
+      entries: entries,
+      from: DateTime.now(),
+    );
     for (final item in plan) {
-      await _plugin.zonedSchedule(
+      await _scheduleReminder(
         id: item.id,
         scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
         notificationDetails: _symptomFollowUpNotificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         title: item.title,
         body: item.body,
         payload: item.payload,
@@ -612,6 +612,37 @@ class LocalMedicationReminderService {
 
     plan.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     return plan;
+  }
+
+  Future<void> _scheduleReminder({
+    required int id,
+    required tz.TZDateTime scheduledDate,
+    required NotificationDetails notificationDetails,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        title: title,
+        body: body,
+        payload: payload,
+      );
+    } catch (_) {
+      await _plugin.zonedSchedule(
+        id: id,
+        scheduledDate: scheduledDate,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        title: title,
+        body: body,
+        payload: payload,
+      );
+    }
   }
 
   NotificationDetails _notificationDetails() {

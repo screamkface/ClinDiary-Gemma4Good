@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
@@ -192,8 +193,17 @@ class DocumentsRepository {
     int? topK,
   }) async {
     final normalizedQuestion = question.trim();
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
+    final isItalian = isItalianLanguageCode(languageCode);
+    final searchScopeLabel = folderId == null
+        ? (isItalian ? 'Tutto l\'archivio' : 'Entire archive')
+        : (isItalian ? 'Cartella selezionata' : 'Selected folder');
     if (normalizedQuestion.isEmpty) {
-      throw Exception('Please enter a question before searching documents.');
+      throw Exception(
+        isItalian
+            ? 'Inserisci una domanda prima di cercare nei documenti.'
+            : 'Please enter a question before searching documents.',
+      );
     }
 
     final scope = await _resolveLocalScope();
@@ -209,8 +219,9 @@ class DocumentsRepository {
         .toList();
     if (localDocuments.isEmpty) {
       return DocumentQueryResult(
-        answer:
-            'No local documents are available yet. Import at least one file to use Document Q&A.',
+        answer: isItalian
+            ? 'Non ci sono ancora documenti disponibili. Importa almeno un file per usare Ask Files.'
+            : 'No local documents are available yet. Import at least one file to use Ask Files.',
         citations: const [],
         providerName: 'on_device_litertlm',
         modelName: 'gemma-4-E2B-it.litertlm',
@@ -218,10 +229,10 @@ class DocumentsRepository {
         rerankerModelName: 'local-heuristic-ranker',
         retrievedChunks: 0,
         retrievedDocuments: 0,
-        searchScopeLabel: folderId == null
-            ? 'Entire local archive'
-            : 'Selected local folder',
-        coverageNote: 'No matching local documents found.',
+        searchScopeLabel: searchScopeLabel,
+        coverageNote: isItalian
+            ? 'Nessun documento utile trovato.'
+            : 'No matching local documents found.',
         usedFallback: true,
       );
     }
@@ -255,8 +266,9 @@ class DocumentsRepository {
     final limited = ranked.take((topK ?? 3).clamp(1, 8)).toList();
     if (limited.isEmpty) {
       return DocumentQueryResult(
-        answer:
-            'I could not find relevant information in local documents for this question. Try adding key terms (exam name, date, analyte, or symptom).',
+        answer: isItalian
+            ? 'Non ho trovato informazioni rilevanti nei documenti per questa domanda. Prova ad aggiungere parole chiave come esame, data, valore o sintomo.'
+            : 'I could not find relevant information in local documents for this question. Try adding key terms (exam name, date, analyte, or symptom).',
         citations: const [],
         providerName: 'on_device_litertlm',
         modelName: 'gemma-4-E2B-it.litertlm',
@@ -264,10 +276,10 @@ class DocumentsRepository {
         rerankerModelName: 'local-semantic-ranker',
         retrievedChunks: 0,
         retrievedDocuments: 0,
-        searchScopeLabel: folderId == null
-            ? 'Entire local archive'
-            : 'Selected local folder',
-        coverageNote: 'No relevant excerpts were found in local documents.',
+        searchScopeLabel: searchScopeLabel,
+        coverageNote: isItalian
+            ? 'Nessun estratto rilevante trovato nei documenti.'
+            : 'No relevant excerpts were found in local documents.',
         usedFallback: true,
       );
     }
@@ -292,6 +304,7 @@ class DocumentsRepository {
     final answer = await _generateLocalQueryAnswer(
       question: normalizedQuestion,
       candidates: limited,
+      languageCode: languageCode,
     );
 
     return DocumentQueryResult(
@@ -303,10 +316,10 @@ class DocumentsRepository {
       rerankerModelName: 'local-semantic-ranker',
       retrievedChunks: limited.length,
       retrievedDocuments: limited.map((item) => item.summary.id).toSet().length,
-      searchScopeLabel: folderId == null
-          ? 'Entire local archive'
-          : 'Selected local folder',
-      coverageNote: 'Answer generated from local encrypted document snippets.',
+      searchScopeLabel: searchScopeLabel,
+      coverageNote: isItalian
+          ? 'Risposta generata da estratti locali dei documenti.'
+          : 'Answer generated from local encrypted document snippets.',
       usedFallback: false,
     );
   }
@@ -465,7 +478,9 @@ class DocumentsRepository {
   Future<String> _generateLocalQueryAnswer({
     required String question,
     required List<_LocalQueryCandidate> candidates,
+    required String languageCode,
   }) async {
+    final isItalian = isItalianLanguageCode(languageCode);
     final context = candidates
         .asMap()
         .entries
@@ -475,25 +490,28 @@ class DocumentsRepository {
         )
         .join('\n\n');
 
-    final systemPrompt =
-        'You are a careful clinical assistant. Use only the provided local document context. '
-        'Do not invent data, and clearly mention uncertainty when information is incomplete. '
-        'When you see lab values marked with [ABNORMAL] or reference ranges like (ref: 70-100), '
-        'you MUST identify and clearly report these as out-of-range values in your answer. '
-        'If the user asks about abnormal/out-of-range values, explicitly list which values are abnormal. '
-        'Do not say "no abnormal values" if the documents contain values marked [ABNORMAL].';
-    final userPrompt =
-        'Question: $question\n\n'
-        'Local document context:\n$context\n\n'
-        'IMPORTANT: Lab values marked with [ABNORMAL] are out of range. '
-        'Reference ranges are shown as (ref: min-max). '
-        'If the question asks about abnormal/out-of-range values, always explicitly report them.\n\n'
-        'Write a concise answer in English using plain text only.\n'
-        'Do not use Markdown, LaTeX, \$, code fences, or special formatting markers.\n'
-        'Use exactly these lines:\n'
-        'Direct answer: ...\n'
-        'Key findings: ...\n'
-        'Caution: ...';
+    final systemPrompt = isItalian
+        ? 'Sei un assistente clinico prudente. Usa solo il contesto dei documenti locali fornito. Non inventare dati e segnala chiaramente l\'incertezza quando le informazioni sono incomplete. Quando vedi valori segnati con [ABNORMAL] o intervalli di riferimento come (ref: 70-100), devi indicarli esplicitamente come fuori intervallo. Se l\'utente chiede valori alterati o fuori range, elencali in modo chiaro. Non dire "nessun valore alterato" se i documenti contengono valori marcati [ABNORMAL].'
+        : 'You are a careful clinical assistant. Use only the provided local document context. Do not invent data, and clearly mention uncertainty when information is incomplete. When you see lab values marked with [ABNORMAL] or reference ranges like (ref: 70-100), you MUST identify and clearly report these as out-of-range values in your answer. If the user asks about abnormal/out-of-range values, explicitly list which values are abnormal. Do not say "no abnormal values" if the documents contain values marked [ABNORMAL].';
+    final userPrompt = isItalian
+        ? 'Domanda: $question\n\n'
+              'Contesto dei documenti locali:\n$context\n\n'
+              'IMPORTANTE: I valori di laboratorio marcati con [ABNORMAL] sono fuori intervallo. Gli intervalli di riferimento sono mostrati come (ref: min-max). Se la domanda riguarda valori alterati o fuori range, riportali sempre in modo esplicito.\n\n'
+              'Scrivi una risposta concisa in italiano usando solo testo semplice.\n'
+              'Non usare Markdown, LaTeX, \$, blocchi di codice o formattazioni speciali.\n'
+              'Usa esattamente queste righe:\n'
+              'Risposta diretta: ...\n'
+              'Punti chiave: ...\n'
+              'Nota di cautela: ...'
+        : 'Question: $question\n\n'
+              'Local document context:\n$context\n\n'
+              'IMPORTANT: Lab values marked with [ABNORMAL] are out of range. Reference ranges are shown as (ref: min-max). If the question asks about abnormal/out-of-range values, always explicitly report them.\n\n'
+              'Write a concise answer in English using plain text only.\n'
+              'Do not use Markdown, LaTeX, \$, code fences, or special formatting markers.\n'
+              'Use exactly these lines:\n'
+              'Direct answer: ...\n'
+              'Key findings: ...\n'
+              'Caution: ...';
 
     try {
       return await _onDeviceAiService.generateText(
@@ -502,9 +520,9 @@ class DocumentsRepository {
       );
     } catch (_) {
       final top = candidates.first;
-      return 'Based on local documents, the most relevant file is "${top.summary.title}". '
-          'Key extracted evidence: ${top.excerpt}. '
-          'Review the cited snippets for full context before making clinical decisions.';
+      return isItalian
+          ? 'In base ai documenti locali, il file piu rilevante e "${top.summary.title}". Evidenza principale: ${top.excerpt}. Controlla i passaggi citati per il contesto completo prima di prendere decisioni cliniche.'
+          : 'Based on local documents, the most relevant file is "${top.summary.title}". Key extracted evidence: ${top.excerpt}. Review the cited snippets for full context before making clinical decisions.';
     }
   }
 

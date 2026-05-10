@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/generation_phase_label.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
@@ -21,14 +23,12 @@ class GemmaCenterScreen extends ConsumerStatefulWidget {
   ConsumerState<GemmaCenterScreen> createState() => _GemmaCenterScreenState();
 }
 
-class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
-  static const _questionSuggestions = <String>[
-    'How has my clinical picture been over the last few days?',
-    'What changes should I bring to the doctor at the next visit?',
-    'Are there any important trends or associations to watch?',
-    'What am I missing to get a more complete picture?',
-  ];
+AppLocalizations _l10nOf(BuildContext context) {
+  return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      lookupAppLocalizations(const Locale('en'));
+}
 
+class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   final _questionController = TextEditingController();
   final _chatScrollController = ScrollController();
   final _pageScrollController = ScrollController(keepScrollOffset: false);
@@ -136,7 +136,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       initialDate: _referenceDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 1)),
-      locale: const Locale('en', 'US'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       setState(() {
@@ -170,9 +170,15 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Future<void> _askQuestion() async {
+    final l10n = _l10nOf(context);
+    final languageCode = appLanguageCodeFromLocale(
+      Localizations.localeOf(context),
+    );
     final question = _questionController.text.trim();
     if (question.isEmpty) {
-      setState(() => _questionError = 'Write a question before asking Gemma.');
+      setState(
+        () => _questionError = l10n.insightsWriteAQuestionBeforeAskingGemma,
+      );
       return;
     }
 
@@ -207,6 +213,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           question: question,
           response: answer,
           referenceDate: _referenceDate,
+          languageCode: languageCode,
         ),
         profileScopeAtStart,
       );
@@ -217,7 +224,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       setState(() {
         _questionError = error.toString().replaceFirst('Exception: ', '');
         _replaceLastAssistantMessage(
-          'I could not answer this time. $_questionError',
+          l10n.insightsCouldNotAnswerThisTime(_questionError!),
           isStreaming: false,
         );
       });
@@ -298,6 +305,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Future<void> _generateTrend() async {
+    final languageCode = appLanguageCodeFromLocale(
+      Localizations.localeOf(context),
+    );
     final profileScopeAtStart = _observedActiveProfileId;
     final startedAt = DateTime.now();
     setState(() {
@@ -317,6 +327,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         GemmaCenterHistoryEntry.trend(
           response: answer,
           referenceDate: _referenceDate,
+          languageCode: languageCode,
         ),
         profileScopeAtStart,
       );
@@ -338,6 +349,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Future<void> _generatePreVisit() async {
+    final languageCode = appLanguageCodeFromLocale(
+      Localizations.localeOf(context),
+    );
     final profileScopeAtStart = _observedActiveProfileId;
     final startedAt = DateTime.now();
     setState(() {
@@ -357,6 +371,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         GemmaCenterHistoryEntry.preVisit(
           response: answer,
           referenceDate: _referenceDate,
+          languageCode: languageCode,
         ),
         profileScopeAtStart,
       );
@@ -378,6 +393,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Future<void> _generateDocumentSummary(ClinicalDocumentDetail detail) async {
+    final languageCode = appLanguageCodeFromLocale(
+      Localizations.localeOf(context),
+    );
     final profileScopeAtStart = _observedActiveProfileId;
     final startedAt = DateTime.now();
     setState(() {
@@ -399,6 +417,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           documentId: detail.id,
           documentTitle: detail.title,
           referenceDate: detail.examDate ?? detail.uploadDate,
+          languageCode: languageCode,
         ),
         profileScopeAtStart,
       );
@@ -420,6 +439,13 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Widget _buildQuestionSection() {
+    final l10n = _l10nOf(context);
+    final questionSuggestions = <String>[
+      l10n.insightsHowHasMyClinicalPictureBeen,
+      l10n.insightsWhatChangesShouldIBringTo,
+      l10n.insightsAreThereAnyImportantTrendsOr,
+      l10n.insightsWhatAmIMissingToGet,
+    ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
     final chatHeight = _snappedChatHeight(context);
@@ -460,14 +486,14 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Talk with Gemma',
+                      l10n.insightsTalkWithGemma,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'A calm place to understand your diary. You stay in control.',
+                      l10n.insightsCalmPlace,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -476,18 +502,21 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const Wrap(
+          Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _GemmaSafetyPill(icon: Icons.lock_outline, label: 'Local first'),
+              _GemmaSafetyPill(
+                icon: Icons.lock_outline,
+                label: l10n.insightsLocalFirst,
+              ),
               _GemmaSafetyPill(
                 icon: Icons.health_and_safety_outlined,
-                label: 'No diagnosis',
+                label: l10n.insightsNoDiagnosis,
               ),
               _GemmaSafetyPill(
                 icon: Icons.fact_check_outlined,
-                label: 'Safety checks stay separate',
+                label: l10n.insightsSafetyChecksStaySeparate,
               ),
             ],
           ),
@@ -524,7 +553,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: _questionSuggestions
+              children: questionSuggestions
                   .map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(right: 8),
@@ -551,9 +580,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                   minLines: 1,
                   maxLines: 4,
                   textInputAction: TextInputAction.newline,
-                  decoration: const InputDecoration(
-                    labelText: 'Ask anything about your diary',
-                    hintText: 'Example: what changed this week?',
+                  decoration: InputDecoration(
+                    labelText: l10n.insightsAskAnythingAboutYourDiary,
+                    hintText: l10n.insightsAskDiaryExample,
                   ),
                 ),
               ),
@@ -581,7 +610,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
             GenerationPhaseLabel(
               isActive: true,
               startedAt: _questionGenerationStartedAt,
-              idleLabel: 'Gemma is thinking',
+              idleLabel: l10n.insightsGemmaThinking,
               showProgress: true,
             ),
           ],
@@ -605,16 +634,20 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Widget _buildTrendSection() {
+    final l10n = _l10nOf(context);
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
     return _GemmaToolCard(
-      title: 'Spot patterns',
-      subtitle: 'Look for simple changes in your recent diary.',
+      title: l10n.insightsSpotPatterns,
+      subtitle: l10n.insightsSpotPatternsSubtitle,
       icon: Icons.trending_up_rounded,
       color: const Color(0xFF18A999),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Pick a day and Gemma will explain what changed around it.',
+            l10n.insightsPickADay,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -626,7 +659,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 onPressed: _pickReferenceDate,
                 icon: const Icon(Icons.event_outlined),
                 label: Text(
-                  DateFormat('dd MMM yyyy', 'en_US').format(_referenceDate),
+                  DateFormat('dd MMM yyyy', localeName).format(_referenceDate),
                 ),
               ),
               FilledButton.tonalIcon(
@@ -635,7 +668,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 label: GenerationPhaseLabel(
                   isActive: _isGeneratingTrend,
                   startedAt: _trendGenerationStartedAt,
-                  idleLabel: 'Explain trend',
+                  idleLabel: l10n.insightsExplainTrend,
                   showProgress: true,
                 ),
               ),
@@ -658,16 +691,20 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Widget _buildPreVisitSection() {
+    final l10n = _l10nOf(context);
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
     return _GemmaToolCard(
-      title: 'Prepare your visit',
-      subtitle: 'Turn your diary into a short note for the doctor.',
+      title: l10n.insightsPrepareYourVisit,
+      subtitle: l10n.insightsPrepareVisitSubtitle,
       icon: Icons.assignment_rounded,
       color: const Color(0xFFFF7A59),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Gemma creates a practical summary with points to discuss.',
+            l10n.insightsGemmaCreatesSummary,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -679,7 +716,12 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 onPressed: _pickReferenceDate,
                 icon: const Icon(Icons.event_outlined),
                 label: Text(
-                  'Date: ${DateFormat('dd MMM yyyy', 'en_US').format(_referenceDate)}',
+                  l10n.insightsDateLabel(
+                    DateFormat(
+                      'dd MMM yyyy',
+                      localeName,
+                    ).format(_referenceDate),
+                  ),
                 ),
               ),
               FilledButton.icon(
@@ -688,7 +730,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 label: GenerationPhaseLabel(
                   isActive: _isGeneratingPreVisit,
                   startedAt: _preVisitGenerationStartedAt,
-                  idleLabel: 'Prepare note',
+                  idleLabel: l10n.insightsPrepareNote,
                   showProgress: true,
                 ),
               ),
@@ -714,16 +756,17 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   }
 
   Widget _buildDocumentSection() {
+    final l10n = _l10nOf(context);
     final documentId = widget.documentId;
     final documentAsync = documentId == null
         ? null
         : ref.watch(documentDetailProvider(documentId));
 
     return _GemmaToolCard(
-      title: 'Explain a file',
+      title: l10n.insightsExplainAFile,
       subtitle: documentId == null
-          ? 'Open a file and ask Gemma to explain it here.'
-          : 'Gemma can summarize the selected file in simple words.',
+          ? l10n.insightsExplainFileSubtitle
+          : l10n.insightsGemmaCanSummarizeSelectedFile,
       icon: Icons.description_rounded,
       color: const Color(0xFF23A6D5),
       child: Column(
@@ -750,8 +793,8 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                   const SizedBox(height: 12),
                   Text(
                     detail.ocrText != null && detail.ocrText!.trim().isNotEmpty
-                        ? 'The document contains OCR text that Gemma can use for a summary.'
-                        : 'The document has metadata and structured sections that Gemma can summarize cautiously.',
+                        ? l10n.insightsDocumentHasOcr
+                        : l10n.insightsDocumentStructuredSummary,
                   ),
                   const SizedBox(height: 12),
                   FilledButton.tonalIcon(
@@ -762,7 +805,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                     label: GenerationPhaseLabel(
                       isActive: _isGeneratingDocument,
                       startedAt: _documentGenerationStartedAt,
-                      idleLabel: 'Summarize document',
+                      idleLabel: l10n.insightsSummarizeDocument,
                       showProgress: true,
                     ),
                   ),
@@ -773,7 +816,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
             )
           else
             Text(
-              'Open any file from Documents, then ask Gemma to explain it.',
+              l10n.insightsOpenAnyFileFromDocuments,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           if (_documentError != null) ...[
@@ -809,15 +852,19 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         return;
       }
       ref.invalidate(gemmaCenterHistoryProvider);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Profile history cleared.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_l10nOf(context).insightsProfileHistoryCleared)),
+      );
     } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to clear history: $error')),
+        SnackBar(
+          content: Text(
+            _l10nOf(context).insightsUnableToClearHistory(error.toString()),
+          ),
+        ),
       );
     }
   }
@@ -825,9 +872,10 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   Widget _buildHistorySection(
     AsyncValue<List<GemmaCenterHistoryEntry>> historyAsync,
   ) {
+    final l10n = _l10nOf(context);
     return _GemmaToolCard(
-      title: 'Past answers',
-      subtitle: 'Previous Gemma replies for this profile.',
+      title: l10n.insightsPastAnswers,
+      subtitle: l10n.insightsPastAnswersSubtitle,
       icon: Icons.history_rounded,
       color: const Color(0xFF8E5CF7),
       action: TextButton.icon(
@@ -835,12 +883,12 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
             ? null
             : _clearHistoryForActiveProfile,
         icon: const Icon(Icons.delete_outline),
-        label: const Text('Clear'),
+        label: Text(l10n.insightsClear),
       ),
       child: historyAsync.when(
         data: (entries) {
           if (entries.isEmpty) {
-            return const Text('No answers saved for this profile yet.');
+            return Text(l10n.insightsNoAnswersSaved);
           }
 
           return Column(
@@ -864,13 +912,14 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _l10nOf(context);
     final activeProfileId = ref.watch(activeProfileIdProvider).asData?.value;
     final historyAsync = ref.watch(gemmaCenterHistoryProvider);
     _syncProfileScope(activeProfileId);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gemma Center'),
+        title: Text(l10n.insightsGemmaCenter),
         bottom: activeProfileId == null
             ? null
             : PreferredSize(
@@ -878,14 +927,18 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
-                    'Active profile: ${activeProfileId.trim().isEmpty ? 'not selected' : activeProfileId.trim()}',
+                    l10n.insightsActiveProfile(
+                      activeProfileId.trim().isEmpty
+                          ? 'not selected'
+                          : activeProfileId.trim(),
+                    ),
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ),
               ),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: l10n.insightsRefresh,
             onPressed: () {
               ref.invalidate(onDeviceAiStatusProvider);
               if (widget.documentId != null) {
@@ -1009,6 +1062,7 @@ class _GemmaWelcomePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _l10nOf(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
@@ -1030,7 +1084,7 @@ class _GemmaWelcomePanel extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Ask one question at a time.',
+              l10n.insightsAskOneQuestionAtATime,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -1038,7 +1092,7 @@ class _GemmaWelcomePanel extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Gemma can summarize patterns and prepare questions for your doctor, but it will not diagnose or prescribe.',
+              l10n.insightsGemmaWelcome,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -1192,6 +1246,10 @@ class _HistoryEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _l10nOf(context);
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
     return Card.outlined(
       margin: EdgeInsets.zero,
       child: ExpansionTile(
@@ -1208,10 +1266,15 @@ class _HistoryEntryCard extends StatelessWidget {
             entry.kindLabel,
             DateFormat(
               'dd MMM yyyy, HH:mm',
-              'en_US',
+              localeName,
             ).format(entry.createdAt.toLocal()),
             if (entry.referenceDate != null)
-              'Ref. ${DateFormat('dd MMM yyyy', 'en_US').format(entry.referenceDate!.toLocal())}',
+              l10n.insightsReferenceDate(
+                DateFormat(
+                  'dd MMM yyyy',
+                  localeName,
+                ).format(entry.referenceDate!.toLocal()),
+              ),
           ].join(' • '),
         ),
         children: [
@@ -1219,7 +1282,7 @@ class _HistoryEntryCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Prompt',
+                l10n.insightsPrompt,
                 style: Theme.of(context).textTheme.labelLarge,
               ),
             ),
@@ -1230,7 +1293,7 @@ class _HistoryEntryCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Answer',
+              l10n.insightsAnswer,
               style: Theme.of(context).textTheme.labelLarge,
             ),
           ),

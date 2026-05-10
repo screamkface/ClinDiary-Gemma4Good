@@ -4,6 +4,7 @@ import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,16 +105,17 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   Future<void> _createFolder() async {
+    final l10n = AppLocalizations.of(context);
     var folderName = '';
     final createdName = await showDialog<String?>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('New folder'),
+        title: Text(l10n.documentsNewFolder),
         content: TextFormField(
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Folder name',
-            hintText: 'E.g. Blood tests',
+          decoration: InputDecoration(
+            labelText: l10n.documentsFolderName,
+            hintText: l10n.documentsEGBloodTests,
           ),
           textInputAction: TextInputAction.done,
           onChanged: (value) => folderName = value,
@@ -126,14 +128,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n.documentsCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(
               dialogContext,
               rootNavigator: true,
             ).pop(folderName.trim()),
-            child: const Text('Create'),
+            child: Text(l10n.documentsCreate),
           ),
         ],
       ),
@@ -148,9 +150,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           .createFolder(name: createdName, parentFolderId: _currentFolderId);
       await _refreshAll();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Folder "$createdName" created.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.documentsFolderCreated(createdName))),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -160,6 +162,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   Future<void> _moveDocument(ClinicalDocumentSummary document) async {
+    final l10n = AppLocalizations.of(context);
     final folders = await ref.read(documentFoldersProvider.future);
     if (!mounted) {
       return;
@@ -181,7 +184,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Move file',
+                      l10n.documentsMoveFile,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
@@ -193,8 +196,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     ),
                     const SizedBox(height: 12),
                     _FolderChoiceTile(
-                      title: 'Main archive',
-                      subtitle: 'Outside any folder',
+                      title: l10n.documentsMainArchive,
+                      subtitle: l10n.documentsOutsideAnyFolder,
                       selected: nextFolderId.isEmpty,
                       onTap: () => setModalState(() => nextFolderId = ''),
                     ),
@@ -220,7 +223,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         onPressed: () => Navigator.of(
                           sheetContext,
                         ).pop(nextFolderId.isEmpty ? null : nextFolderId),
-                        child: const Text('Move'),
+                        child: Text(l10n.documentsMove),
                       ),
                     ),
                   ],
@@ -248,7 +251,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Document moved.')));
+      ).showSnackBar(SnackBar(content: Text(l10n.documentsDocumentMoved)));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -289,13 +292,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final archiveAsync = ref.watch(documentArchiveProvider(_archiveQuery));
     final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final parseProgressAsync = ref.watch(localDocumentParseProgressProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final dateFormat = DateFormat(l10n.documentsDdMmmYyyy, l10n.localeName);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Documents'),
+        title: Text(l10n.documents),
         actions: [
           IconButton(
             onPressed: () => _refreshAll(),
@@ -366,10 +370,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 SectionCard(
-                  title: archive.currentFolder?.name ?? 'Archive',
+                  title: archive.currentFolder?.name ?? l10n.documentsArchive,
                   subtitle: archive.isSearch
-                      ? 'Search your files.'
-                      : 'Everything important in one place.',
+                      ? l10n.documentsSearchYourFiles
+                      : l10n.documentsEverythingImportantInOnePlace,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -378,8 +382,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         onSubmitted: (_) => _applySearch(),
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
-                          labelText: 'Search files',
-                          hintText: 'Title, folder, source, file name...',
+                          labelText: l10n.documentsSearchFiles,
+                          hintText: l10n.documentsTitleFolderSourceFileName,
                           prefixIcon: const Icon(Icons.search),
                           suffixIcon: _appliedQuery == null
                               ? IconButton(
@@ -406,8 +410,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             icon: const Icon(Icons.save_alt_outlined),
                             label: Text(
                               archive.currentFolder == null
-                                  ? 'Upload file'
-                                  : 'Save here',
+                                  ? l10n.documentsUploadFile
+                                  : l10n.documentsSaveHere,
                             ),
                           ),
                           FilledButton.tonalIcon(
@@ -418,7 +422,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               foregroundColor: Colors.white,
                             ),
                             icon: const Icon(Icons.camera_alt_outlined),
-                            label: const Text('Take photo'),
+                            label: Text(l10n.documentsTakePhoto),
                           ),
                           OutlinedButton.icon(
                             onPressed: _createFolder,
@@ -427,7 +431,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               side: BorderSide(color: folderButtonBorder),
                             ),
                             icon: const Icon(Icons.create_new_folder_outlined),
-                            label: const Text('New folder'),
+                            label: Text(l10n.documentsNewFolder),
                           ),
                           _GlowingAskFilesButton(
                             onPressed: () => _openDocumentQuery(archive),
@@ -440,14 +444,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         runSpacing: 8,
                         children: [
                           ChoiceChip(
-                            label: const Text('All'),
+                            label: Text(l10n.documentsAll),
                             selected:
                                 _documentFilter == _DocumentArchiveFilter.all,
                             onSelected: (_) =>
                                 _setDocumentFilter(_DocumentArchiveFilter.all),
                           ),
                           ChoiceChip(
-                            label: const Text('Needs review'),
+                            label: Text(l10n.documentsNeedsReview),
                             selected:
                                 _documentFilter ==
                                 _DocumentArchiveFilter.needsReview,
@@ -456,7 +460,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             ),
                           ),
                           ChoiceChip(
-                            label: const Text('Parsing'),
+                            label: Text(l10n.documentsParsing),
                             selected:
                                 _documentFilter ==
                                 _DocumentArchiveFilter.parsing,
@@ -465,7 +469,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             ),
                           ),
                           ChoiceChip(
-                            label: const Text('Ready'),
+                            label: Text(l10n.documentsReady),
                             selected:
                                 _documentFilter == _DocumentArchiveFilter.ready,
                             onSelected: (_) => _setDocumentFilter(
@@ -485,7 +489,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 Icons.sync_problem_outlined,
                                 size: 18,
                               ),
-                              label: Text('Waiting: $pendingSyncCount'),
+                              label: Text(
+                                l10n.documentsWaitingCount(pendingSyncCount),
+                              ),
                             ),
                           if (parseSnapshot.activeCount > 0)
                             Chip(
@@ -494,17 +500,27 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 size: 18,
                               ),
                               label: Text(
-                                'Background parsing: ${parseSnapshot.activeCount}',
+                                l10n.documentsBackgroundParsingCount(
+                                  parseSnapshot.activeCount,
+                                ),
                               ),
                             ),
                           Chip(
-                            label: Text('${archive.folders.length} folders'),
+                            label: Text(
+                              l10n.documentsFoldersCount(
+                                archive.folders.length,
+                              ),
+                            ),
                           ),
                           Chip(
-                            label: Text('${archive.documents.length} files'),
+                            label: Text(
+                              l10n.documentsFilesCount(
+                                archive.documents.length,
+                              ),
+                            ),
                           ),
                           if (archive.isSearch)
-                            const Chip(label: Text('Search active')),
+                            Chip(label: Text(l10n.documentsSearchActive)),
                         ],
                       ),
                     ],
@@ -520,8 +536,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 if (archive.folders.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   SectionCard(
-                    title: 'Folders',
-                    subtitle: 'Tap a folder to open it.',
+                    title: l10n.documentsFolders,
+                    subtitle: l10n.documentsTapAFolderToOpenIt,
                     child: Column(
                       children: archive.folders
                           .map(
@@ -544,7 +560,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   subtitle: Text(
-                                    '${folder.childFolderCount} subfolders • ${folder.documentCount} files',
+                                    l10n.documentsSubfoldersFilesCount(
+                                      folder.childFolderCount,
+                                      folder.documentCount,
+                                    ),
                                   ),
                                   trailing: const Icon(
                                     Icons.chevron_right_rounded,
@@ -560,14 +579,16 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 const SizedBox(height: 12),
                 if (archive.documents.isEmpty && archive.folders.isEmpty)
                   SectionCard(
-                    title: archive.isSearch ? 'No results' : 'Empty archive',
+                    title: archive.isSearch
+                        ? l10n.documentsNoResults
+                        : l10n.documentsEmptyArchive,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           archive.isSearch
-                              ? 'Try different words or clear the search.'
-                              : 'Start by saving a file or creating a folder.',
+                              ? l10n.documentsTryDifferentWordsOrClearSearch
+                              : l10n.documentsStartBySavingFileOrCreatingFolder,
                         ),
                         const SizedBox(height: 12),
                         Wrap(
@@ -578,7 +599,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               FilledButton.tonalIcon(
                                 onPressed: _clearSearch,
                                 icon: const Icon(Icons.close),
-                                label: const Text('Clear search'),
+                                label: Text(l10n.documentsClearSearch),
                               )
                             else ...[
                               FilledButton.icon(
@@ -588,7 +609,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                   foregroundColor: Colors.white,
                                 ),
                                 icon: const Icon(Icons.save_alt_outlined),
-                                label: const Text('Upload file'),
+                                label: Text(l10n.documentsUploadFile),
                               ),
                               OutlinedButton.icon(
                                 onPressed: _createFolder,
@@ -599,7 +620,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 icon: const Icon(
                                   Icons.create_new_folder_outlined,
                                 ),
-                                label: const Text('New folder'),
+                                label: Text(l10n.documentsNewFolder),
                               ),
                             ],
                           ],
@@ -609,8 +630,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   )
                 else if (filteredDocuments.isNotEmpty)
                   SectionCard(
-                    title: archive.isSearch ? 'Found files' : 'Files',
-                    subtitle: archive.isSearch ? 'Search results.' : null,
+                    title: archive.isSearch
+                        ? l10n.documentsFoundFiles
+                        : l10n.documentsFiles,
+                    subtitle: archive.isSearch
+                        ? l10n.documentsSearchResults
+                        : null,
                     child: Column(
                       children: filteredDocuments
                           .map(
@@ -636,8 +661,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   )
                 else if (archive.documents.isNotEmpty)
                   SectionCard(
-                    title: 'No matching files',
-                    subtitle: 'Try another filter or clear the search.',
+                    title: l10n.documentsNoMatchingFiles,
+                    subtitle: l10n.documentsTryAnotherFilterOrClearSearch,
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -646,12 +671,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                           onPressed: () =>
                               _setDocumentFilter(_DocumentArchiveFilter.all),
                           icon: const Icon(Icons.filter_alt_off_outlined),
-                          label: const Text('Reset filter'),
+                          label: Text(l10n.documentsResetFilter),
                         ),
                         OutlinedButton.icon(
                           onPressed: _clearSearch,
                           icon: const Icon(Icons.close),
-                          label: const Text('Clear search'),
+                          label: Text(l10n.documentsClearSearch),
                         ),
                       ],
                     ),
@@ -687,6 +712,7 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (!archive.isSearch && archive.breadcrumbs.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -698,7 +724,7 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
         ActionChip(
           onPressed: onOpenRoot,
           avatar: const Icon(Icons.home_outlined, size: 18),
-          label: const Text('Archive'),
+          label: Text(l10n.documentsArchive),
         ),
         ...archive.breadcrumbs.map(
           (folder) => ActionChip(
@@ -711,7 +737,7 @@ class _ArchiveBreadcrumbs extends StatelessWidget {
           ActionChip(
             onPressed: onClearSearch,
             avatar: const Icon(Icons.close, size: 18),
-            label: const Text('Close search'),
+            label: Text(l10n.documentsCloseSearch),
           ),
       ],
     );
@@ -725,6 +751,7 @@ class _GlowingAskFilesButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const glow = Color(0xFF8E5CF7);
     const accent = Color(0xFF23A6D5);
@@ -768,7 +795,7 @@ class _GlowingAskFilesButton extends StatelessWidget {
                   const Icon(Icons.auto_awesome_rounded, color: glow, size: 19),
                   const SizedBox(width: 8),
                   Text(
-                    'Ask files',
+                    l10n.documentsAskFiles,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: isDark ? Colors.white : glow,
                       fontWeight: FontWeight.w900,
@@ -805,6 +832,7 @@ class _DocumentArchiveTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final statusColor = documentStatusColor(context, document.parsedStatus);
     final isParsing = parseProgress != null;
 
@@ -844,7 +872,7 @@ class _DocumentArchiveTile extends StatelessWidget {
             ),
             if (showFolderName && document.folderName != null)
               Text(
-                'Folder: ${document.folderName}',
+                l10n.documentsFolderLabel(document.folderName!),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -857,7 +885,7 @@ class _DocumentArchiveTile extends StatelessWidget {
                   children: [
                     if (document.isOld)
                       Chip(
-                        label: const Text('Old'),
+                        label: Text(l10n.documentsOld),
                         backgroundColor: documentContextStatusColor(
                           context,
                           document.contextStatus,
@@ -866,7 +894,7 @@ class _DocumentArchiveTile extends StatelessWidget {
                       ),
                     if (document.pendingSync)
                       Chip(
-                        label: const Text('Sync pending'),
+                        label: Text(l10n.documentsSyncPending),
                         backgroundColor: Theme.of(
                           context,
                         ).colorScheme.tertiaryContainer,
@@ -875,7 +903,9 @@ class _DocumentArchiveTile extends StatelessWidget {
                     if (isParsing)
                       Chip(
                         label: Text(
-                          'Parsing ${(parseProgress!.progress * 100).round()}%',
+                          l10n.documentsParsingPercent(
+                            (parseProgress!.progress * 100).round(),
+                          ),
                         ),
                         backgroundColor: Theme.of(
                           context,
@@ -900,7 +930,7 @@ class _DocumentArchiveTile extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Waiting for sync',
+                  l10n.documentsWaitingForSync,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.secondary,
                   ),
@@ -939,6 +969,7 @@ class _DocumentTileActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: Alignment.centerRight,
@@ -952,7 +983,7 @@ class _DocumentTileActions extends StatelessWidget {
           if (allowMove) ...[
             const SizedBox(width: 4),
             IconButton.filledTonal(
-              tooltip: 'Move file',
+              tooltip: l10n.documentsMoveFile,
               onPressed: onMove,
               icon: const Icon(Icons.drive_file_move_outline),
             ),

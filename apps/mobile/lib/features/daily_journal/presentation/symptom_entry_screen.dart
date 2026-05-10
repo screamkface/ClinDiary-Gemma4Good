@@ -107,6 +107,7 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
             },
           );
       ref.invalidate(dailyEntriesProvider);
+      ref.invalidate(insightSummaryProvider);
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       context.pop();

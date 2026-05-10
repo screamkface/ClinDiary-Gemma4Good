@@ -1,5 +1,7 @@
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,51 @@ class VaccinationHistoryScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<VaccinationHistoryScreen> createState() =>
       _VaccinationHistoryScreenState();
+}
+
+AppLocalizations _l10nOf(BuildContext context) {
+  return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      lookupAppLocalizations(const Locale('en'));
+}
+
+DateFormat _safeDateFormat(String pattern, String localeName) {
+  try {
+    return DateFormat(pattern, localeName);
+  } catch (_) {
+    return DateFormat(pattern);
+  }
+}
+
+bool _vaccinationIsItalian(BuildContext context) {
+  return isItalianLanguageCode(
+    appLanguageCodeFromLocale(Localizations.localeOf(context)),
+  );
+}
+
+String _vaccinationStatusLabel(BuildContext context, String status) {
+  final l10n = _l10nOf(context);
+  return switch (status) {
+    'up_to_date' => l10n.profileUpToDate,
+    'recommended' => l10n.profileToDo,
+    'attention' => _vaccinationIsItalian(context) ? 'attenzione' : 'attention',
+    _ => l10n.profileToReview2,
+  };
+}
+
+String _administeredLabel(BuildContext context, String formattedDate) {
+  return _vaccinationIsItalian(context)
+      ? 'Somministrato $formattedDate'
+      : 'Administered $formattedDate';
+}
+
+String _doseLabel(BuildContext context, Object doseNumber) {
+  return '${_l10nOf(context).profileDose} $doseNumber';
+}
+
+String _boosterLabel(BuildContext context, String formattedDate) {
+  return _vaccinationIsItalian(context)
+      ? 'Richiamo $formattedDate'
+      : 'Booster $formattedDate';
 }
 
 class _VaccinationHistoryScreenState
@@ -41,23 +88,22 @@ class _VaccinationHistoryScreenState
   }
 
   Future<void> _deleteVaccination(VaccinationRecordItem item) async {
+    final l10n = _l10nOf(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove vaccination?'),
-        content: const Text(
-          'The item will be removed from the vaccination history.',
-        ),
+        title: Text(l10n.profileRemoveVaccination),
+        content: Text(l10n.profileTheItemWillBeRemovedFrom5),
         actions: [
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.profileCancel10),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            child: const Text('Remove'),
+            child: Text(l10n.profileRemove5),
           ),
         ],
       ),
@@ -92,13 +138,17 @@ class _VaccinationHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _l10nOf(context);
     final profileAsync = ref.watch(profileBundleProvider);
     final preventionAsync = ref.watch(preventionCenterProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
+    final dateFormat = _safeDateFormat(l10n.profileDdMmmYyyy3, localeName);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vaccination history'),
+        title: Text(l10n.profileVaccinationHistory),
         actions: [
           IconButton(
             onPressed: () => ref.invalidate(profileBundleProvider),
@@ -109,8 +159,8 @@ class _VaccinationHistoryScreenState
       body: profileAsync.when(
         data: (bundle) {
           if (bundle == null) {
-            return const Center(
-              child: Text('Complete the profile to manage vaccinations.'),
+            return Center(
+              child: Text(l10n.profileCompleteTheProfileToManageVaccinations),
             );
           }
 
@@ -127,10 +177,10 @@ class _VaccinationHistoryScreenState
                 const SizedBox(height: 12),
                 preventionAsync.when(
                   data: (center) => SectionCard(
-                    title: 'Vaccination registry',
-                    subtitle: 'Summary status derived from history.',
+                    title: l10n.profileVaccinationRegistry,
+                    subtitle: l10n.profileSummaryStatusDerivedFromHistory,
                     child: center.vaccineRegistry.isEmpty
-                        ? const Text('No vaccination summary available.')
+                        ? Text(l10n.profileNoVaccinationSummaryAvailable)
                         : Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -149,14 +199,14 @@ class _VaccinationHistoryScreenState
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Recorded vaccinations',
+                  title: l10n.profileRecordedVaccinations,
                   action: FilledButton.tonalIcon(
                     onPressed: () => _saveVaccination(),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add'),
+                    label: Text(l10n.add),
                   ),
                   child: bundle.vaccinations.isEmpty
-                      ? const Text('No vaccination recorded.')
+                      ? Text(l10n.profileNoVaccinationRecorded)
                       : Column(
                           children: bundle.vaccinations
                               .map(
@@ -168,13 +218,27 @@ class _VaccinationHistoryScreenState
                                       title: Text(item.vaccineName),
                                       subtitle: Text(
                                         [
-                                          if (item.pendingSync) 'Pending sync',
+                                          if (item.pendingSync)
+                                            l10n.profilePendingSync9,
                                           if (item.administeredOn != null)
-                                            'Administered ${dateFormat.format(item.administeredOn!)}',
+                                            _administeredLabel(
+                                              context,
+                                              dateFormat.format(
+                                                item.administeredOn!,
+                                              ),
+                                            ),
                                           if (item.doseNumber != null)
-                                            'Dose ${item.doseNumber}',
+                                            _doseLabel(
+                                              context,
+                                              item.doseNumber!,
+                                            ),
                                           if (item.nextDueDate != null)
-                                            'Booster ${dateFormat.format(item.nextDueDate!)}',
+                                            _boosterLabel(
+                                              context,
+                                              dateFormat.format(
+                                                item.nextDueDate!,
+                                              ),
+                                            ),
                                           if (item.providerName?.isNotEmpty ==
                                               true)
                                             item.providerName!,
@@ -189,7 +253,7 @@ class _VaccinationHistoryScreenState
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
-                                              tooltip: 'Edit',
+                                              tooltip: l10n.profileEdit4,
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _saveVaccination(
@@ -201,8 +265,8 @@ class _VaccinationHistoryScreenState
                                             ),
                                             IconButton(
                                               tooltip: item.pendingSync
-                                                  ? 'Pending sync'
-                                                  : 'Remove',
+                                                  ? l10n.profilePendingSync10
+                                                  : l10n.profileRemove6,
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _deleteVaccination(
@@ -278,6 +342,7 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
   }
 
   Future<void> _pickDate({required bool nextBooster}) async {
+    final l10n = _l10nOf(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: nextBooster
@@ -285,7 +350,10 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
           : _administeredOn ?? DateTime.now(),
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
-      helpText: nextBooster ? 'Select next booster' : 'Select date',
+      locale: Localizations.localeOf(context),
+      helpText: nextBooster
+          ? l10n.profileSelectNextBooster
+          : l10n.profileSelectDate,
     );
     if (!mounted || picked == null) {
       return;
@@ -300,11 +368,12 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
   }
 
   void _save() {
+    final l10n = _l10nOf(context);
     final name = _vaccineNameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Enter the vaccine name.')));
+      ).showSnackBar(SnackBar(content: Text(l10n.profileEnterTheVaccineName)));
       return;
     }
 
@@ -326,8 +395,12 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _l10nOf(context);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final dateFormat = DateFormat('dd/MM/yyyy');
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
+    final dateFormat = _safeDateFormat(l10n.profileDdMmYyyy5, localeName);
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottomInset),
       child: SingleChildScrollView(
@@ -347,45 +420,47 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              widget.initial == null ? 'Add vaccine' : 'Edit vaccine',
+              widget.initial == null
+                  ? l10n.profileAddVaccine
+                  : l10n.profileEditVaccine,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 4),
             Text(
-              'Only the name is required. You can add dates later.',
+              l10n.profileOnlyTheNameIsRequiredYou,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _vaccineNameController,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Vaccine name',
-                hintText: 'Example: Influenza',
+              decoration: InputDecoration(
+                labelText: l10n.profileVaccineName,
+                hintText: l10n.profileExampleInfluenza,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _doseNumberController,
-              decoration: const InputDecoration(labelText: 'Dose'),
+              decoration: InputDecoration(labelText: l10n.profileDose),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
             _VaccinationDateTile(
-              title: 'Date',
+              title: l10n.profileDate,
               value: _administeredOn == null
-                  ? 'Choose date'
+                  ? l10n.profileChooseDate
                   : dateFormat.format(_administeredOn!),
               icon: Icons.event_outlined,
               onTap: () => _pickDate(nextBooster: false),
             ),
             const SizedBox(height: 8),
             _VaccinationDateTile(
-              title: 'Next booster',
+              title: l10n.profileNextBooster,
               value: _nextDueDate == null
-                  ? 'Optional'
+                  ? l10n.profileOptional
                   : dateFormat.format(_nextDueDate!),
               icon: Icons.schedule_outlined,
               onTap: () => _pickDate(nextBooster: true),
@@ -393,13 +468,13 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _providerController,
-              decoration: const InputDecoration(labelText: 'Place or doctor'),
+              decoration: InputDecoration(labelText: l10n.profilePlaceOrDoctor),
               maxLines: 2,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _notesController,
-              decoration: const InputDecoration(labelText: 'Note'),
+              decoration: InputDecoration(labelText: l10n.profileNote2),
               maxLines: 3,
             ),
             const SizedBox(height: 18),
@@ -408,14 +483,14 @@ class _VaccinationFormSheetState extends State<_VaccinationFormSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(null),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.profileCancel11),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     onPressed: _save,
-                    child: const Text('Save'),
+                    child: Text(l10n.profileSave8),
                   ),
                 ),
               ],
@@ -466,6 +541,7 @@ class _VaccinationHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _l10nOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const color = Color(0xFFFF7A59);
     return TweenAnimationBuilder<double>(
@@ -503,21 +579,21 @@ class _VaccinationHeroCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Add a vaccine in seconds',
+                    l10n.profileAddAVaccineInSeconds,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Name, date, dose and next booster stay together here.',
+                    l10n.profileNameDateDoseAndNextBooster,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 10),
                   FilledButton.icon(
                     onPressed: onAdd,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add vaccine'),
+                    label: Text(l10n.profileAddVaccine2),
                   ),
                 ],
               ),
@@ -545,10 +621,7 @@ class _VaccineRegistryChip extends StatelessWidget {
       _ => colorScheme.secondary,
     };
     final label = switch (status) {
-      'up_to_date' => 'up to date',
-      'recommended' => 'to do',
-      'attention' => 'attention',
-      _ => 'to review',
+      _ => _vaccinationStatusLabel(context, status),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

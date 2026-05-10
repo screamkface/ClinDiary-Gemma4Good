@@ -17,7 +17,7 @@ class WearableSyncBootstrap extends ConsumerStatefulWidget {
 
 class _WearableSyncBootstrapState extends ConsumerState<WearableSyncBootstrap>
     with WidgetsBindingObserver {
-  static const _minSyncInterval = Duration(minutes: 15);
+  static const _dailySyncInterval = Duration(hours: 24);
 
   DateTime? _lastAttemptAt;
   String? _lastUserId;
@@ -29,20 +29,20 @@ class _WearableSyncBootstrapState extends ConsumerState<WearableSyncBootstrap>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _syncTimer = Timer.periodic(_minSyncInterval, (_) => _maybeSync());
+    _syncTimer = Timer.periodic(_dailySyncInterval, (_) => _maybeSync());
     _authSubscription = ref.listenManual<AsyncValue<AuthSession?>>(
       authControllerProvider,
       (previous, next) {
         final hadSession = previous?.asData?.value != null;
         final hasSession = next.asData?.value != null;
         if (!hadSession && hasSession) {
-          unawaited(_maybeSync(force: true));
+          unawaited(_maybeSync());
         }
       },
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_maybeSync(force: true));
+      unawaited(_maybeSync());
     });
   }
 
@@ -82,7 +82,7 @@ class _WearableSyncBootstrapState extends ConsumerState<WearableSyncBootstrap>
     final now = DateTime.now().toUtc();
     if (!force &&
         _lastAttemptAt != null &&
-        now.difference(_lastAttemptAt!) < _minSyncInterval) {
+        now.difference(_lastAttemptAt!) < _dailySyncInterval) {
       return;
     }
 

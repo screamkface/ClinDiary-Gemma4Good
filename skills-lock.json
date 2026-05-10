@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "skillPath": "caveman/SKILL.md",
+      "computedHash": "c9bc6c69829953233bb175d1e3951a7bc53ebbf573bddcaadc3299ca8154bbb2"
+    },
+    "dart-add-unit-test": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-add-unit-test/SKILL.md",
+      "computedHash": "207787eff2cfccfd27207de447358105305021756884f94441b959526b4dccf1"
+    },
+    "dart-build-cli-app": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-build-cli-app/SKILL.md",
+      "computedHash": "9cd4f1f2015c1243591bdf363b78a34027430866decc78c3792fb29b1de8d821"
+    },
+    "dart-collect-coverage": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-collect-coverage/SKILL.md",
+      "computedHash": "16294f58c5aaf91d783cf8a67e0c5f4c1816aa07540cea84053a94d4732b9abf"
+    },
+    "dart-fix-runtime-errors": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-fix-runtime-errors/SKILL.md",
+      "computedHash": "5e4e0dd5390fa1ae08e96ad67aedd3c01a4e81c74ec9c84a6bc095f5f2a1d571"
+    },
+    "dart-generate-test-mocks": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-generate-test-mocks/SKILL.md",
+      "computedHash": "bce7e148266c470e4c06a42796721e8af4fdc996a447811a82bbf7a0737c2e1a"
+    },
+    "dart-migrate-to-checks-package": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-migrate-to-checks-package/SKILL.md",
+      "computedHash": "0e55a03596e87383264056301aa855a504f4792e1ed2ea7e34e96b21b0f1dc00"
+    },
+    "dart-resolve-package-conflicts": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-resolve-package-conflicts/SKILL.md",
+      "computedHash": "737cd83ec6a047ba46ff368efd884435051c82efc5b4b0bbadbbe74e1213961a"
+    },
+    "dart-run-static-analysis": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-run-static-analysis/SKILL.md",
+      "computedHash": "1b6223f40f59254ab72aea333b52fce8143a9f41399a51c2ae38ce6e9ccdad3d"
+    },
+    "dart-use-pattern-matching": {
+      "source": "dart-lang/skills",
+      "sourceType": "github",
+      "skillPath": "skills/dart-use-pattern-matching/SKILL.md",
+      "computedHash": "4cedbb7502ced27f1f986ae0f9275c0d7b3e1f5bb8ac3e5eaa826695b88d0b90"
+    }
+  }
+}

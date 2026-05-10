@@ -2,6 +2,7 @@ import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/data/profile_repository.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/features/profile/presentation/family_profiles_screen.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,14 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
+
+Widget _testApp({required Widget home}) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,7 +79,7 @@ void main() {
             profileBundleProvider.overrideWith((ref) async => initialBundle),
             activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
           ],
-          child: const MaterialApp(home: FamilyProfilesScreen()),
+          child: _testApp(home: const FamilyProfilesScreen()),
         ),
       );
 

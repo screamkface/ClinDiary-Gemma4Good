@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
@@ -23,6 +24,8 @@ class OnDevicePromptBuilder {
   Future<OnDeviceRecapPrompt?> buildDailyRecapPrompt({
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
+    final isItalian = isItalianLanguageCode(languageCode);
     final profileBundle = await _readProfileBundle();
     final dossier = await _readHealthDossier();
     final entries = await _readDailyEntries();
@@ -186,7 +189,9 @@ class OnDevicePromptBuilder {
 
     final payload = <String, Object?>{
       'summary_type': 'daily',
-      'summary_label': 'on-device daily summary',
+      'summary_label': isItalian
+          ? 'riepilogo giornaliero locale'
+          : 'on-device daily summary',
       'period_start': targetDay.toIso8601String().split('T').first,
       'period_end': targetDay.toIso8601String().split('T').first,
       'data_considered': dataConsidered,
@@ -219,8 +224,8 @@ class OnDevicePromptBuilder {
       summaryType: 'daily',
       periodStart: targetDay,
       periodEnd: targetDay,
-      systemPrompt: _systemPrompt(),
-      userPrompt: _userPrompt(payload),
+      systemPrompt: _systemPrompt(languageCode),
+      userPrompt: _userPrompt(payload, languageCode),
       providerName: 'on_device_litertlm',
       suggestedModelFamily: 'Gemma 4',
       isCloudBypassedForThisRequest: true,
@@ -231,6 +236,7 @@ class OnDevicePromptBuilder {
     required String question,
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
       lookbackDays: 30,
@@ -249,14 +255,15 @@ class OnDevicePromptBuilder {
       contextType: 'clinical_question',
       periodStart: context.periodStart,
       periodEnd: context.periodEnd,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _questionUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _questionUserPrompt(payload, languageCode),
     );
   }
 
   Future<OnDeviceTextPrompt?> buildTrendExplanationPrompt({
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
       lookbackDays: 30,
@@ -274,14 +281,15 @@ class OnDevicePromptBuilder {
       contextType: 'trend_explanation',
       periodStart: context.periodStart,
       periodEnd: context.periodEnd,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _trendUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _trendUserPrompt(payload, languageCode),
     );
   }
 
   Future<OnDeviceTextPrompt?> buildPreVisitBriefPrompt({
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
       lookbackDays: 30,
@@ -299,14 +307,15 @@ class OnDevicePromptBuilder {
       contextType: 'pre_visit_brief',
       periodStart: context.periodStart,
       periodEnd: context.periodEnd,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _preVisitUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _preVisitUserPrompt(payload, languageCode),
     );
   }
 
   Future<OnDeviceTextPrompt?> buildDocumentSummaryPrompt({
     required ClinicalDocumentDetail detail,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final referenceDate = detail.examDate ?? detail.uploadDate;
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
@@ -324,8 +333,8 @@ class OnDevicePromptBuilder {
       contextType: 'document_summary',
       periodStart: referenceDate,
       periodEnd: referenceDate,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _documentUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _documentUserPrompt(payload, languageCode),
     );
   }
 
@@ -711,7 +720,18 @@ class OnDevicePromptBuilder {
     );
   }
 
-  static String _assistantSystemPrompt() {
+  static String _assistantSystemPrompt(String languageCode) {
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Sei Gemma 4 dentro ClinDiary.
+Usa solo i dati presenti nel payload fornito.
+Rispondi in italiano, con un tono calmo e professionale.
+Non fare diagnosi e non prescrivere.
+Non inventare dati mancanti.
+Se i dati non bastano, dillo chiaramente.
+Se trovi elementi rilevanti, spiega cosa monitorare o cosa portare al medico senza toni allarmistici.
+''';
+    }
     return '''
 You are Gemma 4 inside ClinDiary.
 Use only the data present in the provided payload.
@@ -723,8 +743,30 @@ If you find relevant items, explain what to monitor or discuss with the doctor w
 ''';
   }
 
-  static String _questionUserPrompt(Map<String, Object?> payload) {
+  static String _questionUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+L'utente sta facendo una domanda sulla propria storia clinica.
+
+Domanda:
+${payload['question']}
+
+Rispondi usando questa struttura:
+1. Risposta diretta e concisa
+2. Cosa osservi nei dati disponibili
+3. Limiti dei dati o informazioni mancanti
+4. Se utile, 2-3 domande da portare al medico
+
+Restituisci solo il testo finale, senza markdown inutile.
+
+DATI:
+$serialized
+''';
+    }
     return '''
 The user is asking a question about their medical history.
 
@@ -744,8 +786,28 @@ $serialized
 ''';
   }
 
-  static String _trendUserPrompt(Map<String, Object?> payload) {
+  static String _trendUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Devi spiegare con prudenza l'andamento clinico recente del paziente.
+
+Rispondi usando questa struttura:
+1. Andamento generale osservato
+2. Pattern o cambiamenti nel tempo
+3. Elementi che meritano attenzione o monitoraggio
+4. Dati mancanti che limitano l'analisi
+5. Nota finale che ricorda che non si tratta di una diagnosi
+
+Non inventare cause. Se vedi solo associazioni deboli, dillo chiaramente.
+
+DATI:
+$serialized
+''';
+    }
     return '''
 You must explain the patient's recent clinical trend in a careful way.
 
@@ -763,8 +825,29 @@ $serialized
 ''';
   }
 
-  static String _preVisitUserPrompt(Map<String, Object?> payload) {
+  static String _preVisitUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Devi preparare una nota pre-visita da portare al medico.
+
+Rispondi usando questa struttura:
+1. Breve sintesi del periodo analizzato
+2. Sintomi, cambiamenti e tendenze piu importanti
+3. Esami, documenti e terapie rilevanti da portare alla visita
+4. 3-5 domande utili da fare al medico
+5. Segnali da monitorare prima della visita
+6. Nota finale che ricorda che il testo non sostituisce il medico
+
+Mantieni un tono pratico e ordinato.
+
+DATI:
+$serialized
+''';
+    }
     return '''
 You must prepare a pre-visit brief to bring to the doctor.
 
@@ -783,8 +866,28 @@ $serialized
 ''';
   }
 
-  static String _documentUserPrompt(Map<String, Object?> payload) {
+  static String _documentUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Devi spiegare questo documento clinico con parole semplici.
+
+Rispondi usando questa struttura:
+1. Riassunto semplice del documento
+2. Punti chiave o valori rilevanti
+3. Cosa puo essere utile per il medico
+4. 2-3 domande da fare se qualcosa non e chiaro
+5. Nota finale che ricorda che non si tratta di una diagnosi
+
+Se il documento contiene solo dati parziali, dillo chiaramente.
+
+DATI:
+$serialized
+''';
+    }
     return '''
 You must explain this clinical document in simple terms.
 
@@ -1308,7 +1411,10 @@ int _ageFromBirthDate(DateTime birthDate) {
   return age;
 }
 
-String _systemPrompt() {
+String _systemPrompt(String languageCode) {
+  if (isItalianLanguageCode(languageCode)) {
+    return 'Segui rigorosamente le istruzioni dell\'utente. Usa solo i dati presenti nel payload JSON e non aggiungere informazioni esterne.';
+  }
   return "Follow the user's instructions strictly. Use only the data present in the JSON payload and do not add external information.";
 }
 
@@ -1453,8 +1559,35 @@ class _ClinicalTextContext {
   final Map<String, Object?> payload;
 }
 
-String _userPrompt(Map<String, Object?> payload) {
+String _userPrompt(Map<String, Object?> payload, String languageCode) {
   final serialized = jsonEncode(payload);
+  if (isItalianLanguageCode(languageCode)) {
+    return "Genera un riepilogo clinico prudente usando SOLO i dati presenti nel payload JSON.\n\n"
+        "OBIETTIVO\n"
+        "Produrre un riepilogo chiaro, prudente e utile per il paziente e per il medico, evidenziando:\n"
+        "- l'andamento nel tempo di sintomi e misurazioni\n"
+        "- eventuali pattern o correlazioni osservabili nei dati\n"
+        "- esami o documenti recenti rilevanti\n"
+        "- situazioni in cui e opportuno parlarne con il medico\n\n"
+        "VINCOLI GENERALI\n"
+        "- Non inventare dati mancanti\n"
+        "- Non fare diagnosi\n"
+        "- Non prescrivere\n"
+        "- Non attribuire cause certe\n"
+        "- Non usare linguaggio allarmistico\n"
+        "- Se un dato manca o non e sufficiente, dichiaralo esplicitamente\n"
+        "- Se esistono alert aperti, riportali fedelmente senza reinterpretarli\n"
+        "- Le correlazioni devono essere descritte solo come osservazioni nei dati, non come causalita\n\n"
+        "STRUTTURA RICHIESTA\n"
+        "1. Periodo considerato e contesto del paziente\n"
+        "2. Andamento osservato nel diario e nei dati registrati\n"
+        "3. Eventi o documenti recenti rilevanti\n"
+        "4. Quando e perche parlarne con il medico\n"
+        "5. Nota finale che ricordi esplicitamente che non si tratta di una diagnosi o prescrizione\n\n"
+        "OUTPUT\n"
+        "Restituisci solo il riepilogo finale, in italiano, seguendo esattamente la struttura richiesta.\n\n"
+        "DATI STRUTTURATI:\n$serialized";
+  }
   return "Generate a cautious clinical summary using ONLY the data present in the JSON payload.\n\n"
       "GOAL\n"
       "Produce a clear, cautious and useful summary for the patient and the doctor, highlighting:\n"

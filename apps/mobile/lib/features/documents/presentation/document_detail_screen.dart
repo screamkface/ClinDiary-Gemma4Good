@@ -2,6 +2,7 @@ import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,6 +55,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
   }
 
   Future<void> _updateContextStatus(String nextStatus) async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _updatingContextStatus = true);
     try {
       await ref
@@ -68,8 +70,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       ref.invalidate(notificationsProvider);
       if (!mounted) return;
       final message = nextStatus == 'old'
-          ? 'Document marked as old. It will not be used in AI recaps.'
-          : 'Document reactivated for AI recaps.';
+          ? l10n.documentsDocumentMarkedAsOldItWill
+          : l10n.documentsDocumentReactivatedForAiRecaps;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
@@ -86,23 +88,22 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
   }
 
   Future<void> _deleteDocument() async {
+    final l10n = AppLocalizations.of(context);
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete document'),
-        content: const Text(
-          'The document will be deleted permanently. Do you want to continue?',
-        ),
+        title: Text(l10n.documentsDeleteDocument),
+        content: Text(l10n.documentsDeleteDocumentBody),
         actions: [
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.documentsCancel),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            child: const Text('Delete'),
+            child: Text(l10n.documentsDelete),
           ),
         ],
       ),
@@ -125,7 +126,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Document deleted.')));
+      ).showSnackBar(SnackBar(content: Text(l10n.documentsDocumentDeleted)));
       context.pop();
     } catch (error) {
       if (!mounted) return;
@@ -140,6 +141,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
   }
 
   Future<void> _openViewer(ClinicalDocumentDetail detail) async {
+    final l10n = AppLocalizations.of(context);
     if (detail.isLocal) {
       final localPath = await ref
           .read(documentsRepositoryProvider)
@@ -151,7 +153,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       );
       if (!launched) {
         await SharePlus.instance.share(
-          ShareParams(text: 'ClinDiary document', files: [XFile(localPath)]),
+          ShareParams(
+            text: l10n.documentsClindiaryDocument,
+            files: [XFile(localPath)],
+          ),
         );
       }
       return;
@@ -166,7 +171,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to open the document.')),
+        SnackBar(content: Text(l10n.documentsUnableToOpenTheDocument)),
       );
     }
   }
@@ -176,13 +181,16 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       path: '/app/ai',
       queryParameters: {
         'documentId': detail.id,
-        'question': 'Explain this document in simple terms.',
+        'question': AppLocalizations.of(
+          context,
+        ).documentsExplainThisDocumentInSimpleTerms,
       },
     );
     context.push(uri.toString());
   }
 
   Future<void> _moveDocument(ClinicalDocumentDetail detail) async {
+    final l10n = AppLocalizations.of(context);
     final folders = await ref.read(documentFoldersProvider.future);
     if (!mounted) {
       return;
@@ -204,7 +212,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Move file',
+                      l10n.documentsMoveFile,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
@@ -216,8 +224,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     _FolderChoiceTile(
-                      title: 'Main archive',
-                      subtitle: 'Outside any folder',
+                      title: l10n.documentsMainArchive,
+                      subtitle: l10n.documentsOutsideAnyFolder,
                       selected: nextFolderId.isEmpty,
                       onTap: () => setModalState(() => nextFolderId = ''),
                     ),
@@ -243,7 +251,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         onPressed: () => Navigator.of(
                           sheetContext,
                         ).pop(nextFolderId.isEmpty ? null : nextFolderId),
-                        child: const Text('Move'),
+                        child: Text(l10n.documentsMove),
                       ),
                     ),
                   ],
@@ -273,7 +281,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Document moved.')));
+      ).showSnackBar(SnackBar(content: Text(l10n.documentsDocumentMoved)));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -286,24 +294,25 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     }
   }
 
-  String _nextStepHint(ClinicalDocumentDetail detail) {
+  String _nextStepHint(AppLocalizations l10n, ClinicalDocumentDetail detail) {
     if (detail.parsedStatus == 'processing') {
-      return 'Processing is running. Refresh in a few seconds.';
+      return l10n.documentsProcessingIsRunningRefreshInA;
     }
     if (detail.parsedStatus == 'review_required') {
-      return 'Open Manual review to add or confirm key values.';
+      return l10n.documentsOpenManualReviewToAddOrConfirmKeyValues;
     }
     if (detail.parsedStatus == 'parsed') {
-      return 'Ask for a quick explanation or open the file.';
+      return l10n.documentsAskForAQuickExplanationOr;
     }
     if (detail.isLocal && (detail.ocrText == null || detail.ocrText!.isEmpty)) {
-      return 'Add a few details so answers work better.';
+      return l10n.documentsAddAFewDetailsSoAnswers;
     }
-    return 'Open the file and confirm details if needed.';
+    return l10n.documentsOpenTheFileAndConfirmDetailsIfNeeded;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final detailAsync = ref.watch(documentDetailProvider(widget.documentId));
     final parseProgressAsync = ref.watch(localDocumentParseProgressProvider);
     final parseSnapshot =
@@ -324,11 +333,11 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
 
     final detail = detailAsync.valueOrNull;
     final hasCloudStorageAccess = !ref.read(appConfigProvider).localOnlyMode;
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
+    final dateFormat = DateFormat(l10n.documentsDdMmmYyyyHhMm, l10n.localeName);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Document details'),
+        title: Text(l10n.documentsDocumentDetails),
         actions: [
           IconButton(
             onPressed: () =>
@@ -360,15 +369,15 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                 });
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: _DocumentMenuAction.move,
                   child: Row(
                     children: [
-                      Icon(Icons.drive_file_move_outline),
-                      SizedBox(width: 12),
+                      const Icon(Icons.drive_file_move_outline),
+                      const SizedBox(width: 12),
                       Flexible(
                         child: Text(
-                          'Move file',
+                          l10n.documentsMoveFile,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -388,22 +397,24 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         const SizedBox(width: 12),
                         Flexible(
                           child: Text(
-                            detail.isOld ? 'Reactivate for AI' : 'Mark as old',
+                            detail.isOld
+                                ? l10n.documentsReactivateForAi
+                                : l10n.documentsMarkAsOld,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                   ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: _DocumentMenuAction.delete,
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline),
-                      SizedBox(width: 12),
+                      const Icon(Icons.delete_outline),
+                      const SizedBox(width: 12),
                       Flexible(
                         child: Text(
-                          'Delete document',
+                          l10n.documentsDeleteDocument,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -430,7 +441,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
             children: [
               SectionCard(
                 title: detail.title,
-                subtitle: 'Open it, move it, or ask for a quick explanation.',
+                subtitle: l10n.documentsOpenItMoveItOrAskForAQuickExplanation,
                 action: FilledButton.tonalIcon(
                   onPressed:
                       (detail.isLocal ||
@@ -439,7 +450,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       ? () => _openViewer(detail)
                       : null,
                   icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open file'),
+                  label: Text(l10n.documentsOpenFile),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,7 +471,9 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         if (isParsingInBackground)
                           Chip(
                             label: Text(
-                              'Parsing ${(parseProgress.progress * 100).round()}%',
+                              l10n.documentsParsingPercent(
+                                (parseProgress.progress * 100).round(),
+                              ),
                             ),
                             backgroundColor: Theme.of(context)
                                 .colorScheme
@@ -488,8 +501,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       ),
                       label: Text(
                         _showTechnicalDetails
-                            ? 'Hide technical details'
-                            : 'Show technical details',
+                            ? l10n.documentsHideTechnicalDetails
+                            : l10n.documentsShowTechnicalDetails,
                       ),
                     ),
                     if (_showTechnicalDetails)
@@ -509,18 +522,23 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           if (detail.classificationConfidence != null)
                             Chip(
                               label: Text(
-                                'Classification ${(detail.classificationConfidence! * 100).round()}%',
+                                l10n.documentsClassificationPercent(
+                                  (detail.classificationConfidence! * 100)
+                                      .round(),
+                                ),
                               ),
                             ),
                           if (detail.parsingConfidence != null)
                             Chip(
                               label: Text(
-                                'Parsing ${(detail.parsingConfidence! * 100).round()}%',
+                                l10n.documentsParsingPercent(
+                                  (detail.parsingConfidence! * 100).round(),
+                                ),
                               ),
                             ),
                           if (detail.pendingSync)
                             Chip(
-                              label: const Text('Sync pending'),
+                              label: Text(l10n.documentsSyncPending),
                               backgroundColor: Theme.of(
                                 context,
                               ).colorScheme.tertiaryContainer,
@@ -531,7 +549,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          'This document has changes waiting to sync.',
+                          l10n.documentsThisDocumentHasChangesWaitingTo,
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.secondary,
                           ),
@@ -543,22 +561,25 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       runSpacing: 12,
                       children: [
                         _InfoTile(
-                          label: 'Added',
+                          label: l10n.documentsAdded,
                           value: dateFormat.format(detail.uploadDate.toLocal()),
                         ),
                         _InfoTile(
-                          label: 'Exam',
+                          label: l10n.documentsExam,
                           value: detail.examDate == null
-                              ? 'Not added'
-                              : detail.examDate!
-                                    .toIso8601String()
-                                    .split('T')
-                                    .first,
+                              ? l10n.documentsNotAdded
+                              : DateFormat(
+                                  l10n.documentsDdMmmYyyy,
+                                  l10n.localeName,
+                                ).format(detail.examDate!),
                         ),
                         if (detail.source?.trim().isNotEmpty == true)
-                          _InfoTile(label: 'From', value: detail.source!),
+                          _InfoTile(
+                            label: l10n.documentsFrom,
+                            value: detail.source!,
+                          ),
                         _InfoTile(
-                          label: 'Size',
+                          label: l10n.documentsSize,
                           value: formatFileSize(detail.fileSizeBytes),
                         ),
                       ],
@@ -567,7 +588,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          'This document is marked as old and is not included in AI recaps.',
+                          l10n.documentsThisDocumentIsMarkedAsOldAnd,
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.secondary,
                           ),
@@ -598,12 +619,12 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Next step',
+                            l10n.documentsNextStep,
                             style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 4),
-                          Text(_nextStepHint(detail)),
+                          Text(_nextStepHint(l10n, detail)),
                         ],
                       ),
                     ),
@@ -612,7 +633,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                       FilledButton.tonalIcon(
                         onPressed: () => _openGemmaCenter(detail),
                         icon: const Icon(Icons.auto_awesome_outlined),
-                        label: const Text('Ask about this file'),
+                        label: Text(l10n.documentsAskAboutThisFile),
                       ),
                     if (canAskGemmaAboutDocument) const SizedBox(height: 12),
                     if (detail.isCloud)
@@ -629,7 +650,9 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                                 : _processDocument,
                             icon: const Icon(Icons.auto_fix_high_outlined),
                             label: Text(
-                              _processing ? 'Processing...' : 'Process',
+                              _processing
+                                  ? l10n.documentsProcessing
+                                  : l10n.documentsProcess,
                             ),
                           ),
                           OutlinedButton.icon(
@@ -641,7 +664,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                                     '/app/documents/${widget.documentId}/review',
                                   ),
                             icon: const Icon(Icons.edit_note_outlined),
-                            label: const Text('Manual review'),
+                            label: Text(l10n.documentsManualReview),
                           ),
                         ],
                       )
@@ -661,13 +684,13 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Ready to use.',
+                                Text(
+                                  l10n.documentsReadyToUse,
                                   style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
-                                  'You can open it, review it, or ask for a simple explanation.',
+                                Text(
+                                  l10n.documentsYouCanOpenItReviewItOrAskForASimpleExplanation,
                                 ),
                               ],
                             ),
@@ -680,7 +703,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                                     '/app/documents/${widget.documentId}/review',
                                   ),
                             icon: const Icon(Icons.edit_note_outlined),
-                            label: const Text('Manual review'),
+                            label: Text(l10n.documentsManualReview),
                           ),
                         ],
                       ),
@@ -699,13 +722,13 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'View only',
+                              Text(
+                                l10n.documentsViewOnly,
                                 style: TextStyle(fontWeight: FontWeight.w700),
                               ),
                               const SizedBox(height: 6),
-                              const Text(
-                                'You can read this file, but editing is disabled right now.',
+                              Text(
+                                l10n.documentsYouCanReadThisFileButEditingIsDisabled,
                               ),
                             ],
                           ),
@@ -717,10 +740,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
               const SizedBox(height: 12),
               if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
                 SectionCard(
-                  title: 'Extracted text',
+                  title: l10n.documentsExtractedText,
                   subtitle: _showExtractedText
-                      ? 'OCR text for the document.'
-                      : 'Available on demand.',
+                      ? l10n.documentsOcrTextForTheDocument
+                      : l10n.documentsAvailableOnDemand,
                   action: TextButton.icon(
                     onPressed: () => setState(
                       () => _showExtractedText = !_showExtractedText,
@@ -730,7 +753,11 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
                     ),
-                    label: Text(_showExtractedText ? 'Hide text' : 'Show text'),
+                    label: Text(
+                      _showExtractedText
+                          ? l10n.documentsHideText
+                          : l10n.documentsShowText,
+                    ),
                   ),
                   child: _showExtractedText
                       ? Container(
@@ -744,14 +771,14 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           ),
                           child: SelectableText(detail.ocrText!),
                         )
-                      : const Text(
-                          'The extracted text is ready but stays hidden until you choose to view it.',
+                      : Text(
+                          l10n.documentsTheExtractedTextStaysHiddenUntilView,
                         ),
                 ),
               if (detail.labPanels.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Lab results',
+                  title: l10n.documentsLabResults,
                   child: Column(
                     children: detail.labPanels
                         .map(
@@ -767,7 +794,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
               if (detail.imagingReports.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Imaging report',
+                  title: l10n.documentsImagingReport,
                   child: Column(
                     children: detail.imagingReports
                         .map(
@@ -790,8 +817,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Unable to load this document.',
+                Text(
+                  l10n.documentsUnableToLoadThisDocument,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
@@ -801,7 +828,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                   onPressed: () =>
                       ref.invalidate(documentDetailProvider(widget.documentId)),
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Try again'),
+                  label: Text(l10n.documentsTryAgain),
                 ),
               ],
             ),
@@ -888,6 +915,7 @@ class _LabPanelView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -927,14 +955,16 @@ class _LabPanelView extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _referenceLabel(result),
+                  _referenceLabel(l10n, result),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
             trailing: Chip(
-              label: Text(isAbnormal ? 'Out of range' : 'OK'),
+              label: Text(
+                isAbnormal ? l10n.documentsOutOfRange : l10n.documentsOk,
+              ),
               visualDensity: VisualDensity.compact,
               backgroundColor: isAbnormal
                   ? Theme.of(
@@ -959,14 +989,14 @@ class _LabPanelView extends StatelessWidget {
     return '${result.value} $unit';
   }
 
-  String _referenceLabel(LabResultItem result) {
+  String _referenceLabel(AppLocalizations l10n, LabResultItem result) {
     if (result.refMin != null && result.refMax != null) {
       final unit = result.unit?.trim();
       return unit == null || unit.isEmpty
-          ? 'Range ${result.refMin}-${result.refMax}'
-          : 'Range ${result.refMin}-${result.refMax} $unit';
+          ? l10n.documentsRangeWithoutUnit(result.refMin!, result.refMax!)
+          : l10n.documentsRangeWithUnit(result.refMin!, result.refMax!, unit);
     }
-    return 'Range unavailable';
+    return l10n.documentsRangeUnavailable;
   }
 }
 
@@ -977,6 +1007,7 @@ class _ImagingReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -987,11 +1018,12 @@ class _ImagingReportView extends StatelessWidget {
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
-        if (report.bodyPart != null) Text('Body area: ${report.bodyPart}'),
+        if (report.bodyPart != null)
+          Text(l10n.documentsBodyArea(report.bodyPart!)),
         const SizedBox(height: 8),
         if (report.impression != null && report.impression!.isNotEmpty)
           Text(
-            'Conclusion: ${report.impression!}',
+            l10n.documentsConclusion(report.impression!),
             style: const TextStyle(fontWeight: FontWeight.w700),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,

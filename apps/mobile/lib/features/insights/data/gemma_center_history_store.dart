@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
@@ -15,6 +16,7 @@ class GemmaCenterHistoryStore {
 
   Future<List<GemmaCenterHistoryEntry>> readEntries({
     String? profileScope,
+    String? languageCode,
   }) async {
     final scope = profileScope ?? await activeProfileCacheScope(_localDatabase);
     if (scope == null) {
@@ -53,7 +55,18 @@ class GemmaCenterHistoryStore {
       );
     }
 
-    return entries;
+    if (languageCode == null || languageCode.trim().isEmpty) {
+      return entries;
+    }
+
+    final normalizedLanguage = normalizeAppLanguageCode(languageCode);
+    return entries
+        .where(
+          (entry) =>
+              normalizeAppLanguageCode(entry.languageCode) ==
+              normalizedLanguage,
+        )
+        .toList(growable: false);
   }
 
   Future<void> appendEntry(
@@ -65,8 +78,11 @@ class GemmaCenterHistoryStore {
       return;
     }
 
+    final resolvedEntry = entry.copyWith(
+      languageCode: await readStoredAppLanguageCode(_localDatabase),
+    );
     final existing = await readEntries(profileScope: scope);
-    final updated = [entry, ...existing].take(_maxEntries).toList();
+    final updated = [resolvedEntry, ...existing].take(_maxEntries).toList();
     await _localDatabase.putCache(
       key: scopedCacheKey(_cacheKey, scope),
       payload: jsonEncode(updated.map((item) => item.toJson()).toList()),

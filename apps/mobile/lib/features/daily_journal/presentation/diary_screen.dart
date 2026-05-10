@@ -143,6 +143,7 @@ class DiaryScreen extends ConsumerWidget {
               .read(dailyJournalRepositoryProvider)
               .deleteEntry(entryId: entry.id);
           ref.invalidate(dailyEntriesProvider);
+          ref.invalidate(insightSummaryProvider);
           ref.invalidate(timelineEventsProvider);
           if (!context.mounted) {
             return;

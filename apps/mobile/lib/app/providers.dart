@@ -1,4 +1,5 @@
 import 'package:clindiary/app/dependencies.dart';
+import 'package:clindiary/app/core/settings/app_display_settings.dart';
 import 'package:clindiary/app/core/demo_seed_data.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
@@ -73,12 +74,18 @@ final activeProfileIdProvider = FutureProvider<String?>((ref) async {
 final gemmaCenterHistoryProvider =
     FutureProvider<List<GemmaCenterHistoryEntry>>((ref) async {
       final activeProfileId = await ref.watch(activeProfileIdProvider.future);
+      final displaySettings = await ref.watch(
+        appDisplaySettingsControllerProvider.future,
+      );
       if (activeProfileId == null || activeProfileId.trim().isEmpty) {
         return const [];
       }
       return ref
           .watch(gemmaCenterHistoryStoreProvider)
-          .readEntries(profileScope: activeProfileId.trim());
+          .readEntries(
+            profileScope: activeProfileId.trim(),
+            languageCode: displaySettings.language.name,
+          );
     });
 
 final profileRegionCodeProvider = FutureProvider<String>((ref) async {
@@ -507,10 +514,15 @@ final documentDetailProvider =
 final documentQueryHistoryProvider =
     FutureProvider<List<DocumentQueryHistoryEntry>>((ref) async {
       final session = await ref.watch(authControllerProvider.future);
+      final displaySettings = await ref.watch(
+        appDisplaySettingsControllerProvider.future,
+      );
       if (session == null) {
         return const [];
       }
-      return ref.watch(documentQueryHistoryStoreProvider).readEntries();
+      return ref
+          .watch(documentQueryHistoryStoreProvider)
+          .readEntries(languageCode: displaySettings.language.name);
     });
 
 void invalidateMedicationProviders(

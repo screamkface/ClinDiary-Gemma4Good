@@ -81,8 +81,7 @@ class AppDisplaySettingsController extends AsyncNotifier<AppDisplaySettings> {
       final settings = AppDisplaySettings.fromJson(
         jsonDecode(payload) as Map<String, dynamic>,
       );
-      // Force English language for hackathon demo
-      return settings.copyWith(language: AppLanguagePreference.en);
+      return settings;
     } catch (_) {
       return const AppDisplaySettings();
     }

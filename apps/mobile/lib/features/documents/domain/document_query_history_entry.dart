@@ -10,8 +10,10 @@ class DocumentQueryHistoryEntry {
     required this.providerName,
     required this.createdAt,
     this.embeddingModelName,
+    this.retrievedChunks = 0,
     this.retrievedDocuments = 0,
     this.searchScopeLabel = 'Entire archive',
+    this.languageCode = 'en',
   });
 
   final String id;
@@ -22,8 +24,10 @@ class DocumentQueryHistoryEntry {
   final String providerName;
   final DateTime createdAt;
   final String? embeddingModelName;
+  final int retrievedChunks;
   final int retrievedDocuments;
   final String searchScopeLabel;
+  final String languageCode;
 
   factory DocumentQueryHistoryEntry.fromQueryResult({
     required String question,
@@ -38,9 +42,43 @@ class DocumentQueryHistoryEntry {
       modelName: result.modelName,
       providerName: result.providerName,
       embeddingModelName: result.embeddingModelName,
+      retrievedChunks: result.retrievedChunks,
       retrievedDocuments: result.retrievedDocuments,
       searchScopeLabel: result.searchScopeLabel,
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+    );
+  }
+
+  DocumentQueryHistoryEntry copyWith({String? languageCode}) {
+    return DocumentQueryHistoryEntry(
+      id: id,
+      question: question,
+      answer: answer,
+      citations: citations,
+      modelName: modelName,
+      providerName: providerName,
+      createdAt: createdAt,
+      embeddingModelName: embeddingModelName,
+      retrievedChunks: retrievedChunks,
+      retrievedDocuments: retrievedDocuments,
+      searchScopeLabel: searchScopeLabel,
+      languageCode: languageCode ?? this.languageCode,
+    );
+  }
+
+  DocumentQueryResult toQueryResult() {
+    return DocumentQueryResult(
+      answer: answer,
+      citations: citations,
+      providerName: providerName,
+      modelName: modelName,
+      embeddingModelName: embeddingModelName,
+      rerankerModelName: null,
+      retrievedChunks: retrievedChunks > 0 ? retrievedChunks : citations.length,
+      retrievedDocuments: retrievedDocuments,
+      searchScopeLabel: searchScopeLabel,
+      coverageNote: null,
+      usedFallback: false,
     );
   }
 
@@ -57,8 +95,10 @@ class DocumentQueryHistoryEntry {
     'model_name': modelName,
     'provider_name': providerName,
     'embedding_model_name': embeddingModelName,
+    'retrieved_chunks': retrievedChunks,
     'retrieved_documents': retrievedDocuments,
     'search_scope_label': searchScopeLabel,
+    'language_code': languageCode,
     'created_at': createdAt.toIso8601String(),
   };
 
@@ -76,9 +116,11 @@ class DocumentQueryHistoryEntry {
         modelName: json['model_name'].toString(),
         providerName: json['provider_name'].toString(),
         embeddingModelName: json['embedding_model_name'] as String?,
+        retrievedChunks: json['retrieved_chunks'] as int? ?? 0,
         retrievedDocuments: json['retrieved_documents'] as int? ?? 0,
         searchScopeLabel:
             json['search_scope_label']?.toString() ?? 'Entire archive',
+        languageCode: json['language_code']?.toString() ?? 'en',
         createdAt: DateTime.parse(json['created_at'].toString()).toUtc(),
       );
 

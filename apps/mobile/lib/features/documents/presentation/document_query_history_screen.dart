@@ -1,6 +1,7 @@
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/documents/domain/document_query_history_entry.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
@@ -16,15 +17,25 @@ class DocumentQueryHistoryScreen extends ConsumerStatefulWidget {
       _DocumentQueryHistoryScreenState();
 }
 
+AppLocalizations _l10nOf(BuildContext context) {
+  return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      lookupAppLocalizations(const Locale('en'));
+}
+
 class _DocumentQueryHistoryScreenState
     extends ConsumerState<DocumentQueryHistoryScreen> {
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy HH:mm', 'en_US');
+    final l10n = _l10nOf(context);
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
+    final dateFormat = DateFormat('dd MMM yyyy HH:mm', localeName);
+    final historyAsync = ref.watch(documentQueryHistoryProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ask files history'),
+        title: Text(l10n.documentsAskFiles),
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -33,23 +44,18 @@ class _DocumentQueryHistoryScreenState
               }
             },
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'clear',
-                child: Text('Clear all history'),
+                child: Text(l10n.documentsClearAllHistory),
               ),
             ],
           ),
         ],
       ),
-      body: FutureBuilder<List<DocumentQueryHistoryEntry>>(
-        future: ref.read(documentQueryHistoryStoreProvider).readEntries(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final entries = snapshot.data ?? const [];
-
+      body: historyAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(child: Text(error.toString())),
+        data: (entries) {
           if (entries.isEmpty) {
             return Center(
               child: Column(
@@ -62,12 +68,12 @@ class _DocumentQueryHistoryScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No ask files history yet',
+                    l10n.documentsNoAskFilesHistoryYet,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Your document questions will appear here.',
+                    l10n.documentsYourDocumentQuestionsWillAppearHere,
                     style: Theme.of(context).textTheme.bodySmall,
                     textAlign: TextAlign.center,
                   ),
@@ -88,7 +94,6 @@ class _DocumentQueryHistoryScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header with timestamp and delete button
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +111,7 @@ class _DocumentQueryHistoryScreenState
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  dateFormat.format(entry.createdAt),
+                                  dateFormat.format(entry.createdAt.toLocal()),
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
@@ -128,8 +133,10 @@ class _DocumentQueryHistoryScreenState
                           Chip(
                             label: Text(
                               entry.retrievedDocuments == 1
-                                  ? '1 file'
-                                  : '${entry.retrievedDocuments} files',
+                                  ? l10n.documentsFileSingular
+                                  : l10n.documentsFilesCount(
+                                      entry.retrievedDocuments.toString(),
+                                    ),
                             ),
                           ),
                         ],
@@ -142,7 +149,9 @@ class _DocumentQueryHistoryScreenState
                       if (entry.citations.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Text(
-                          'Sources (${entry.citations.length})',
+                          l10n.documentsSourcesCount(
+                            entry.citations.length.toString(),
+                          ),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
@@ -224,21 +233,20 @@ class _DocumentQueryHistoryScreenState
   }
 
   Future<void> _deleteEntry(String entryId) async {
+    final l10n = _l10nOf(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete history entry?'),
-        content: const Text(
-          'This will remove the question and answer from your history.',
-        ),
+        title: Text(_l10nOf(context).documentsDeleteHistoryEntry),
+        content: Text(_l10nOf(context).documentsDeleteHistoryEntryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(_l10nOf(context).documentsCancel),
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(_l10nOf(context).documentsDelete),
           ),
         ],
       ),
@@ -252,24 +260,23 @@ class _DocumentQueryHistoryScreenState
 
     if (mounted) {
       setState(() {});
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('History entry deleted.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.documentsHistoryEntryDeleted)),
+      );
     }
   }
 
   void _showClearDialog(BuildContext context) {
+    final l10n = _l10nOf(context);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear all history?'),
-        content: const Text(
-          'This will remove all your document questions and answers from history. This cannot be undone.',
-        ),
+        title: Text(l10n.documentsClearAllHistoryTitle),
+        content: Text(l10n.documentsClearAllHistoryBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n.documentsCancel),
           ),
           FilledButton.tonal(
             onPressed: () async {
@@ -279,11 +286,11 @@ class _DocumentQueryHistoryScreenState
               if (mounted) {
                 setState(() {});
                 messenger.showSnackBar(
-                  const SnackBar(content: Text('History cleared.')),
+                  SnackBar(content: Text(l10n.documentsHistoryCleared)),
                 );
               }
             },
-            child: const Text('Clear'),
+            child: Text(l10n.documentsClear),
           ),
         ],
       ),

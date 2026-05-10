@@ -204,10 +204,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Today'), findsWidgets);
-      expect(find.text('AI Recap'), findsOneWidget);
-      expect(find.text('Check-up'), findsOneWidget);
       expect(find.text('What do you need?'), findsOneWidget);
+      expect(find.text('Ask AI'), findsOneWidget);
+      expect(find.text('Add check-up'), findsOneWidget);
       expect(find.text('Vaccines'), findsOneWidget);
+      expect(find.text('Local sync up to date'), findsNothing);
+      expect(find.text('Profiles'), findsWidgets);
+      expect(find.text('Manage'), findsOneWidget);
+      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Anna Bianchi · Primary'), findsOneWidget);
+      expect(find.textContaining('Luca'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Alerts'),
         300,
@@ -215,42 +221,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('home-alert-alert-1')), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Recent check-ups'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Recent check-ups'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('home-checkup-entry-1')),
-        findsOneWidget,
-      );
-      await tester.scrollUntilVisible(
-        find.text('Profiles'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Profiles'), findsWidgets);
-      expect(find.text('Manage'), findsOneWidget);
-      expect(find.text('Add'), findsOneWidget);
-      expect(find.text('Anna Bianchi · Primary'), findsOneWidget);
-      expect(find.textContaining('Luca'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Quick actions'),
-        400,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Quick actions'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Secondary tools'),
-        400,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Secondary tools'), findsOneWidget);
+      expect(find.text('Recent check-ups'), findsNothing);
+      expect(find.text('Quick actions'), findsNothing);
+      expect(find.text('Secondary tools'), findsNothing);
       expect(find.text('Documents'), findsOneWidget);
       expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Prevention'), findsOneWidget);
@@ -260,7 +233,7 @@ void main() {
     },
   );
 
-  testWidgets('home screen shows demo scenarios only in hackathon mode', (
+  testWidgets('home screen shows demo profiles in the today card', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -338,16 +311,12 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Demo Scenarios'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
     await tester.pumpAndSettle();
-    expect(find.text('Demo Scenarios'), findsOneWidget);
+
+    expect(find.text('Demo Scenarios'), findsNothing);
+    expect(find.text('Profiles'), findsOneWidget);
     expect(find.textContaining('Scenario A'), findsOneWidget);
     expect(find.textContaining('Scenario B'), findsOneWidget);
     expect(find.textContaining('Scenario C'), findsOneWidget);
-    expect(find.text('Open AI Recap'), findsOneWidget);
   });
 }

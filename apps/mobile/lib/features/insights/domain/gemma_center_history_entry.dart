@@ -1,3 +1,5 @@
+import 'package:clindiary/app/core/localization/app_language.dart';
+
 class GemmaCenterHistoryEntry {
   const GemmaCenterHistoryEntry({
     required this.id,
@@ -5,6 +7,7 @@ class GemmaCenterHistoryEntry {
     required this.title,
     required this.response,
     required this.createdAt,
+    this.languageCode = 'en',
     this.prompt,
     this.referenceDate,
     this.documentId,
@@ -16,6 +19,7 @@ class GemmaCenterHistoryEntry {
   final String title;
   final String response;
   final DateTime createdAt;
+  final String languageCode;
   final String? prompt;
   final DateTime? referenceDate;
   final String? documentId;
@@ -25,6 +29,7 @@ class GemmaCenterHistoryEntry {
     required String question,
     required String response,
     required DateTime referenceDate,
+    String languageCode = 'en',
     DateTime? createdAt,
   }) {
     final normalizedQuestion = question.trim();
@@ -32,10 +37,13 @@ class GemmaCenterHistoryEntry {
       id: _buildId('question'),
       kind: 'question',
       title: normalizedQuestion.isEmpty
-          ? 'Clinical question'
+          ? (isItalianLanguageCode(languageCode)
+                ? 'Domanda clinica'
+                : 'Clinical question')
           : normalizedQuestion,
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+      languageCode: languageCode,
       prompt: normalizedQuestion,
       referenceDate: referenceDate.toUtc(),
     );
@@ -44,14 +52,18 @@ class GemmaCenterHistoryEntry {
   factory GemmaCenterHistoryEntry.trend({
     required String response,
     required DateTime referenceDate,
+    String languageCode = 'en',
     DateTime? createdAt,
   }) {
     return GemmaCenterHistoryEntry(
       id: _buildId('trend'),
       kind: 'trend',
-      title: 'Trend analysis',
+      title: isItalianLanguageCode(languageCode)
+          ? 'Analisi dell andamento'
+          : 'Trend analysis',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+      languageCode: languageCode,
       referenceDate: referenceDate.toUtc(),
     );
   }
@@ -59,14 +71,18 @@ class GemmaCenterHistoryEntry {
   factory GemmaCenterHistoryEntry.preVisit({
     required String response,
     required DateTime referenceDate,
+    String languageCode = 'en',
     DateTime? createdAt,
   }) {
     return GemmaCenterHistoryEntry(
       id: _buildId('pre_visit'),
       kind: 'pre_visit',
-      title: 'Pre-visit brief',
+      title: isItalianLanguageCode(languageCode)
+          ? 'Nota pre visita'
+          : 'Pre-visit brief',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+      languageCode: languageCode,
       referenceDate: referenceDate.toUtc(),
     );
   }
@@ -74,14 +90,18 @@ class GemmaCenterHistoryEntry {
   factory GemmaCenterHistoryEntry.dailyRecap({
     required String response,
     required DateTime referenceDate,
+    String languageCode = 'en',
     DateTime? createdAt,
   }) {
     return GemmaCenterHistoryEntry(
       id: _buildId('daily_recap'),
       kind: 'daily_recap',
-      title: 'Daily recap',
+      title: isItalianLanguageCode(languageCode)
+          ? 'Riepilogo giornaliero'
+          : 'Daily recap',
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+      languageCode: languageCode,
       referenceDate: referenceDate.toUtc(),
     );
   }
@@ -91,34 +111,57 @@ class GemmaCenterHistoryEntry {
     required String documentId,
     required String documentTitle,
     required DateTime referenceDate,
+    String languageCode = 'en',
     DateTime? createdAt,
   }) {
     return GemmaCenterHistoryEntry(
       id: _buildId('document_summary'),
       kind: 'document_summary',
       title: documentTitle.trim().isEmpty
-          ? 'Document summary'
-          : 'Summary: ${documentTitle.trim()}',
+          ? (isItalianLanguageCode(languageCode)
+                ? 'Riepilogo documento'
+                : 'Document summary')
+          : (isItalianLanguageCode(languageCode)
+                ? 'Riepilogo: ${documentTitle.trim()}'
+                : 'Summary: ${documentTitle.trim()}'),
       response: response.trim(),
       createdAt: (createdAt ?? DateTime.now().toUtc()).toUtc(),
+      languageCode: languageCode,
       referenceDate: referenceDate.toUtc(),
       documentId: documentId.trim(),
       documentTitle: documentTitle.trim(),
     );
   }
 
+  GemmaCenterHistoryEntry copyWith({String? languageCode}) {
+    return GemmaCenterHistoryEntry(
+      id: id,
+      kind: kind,
+      title: title,
+      response: response,
+      createdAt: createdAt,
+      languageCode: languageCode ?? this.languageCode,
+      prompt: prompt,
+      referenceDate: referenceDate,
+      documentId: documentId,
+      documentTitle: documentTitle,
+    );
+  }
+
   String get kindLabel {
     switch (kind) {
       case 'question':
-        return 'Question';
+        return isItalianLanguageCode(languageCode) ? 'Domanda' : 'Question';
       case 'trend':
-        return 'Trend';
+        return isItalianLanguageCode(languageCode) ? 'Andamento' : 'Trend';
       case 'pre_visit':
-        return 'Pre-visit';
+        return isItalianLanguageCode(languageCode) ? 'Pre visita' : 'Pre-visit';
       case 'document_summary':
-        return 'Document';
+        return isItalianLanguageCode(languageCode) ? 'Documento' : 'Document';
       case 'daily_recap':
-        return 'Daily recap';
+        return isItalianLanguageCode(languageCode)
+            ? 'Riepilogo giornaliero'
+            : 'Daily recap';
       default:
         return 'Gemma';
     }
@@ -154,6 +197,7 @@ class GemmaCenterHistoryEntry {
       'title': title,
       'response': response,
       'created_at': createdAt.toIso8601String(),
+      'language_code': languageCode,
       'prompt': prompt,
       'reference_date': referenceDate?.toIso8601String(),
       'document_id': documentId,
@@ -173,6 +217,7 @@ class GemmaCenterHistoryEntry {
         json['created_at']?.toString() ??
             DateTime.now().toUtc().toIso8601String(),
       ).toUtc(),
+      languageCode: json['language_code']?.toString() ?? 'en',
       prompt: json['prompt']?.toString(),
       referenceDate: json['reference_date'] == null
           ? null

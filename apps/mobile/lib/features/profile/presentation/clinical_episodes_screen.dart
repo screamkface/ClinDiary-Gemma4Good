@@ -1,5 +1,6 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,21 +41,22 @@ class _ClinicalEpisodesScreenState
   }
 
   Future<void> _deleteEpisode(ClinicalEpisodeItem item) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Remove clinical issue?'),
-        content: const Text('The item will be removed from the dossier.'),
+        title: Text(l10n.profileRemoveClinicalIssue),
+        content: Text(l10n.profileTheItemWillBeRemovedFromTheDossier),
         actions: [
           TextButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.profileCancel),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext, rootNavigator: true).pop(true),
-            child: const Text('Remove'),
+            child: Text(l10n.profileRemove),
           ),
         ],
       ),
@@ -78,6 +80,8 @@ class _ClinicalEpisodesScreenState
   Future<Map<String, dynamic>?> _showEpisodeDialog({
     ClinicalEpisodeItem? initial,
   }) async {
+    final l10n = AppLocalizations.of(context);
+    final compactDateFormat = DateFormat(l10n.profileDdMmYyyy, l10n.localeName);
     final titleController = TextEditingController(text: initial?.title ?? '');
     final summaryController = TextEditingController(
       text: initial?.summary ?? '',
@@ -98,7 +102,9 @@ class _ClinicalEpisodesScreenState
             vertical: 24,
           ),
           title: Text(
-            initial == null ? 'New clinical issue' : 'Edit clinical issue',
+            initial == null
+                ? l10n.profileNewClinicalIssue
+                : l10n.profileEditClinicalIssue,
           ),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
@@ -107,21 +113,24 @@ class _ClinicalEpisodesScreenState
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
+                  decoration: InputDecoration(labelText: l10n.profileTitle),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const [
-                    DropdownMenuItem(value: 'active', child: Text('Active')),
+                  decoration: InputDecoration(labelText: l10n.profileStatus),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'active',
+                      child: Text(l10n.profileActive),
+                    ),
                     DropdownMenuItem(
                       value: 'monitoring',
-                      child: Text('Monitoring'),
+                      child: Text(l10n.profileMonitoring),
                     ),
                     DropdownMenuItem(
                       value: 'resolved',
-                      child: Text('Resolved'),
+                      child: Text(l10n.profileResolved),
                     ),
                   ],
                   onChanged: (value) => setState(() => status = value),
@@ -129,11 +138,11 @@ class _ClinicalEpisodesScreenState
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Start date'),
+                  title: Text(l10n.profileStartDate),
                   subtitle: Text(
                     onsetDate == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(onsetDate!),
+                        ? l10n.profileNotSet
+                        : compactDateFormat.format(onsetDate!),
                   ),
                   trailing: const Icon(Icons.event_outlined),
                   onTap: () async {
@@ -142,7 +151,7 @@ class _ClinicalEpisodesScreenState
                       initialDate: onsetDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Select start date',
+                      helpText: l10n.profileSelectStartDate,
                     );
                     if (picked != null) {
                       setState(() => onsetDate = picked);
@@ -152,11 +161,11 @@ class _ClinicalEpisodesScreenState
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Resolution date'),
+                  title: Text(l10n.profileResolutionDate),
                   subtitle: Text(
                     resolvedDate == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(resolvedDate!),
+                        ? l10n.profileNotSet
+                        : compactDateFormat.format(resolvedDate!),
                   ),
                   trailing: const Icon(Icons.check_circle_outline),
                   onTap: () async {
@@ -165,7 +174,7 @@ class _ClinicalEpisodesScreenState
                       initialDate: resolvedDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Select resolution date',
+                      helpText: l10n.profileSelectResolutionDate,
                     );
                     if (picked != null) {
                       setState(() => resolvedDate = picked);
@@ -175,11 +184,11 @@ class _ClinicalEpisodesScreenState
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Next review'),
+                  title: Text(l10n.profileNextReview),
                   subtitle: Text(
                     nextReviewDate == null
-                        ? 'Not set'
-                        : DateFormat('dd/MM/yyyy').format(nextReviewDate!),
+                        ? l10n.profileNotSet
+                        : compactDateFormat.format(nextReviewDate!),
                   ),
                   trailing: const Icon(Icons.schedule_outlined),
                   onTap: () async {
@@ -188,7 +197,7 @@ class _ClinicalEpisodesScreenState
                       initialDate: nextReviewDate ?? DateTime.now(),
                       firstDate: DateTime(1900),
                       lastDate: DateTime(2100),
-                      helpText: 'Select next review',
+                      helpText: l10n.profileSelectNextReview,
                     );
                     if (picked != null) {
                       setState(() => nextReviewDate = picked);
@@ -198,15 +207,15 @@ class _ClinicalEpisodesScreenState
                 const SizedBox(height: 12),
                 TextField(
                   controller: summaryController,
-                  decoration: const InputDecoration(
-                    labelText: 'Summary / description',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileSummaryDescription,
                   ),
                   maxLines: 3,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: notesController,
-                  decoration: const InputDecoration(labelText: 'Note'),
+                  decoration: InputDecoration(labelText: l10n.profileNote),
                   maxLines: 3,
                 ),
               ],
@@ -216,15 +225,15 @@ class _ClinicalEpisodesScreenState
             TextButton(
               onPressed: () =>
                   Navigator.of(dialogContext, rootNavigator: true).maybePop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.profileCancel),
             ),
             FilledButton(
               onPressed: () {
                 final title = titleController.text.trim();
                 if (title.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter a title for the clinical issue.'),
+                    SnackBar(
+                      content: Text(l10n.profileEnterATitleForTheClinical),
                     ),
                   );
                   return;
@@ -249,7 +258,7 @@ class _ClinicalEpisodesScreenState
                       : notesController.text.trim(),
                 });
               },
-              child: const Text('Save'),
+              child: Text(l10n.profileSave),
             ),
           ],
         ),
@@ -264,12 +273,13 @@ class _ClinicalEpisodesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final profileAsync = ref.watch(profileBundleProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final dateFormat = DateFormat(l10n.profileDdMmmYyyy, l10n.localeName);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Clinical issues'),
+        title: Text(l10n.profileClinicalIssues),
         actions: [
           IconButton(
             onPressed: () => ref.invalidate(profileBundleProvider),
@@ -280,8 +290,8 @@ class _ClinicalEpisodesScreenState
       body: profileAsync.when(
         data: (bundle) {
           if (bundle == null) {
-            return const Center(
-              child: Text('Complete the profile to manage clinical issues.'),
+            return Center(
+              child: Text(l10n.profileCompleteTheProfileToManageClinical),
             );
           }
 
@@ -294,14 +304,14 @@ class _ClinicalEpisodesScreenState
               padding: const EdgeInsets.all(16),
               children: [
                 SectionCard(
-                  title: 'Issues and episodes',
+                  title: l10n.profileIssuesAndEpisodes,
                   action: FilledButton.tonalIcon(
                     onPressed: () => _saveEpisode(),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add'),
+                    label: Text(l10n.add2),
                   ),
                   child: bundle.clinicalEpisodes.isEmpty
-                      ? const Text('No clinical issue recorded.')
+                      ? Text(l10n.profileNoClinicalIssueRecorded)
                       : Column(
                           children: bundle.clinicalEpisodes
                               .map(
@@ -313,14 +323,19 @@ class _ClinicalEpisodesScreenState
                                       title: Text(item.title),
                                       subtitle: Text(
                                         [
-                                          if (item.pendingSync) 'Pending sync',
-                                          if (item.status != null) item.status!,
+                                          if (item.pendingSync)
+                                            l10n.profilePendingSync,
+                                          if (item.status != null)
+                                            _localizedEpisodeStatus(
+                                              l10n,
+                                              item.status!,
+                                            ),
                                           if (item.onsetDate != null)
-                                            'Start ${dateFormat.format(item.onsetDate!)}',
+                                            '${l10n.profileStartDate} ${dateFormat.format(item.onsetDate!)}',
                                           if (item.resolvedDate != null)
-                                            'Resolved ${dateFormat.format(item.resolvedDate!)}',
+                                            '${l10n.profileResolved} ${dateFormat.format(item.resolvedDate!)}',
                                           if (item.nextReviewDate != null)
-                                            'Review ${dateFormat.format(item.nextReviewDate!)}',
+                                            '${l10n.profileNextReview} ${dateFormat.format(item.nextReviewDate!)}',
                                           if (item.summary?.isNotEmpty == true)
                                             item.summary!,
                                           if (item.notes?.isNotEmpty == true)
@@ -334,7 +349,7 @@ class _ClinicalEpisodesScreenState
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             IconButton(
-                                              tooltip: 'Edit',
+                                              tooltip: l10n.profileEdit,
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _saveEpisode(
@@ -346,8 +361,8 @@ class _ClinicalEpisodesScreenState
                                             ),
                                             IconButton(
                                               tooltip: item.pendingSync
-                                                  ? 'Pending sync'
-                                                  : 'Remove',
+                                                  ? l10n.profilePendingSync
+                                                  : l10n.profileRemove,
                                               onPressed: item.pendingSync
                                                   ? null
                                                   : () => _deleteEpisode(item),
@@ -373,5 +388,18 @@ class _ClinicalEpisodesScreenState
         error: (error, _) => Center(child: Text(error.toString())),
       ),
     );
+  }
+
+  String _localizedEpisodeStatus(AppLocalizations l10n, String status) {
+    switch (status) {
+      case 'active':
+        return l10n.profileActive;
+      case 'monitoring':
+        return l10n.profileMonitoring;
+      case 'resolved':
+        return l10n.profileResolved;
+      default:
+        return status;
+    }
   }
 }

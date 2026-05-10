@@ -1,6 +1,8 @@
+import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/domain/italian_regions.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/compact_segmented_control.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
@@ -8,41 +10,138 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+AppLocalizations _profileL10nOf(BuildContext context) {
+  return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      lookupAppLocalizations(const Locale('en'));
+}
+
+String _profileBiologicalSexLabel(BuildContext context, String value) {
+  final l10n = _profileL10nOf(context);
+  return switch (value) {
+    'female' => l10n.profileFemale2,
+    'male' => l10n.profileMale2,
+    'intersex' => l10n.profileIntersex2,
+    'unknown' => l10n.profileNotSpecified2,
+    _ => value,
+  };
+}
+
+String _profileActivityLevelLabel(BuildContext context, String value) {
+  final l10n = _profileL10nOf(context);
+  return switch (value) {
+    'sedentary' => l10n.profileSedentary,
+    'light' => l10n.profileLight,
+    'moderate' => l10n.profileModerate,
+    'active' => l10n.profileActive2,
+    'very_active' => l10n.profileVeryActive,
+    _ => value,
+  };
+}
+
+String _profileAlcoholUseLabel(BuildContext context, String value) {
+  final l10n = _profileL10nOf(context);
+  return switch (value) {
+    'none' => l10n.profileNone,
+    'occasional' => l10n.profileOccasional,
+    'moderate' => l10n.profileModerate2,
+    'high' => l10n.profileHigh,
+    _ => value,
+  };
+}
+
+String _profileConditionStatusLabel(BuildContext context, String value) {
+  final l10n = _profileL10nOf(context);
+  return switch (value) {
+    'active' => l10n.profileActive4,
+    'monitoring' => l10n.profileMonitoring2,
+    'resolved' => l10n.profileResolved2,
+    _ => value,
+  };
+}
+
+String _profileSeverityLabel(BuildContext context, String value) {
+  final l10n = _profileL10nOf(context);
+  return switch (value) {
+    'mild' => l10n.profileMild,
+    'moderate' => l10n.profileModerate3,
+    'severe' => l10n.profileSevere,
+    _ => value,
+  };
+}
+
+List<String> _profileWeekdayLabels(BuildContext context) {
+  final l10n = _profileL10nOf(context);
+  return [
+    l10n.profileMon,
+    l10n.profileTue,
+    l10n.profileWed,
+    l10n.profileThu,
+    l10n.profileFri,
+    l10n.profileSat,
+    l10n.profileSun,
+  ];
+}
+
+String _profileItemsCountLabel(BuildContext context, int count) {
+  final l10n = _profileL10nOf(context);
+  if (count == 0) {
+    return l10n.profile0Items;
+  }
+  return l10n.profileItemsCount(count);
+}
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  AppLocalizations _l10nOf(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+        lookupAppLocalizations(const Locale('en'));
+  }
+
+  DateFormat _safeDateFormat(String pattern, String localeName) {
+    try {
+      return DateFormat(pattern, localeName);
+    } catch (_) {
+      return DateFormat(pattern);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = _l10nOf(context);
     final profileAsync = ref.watch(profileBundleProvider);
     final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
-    final dateFormat = DateFormat('dd/MM/yyyy');
+    final localeName = appDateFormattingLocaleName(
+      appLanguageCodeFromLocale(Localizations.localeOf(context)),
+    );
+    final dateFormat = _safeDateFormat(l10n.profileDdMmYyyy4, localeName);
 
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Profile'),
+          title: Text(l10n.profileProfile),
           actions: [
             IconButton(
               onPressed: () => ref.invalidate(profileBundleProvider),
               icon: const Icon(Icons.refresh),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: 'Summary'),
-              Tab(text: 'Context'),
-              Tab(text: 'Clinical'),
+              Tab(text: l10n.profileSummary),
+              Tab(text: l10n.profileContext),
+              Tab(text: l10n.profileClinical),
             ],
           ),
         ),
         body: profileAsync.when(
           data: (bundle) {
             if (bundle == null) {
-              return const Center(
-                child: Text('Complete authentication to view the profile.'),
+              return Center(
+                child: Text(l10n.profileCompleteAuthenticationToViewTheProfile),
               );
             }
             final pendingCount =
@@ -52,12 +151,12 @@ class ProfileScreen extends ConsumerWidget {
                 _ProfileTabList(
                   children: [
                     SectionCard(
-                      title: 'Active profile',
+                      title: l10n.profileActiveProfile,
                       action: TextButton.icon(
                         onPressed: () =>
                             _showEditProfileDialog(context, ref, bundle),
                         icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit'),
+                        label: Text(l10n.profileEdit2),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,7 +178,7 @@ class ProfileScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Your clinical profile starts here.',
+                                      l10n.profileYourClinicalProfileStartsHere,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodyMedium,
@@ -100,20 +199,20 @@ class ProfileScreen extends ConsumerWidget {
                             runSpacing: 8,
                             children: [
                               _ProfileMetricCard(
-                                label: 'Allergies',
+                                label: l10n.profileAllergies,
                                 value: bundle.allergies.length.toString(),
                               ),
                               _ProfileMetricCard(
-                                label: 'Conditions',
+                                label: l10n.profileConditions,
                                 value: bundle.medicalConditions.length
                                     .toString(),
                               ),
                               _ProfileMetricCard(
-                                label: 'Medications',
+                                label: l10n.medications,
                                 value: bundle.medications.length.toString(),
                               ),
                               _ProfileMetricCard(
-                                label: 'Family history',
+                                label: l10n.profileFamilyHistory,
                                 value: bundle.familyHistory.length.toString(),
                               ),
                             ],
@@ -123,13 +222,14 @@ class ProfileScreen extends ConsumerWidget {
                             spacing: 8,
                             runSpacing: 8,
                             children: _summaryFacts(
+                              context,
                               bundle,
                               pendingOperations: pendingCount,
                               dateFormat: dateFormat,
                             ).map((label) => _InfoChip(label: label)).toList(),
                           ),
                           const SizedBox(height: 14),
-                          const Text('Go straight to what you need:'),
+                          Text(l10n.profileGoStraightToWhatYouNeed),
                           const SizedBox(height: 10),
                           const _ProfileShortcutGrid(),
                         ],
@@ -137,8 +237,8 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     SectionCard(
-                      title: 'Quick facts',
-                      subtitle: 'Values and settings used in recaps.',
+                      title: l10n.profileQuickFacts,
+                      subtitle: l10n.profileValuesAndSettingsUsedInRecaps,
                       child: _ProfileQuickFactsSection(
                         bundle: bundle,
                         pendingOperations: pendingCount,
@@ -150,13 +250,12 @@ class ProfileScreen extends ConsumerWidget {
                 _ProfileTabList(
                   children: [
                     SectionCard(
-                      title: 'Context',
-                      subtitle:
-                          'Habits, triggers, and limits used to add context.',
+                      title: l10n.profileContext2,
+                      subtitle: l10n.profileHabitsTriggersAndLimitsUsedTo,
                       action: TextButton(
                         onPressed: () =>
                             _showEditProfileDialog(context, ref, bundle),
-                        child: const Text('Edit'),
+                        child: Text(l10n.profileEdit3),
                       ),
                       child: _ProfileContextSection(profile: bundle.profile),
                     ),
@@ -171,8 +270,12 @@ class ProfileScreen extends ConsumerWidget {
                               id: item.id,
                               title: item.allergen,
                               subtitle: [
-                                if (item.pendingSync) 'Pending sync',
-                                if (item.severity != null) item.severity!,
+                                if (item.pendingSync) l10n.profilePendingSync,
+                                if (item.severity != null)
+                                  _profileSeverityLabel(
+                                    context,
+                                    item.severity!,
+                                  ),
                                 if (item.notes != null &&
                                     item.notes!.isNotEmpty)
                                   item.notes!,
@@ -187,8 +290,12 @@ class ProfileScreen extends ConsumerWidget {
                               id: item.id,
                               title: item.name,
                               subtitle: [
-                                if (item.pendingSync) 'Pending sync',
-                                if (item.status != null) item.status!,
+                                if (item.pendingSync) l10n.profilePendingSync,
+                                if (item.status != null)
+                                  _profileConditionStatusLabel(
+                                    context,
+                                    item.status!,
+                                  ),
                                 if (item.diagnosisDate != null)
                                   dateFormat.format(item.diagnosisDate!),
                                 if (item.notes != null &&
@@ -207,7 +314,7 @@ class ProfileScreen extends ConsumerWidget {
                           id: item.id,
                           title: item.name,
                           subtitle: [
-                            if (item.pendingSync) 'Pending sync',
+                            if (item.pendingSync) l10n.profilePendingSync,
                             if (item.dosage != null && item.dosage!.isNotEmpty)
                               item.dosage!,
                             if (item.frequency != null &&
@@ -224,7 +331,7 @@ class ProfileScreen extends ConsumerWidget {
                               id: item.id,
                               title: item.conditionName,
                               subtitle: [
-                                if (item.pendingSync) 'Pending sync',
+                                if (item.pendingSync) l10n.profilePendingSync,
                                 item.relation,
                                 if (item.notes != null &&
                                     item.notes!.isNotEmpty)
@@ -271,10 +378,11 @@ class ProfileScreen extends ConsumerWidget {
     WidgetRef ref, {
     required String allergyId,
   }) async {
+    final l10n = _l10nOf(context);
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Remove allergy?',
-      message: 'The item will be removed from the clinical profile.',
+      title: l10n.profileRemoveAllergy,
+      message: l10n.profileTheItemWillBeRemovedFrom2,
     );
     if (!confirmed) {
       return;
@@ -295,10 +403,11 @@ class ProfileScreen extends ConsumerWidget {
     WidgetRef ref, {
     required String conditionId,
   }) async {
+    final l10n = _l10nOf(context);
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Remove condition?',
-      message: 'The item will be removed from the clinical profile.',
+      title: l10n.profileRemoveCondition,
+      message: l10n.profileTheItemWillBeRemovedFrom3,
     );
     if (!confirmed) {
       return;
@@ -319,10 +428,11 @@ class ProfileScreen extends ConsumerWidget {
     WidgetRef ref, {
     required String medicationId,
   }) async {
+    final l10n = _l10nOf(context);
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Remove medication?',
-      message: 'The medication and its linked local schedules will be removed.',
+      title: l10n.profileRemoveMedication,
+      message: l10n.profileTheMedicationAndItsLinkedLocal,
     );
     if (!confirmed) {
       return;
@@ -362,10 +472,11 @@ class ProfileScreen extends ConsumerWidget {
     WidgetRef ref, {
     required String familyHistoryId,
   }) async {
+    final l10n = _l10nOf(context);
     final confirmed = await _confirmDeletion(
       context,
-      title: 'Remove family history?',
-      message: 'The item will be removed from the clinical profile.',
+      title: l10n.profileRemoveFamilyHistory,
+      message: l10n.profileTheItemWillBeRemovedFrom4,
     );
     if (!confirmed) {
       return;
@@ -388,6 +499,7 @@ class ProfileScreen extends ConsumerWidget {
     required String title,
     required String message,
   }) async {
+    final l10n = _l10nOf(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -396,11 +508,11 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.profileCancel4),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Remove'),
+            child: Text(l10n.profileRemove3),
           ),
         ],
       ),
@@ -413,6 +525,7 @@ class ProfileScreen extends ConsumerWidget {
     WidgetRef ref,
     ProfileBundle bundle,
   ) async {
+    final l10n = _l10nOf(context);
     final firstNameController = TextEditingController(
       text: bundle.profile.firstName ?? '',
     );
@@ -491,7 +604,7 @@ class ProfileScreen extends ConsumerWidget {
             horizontal: 16,
             vertical: 24,
           ),
-          title: const Text('Update profile'),
+          title: Text(l10n.profileUpdateProfile),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
@@ -499,20 +612,22 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 TextField(
                   controller: firstNameController,
-                  decoration: const InputDecoration(labelText: 'First name'),
+                  decoration: InputDecoration(
+                    labelText: l10n.profileFirstName2,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: lastNameController,
-                  decoration: const InputDecoration(labelText: 'Last name'),
+                  decoration: InputDecoration(labelText: l10n.profileLastName2),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: birthDateController,
                   readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Date of birth',
-                    hintText: 'Tap to pick',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileDateOfBirth2,
+                    hintText: l10n.profileTapToPick3,
                     suffixIcon: Icon(Icons.calendar_today_outlined),
                   ),
                   onTap: () async {
@@ -526,7 +641,7 @@ class ProfileScreen extends ConsumerWidget {
                           : fallbackBirthDate(),
                       firstDate: DateTime(1900, 1, 1),
                       lastDate: DateTime.now().add(const Duration(days: 1)),
-                      helpText: 'Select date of birth',
+                      helpText: l10n.profileSelectDateOfBirth2,
                     );
                     if (picked != null) {
                       setState(() {
@@ -541,19 +656,25 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: biologicalSex,
-                  decoration: const InputDecoration(
-                    labelText: 'Biological sex',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileBiologicalSex2,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'female', child: Text('Female')),
-                    DropdownMenuItem(value: 'male', child: Text('Male')),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'female',
+                      child: Text(l10n.profileFemale2),
+                    ),
+                    DropdownMenuItem(
+                      value: 'male',
+                      child: Text(l10n.profileMale2),
+                    ),
                     DropdownMenuItem(
                       value: 'intersex',
-                      child: Text('Intersex'),
+                      child: Text(l10n.profileIntersex2),
                     ),
                     DropdownMenuItem(
                       value: 'unknown',
-                      child: Text('Not specified'),
+                      child: Text(l10n.profileNotSpecified2),
                     ),
                   ],
                   onChanged: (value) => setState(() => biologicalSex = value),
@@ -561,7 +682,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: heightController,
-                  decoration: const InputDecoration(labelText: 'Height cm'),
+                  decoration: InputDecoration(labelText: l10n.profileHeightCm),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -569,7 +690,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: weightController,
-                  decoration: const InputDecoration(labelText: 'Weight kg'),
+                  decoration: InputDecoration(labelText: l10n.profileWeightKg),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -585,7 +706,7 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Smoker'),
+                  title: Text(l10n.profileSmoker),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -599,15 +720,14 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Former smoker'),
+                  title: Text(l10n.profileFormerSmoker),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: smokingPackYearsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Tobacco pack-years',
-                    helperText:
-                        'Useful for lung and aortic aneurysm screening.',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileTobaccoPackYears,
+                    helperText: l10n.profileUsefulForLungAndAorticAneurysm,
                   ),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -616,33 +736,38 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: yearsSinceQuittingController,
-                  decoration: const InputDecoration(
-                    labelText: 'Years since quitting',
-                    helperText:
-                        'Leave blank if still smoking or not applicable.',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileYearsSinceQuitting,
+                    helperText: l10n.profileLeaveBlankIfStillSmokingOr,
                   ),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: activityLevel,
-                  decoration: const InputDecoration(
-                    labelText: 'Activity level',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileActivityLevel,
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'sedentary',
-                      child: Text('Sedentary'),
+                      child: Text(l10n.profileSedentary),
                     ),
-                    DropdownMenuItem(value: 'light', child: Text('Light')),
+                    DropdownMenuItem(
+                      value: 'light',
+                      child: Text(l10n.profileLight),
+                    ),
                     DropdownMenuItem(
                       value: 'moderate',
-                      child: Text('Moderate'),
+                      child: Text(l10n.profileModerate),
                     ),
-                    DropdownMenuItem(value: 'active', child: Text('Active')),
+                    DropdownMenuItem(
+                      value: 'active',
+                      child: Text(l10n.profileActive2),
+                    ),
                     DropdownMenuItem(
                       value: 'very_active',
-                      child: Text('Very active'),
+                      child: Text(l10n.profileVeryActive),
                     ),
                   ],
                   onChanged: (value) => setState(() => activityLevel = value),
@@ -650,28 +775,35 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: alcoholUse,
-                  decoration: const InputDecoration(labelText: 'Alcohol use'),
-                  items: const [
-                    DropdownMenuItem(value: 'none', child: Text('None')),
+                  decoration: InputDecoration(
+                    labelText: l10n.profileAlcoholUse,
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'none',
+                      child: Text(l10n.profileNone),
+                    ),
                     DropdownMenuItem(
                       value: 'occasional',
-                      child: Text('Occasional'),
+                      child: Text(l10n.profileOccasional),
                     ),
                     DropdownMenuItem(
                       value: 'moderate',
-                      child: Text('Moderate'),
+                      child: Text(l10n.profileModerate2),
                     ),
-                    DropdownMenuItem(value: 'high', child: Text('High')),
+                    DropdownMenuItem(
+                      value: 'high',
+                      child: Text(l10n.profileHigh),
+                    ),
                   ],
                   onChanged: (value) => setState(() => alcoholUse = value),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: regionCode,
-                  decoration: const InputDecoration(
-                    labelText: 'Screening region',
-                    helperText:
-                        'Used to show screening, prevention, and local notifications.',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileScreeningRegion,
+                    helperText: l10n.profileUsedToShowScreeningPreventionAnd,
                   ),
                   items: italianRegionOptions
                       .map(
@@ -687,40 +819,40 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: exerciseHabitsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Usual exercise or physical activity',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileUsualExerciseOrPhysicalActivity,
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: sleepPatternController,
-                  decoration: const InputDecoration(
-                    labelText: 'Usual sleep pattern',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileUsualSleepPattern,
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: occupationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Work or daily context',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileWorkOrDailyContext,
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: symptomTriggersController,
-                  decoration: const InputDecoration(
-                    labelText: 'Known symptom triggers',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileKnownSymptomTriggers,
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: functionalLimitationsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Functional limitations',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileFunctionalLimitations,
                   ),
                   maxLines: 2,
                 ),
@@ -728,7 +860,7 @@ class ProfileScreen extends ConsumerWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Advanced prevention',
+                    l10n.profileAdvancedPrevention,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -739,7 +871,7 @@ class ProfileScreen extends ConsumerWidget {
                   value: postmenopausal,
                   onChanged: (value) => setState(() => postmenopausal = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Post-menopause'),
+                  title: Text(l10n.profilePostMenopause),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -751,7 +883,7 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Trying to conceive'),
+                  title: Text(l10n.profileTryingToConceive),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -763,14 +895,14 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   }),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Current pregnancy'),
+                  title: Text(l10n.profileCurrentPregnancy),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   value: takingFolicAcid,
                   onChanged: (value) => setState(() => takingFolicAcid = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('I take folate / folic acid'),
+                  title: Text(l10n.profileITakeFolateFolicAcid),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -778,14 +910,14 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (value) =>
                       setState(() => fragilityFractureHistory = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Previous fragility fracture'),
+                  title: Text(l10n.profilePreviousFragilityFracture),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: fallsLastYearController,
-                  decoration: const InputDecoration(
-                    labelText: "Falls in the last year",
-                    helperText: 'Used for fall risk and functional prevention.',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileFallsInTheLastYear,
+                    helperText: l10n.profileUsedForFallRiskAndFunctional,
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -794,23 +926,28 @@ class ProfileScreen extends ConsumerWidget {
                   value: feelsUnsteady,
                   onChanged: (value) => setState(() => feelsUnsteady = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Instability or fear of falling'),
+                  title: Text(l10n.profileInstabilityOrFearOfFalling),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: sexualActivity,
-                  decoration: const InputDecoration(
-                    labelText: 'Sexual activity',
-                    helperText:
-                        'Optional data used only for personalized STI prevention.',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileSexualActivity,
+                    helperText: l10n.profileOptionalDataUsedOnlyForPersonalized,
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'unknown',
-                      child: Text('Prefer not to say'),
+                      child: Text(l10n.profilePreferNotToSay),
                     ),
-                    DropdownMenuItem(value: 'yes', child: Text('Active')),
-                    DropdownMenuItem(value: 'no', child: Text('Not active')),
+                    DropdownMenuItem(
+                      value: 'yes',
+                      child: Text(l10n.profileActive3),
+                    ),
+                    DropdownMenuItem(
+                      value: 'no',
+                      child: Text(l10n.profileNotActive),
+                    ),
                   ],
                   onChanged: (value) =>
                       setState(() => sexualActivity = value ?? 'unknown'),
@@ -821,21 +958,21 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (value) =>
                       setState(() => newOrMultiplePartners = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('New or multiple partners'),
+                  title: Text(l10n.profileNewOrMultiplePartners),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   value: partnerWithSti,
                   onChanged: (value) => setState(() => partnerWithSti = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Partner with known STI'),
+                  title: Text(l10n.profilePartnerWithKnownSti),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
                   value: sexWithMen,
                   onChanged: (value) => setState(() => sexWithMen = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('MSM context / sex between men'),
+                  title: Text(l10n.profileMsmContextSexBetweenMen),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -843,7 +980,7 @@ class ProfileScreen extends ConsumerWidget {
                   onChanged: (value) =>
                       setState(() => stiOrExposureConcerns = value),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Symptoms or STI exposures to discuss'),
+                  title: Text(l10n.profileSymptomsOrStiExposuresToDiscuss),
                 ),
               ],
             ),
@@ -852,7 +989,7 @@ class ProfileScreen extends ConsumerWidget {
             TextButton(
               onPressed: () =>
                   Navigator.of(context, rootNavigator: true).maybePop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.profileCancel5),
             ),
             FilledButton(
               onPressed: () async {
@@ -936,7 +1073,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
-              child: const Text('Save'),
+              child: Text(l10n.profileSave3),
             ),
           ],
         ),
@@ -948,6 +1085,7 @@ class ProfileScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final l10n = _l10nOf(context);
     final allergenController = TextEditingController();
     String severity = 'moderate';
 
@@ -955,26 +1093,32 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('New allergy'),
+          title: Text(l10n.profileNewAllergy),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: allergenController,
-                  decoration: const InputDecoration(labelText: 'Allergen'),
+                  decoration: InputDecoration(labelText: l10n.profileAllergen),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: severity,
-                  decoration: const InputDecoration(labelText: 'Severity'),
-                  items: const [
-                    DropdownMenuItem(value: 'mild', child: Text('Mild')),
+                  decoration: InputDecoration(labelText: l10n.profileSeverity),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'mild',
+                      child: Text(l10n.profileMild),
+                    ),
                     DropdownMenuItem(
                       value: 'moderate',
-                      child: Text('Moderate'),
+                      child: Text(l10n.profileModerate3),
                     ),
-                    DropdownMenuItem(value: 'severe', child: Text('Severe')),
+                    DropdownMenuItem(
+                      value: 'severe',
+                      child: Text(l10n.profileSevere),
+                    ),
                   ],
                   onChanged: (value) =>
                       setState(() => severity = value ?? 'moderate'),
@@ -985,7 +1129,7 @@ class ProfileScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.profileCancel6),
             ),
             FilledButton(
               onPressed: () async {
@@ -1003,7 +1147,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
-              child: const Text('Save'),
+              child: Text(l10n.profileSave4),
             ),
           ],
         ),
@@ -1015,6 +1159,7 @@ class ProfileScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final l10n = _l10nOf(context);
     final nameController = TextEditingController();
     String status = 'active';
 
@@ -1022,30 +1167,33 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('New condition'),
+          title: Text(l10n.profileNewCondition),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Condition name',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileConditionName,
                   ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: const [
-                    DropdownMenuItem(value: 'active', child: Text('Active')),
+                  decoration: InputDecoration(labelText: l10n.profileStatus2),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'active',
+                      child: Text(l10n.profileActive4),
+                    ),
                     DropdownMenuItem(
                       value: 'monitoring',
-                      child: Text('Monitoring'),
+                      child: Text(l10n.profileMonitoring2),
                     ),
                     DropdownMenuItem(
                       value: 'resolved',
-                      child: Text('Resolved'),
+                      child: Text(l10n.profileResolved2),
                     ),
                   ],
                   onChanged: (value) =>
@@ -1057,7 +1205,7 @@ class ProfileScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.profileCancel7),
             ),
             FilledButton(
               onPressed: () async {
@@ -1075,7 +1223,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
-              child: const Text('Save'),
+              child: Text(l10n.profileSave5),
             ),
           ],
         ),
@@ -1087,6 +1235,7 @@ class ProfileScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final l10n = _l10nOf(context);
     final nameController = TextEditingController();
     final dosageController = TextEditingController();
     final frequencyController = TextEditingController();
@@ -1097,7 +1246,7 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('New medication'),
+          title: Text(l10n.profileNewMedication),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1105,24 +1254,24 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Medication name',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileMedicationName,
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: dosageController,
-                  decoration: const InputDecoration(labelText: 'Dosage'),
+                  decoration: InputDecoration(labelText: l10n.profileDosage),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: frequencyController,
-                  decoration: const InputDecoration(labelText: 'Frequency'),
+                  decoration: InputDecoration(labelText: l10n.profileFrequency),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Reminder time'),
+                  title: Text(l10n.profileReminderTime),
                   subtitle: Text(_formatTimeOfDay(reminderTime)),
                   trailing: const Icon(Icons.schedule_outlined),
                   onTap: () async {
@@ -1136,33 +1285,39 @@ class ProfileScreen extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 8),
-                Text('Days', style: Theme.of(context).textTheme.labelLarge),
+                Text(
+                  l10n.profileDays,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: List.generate(_weekdayLabels.length, (index) {
-                    final selected = selectedDays.contains(index);
-                    return FilterChip(
-                      label: Text(_weekdayLabels[index]),
-                      selected: selected,
-                      onSelected: (value) {
-                        setState(() {
-                          if (value) {
-                            selectedDays.add(index);
-                          } else {
-                            selectedDays.remove(index);
-                          }
-                        });
-                      },
-                    );
-                  }),
+                  children: List.generate(
+                    _profileWeekdayLabels(context).length,
+                    (index) {
+                      final selected = selectedDays.contains(index);
+                      return FilterChip(
+                        label: Text(_profileWeekdayLabels(context)[index]),
+                        selected: selected,
+                        onSelected: (value) {
+                          setState(() {
+                            if (value) {
+                              selectedDays.add(index);
+                            } else {
+                              selectedDays.remove(index);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   selectedDays.isEmpty
-                      ? 'No day selected: ClinDiary treats the reminder as daily.'
-                      : 'Selected: ${selectedDays.map((item) => _weekdayLabels[item]).join(', ')}',
+                      ? l10n.profileNoDaySelectedClindiaryTreatsThe
+                      : '${l10n.profileDays}: ${selectedDays.map((item) => _profileWeekdayLabels(context)[item]).join(', ')}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -1171,7 +1326,7 @@ class ProfileScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(l10n.profileCancel8),
             ),
             FilledButton(
               onPressed: () async {
@@ -1190,7 +1345,7 @@ class ProfileScreen extends ConsumerWidget {
                           {
                             'scheduled_time':
                                 '${reminderTime.hour.toString().padLeft(2, '0')}:${reminderTime.minute.toString().padLeft(2, '0')}:00',
-                            'instructions': 'ClinDiary local reminder',
+                            'instructions': l10n.profileClindiaryLocalReminder,
                             'days_of_week': selectedDays.toList()..sort(),
                           },
                         ],
@@ -1218,7 +1373,7 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(error.toString())));
                 }
               },
-              child: const Text('Save'),
+              child: Text(l10n.profileSave6),
             ),
           ],
         ),
@@ -1230,25 +1385,28 @@ class ProfileScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final l10n = _l10nOf(context);
     final relationController = TextEditingController();
     final conditionController = TextEditingController();
 
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New family history'),
+        title: Text(l10n.profileNewFamilyHistory),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: relationController,
-                decoration: const InputDecoration(labelText: 'Relationship'),
+                decoration: InputDecoration(
+                  labelText: l10n.profileRelationship2,
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: conditionController,
-                decoration: const InputDecoration(labelText: 'Condition'),
+                decoration: InputDecoration(labelText: l10n.profileCondition),
               ),
             ],
           ),
@@ -1256,7 +1414,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n.profileCancel9),
           ),
           FilledButton(
             onPressed: () async {
@@ -1274,7 +1432,7 @@ class ProfileScreen extends ConsumerWidget {
                 ).showSnackBar(SnackBar(content: Text(error.toString())));
               }
             },
-            child: const Text('Save'),
+            child: Text(l10n.profileSave7),
           ),
         ],
       ),
@@ -1334,32 +1492,33 @@ class _ProfileClinicalSwitcherState extends State<_ProfileClinicalSwitcher> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionCard(
-          title: 'Clinical area',
-          subtitle: 'Open only the section you need.',
+          title: l10n.profileClinicalArea,
+          subtitle: l10n.profileOpenOnlyTheSectionYouNeed,
           child: CompactSegmentedControl<_ProfileClinicalTab>(
-            options: const [
+            options: [
               CompactSegmentOption(
                 value: _ProfileClinicalTab.medications,
-                label: 'Medications',
+                label: l10n.medications,
                 icon: Icons.medication_outlined,
               ),
               CompactSegmentOption(
                 value: _ProfileClinicalTab.conditions,
-                label: 'Conditions',
+                label: l10n.profileConditions2,
                 icon: Icons.health_and_safety_outlined,
               ),
               CompactSegmentOption(
                 value: _ProfileClinicalTab.allergies,
-                label: 'Allergies',
+                label: l10n.profileAllergies2,
                 icon: Icons.warning_amber_outlined,
               ),
               CompactSegmentOption(
                 value: _ProfileClinicalTab.familyHistory,
-                label: 'Family history',
+                label: l10n.profileFamilyHistory2,
                 icon: Icons.family_restroom_outlined,
               ),
             ],
@@ -1370,29 +1529,29 @@ class _ProfileClinicalSwitcherState extends State<_ProfileClinicalSwitcher> {
         const SizedBox(height: 16),
         switch (_selected) {
           _ProfileClinicalTab.medications => _ResourceSection(
-            title: 'Medications',
-            emptyText: 'No chronic medication recorded.',
+            title: l10n.medications,
+            emptyText: l10n.profileNoChronicMedicationRecorded,
             items: widget.medications,
             onAdd: widget.onAddMedication,
             onDelete: widget.onDeleteMedication,
           ),
           _ProfileClinicalTab.conditions => _ResourceSection(
-            title: 'Known conditions',
-            emptyText: 'No condition recorded.',
+            title: l10n.profileKnownConditions,
+            emptyText: l10n.profileNoConditionRecorded,
             items: widget.conditions,
             onAdd: widget.onAddCondition,
             onDelete: widget.onDeleteCondition,
           ),
           _ProfileClinicalTab.allergies => _ResourceSection(
-            title: 'Allergies',
-            emptyText: 'No allergy recorded.',
+            title: l10n.profileAllergies3,
+            emptyText: l10n.profileNoAllergyRecorded,
             items: widget.allergies,
             onAdd: widget.onAddAllergy,
             onDelete: widget.onDeleteAllergy,
           ),
           _ProfileClinicalTab.familyHistory => _ResourceSection(
-            title: 'Family history',
-            emptyText: 'No family history recorded.',
+            title: l10n.profileFamilyHistory3,
+            emptyText: l10n.profileNoFamilyHistoryRecorded,
             items: widget.familyHistory,
             onAdd: widget.onAddFamilyHistory,
             onDelete: widget.onDeleteFamilyHistory,
@@ -1420,15 +1579,14 @@ class _ResourceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     return SectionCard(
       title: title,
-      subtitle: items.isEmpty
-          ? '0 items'
-          : '${items.length} ${items.length == 1 ? 'item' : 'items'}',
+      subtitle: _profileItemsCountLabel(context, items.length),
       action: FilledButton.tonalIcon(
         onPressed: onAdd,
         icon: const Icon(Icons.add),
-        label: const Text('Add'),
+        label: Text(l10n.add3),
       ),
       child: items.isEmpty
           ? _EmptyResourceState(message: emptyText)
@@ -1503,7 +1661,7 @@ class _ResourceSection extends StatelessWidget {
                                   ] else if (item.pendingSync) ...[
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Pending sync',
+                                      l10n.profilePendingSync8,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -1515,8 +1673,8 @@ class _ResourceSection extends StatelessWidget {
                             const SizedBox(width: 8),
                             IconButton(
                               tooltip: item.pendingSync
-                                  ? 'Pending sync'
-                                  : 'Remove',
+                                  ? l10n.profilePendingSync7
+                                  : l10n.profileRemove4,
                               onPressed: item.pendingSync
                                   ? null
                                   : () => onDelete(item.id),
@@ -1566,6 +1724,7 @@ class _ProfileHeaderAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     final colorScheme = Theme.of(context).colorScheme;
     final parts = label
         .trim()
@@ -1574,7 +1733,7 @@ class _ProfileHeaderAvatar extends StatelessWidget {
         .take(2)
         .toList();
     final initials = parts.isEmpty
-        ? 'CD'
+        ? l10n.profileCd
         : parts.map((part) => part.substring(0, 1).toUpperCase()).join();
 
     return Container(
@@ -1656,43 +1815,45 @@ class _ProfileShortcutGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 560 ? 4 : 2;
         final spacing = 10.0;
-        final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        final width =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
           children: [
             _ProfileActionChip(
               width: width,
-              label: 'Vaccines',
-              subtitle: 'History',
+              label: l10n.profileVaccines,
+              subtitle: l10n.history5,
               icon: Icons.vaccines_rounded,
               color: const Color(0xFFFF7A59),
               onPressed: () => context.push('/app/profile/vaccinations'),
             ),
             _ProfileActionChip(
               width: width,
-              label: 'Issues',
-              subtitle: 'Clinical',
+              label: l10n.profileIssues,
+              subtitle: l10n.profileClinical2,
               icon: Icons.topic_rounded,
               color: const Color(0xFF5B5CE2),
               onPressed: () => context.push('/app/profile/problems'),
             ),
             _ProfileActionChip(
               width: width,
-              label: 'Family',
-              subtitle: 'Profiles',
+              label: l10n.profileFamily,
+              subtitle: l10n.profiles,
               icon: Icons.groups_rounded,
               color: const Color(0xFF18A999),
               onPressed: () => context.push('/app/profile/family'),
             ),
             _ProfileActionChip(
               width: width,
-              label: 'Settings',
-              subtitle: 'Privacy',
+              label: l10n.profileSettings,
+              subtitle: l10n.profilePrivacy,
               icon: Icons.tune_rounded,
               color: const Color(0xFFF4A62A),
               onPressed: () => context.push('/app/profile/settings'),
@@ -1751,9 +1912,9 @@ class _ProfileActionChip extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1782,20 +1943,21 @@ class _ProfileContextSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     final entries =
         [
-              ('Sport', profile.exerciseHabits),
-              ('Sleep', profile.sleepPattern),
-              ('Work', profile.occupation),
-              ('Trigger', profile.symptomTriggers),
-              ('Limitations', profile.functionalLimitations),
+              (l10n.profileSport, profile.exerciseHabits),
+              (l10n.profileSleep, profile.sleepPattern),
+              (l10n.profileWork, profile.occupation),
+              (l10n.profileTrigger, profile.symptomTriggers),
+              (l10n.profileLimitations, profile.functionalLimitations),
             ]
             .where((entry) => entry.$2 != null && entry.$2!.trim().isNotEmpty)
             .toList();
 
     if (entries.isEmpty) {
-      return const _EmptyResourceState(
-        message: 'Add useful details to give recaps more context.',
+      return _EmptyResourceState(
+        message: l10n.profileAddUsefulDetailsToGiveRecaps,
       );
     }
 
@@ -1836,41 +1998,56 @@ class _ProfileQuickFactsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     final profile = bundle.profile;
     final facts = <(String, String)>[
       if (profile.birthDate != null)
-        ('Birth', dateFormat.format(profile.birthDate!)),
+        (l10n.profileBirth, dateFormat.format(profile.birthDate!)),
       if (profile.biologicalSex != null && profile.biologicalSex!.isNotEmpty)
-        ('Sex', profile.biologicalSex!),
+        (
+          l10n.profileSex,
+          _profileBiologicalSexLabel(context, profile.biologicalSex!),
+        ),
       if (profile.regionCode != null)
-        ('Region', italianRegionLabel(profile.regionCode)),
+        (l10n.profileRegion2, italianRegionLabel(profile.regionCode)),
       if (profile.heightCm != null)
-        ('Height', '${profile.heightCm!.toStringAsFixed(0)} cm'),
+        (l10n.profileHeight, '${profile.heightCm!.toStringAsFixed(0)} cm'),
       if (profile.weightKg != null)
-        ('Weight', '${profile.weightKg!.toStringAsFixed(0)} kg'),
+        (l10n.profileWeight, '${profile.weightKg!.toStringAsFixed(0)} kg'),
       if (profile.smokingPackYears != null)
-        ('Pack-years', profile.smokingPackYears!.toStringAsFixed(0)),
+        (l10n.profilePackYears, profile.smokingPackYears!.toStringAsFixed(0)),
       if (profile.activityLevel != null)
-        ('Activity', _activityLevelLabel(profile.activityLevel!)),
+        (
+          l10n.profileActivity,
+          _profileActivityLevelLabel(context, profile.activityLevel!),
+        ),
       if (profile.alcoholUse != null)
-        ('Alcohol', _alcoholUseLabel(profile.alcoholUse!)),
-      ('Smoking', profile.smoker ? 'Yes' : 'No'),
-      if (profile.formerSmoker) ('Former smoking', 'Yes'),
-      if (profile.postmenopausal) ('Post-menopause', 'Yes'),
-      if (profile.tryingToConceive) ('Preconception', 'Active'),
-      if (profile.currentlyPregnant) ('Pregnancy', 'Ongoing'),
-      if (profile.takingFolicAcid) ('Folate', 'Taking'),
-      if (profile.fragilityFractureHistory) ('Fractures', 'Previous'),
+        (
+          l10n.profileAlcohol,
+          _profileAlcoholUseLabel(context, profile.alcoholUse!),
+        ),
+      (l10n.profileSmoking, profile.smoker ? l10n.profileYes : l10n.profileNo),
+      if (profile.formerSmoker) (l10n.profileFormerSmoking, l10n.profileYes2),
+      if (profile.postmenopausal)
+        (l10n.profilePostMenopause2, l10n.profileYes3),
+      if (profile.tryingToConceive)
+        (l10n.profilePreconception, l10n.profileActive5),
+      if (profile.currentlyPregnant)
+        (l10n.profilePregnancy, l10n.profileOngoing),
+      if (profile.takingFolicAcid) (l10n.profileFolate, l10n.profileTaking),
+      if (profile.fragilityFractureHistory)
+        (l10n.profileFractures, l10n.profilePrevious),
       if (profile.fallsLastYear != null)
-        ('Falls last year', profile.fallsLastYear.toString()),
-      if (profile.feelsUnsteady) ('Instability', 'To review'),
-      ('AI', 'Local only'),
-      if (pendingOperations > 0) ('Sync', '$pendingOperations pending'),
+        (l10n.profileFallsLastYear, profile.fallsLastYear.toString()),
+      if (profile.feelsUnsteady)
+        (l10n.profileInstability, l10n.profileToReview),
+      (l10n.profileAi, l10n.profileLocalOnly),
+      if (pendingOperations > 0) (l10n.profileSync, l10n.profileSyncPending),
     ];
 
     if (facts.isEmpty) {
-      return const _EmptyResourceState(
-        message: 'Add the essential profile data.',
+      return _EmptyResourceState(
+        message: l10n.profileAddTheEssentialProfileData,
       );
     }
 
@@ -1906,8 +2083,9 @@ class _ProfileContextLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _profileL10nOf(context);
     final text = value == null || value!.trim().isEmpty
-        ? 'Not specified'
+        ? l10n.profileNotSpecified3
         : value!;
     return Container(
       width: double.infinity,
@@ -1993,49 +2171,32 @@ class _EmptyResourceState extends StatelessWidget {
   }
 }
 
-const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
 String _formatTimeOfDay(TimeOfDay value) {
   return '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 }
 
-String _activityLevelLabel(String value) {
-  return switch (value) {
-    'sedentary' => 'sedentary',
-    'light' => 'light',
-    'moderate' => 'moderate',
-    'active' => 'active',
-    'very_active' => 'very active',
-    _ => value,
-  };
-}
-
-String _alcoholUseLabel(String value) {
-  return switch (value) {
-    'none' => 'none',
-    'occasional' => 'occasional',
-    'moderate' => 'moderate',
-    'high' => 'high',
-    _ => value,
-  };
-}
-
 List<String> _summaryFacts(
+  BuildContext context,
   ProfileBundle bundle, {
   required int pendingOperations,
   required DateFormat dateFormat,
 }) {
+  final l10n = _profileL10nOf(context);
   final facts = <String>[];
   final birthDate = bundle.profile.birthDate;
   if (birthDate != null) {
-    facts.add('Born ${dateFormat.format(birthDate)}');
+    facts.add('${l10n.profileBirth} ${dateFormat.format(birthDate)}');
   }
   if (bundle.profile.biologicalSex != null &&
       bundle.profile.biologicalSex!.trim().isNotEmpty) {
-    facts.add('Sex ${bundle.profile.biologicalSex}');
+    facts.add(
+      '${l10n.profileSex} ${_profileBiologicalSexLabel(context, bundle.profile.biologicalSex!)}',
+    );
   }
   if (bundle.profile.regionCode != null) {
-    facts.add('Region ${italianRegionLabel(bundle.profile.regionCode)}');
+    facts.add(
+      '${l10n.profileRegion2} ${italianRegionLabel(bundle.profile.regionCode)}',
+    );
   }
   if (bundle.profile.heightCm != null || bundle.profile.weightKg != null) {
     final details = [
@@ -2049,35 +2210,39 @@ List<String> _summaryFacts(
     }
   }
   if (bundle.profile.smoker) {
-    facts.add('Smoker');
+    facts.add(l10n.profileSmoker2);
   }
   if (bundle.profile.formerSmoker) {
-    facts.add('Former smoker');
+    facts.add(l10n.profileFormerSmoker2);
   }
   if (bundle.profile.smokingPackYears != null) {
     facts.add(
-      'Pack-years ${bundle.profile.smokingPackYears!.toStringAsFixed(0)}',
+      '${l10n.profilePackYears} ${bundle.profile.smokingPackYears!.toStringAsFixed(0)}',
     );
   }
   if (bundle.profile.activityLevel != null) {
-    facts.add('Activity ${_activityLevelLabel(bundle.profile.activityLevel!)}');
+    facts.add(
+      '${l10n.profileActivity} ${_profileActivityLevelLabel(context, bundle.profile.activityLevel!)}',
+    );
   }
   if (bundle.profile.alcoholUse != null) {
-    facts.add('Alcohol ${_alcoholUseLabel(bundle.profile.alcoholUse!)}');
+    facts.add(
+      '${l10n.profileAlcohol} ${_profileAlcoholUseLabel(context, bundle.profile.alcoholUse!)}',
+    );
   }
   if (bundle.profile.fallsLastYear != null &&
       bundle.profile.fallsLastYear! > 0) {
-    facts.add('Falls ${bundle.profile.fallsLastYear}');
+    facts.add('${l10n.profileFallsLastYear} ${bundle.profile.fallsLastYear}');
   }
   if (bundle.profile.tryingToConceive) {
-    facts.add('Preconception active');
+    facts.add(l10n.profilePreconceptionActive);
   }
   if (bundle.profile.currentlyPregnant) {
-    facts.add('Pregnancy ongoing');
+    facts.add(l10n.profilePregnancyOngoing);
   }
-  facts.add('AI: local only');
+  facts.add(l10n.profileAiLocalOnly);
   if (pendingOperations > 0) {
-    facts.add('Sync pending');
+    facts.add(l10n.profileSyncPending);
   }
   return facts.take(6).toList();
 }

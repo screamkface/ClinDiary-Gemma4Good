@@ -8,6 +8,7 @@ import 'package:clindiary/features/documents/presentation/document_query_screen.
 import 'package:clindiary/features/documents/presentation/document_review_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_upload_screen.dart';
 import 'package:clindiary/features/documents/presentation/documents_screen.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,21 @@ import 'package:mocktail/mocktail.dart';
 class MockDocumentsRepository extends Mock implements DocumentsRepository {}
 
 class MockDocumentPickerService extends Mock implements DocumentPickerService {}
+
+Widget _testApp({Widget? home, RouterConfig<Object>? routerConfig}) {
+  if (routerConfig != null) {
+    return MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: routerConfig,
+    );
+  }
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -74,7 +90,7 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: DocumentsScreen()),
+        child: _testApp(home: const DocumentsScreen()),
       ),
     );
 
@@ -128,7 +144,7 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: DocumentsScreen()),
+        child: _testApp(home: const DocumentsScreen()),
       ),
     );
 
@@ -191,7 +207,7 @@ void main() {
               ],
             ),
           ],
-          child: const MaterialApp(home: DocumentsScreen()),
+          child: _testApp(home: const DocumentsScreen()),
         ),
       );
 
@@ -271,8 +287,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: DocumentDetailScreen(documentId: 'doc-1'),
+          child: _testApp(
+            home: const DocumentDetailScreen(documentId: 'doc-1'),
           ),
         ),
       );
@@ -360,8 +376,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: DocumentDetailScreen(documentId: 'doc-1'),
+          child: _testApp(
+            home: const DocumentDetailScreen(documentId: 'doc-1'),
           ),
         ),
       );
@@ -411,9 +427,7 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(
-          home: DocumentDetailScreen(documentId: 'doc-1'),
-        ),
+        child: _testApp(home: const DocumentDetailScreen(documentId: 'doc-1')),
       ),
     );
 
@@ -478,7 +492,7 @@ void main() {
             documentsRepositoryProvider.overrideWith((ref) => repository),
             documentPickerServiceProvider.overrideWith((ref) => picker),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: _testApp(routerConfig: router),
         ),
       );
 
@@ -572,7 +586,7 @@ void main() {
         overrides: [
           documentsRepositoryProvider.overrideWith((ref) => repository),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: _testApp(routerConfig: router),
       ),
     );
 
@@ -681,8 +695,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: DocumentReviewScreen(documentId: 'doc-9'),
+          child: _testApp(
+            home: const DocumentReviewScreen(documentId: 'doc-9'),
           ),
         ),
       );

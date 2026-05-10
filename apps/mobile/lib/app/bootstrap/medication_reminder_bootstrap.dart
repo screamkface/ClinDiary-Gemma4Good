@@ -89,18 +89,21 @@ class _MedicationReminderBootstrapState
         if (source == null) {
           continue;
         }
-        await ref.read(dailyJournalRepositoryProvider).recordSymptomFollowUp(
-          sourceEntryId: source.entry.id,
-          sourceEntryDate: source.entry.entryDate,
-          sourceSymptom: source.symptom,
-          stillPresent: item.response == 'still_present',
-          severity: item.response == 'still_present'
-              ? source.symptom.severity
-              : 0,
-        );
+        await ref
+            .read(dailyJournalRepositoryProvider)
+            .recordSymptomFollowUp(
+              sourceEntryId: source.entry.id,
+              sourceEntryDate: source.entry.entryDate,
+              sourceSymptom: source.symptom,
+              stillPresent: item.response == 'still_present',
+              severity: item.response == 'still_present'
+                  ? source.symptom.severity
+                  : 0,
+            );
       }
 
       ref.invalidate(dailyEntriesProvider);
+      ref.invalidate(insightSummaryProvider);
       ref.invalidate(timelineEventsProvider);
     } finally {
       _consumingPendingResponses = false;
@@ -214,7 +217,8 @@ class _MedicationReminderBootstrapState
               symptom.id,
               symptom.symptomCode,
               symptom.severity?.toString() ?? '',
-              symptom.metadataJson['follow_up_source_symptom_id']?.toString() ?? '',
+              symptom.metadataJson['follow_up_source_symptom_id']?.toString() ??
+                  '',
               symptom.metadataJson['follow_up_status']?.toString() ?? '',
             ].join('|'),
         ].join('::'),
