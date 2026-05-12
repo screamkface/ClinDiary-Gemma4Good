@@ -165,10 +165,8 @@ class DiaryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entriesAsync = ref.watch(dailyEntriesProvider);
-    final pendingOperationsAsync = ref.watch(pendingOperationsProvider);
     final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
     final entries = entriesAsync.asData?.value ?? const <DailyEntry>[];
-    final pendingSyncCount = pendingOperationsAsync.asData?.value.length ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -269,22 +267,6 @@ class DiaryScreen extends ConsumerWidget {
                                 : '${entries.length} check-ups',
                           ),
                         ),
-                        Chip(
-                          avatar: Icon(
-                            pendingSyncCount > 0
-                                ? Icons.sync_problem_outlined
-                                : Icons.cloud_done_outlined,
-                            size: 18,
-                            color: pendingSyncCount > 0
-                                ? Theme.of(context).colorScheme.tertiary
-                                : Theme.of(context).colorScheme.primary,
-                          ),
-                          label: Text(
-                            pendingSyncCount > 0
-                                ? 'Sync pending: $pendingSyncCount'
-                                : 'Local sync up to date',
-                          ),
-                        ),
                         if (latest != null)
                           Chip(
                             avatar: Icon(
@@ -305,11 +287,6 @@ class DiaryScreen extends ConsumerWidget {
                           onPressed: () => context.push('/app/diary/check-up'),
                           icon: const Icon(Icons.add),
                           label: const Text('New check-up'),
-                        ),
-                        FilledButton.tonalIcon(
-                          onPressed: () => _openQuickAddSheet(context, entries),
-                          icon: const Icon(Icons.bolt_outlined),
-                          label: const Text('Quick actions'),
                         ),
                       ],
                     ),

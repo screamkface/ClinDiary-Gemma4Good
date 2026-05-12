@@ -1,6 +1,5 @@
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
-import 'package:clindiary/features/profile/domain/italian_regions.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,7 +32,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _alcoholUse;
   String? _activityLevel;
   bool _smoker = false;
-  String _regionCode = 'IT';
   bool _consent = false;
   bool _isSubmitting = false;
 
@@ -88,7 +86,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               'smoker': _smoker,
               'alcohol_use': _alcoholUse,
               'activity_level': _activityLevel,
-              'region_code': _regionCode,
               'occupation': _nullableText(_occupationController),
               'exercise_habits': _nullableText(_exerciseHabitsController),
               'sleep_pattern': _nullableText(_sleepPatternController),
@@ -414,23 +411,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           contentPadding: EdgeInsets.zero,
           title: const Text('Current smoker'),
           subtitle: const Text('Used only for local prevention logic.'),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _regionCode,
-          decoration: const InputDecoration(
-            labelText: 'Screening region',
-            helperText: 'Used to adapt screenings and prevention to your area.',
-          ),
-          items: italianRegionOptions
-              .map(
-                (option) => DropdownMenuItem(
-                  value: option.code,
-                  child: Text(option.label),
-                ),
-              )
-              .toList(),
-          onChanged: (value) => setState(() => _regionCode = value ?? 'IT'),
         ),
       ],
     );

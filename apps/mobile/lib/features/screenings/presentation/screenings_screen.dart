@@ -39,13 +39,10 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
   }
 
   Future<void> _recompute() async {
-    final regionCode = await ref.read(profileRegionCodeProvider.future);
     if (!mounted) return;
     setState(() => _isRecomputing = true);
     try {
-      await ref
-          .read(screeningsRepositoryProvider)
-          .recompute(regionCode: regionCode);
+      await ref.read(screeningsRepositoryProvider).recompute();
       invalidateScreeningProviders(ref, includeCatalog: true);
     } catch (error) {
       if (!mounted) return;
@@ -60,13 +57,10 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
   }
 
   Future<void> _markDone(PatientScreeningStatusItem item) async {
-    final regionCode = await ref.read(profileRegionCodeProvider.future);
     if (!mounted) return;
     setState(() => _busyScreeningId = item.id);
     try {
-      await ref
-          .read(screeningsRepositoryProvider)
-          .markDone(item.id, regionCode: regionCode);
+      await ref.read(screeningsRepositoryProvider).markDone(item.id);
       invalidateScreeningProviders(ref);
     } catch (error) {
       if (!mounted) return;
@@ -83,18 +77,15 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
   Future<void> _toggleCurrentYearChecklist(
     PatientScreeningStatusItem item,
   ) async {
-    final regionCode = await ref.read(profileRegionCodeProvider.future);
     if (!mounted) return;
     setState(() => _busyScreeningId = item.id);
     try {
       if (item.completedThisYear) {
         await ref
             .read(screeningsRepositoryProvider)
-            .clearCurrentYearCompletion(item.id, regionCode: regionCode);
+            .clearCurrentYearCompletion(item.id);
       } else {
-        await ref
-            .read(screeningsRepositoryProvider)
-            .markDone(item.id, regionCode: regionCode);
+        await ref.read(screeningsRepositoryProvider).markDone(item.id);
       }
       invalidateScreeningProviders(ref);
     } catch (error) {

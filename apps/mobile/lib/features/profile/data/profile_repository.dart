@@ -295,7 +295,6 @@ class ProfileRepository {
       'trying_to_conceive': false,
       'currently_pregnant': false,
       'taking_folic_acid': false,
-      'region_code': null,
       'occupation': null,
       'exercise_habits': null,
       'sleep_pattern': null,
@@ -346,7 +345,6 @@ class ProfileRepository {
       'trying_to_conceive',
       'currently_pregnant',
       'taking_folic_acid',
-      'region_code',
       'occupation',
       'exercise_habits',
       'sleep_pattern',
@@ -458,7 +456,6 @@ class ProfileRepository {
       'trying_to_conceive': payload['trying_to_conceive'] as bool? ?? false,
       'currently_pregnant': payload['currently_pregnant'] as bool? ?? false,
       'taking_folic_acid': payload['taking_folic_acid'] as bool? ?? false,
-      'region_code': payload['region_code'] ?? activeProfile['region_code'],
       'relationship_label':
           payload['relationship_label'] ?? payload['relationship'],
       'occupation': payload['occupation'],

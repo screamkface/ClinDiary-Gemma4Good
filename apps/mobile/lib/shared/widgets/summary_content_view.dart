@@ -79,8 +79,14 @@ class _SummaryBlockCard extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  parsedBlock.heading!,
+                child: Text.rich(
+                  TextSpan(
+                    children: _buildInlineSpans(
+                      parsedBlock.heading!,
+                      theme.textTheme.bodyMedium!,
+                      theme.colorScheme,
+                    ),
+                  ),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -113,10 +119,17 @@ class _SummaryLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (line.isHeading) {
-      return Text(
-        line.text,
+      return Text.rich(
+        TextSpan(
+          children: _buildInlineSpans(
+            line.text,
+            textTheme.bodyMedium!,
+            colorScheme,
+          ),
+        ),
         style: textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.w800,
           height: 1.25,
@@ -141,8 +154,14 @@ class _SummaryLine extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              line.text,
+            child: Text.rich(
+              TextSpan(
+                children: _buildInlineSpans(
+                  line.text,
+                  textTheme.bodyMedium!,
+                  colorScheme,
+                ),
+              ),
               style: textTheme.bodyMedium?.copyWith(height: 1.35),
             ),
           ),
@@ -150,8 +169,85 @@ class _SummaryLine extends StatelessWidget {
       );
     }
 
-    return Text(line.text, style: textTheme.bodyMedium?.copyWith(height: 1.4));
+    return Text.rich(
+      TextSpan(
+        children: _buildInlineSpans(
+          line.text,
+          textTheme.bodyMedium!,
+          colorScheme,
+        ),
+      ),
+      style: textTheme.bodyMedium?.copyWith(height: 1.4),
+    );
   }
+}
+
+List<InlineSpan> _buildInlineSpans(
+  String text,
+  TextStyle baseStyle,
+  ColorScheme colorScheme,
+) {
+  final spans = <InlineSpan>[];
+  final pattern = RegExp(
+    r'(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)',
+  );
+  var lastEnd = 0;
+
+  for (final match in pattern.allMatches(text)) {
+    if (match.start > lastEnd) {
+      spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+    }
+
+    final boldItalic = match.group(2);
+    final bold = match.group(3);
+    final italic = match.group(4);
+    final code = match.group(5);
+
+    if (boldItalic != null) {
+      spans.add(
+        TextSpan(
+          text: boldItalic,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    } else if (bold != null) {
+      spans.add(
+        TextSpan(
+          text: bold,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      );
+    } else if (italic != null) {
+      spans.add(
+        TextSpan(
+          text: italic,
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+      );
+    } else if (code != null) {
+      spans.add(
+        TextSpan(
+          text: code,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: baseStyle.fontSize != null ? baseStyle.fontSize! - 1 : 12,
+            color: colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    lastEnd = match.end;
+  }
+
+  if (lastEnd < text.length) {
+    spans.add(TextSpan(text: text.substring(lastEnd)));
+  }
+
+  return spans;
 }
 
 class _SummaryTable extends StatelessWidget {
@@ -322,7 +418,6 @@ String _normalizeMarkdownLine(String line, {required bool stripBulletMarker}) {
   );
   cleaned = cleaned.replaceAll('```', '');
   cleaned = _stripInlineLatex(cleaned);
-  cleaned = _stripInlineMarkdown(cleaned);
   cleaned = cleaned.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   return cleaned;
 }
@@ -469,33 +564,6 @@ _ParsedSummaryTable? _parseSummaryTable(List<String> lines) {
     rows: rows,
     columnCount: columnCount,
   );
-}
-
-String _stripInlineMarkdown(String value) {
-  var cleaned = value;
-  final patterns = <RegExp>[
-    RegExp(r'\*\*\*([^*]+)\*\*\*'),
-    RegExp(r'___([^_]+)___'),
-    RegExp(r'\*\*([^*]+)\*\*'),
-    RegExp(r'__([^_]+)__'),
-    RegExp(r'\*([^*\n]+)\*'),
-    RegExp(r'_([^_\n]+)_'),
-    RegExp(r'~~([^~]+)~~'),
-    RegExp(r'`([^`]+)`'),
-  ];
-
-  for (final pattern in patterns) {
-    var previous = '';
-    while (previous != cleaned) {
-      previous = cleaned;
-      cleaned = cleaned.replaceAllMapped(
-        pattern,
-        (match) => match.group(1) ?? '',
-      );
-    }
-  }
-
-  return cleaned;
 }
 
 String _stripInlineLatex(String value) {

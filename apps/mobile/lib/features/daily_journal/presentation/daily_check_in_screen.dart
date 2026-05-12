@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/daily_journal/domain/voice_check_in_draft.dart';
-import 'package:clindiary/shared/widgets/metric_slider.dart';
+import 'package:clindiary/shared/widgets/metric_picker.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -591,7 +591,7 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('New check-in')),
+      appBar: AppBar(title: const Text('New check-up')),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -820,37 +820,37 @@ class _DailyCheckInScreenState extends ConsumerState<DailyCheckInScreen> {
                 title: 'Quick metrics',
                 child: Column(
                   children: [
-                    MetricSlider(
+                    MetricPicker(
                       label: 'Sleep quality',
                       value: _sleepQuality,
                       onChanged: (v) => setState(() => _sleepQuality = v),
                     ),
-                    MetricSlider(
+                    MetricPicker(
                       label: 'Energy',
                       value: _energy,
                       onChanged: (v) => setState(() => _energy = v),
                     ),
-                    MetricSlider(
+                    MetricPicker(
                       label: 'Mood',
                       value: _mood,
                       onChanged: (v) => setState(() => _mood = v),
                     ),
-                    MetricSlider(
+                    MetricPicker(
                       label: 'Stress',
                       value: _stress,
                       onChanged: (v) => setState(() => _stress = v),
                     ),
-                    MetricSlider(
+                    MetricPicker(
                       label: 'Appetite',
                       value: _appetite,
                       onChanged: (v) => setState(() => _appetite = v),
                     ),
-                    MetricSlider(
+                    MetricPicker(
                       label: 'Hydration',
                       value: _hydration,
                       onChanged: (v) => setState(() => _hydration = v),
                     ),
-                    MetricSlider(
+                    MetricPicker(
                       label: 'General pain',
                       value: _pain,
                       onChanged: (v) => setState(() => _pain = v),

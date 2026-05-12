@@ -1,13 +1,10 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
-import 'package:clindiary/features/alerts/presentation/alert_ui.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 T _byBrightness<T>(BuildContext context, {required T light, required T dark}) {
   return Theme.of(context).brightness == Brightness.dark ? dark : light;
@@ -201,18 +198,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           _FriendlyShortcutSection(
-            hasUnreadNotifications: hasUnreadNotifications,
             hasPendingMedications: hasPendingMedications,
-          ),
-          const SizedBox(height: 12),
-          alertsAsync.when(
-            data: (alerts) => _HomeAlertsSection(alerts: alerts),
-            loading: () => const SectionCard(
-              title: 'Alerts',
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, _) =>
-                SectionCard(title: 'Alerts', child: Text(error.toString())),
           ),
         ],
       ),
@@ -367,46 +353,19 @@ class _HomeProfileChooser extends StatelessWidget {
 }
 
 class _FriendlyShortcutSection extends StatelessWidget {
-  const _FriendlyShortcutSection({
-    required this.hasUnreadNotifications,
-    required this.hasPendingMedications,
-  });
+  const _FriendlyShortcutSection({required this.hasPendingMedications});
 
-  final bool hasUnreadNotifications;
   final bool hasPendingMedications;
 
   @override
   Widget build(BuildContext context) {
     final shortcuts = <_FriendlyShortcut>[
       _FriendlyShortcut(
-        title: 'Add check-up',
-        subtitle: 'How are you today?',
-        icon: Icons.edit_note_rounded,
-        color: const Color(0xFF5B5CE2),
-        route: '/app/diary/check-up',
-      ),
-      _FriendlyShortcut(
         title: 'Vaccines',
         subtitle: 'History and boosters',
         icon: Icons.vaccines_rounded,
         color: const Color(0xFFFF7A59),
         route: '/app/profile/vaccinations',
-      ),
-      _FriendlyShortcut(
-        title: 'Documents',
-        subtitle: 'Reports and files',
-        icon: Icons.folder_rounded,
-        color: const Color(0xFF23A6D5),
-        route: '/app/documents',
-        useGo: true,
-      ),
-      _FriendlyShortcut(
-        title: 'Ask AI',
-        subtitle: 'Summaries and help',
-        icon: Icons.auto_awesome_rounded,
-        color: const Color(0xFF8E5CF7),
-        route: '/app/ai',
-        useGo: true,
       ),
       _FriendlyShortcut(
         title: 'Medications',
@@ -446,41 +405,11 @@ class _FriendlyShortcutSection extends StatelessWidget {
         route: '/app/home/timeline',
       ),
       _FriendlyShortcut(
-        title: 'Notifications',
-        subtitle: 'Reminders and alerts',
-        icon: Icons.notifications_rounded,
-        color: const Color(0xFFDF7FD2),
-        route: '/app/home/notifications',
-        showBadge: hasUnreadNotifications,
-        badgeKey: const ValueKey('home-notifications-badge'),
-      ),
-      _FriendlyShortcut(
         title: 'Smartwatch',
         subtitle: 'Daily data sync',
         icon: Icons.watch_rounded,
         color: const Color(0xFF17A2B8),
         route: '/app/home/wearables',
-      ),
-      _FriendlyShortcut(
-        title: 'Devices',
-        subtitle: 'Connected tools',
-        icon: Icons.device_hub_rounded,
-        color: const Color(0xFF7A7FD1),
-        route: '/app/home/devices',
-      ),
-      _FriendlyShortcut(
-        title: 'Alerts',
-        subtitle: 'Open checks',
-        icon: Icons.notification_important_rounded,
-        color: const Color(0xFFE05A47),
-        route: '/app/home/alerts',
-      ),
-      _FriendlyShortcut(
-        title: 'Privacy & AI',
-        subtitle: 'Local controls',
-        icon: Icons.shield_rounded,
-        color: const Color(0xFF657786),
-        route: '/app/profile/settings/privacy-ai',
       ),
     ];
 
@@ -511,13 +440,7 @@ class _FriendlyShortcutSection extends StatelessWidget {
                 },
                 child: _FriendlyShortcutCard(
                   item: item,
-                  onTap: () {
-                    if (item.useGo) {
-                      context.go(item.route);
-                    } else {
-                      context.push(item.route);
-                    }
-                  },
+                  onTap: () => context.push(item.route),
                 ),
               );
             },
@@ -535,7 +458,6 @@ class _FriendlyShortcut {
     required this.icon,
     required this.color,
     required this.route,
-    this.useGo = false,
     this.showBadge = false,
     this.badgeKey,
   });
@@ -545,7 +467,6 @@ class _FriendlyShortcut {
   final IconData icon;
   final Color color;
   final String route;
-  final bool useGo;
   final bool showBadge;
   final Key? badgeKey;
 }
@@ -654,108 +575,6 @@ class _FriendlyShortcutCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _HomeAlertsSection extends StatelessWidget {
-  const _HomeAlertsSection({required this.alerts});
-
-  final List<ClinicalAlert> alerts;
-
-  @override
-  Widget build(BuildContext context) {
-    final openAlerts = alerts.where((alert) => !alert.isResolved).toList();
-    if (openAlerts.isEmpty) {
-      return SectionCard(
-        title: 'Alerts',
-        subtitle: 'Everything looks stable right now.',
-        action: TextButton.icon(
-          onPressed: () => context.push('/app/home/alerts'),
-          icon: const Icon(Icons.open_in_new_outlined),
-          label: const Text('Open center'),
-        ),
-        child: const Text('No active alerts to review.'),
-      );
-    }
-
-    final topAlerts = openAlerts.take(3).toList();
-    final dateFormat = DateFormat('dd MMM · HH:mm', 'en_US');
-
-    return SectionCard(
-      title: 'Alerts',
-      subtitle: 'Tap an alert to open the relevant section.',
-      action: TextButton.icon(
-        onPressed: () => context.push('/app/home/alerts'),
-        icon: const Icon(Icons.open_in_new_outlined),
-        label: const Text('View all'),
-      ),
-      child: Column(
-        children: topAlerts
-            .map(
-              (alert) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card.outlined(
-                  margin: EdgeInsets.zero,
-                  child: ListTile(
-                    key: ValueKey('home-alert-${alert.id}'),
-                    onTap: () => context.push(_routeForAlert(alert)),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: alertSeverityColor(
-                        context,
-                        alert.severity,
-                      ).withValues(alpha: 0.14),
-                      child: Icon(
-                        alertSeverityIcon(alert.severity),
-                        color: alertSeverityColor(context, alert.severity),
-                      ),
-                    ),
-                    title: Text(
-                      alert.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          alert.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${alertSeverityLabel(alert.severity)} · ${dateFormat.format(alert.triggeredAt.toLocal())}',
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                      ],
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  String _routeForAlert(ClinicalAlert alert) {
-    final marker =
-        '${alert.alertType} ${alert.ruleCode ?? ''} ${alert.title} ${alert.description}'
-            .toLowerCase();
-    final isCheckUpAlert =
-        marker.contains('check-up') ||
-        marker.contains('check up') ||
-        marker.contains('checkup') ||
-        marker.contains('screening') ||
-        marker.contains('annual visit') ||
-        marker.contains('prevention');
-    return isCheckUpAlert ? '/app/home/screenings' : '/app/home/alerts';
   }
 }
 

@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
-import 'package:clindiary/features/documents/domain/clinical_document.dart';
-import 'package:clindiary/features/documents/presentation/document_ui.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/generation_phase_label.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
@@ -36,18 +34,14 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   bool _isAskingQuestion = false;
   bool _isGeneratingTrend = false;
   bool _isGeneratingPreVisit = false;
-  bool _isGeneratingDocument = false;
   DateTime? _questionGenerationStartedAt;
   DateTime? _trendGenerationStartedAt;
   DateTime? _preVisitGenerationStartedAt;
-  DateTime? _documentGenerationStartedAt;
   String? _trendResult;
   String? _preVisitResult;
-  String? _documentResult;
   String? _questionError;
   String? _trendError;
   String? _preVisitError;
-  String? _documentError;
   String? _observedActiveProfileId;
   bool _hasCompletedInitialProfileSync = false;
   List<_GemmaChatMessage> _chatMessages = const <_GemmaChatMessage>[];
@@ -108,25 +102,18 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         _questionController.clear();
         _trendResult = null;
         _preVisitResult = null;
-        _documentResult = null;
         _chatMessages = const <_GemmaChatMessage>[];
         _chatAutoSnapEnabled = true;
         _questionError = null;
         _trendError = null;
         _preVisitError = null;
-        _documentError = null;
         _isAskingQuestion = false;
         _isGeneratingTrend = false;
         _isGeneratingPreVisit = false;
-        _isGeneratingDocument = false;
         _questionGenerationStartedAt = null;
         _trendGenerationStartedAt = null;
         _preVisitGenerationStartedAt = null;
-        _documentGenerationStartedAt = null;
       });
-      if (widget.documentId != null) {
-        ref.invalidate(documentDetailProvider(widget.documentId!));
-      }
     });
   }
 
@@ -392,52 +379,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     }
   }
 
-  Future<void> _generateDocumentSummary(ClinicalDocumentDetail detail) async {
-    final languageCode = appLanguageCodeFromLocale(
-      Localizations.localeOf(context),
-    );
-    final profileScopeAtStart = _observedActiveProfileId;
-    final startedAt = DateTime.now();
-    setState(() {
-      _isGeneratingDocument = true;
-      _documentError = null;
-      _documentGenerationStartedAt = startedAt;
-    });
-    try {
-      final answer = await ref
-          .read(gemmaCoachServiceProvider)
-          .summarizeDocument(detail: detail);
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(() => _documentResult = answer);
-      await _recordHistoryEntry(
-        GemmaCenterHistoryEntry.documentSummary(
-          response: answer,
-          documentId: detail.id,
-          documentTitle: detail.title,
-          referenceDate: detail.examDate ?? detail.uploadDate,
-          languageCode: languageCode,
-        ),
-        profileScopeAtStart,
-      );
-    } catch (error) {
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(
-        () => _documentError = error.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      if (mounted && profileScopeAtStart == _observedActiveProfileId) {
-        setState(() {
-          _isGeneratingDocument = false;
-          _documentGenerationStartedAt = null;
-        });
-      }
-    }
-  }
-
   Widget _buildQuestionSection() {
     final l10n = _l10nOf(context);
     final questionSuggestions = <String>[
@@ -498,25 +439,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _GemmaSafetyPill(
-                icon: Icons.lock_outline,
-                label: l10n.insightsLocalFirst,
-              ),
-              _GemmaSafetyPill(
-                icon: Icons.health_and_safety_outlined,
-                label: l10n.insightsNoDiagnosis,
-              ),
-              _GemmaSafetyPill(
-                icon: Icons.fact_check_outlined,
-                label: l10n.insightsSafetyChecksStaySeparate,
               ),
             ],
           ),
@@ -755,89 +677,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     );
   }
 
-  Widget _buildDocumentSection() {
-    final l10n = _l10nOf(context);
-    final documentId = widget.documentId;
-    final documentAsync = documentId == null
-        ? null
-        : ref.watch(documentDetailProvider(documentId));
-
-    return _GemmaToolCard(
-      title: l10n.insightsExplainAFile,
-      subtitle: documentId == null
-          ? l10n.insightsExplainFileSubtitle
-          : l10n.insightsGemmaCanSummarizeSelectedFile,
-      icon: Icons.description_rounded,
-      color: const Color(0xFF23A6D5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (documentAsync != null)
-            documentAsync.when(
-              data: (detail) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(label: Text(detail.title)),
-                      Chip(label: Text(detail.documentType)),
-                      Chip(
-                        label: Text(
-                          documentStorageLabel(detail.storageLocation),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    detail.ocrText != null && detail.ocrText!.trim().isNotEmpty
-                        ? l10n.insightsDocumentHasOcr
-                        : l10n.insightsDocumentStructuredSummary,
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: _isGeneratingDocument
-                        ? null
-                        : () => _generateDocumentSummary(detail),
-                    icon: const Icon(Icons.description_outlined),
-                    label: GenerationPhaseLabel(
-                      isActive: _isGeneratingDocument,
-                      startedAt: _documentGenerationStartedAt,
-                      idleLabel: l10n.insightsSummarizeDocument,
-                      showProgress: true,
-                    ),
-                  ),
-                ],
-              ),
-              loading: () => const LinearProgressIndicator(),
-              error: (error, _) => Text(error.toString()),
-            )
-          else
-            Text(
-              l10n.insightsOpenAnyFileFromDocuments,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          if (_documentError != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _documentError!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-          if (_documentResult != null) ...[
-            const SizedBox(height: 16),
-            SummaryContentView(
-              content: _documentResult!,
-              constrainHeight: false,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Future<void> _clearHistoryForActiveProfile() async {
     final profileScope = _observedActiveProfileId;
     if (profileScope == null) {
@@ -939,12 +778,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         actions: [
           IconButton(
             tooltip: l10n.insightsRefresh,
-            onPressed: () {
-              ref.invalidate(onDeviceAiStatusProvider);
-              if (widget.documentId != null) {
-                ref.invalidate(documentDetailProvider(widget.documentId!));
-              }
-            },
+            onPressed: () => ref.invalidate(onDeviceAiStatusProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -958,8 +792,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           _buildTrendSection(),
           const SizedBox(height: 12),
           _buildPreVisitSection(),
-          const SizedBox(height: 12),
-          _buildDocumentSection(),
           const SizedBox(height: 12),
           _buildHistorySection(historyAsync),
         ],
@@ -1111,6 +943,7 @@ class _GemmaChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final isUser = message.isUser;
     final bubbleColor = isUser
         ? colorScheme.primary
@@ -1139,17 +972,113 @@ class _GemmaChatBubble extends StatelessWidget {
           ),
           child: message.isStreaming && message.text.isEmpty
               ? const _GemmaTypingDots()
-              : SelectableText(
+              : message.isStreaming || message.isUser
+              ? SelectableText(
                   message.isStreaming ? '${message.text}|' : message.text,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  style: textTheme.bodyMedium?.copyWith(
                     color: foreground,
                     height: 1.42,
                   ),
-                ),
+                )
+              : _MarkdownBubbleText(text: message.text, foreground: foreground),
         ),
       ),
     );
   }
+}
+
+class _MarkdownBubbleText extends StatelessWidget {
+  const _MarkdownBubbleText({required this.text, required this.foreground});
+
+  final String text;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseStyle =
+        Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: foreground, height: 1.42) ??
+        const TextStyle();
+
+    return SelectionArea(
+      child: RichText(
+        text: TextSpan(
+          style: baseStyle,
+          children: _bubbleInlineSpans(text, baseStyle, colorScheme),
+        ),
+      ),
+    );
+  }
+}
+
+List<InlineSpan> _bubbleInlineSpans(
+  String text,
+  TextStyle baseStyle,
+  ColorScheme colorScheme,
+) {
+  final spans = <InlineSpan>[];
+  final pattern = RegExp(
+    r'(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)',
+  );
+  var lastEnd = 0;
+
+  for (final match in pattern.allMatches(text)) {
+    if (match.start > lastEnd) {
+      spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+    }
+
+    final boldItalic = match.group(2);
+    final bold = match.group(3);
+    final italic = match.group(4);
+    final code = match.group(5);
+
+    if (boldItalic != null) {
+      spans.add(
+        TextSpan(
+          text: boldItalic,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    } else if (bold != null) {
+      spans.add(
+        TextSpan(
+          text: bold,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      );
+    } else if (italic != null) {
+      spans.add(
+        TextSpan(
+          text: italic,
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+      );
+    } else if (code != null) {
+      spans.add(
+        TextSpan(
+          text: code,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: baseStyle.fontSize != null ? baseStyle.fontSize! - 1 : 12,
+            color: colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    lastEnd = match.end;
+  }
+
+  if (lastEnd < text.length) {
+    spans.add(TextSpan(text: text.substring(lastEnd)));
+  }
+
+  return spans;
 }
 
 class _GemmaTypingDots extends StatefulWidget {
@@ -1203,38 +1132,6 @@ class _GemmaTypingDotsState extends State<_GemmaTypingDots>
           }),
         );
       },
-    );
-  }
-}
-
-class _GemmaSafetyPill extends StatelessWidget {
-  const _GemmaSafetyPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -88,11 +88,6 @@ final gemmaCenterHistoryProvider =
           );
     });
 
-final profileRegionCodeProvider = FutureProvider<String>((ref) async {
-  final bundle = await ref.watch(profileBundleProvider.future);
-  return bundle?.profile.regionCode?.trim().toUpperCase() ?? 'IT';
-});
-
 final dailyEntriesProvider = FutureProvider<List<DailyEntry>>((ref) async {
   final session = await ref.watch(authControllerProvider.future);
   final isDemoMode = _isHackathonDemoMode(ref);
@@ -216,12 +211,9 @@ final screeningCatalogProvider = FutureProvider<List<ScreeningCatalogItem>>((
   if (session == null) {
     return const [];
   }
-  final regionCode = await ref.watch(profileRegionCodeProvider.future);
   return _withDemoFallback(
     ref,
-    run: () => ref
-        .watch(screeningsRepositoryProvider)
-        .fetchCatalog(regionCode: regionCode),
+    run: () => ref.watch(screeningsRepositoryProvider).fetchCatalog(),
     demoValue: DemoSeedData.demoScreeningCatalog,
   );
 });
@@ -233,12 +225,9 @@ final myScreeningsProvider = FutureProvider<List<PatientScreeningStatusItem>>((
   if (session == null) {
     return const [];
   }
-  final regionCode = await ref.watch(profileRegionCodeProvider.future);
   return _withDemoFallback(
     ref,
-    run: () => ref
-        .watch(screeningsRepositoryProvider)
-        .fetchMyScreenings(regionCode: regionCode),
+    run: () => ref.watch(screeningsRepositoryProvider).fetchMyScreenings(),
     demoValue: DemoSeedData.demoMyScreenings,
   );
 });
@@ -250,12 +239,9 @@ final preventionCenterProvider = FutureProvider<PreventionCenterData>((
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
-  final regionCode = await ref.watch(profileRegionCodeProvider.future);
   return _withDemoFallback(
     ref,
-    run: () => ref
-        .watch(preventionCenterRepositoryProvider)
-        .fetchCenter(regionCode: regionCode),
+    run: () => ref.watch(preventionCenterRepositoryProvider).fetchCenter(),
     demoValue: DemoSeedData.demoPreventionCenter,
   );
 });
@@ -572,7 +558,6 @@ void invalidateRestoredSnapshotProviders(WidgetRef ref) {
 void invalidatePatientScopedProviders(WidgetRef ref) {
   ref.invalidate(activeProfileIdProvider);
   ref.invalidate(profileBundleProvider);
-  ref.invalidate(profileRegionCodeProvider);
   ref.invalidate(dailyEntriesProvider);
   ref.invalidate(insightSummaryProvider);
   ref.invalidate(historyDayProvider);

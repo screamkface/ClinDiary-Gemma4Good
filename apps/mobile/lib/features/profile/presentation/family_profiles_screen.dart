@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/profile/domain/italian_regions.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -175,7 +174,6 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
     var relationshipLabel = '';
     String? birthDateValue;
     String? biologicalSex = bundle.profile.biologicalSex;
-    String regionCode = bundle.profile.regionCode ?? 'IT';
     var submitting = false;
     String? createdProfileId;
     final displayDateFormat = DateFormat(
@@ -295,23 +293,6 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                   onChanged: (value) =>
                       dialogSetState(() => biologicalSex = value),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: regionCode,
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: l10n.profileRegion),
-                  items: italianRegionOptions
-                      .map(
-                        (option) => DropdownMenuItem<String>(
-                          value: option.code,
-                          child: Text(option.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => dialogSetState(() {
-                    regionCode = value ?? 'IT';
-                  }),
-                ),
               ],
             ),
           ),
@@ -344,7 +325,6 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                                   ? birthDateValue!.trim()
                                   : null,
                               'biological_sex': biologicalSex,
-                              'region_code': regionCode,
                             });
                         final createdProfile = bundle.managedProfiles.isNotEmpty
                             ? bundle.managedProfiles.last
@@ -409,9 +389,6 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
     }
     if (profile.birthDate != null) {
       parts.add(l10n.profileBornDate(dateFormat.format(profile.birthDate!)));
-    }
-    if (profile.regionCode != null) {
-      parts.add(italianRegionLabel(profile.regionCode));
     }
     if (profile.isPrimary) {
       parts.add(l10n.profilePrimaryProfile);

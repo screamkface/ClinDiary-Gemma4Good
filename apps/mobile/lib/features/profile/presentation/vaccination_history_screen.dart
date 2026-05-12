@@ -200,11 +200,6 @@ class _VaccinationHistoryScreenState
                 const SizedBox(height: 12),
                 SectionCard(
                   title: l10n.profileRecordedVaccinations,
-                  action: FilledButton.tonalIcon(
-                    onPressed: () => _saveVaccination(),
-                    icon: const Icon(Icons.add),
-                    label: Text(l10n.add),
-                  ),
                   child: bundle.vaccinations.isEmpty
                       ? Text(l10n.profileNoVaccinationRecorded)
                       : Column(

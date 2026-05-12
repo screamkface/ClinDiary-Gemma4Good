@@ -376,7 +376,7 @@ class DemoSeedData {
       ),
     );
 
-    final region = _regionCodeForProfile(profileId).toUpperCase();
+    const region = 'IT';
     await database.putCache(
       key: _scopedFor('screenings_catalog::$region', profileId),
       payload: jsonEncode(_screeningCatalogJsonForProfile(profileId)),
@@ -825,7 +825,6 @@ class DemoSeedData {
         'trying_to_conceive': false,
         'currently_pregnant': false,
         'taking_folic_acid': false,
-        'region_code': 'IT-LM',
         'relationship_label': 'self',
         'occupation': 'Software Engineer',
         'exercise_habits': '3x week running and strength training',
@@ -974,7 +973,6 @@ class DemoSeedData {
           'trying_to_conceive': false,
           'currently_pregnant': false,
           'taking_folic_acid': false,
-          'region_code': 'IT-LM',
           'relationship_label': 'daughter',
           'occupation': 'Student',
           'exercise_habits': 'Swimming 2x week',
@@ -1010,7 +1008,6 @@ class DemoSeedData {
           'trying_to_conceive': false,
           'currently_pregnant': false,
           'taking_folic_acid': false,
-          'region_code': 'IT-LM',
           'relationship_label': 'mother',
           'occupation': 'Retired',
           'exercise_habits': 'Daily walk',
@@ -1415,7 +1412,6 @@ class DemoSeedData {
         'active': true,
         'regional_availability': [
           {
-            'region_code': 'IT-LM',
             'region_name': 'Lombardia',
             'booking_url': 'https://prenota.lombardia.it',
             'notes': 'Book through regional portal',
@@ -1442,7 +1438,6 @@ class DemoSeedData {
         'active': true,
         'regional_availability': [
           {
-            'region_code': 'IT-LM',
             'region_name': 'Lombardia',
             'booking_url': 'https://prenota.lombardia.it',
             'notes': null,
@@ -1477,7 +1472,6 @@ class DemoSeedData {
         'status': 'recommended',
         'regional_availability': [
           {
-            'region_code': 'IT-LM',
             'region_name': 'Lombardia',
             'booking_url': 'https://prenota.lombardia.it',
             'notes': null,
@@ -1508,7 +1502,6 @@ class DemoSeedData {
         'status': 'up_to_date',
         'regional_availability': [
           {
-            'region_code': 'IT-LM',
             'region_name': 'Lombardia',
             'booking_url': 'https://prenota.lombardia.it',
             'notes': null,
@@ -1526,7 +1519,6 @@ class DemoSeedData {
       'display_name': 'Marco Rossi',
       'age': 37,
       'biological_sex': 'male',
-      'region_code': 'IT-LM',
       'region_name': 'Lombardia',
       'overview': {
         'actionable_screenings': 1,
@@ -2837,7 +2829,7 @@ class DemoSeedData {
     center['display_name'] = _displayNameForProfile(profileId);
     center['age'] = _ageForProfile(profileId);
     center['biological_sex'] = profile['biological_sex'];
-    center['region_code'] = _regionCodeForProfile(profileId);
+    center['region_code'] = 'IT';
 
     final annualVisit = Map<String, dynamic>.from(
       center['annual_visit'] as Map<String, dynamic>,
@@ -2976,7 +2968,7 @@ class DemoSeedData {
       'age': _ageForProfile(profileId),
       'biological_sex': profile['biological_sex'],
       'profile_facts': [
-        {'label': 'Region', 'value': _regionCodeForProfile(profileId)},
+        {'label': 'Region', 'value': 'IT'},
         {
           'label': 'Relationship',
           'value': profile['relationship_label']?.toString() ?? 'managed',
@@ -3138,15 +3130,6 @@ class DemoSeedData {
     summary['content'] =
         '${_profileContextLabel(profileId)} ${summary['content']}';
     return summary;
-  }
-
-  static String _regionCodeForProfile(String profileId) {
-    final profile = _coreProfileJsonForId(profileId);
-    final region = profile['region_code']?.toString().trim();
-    if (region == null || region.isEmpty) {
-      return 'IT';
-    }
-    return region.toUpperCase();
   }
 
   static String _displayNameForProfile(String profileId) {

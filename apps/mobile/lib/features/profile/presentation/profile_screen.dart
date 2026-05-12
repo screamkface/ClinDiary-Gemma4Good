@@ -1,6 +1,5 @@
 import 'package:clindiary/app/core/localization/app_language.dart';
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/profile/domain/italian_regions.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/compact_segmented_control.dart';
@@ -567,9 +566,9 @@ class ProfileScreen extends ConsumerWidget {
     );
     var smoker = bundle.profile.smoker;
     var formerSmoker = bundle.profile.formerSmoker;
-    var biologicalSex = bundle.profile.biologicalSex;
-    var alcoholUse = bundle.profile.alcoholUse;
-    var activityLevel = bundle.profile.activityLevel;
+    var biologicalSex = bundle.profile.biologicalSex ?? 'unknown';
+    var alcoholUse = bundle.profile.alcoholUse ?? 'none';
+    var activityLevel = bundle.profile.activityLevel ?? 'sedentary';
     var postmenopausal = bundle.profile.postmenopausal;
     var fragilityFractureHistory = bundle.profile.fragilityFractureHistory;
     var feelsUnsteady = bundle.profile.feelsUnsteady;
@@ -585,8 +584,6 @@ class ProfileScreen extends ConsumerWidget {
       false => 'no',
       _ => 'unknown',
     };
-    var regionCode = bundle.profile.regionCode ?? 'IT';
-
     DateTime fallbackBirthDate() {
       final now = DateTime.now();
       final candidate = DateTime(now.year - 30, now.month, now.day);
@@ -677,7 +674,8 @@ class ProfileScreen extends ConsumerWidget {
                       child: Text(l10n.profileNotSpecified2),
                     ),
                   ],
-                  onChanged: (value) => setState(() => biologicalSex = value),
+                  onChanged: (value) =>
+                      setState(() => biologicalSex = value ?? 'unknown'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -770,7 +768,8 @@ class ProfileScreen extends ConsumerWidget {
                       child: Text(l10n.profileVeryActive),
                     ),
                   ],
-                  onChanged: (value) => setState(() => activityLevel = value),
+                  onChanged: (value) =>
+                      setState(() => activityLevel = value ?? 'sedentary'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -796,27 +795,10 @@ class ProfileScreen extends ConsumerWidget {
                       child: Text(l10n.profileHigh),
                     ),
                   ],
-                  onChanged: (value) => setState(() => alcoholUse = value),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: regionCode,
-                  decoration: InputDecoration(
-                    labelText: l10n.profileScreeningRegion,
-                    helperText: l10n.profileUsedToShowScreeningPreventionAnd,
-                  ),
-                  items: italianRegionOptions
-                      .map(
-                        (option) => DropdownMenuItem(
-                          value: option.code,
-                          child: Text(option.label),
-                        ),
-                      )
-                      .toList(),
                   onChanged: (value) =>
-                      setState(() => regionCode = value ?? 'IT'),
+                      setState(() => alcoholUse = value ?? 'none'),
                 ),
-                const SizedBox(height: 12),
+
                 TextField(
                   controller: exerciseHabitsController,
                   decoration: InputDecoration(
@@ -1037,7 +1019,6 @@ class ProfileScreen extends ConsumerWidget {
                     'trying_to_conceive': tryingToConceive,
                     'currently_pregnant': currentlyPregnant,
                     'taking_folic_acid': takingFolicAcid,
-                    'region_code': regionCode,
                     'exercise_habits':
                         exerciseHabitsController.text.trim().isEmpty
                         ? null
@@ -2008,8 +1989,6 @@ class _ProfileQuickFactsSection extends StatelessWidget {
           l10n.profileSex,
           _profileBiologicalSexLabel(context, profile.biologicalSex!),
         ),
-      if (profile.regionCode != null)
-        (l10n.profileRegion2, italianRegionLabel(profile.regionCode)),
       if (profile.heightCm != null)
         (l10n.profileHeight, '${profile.heightCm!.toStringAsFixed(0)} cm'),
       if (profile.weightKg != null)
@@ -2191,11 +2170,6 @@ List<String> _summaryFacts(
       bundle.profile.biologicalSex!.trim().isNotEmpty) {
     facts.add(
       '${l10n.profileSex} ${_profileBiologicalSexLabel(context, bundle.profile.biologicalSex!)}',
-    );
-  }
-  if (bundle.profile.regionCode != null) {
-    facts.add(
-      '${l10n.profileRegion2} ${italianRegionLabel(bundle.profile.regionCode)}',
     );
   }
   if (bundle.profile.heightCm != null || bundle.profile.weightKg != null) {

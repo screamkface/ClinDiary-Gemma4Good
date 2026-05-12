@@ -205,8 +205,6 @@ void main() {
 
       expect(find.text('Today'), findsWidgets);
       expect(find.text('What do you need?'), findsOneWidget);
-      expect(find.text('Ask AI'), findsOneWidget);
-      expect(find.text('Add check-up'), findsOneWidget);
       expect(find.text('Vaccines'), findsOneWidget);
       expect(find.text('Local sync up to date'), findsNothing);
       expect(find.text('Profiles'), findsWidgets);
@@ -214,21 +212,16 @@ void main() {
       expect(find.text('Add'), findsOneWidget);
       expect(find.text('Anna Bianchi · Primary'), findsOneWidget);
       expect(find.textContaining('Luca'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Alerts'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('home-alert-alert-1')), findsOneWidget);
       expect(find.text('Recent check-ups'), findsNothing);
       expect(find.text('Quick actions'), findsNothing);
       expect(find.text('Secondary tools'), findsNothing);
-      expect(find.text('Documents'), findsOneWidget);
-      expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Prevention'), findsOneWidget);
       expect(find.text('Dossier'), findsOneWidget);
-      expect(find.byKey(const ValueKey('home-notifications-badge')), findsOne);
+      expect(find.text('Vaccines'), findsOneWidget);
+      expect(find.text('Medications'), findsOneWidget);
+      expect(find.text('History'), findsOneWidget);
+      expect(find.text('Timeline'), findsOneWidget);
+      expect(find.text('Smartwatch'), findsOneWidget);
       expect(find.byKey(const ValueKey('home-medications-badge')), findsOne);
     },
   );
