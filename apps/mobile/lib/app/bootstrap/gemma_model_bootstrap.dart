@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
