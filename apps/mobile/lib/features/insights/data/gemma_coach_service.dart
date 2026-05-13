@@ -63,6 +63,44 @@ class GemmaCoachService {
     );
   }
 
+  Stream<String> answerQuestionStream({
+    required String question,
+    DateTime? referenceDate,
+  }) async* {
+    final normalizedQuestion = question.trim();
+    if (normalizedQuestion.isEmpty) {
+      throw Exception('Write a more specific question.');
+    }
+
+    final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
+      question: normalizedQuestion,
+      referenceDate: referenceDate ?? DateTime.now(),
+    );
+    if (prompt != null) {
+      yield* _onDeviceAiService.generateTextStream(
+        systemPrompt: prompt.systemPrompt,
+        userPrompt: prompt.userPrompt,
+      );
+      return;
+    }
+
+    await _warmUpClinicalContext();
+    final refreshedPrompt = await _onDevicePromptBuilder
+        .buildClinicalQuestionPrompt(
+          question: normalizedQuestion,
+          referenceDate: referenceDate ?? DateTime.now(),
+        );
+    if (refreshedPrompt == null) {
+      throw Exception(
+        'I do not have enough local data to generate a useful answer.',
+      );
+    }
+    yield* _onDeviceAiService.generateTextStream(
+      systemPrompt: refreshedPrompt.systemPrompt,
+      userPrompt: refreshedPrompt.userPrompt,
+    );
+  }
+
   Future<String> explainTrend({DateTime? referenceDate}) async {
     return _generateWithWarmup(
       promptBuilder: () => _onDevicePromptBuilder.buildTrendExplanationPrompt(
@@ -72,12 +110,28 @@ class GemmaCoachService {
     );
   }
 
+  Stream<String> explainTrendStream({DateTime? referenceDate}) async* {
+    yield* _streamForPrompt(
+      promptBuilder: () => _onDevicePromptBuilder.buildTrendExplanationPrompt(
+        referenceDate: referenceDate ?? DateTime.now(),
+      ),
+    );
+  }
+
   Future<String> buildPreVisitBrief({DateTime? referenceDate}) async {
     return _generateWithWarmup(
       promptBuilder: () => _onDevicePromptBuilder.buildPreVisitBriefPrompt(
         referenceDate: referenceDate ?? DateTime.now(),
       ),
       warmUp: _warmUpClinicalContext,
+    );
+  }
+
+  Stream<String> buildPreVisitBriefStream({DateTime? referenceDate}) async* {
+    yield* _streamForPrompt(
+      promptBuilder: () => _onDevicePromptBuilder.buildPreVisitBriefPrompt(
+        referenceDate: referenceDate ?? DateTime.now(),
+      ),
     );
   }
 
@@ -119,6 +173,25 @@ class GemmaCoachService {
       );
     }
     return _onDeviceAiService.generateText(
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: prompt.userPrompt,
+    );
+  }
+
+  Stream<String> _streamForPrompt({
+    required Future<OnDeviceTextPrompt?> Function() promptBuilder,
+  }) async* {
+    var prompt = await promptBuilder();
+    if (prompt == null) {
+      await _warmUpClinicalContext();
+      prompt = await promptBuilder();
+    }
+    if (prompt == null) {
+      throw Exception(
+        'I do not have enough local data to generate a useful answer.',
+      );
+    }
+    yield* _onDeviceAiService.generateTextStream(
       systemPrompt: prompt.systemPrompt,
       userPrompt: prompt.userPrompt,
     );

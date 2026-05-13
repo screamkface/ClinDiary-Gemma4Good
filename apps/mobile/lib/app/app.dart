@@ -1,5 +1,4 @@
 import 'package:clindiary/app/bootstrap/gemma_model_background_bootstrap.dart';
-import 'package:clindiary/app/bootstrap/gemma_download_notification_bootstrap.dart';
 import 'package:clindiary/app/bootstrap/medication_reminder_bootstrap.dart';
 import 'package:clindiary/app/bootstrap/wearable_sync_bootstrap.dart';
 import 'package:clindiary/app/core/security/app_lock_gate.dart';
@@ -42,13 +41,9 @@ class ClinDiaryApp extends ConsumerWidget {
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(displaySettings.textScale)),
-          child: GemmaDownloadNotificationBootstrap(
-            child: GemmaModelBackgroundBootstrap(
-              child: MedicationReminderBootstrap(
-                child: WearableSyncBootstrap(
-                  child: AppLockGate(child: appChild),
-                ),
-              ),
+          child: GemmaModelBackgroundBootstrap(
+            child: MedicationReminderBootstrap(
+              child: WearableSyncBootstrap(child: AppLockGate(child: appChild)),
             ),
           ),
         );

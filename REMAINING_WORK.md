@@ -3,6 +3,7 @@
 ## Current App Work
 
 ### Completed
+- **flutter_gemma migration**: Sostituito il bridge Kotlin LiteRT-LM con `flutter_gemma 0.15.0`. Rimosso `OnDeviceGemmaRuntime.kt`, `OnDeviceEmbeddingRuntime.kt`, `AndroidModelDownloader.kt`, method channel `clindiary/on_device_ai`. Aggiunto speculative decoding (MTP), NPU backend, streaming, function calling per voice check-in, Gecko 110M auto-install per embeddings, thinking mode support. Refactored GemmaCenterScreen con streaming reale, pulsante stop, e sezione ragionamento collassabile. Semplificato bootstrap e notifiche download. Rimosse dipendenze Gradle `litertlm-android` e `tasks-text`.
 - Fixed the vaccination add/edit flow crash when dismissing the form with back by moving it to a dedicated bottom sheet that owns its controllers safely.
 - Added a regression test for closing the vaccine form with back.
 - Redesigned Ask Files as a chat-style experience with message bubbles, typing animation, simple scope pills and sources shown below the answer.

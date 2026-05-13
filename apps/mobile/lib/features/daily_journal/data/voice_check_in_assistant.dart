@@ -1,5 +1,6 @@
 import 'package:clindiary/features/daily_journal/domain/voice_check_in_draft.dart';
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 
 class VoiceCheckInAssistant {
   VoiceCheckInAssistant({required OnDeviceAiService onDeviceAiService})
@@ -16,19 +17,113 @@ class VoiceCheckInAssistant {
 
   final OnDeviceAiService _onDeviceAiService;
 
+  static final Tool _fillCheckInTool = Tool(
+    name: 'fill_check_in',
+    description: 'Fill in a daily check-in from a voice transcript',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'entry_date': {
+          'type': 'string',
+          'description': 'Date in YYYY-MM-DD format or null',
+        },
+        'sleep_hours': {
+          'type': 'number',
+          'description': 'Hours of sleep (0-24) or null',
+        },
+        'sleep_quality': {
+          'type': 'integer',
+          'description': 'Sleep quality 0-10 or null',
+        },
+        'energy_level': {
+          'type': 'integer',
+          'description': 'Energy level 0-10 or null',
+        },
+        'mood_level': {
+          'type': 'integer',
+          'description': 'Mood level 0-10 or null',
+        },
+        'stress_level': {
+          'type': 'integer',
+          'description': 'Stress level 0-10 or null',
+        },
+        'appetite_level': {
+          'type': 'integer',
+          'description': 'Appetite level 0-10 or null',
+        },
+        'hydration_level': {
+          'type': 'integer',
+          'description': 'Hydration level 0-10 or null',
+        },
+        'general_pain': {
+          'type': 'integer',
+          'description': 'General pain 0-10 or null',
+        },
+        'general_notes': {
+          'type': 'string',
+          'description': 'Short note in English, not the full transcript',
+        },
+        'follow_up_questions': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'description': 'Questions to clarify if details are missing',
+        },
+        'symptoms': {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'symptom_code': {
+                'type': 'string',
+                'description':
+                    'Use: headache, fever, nausea, cough, fatigue, or snake_case',
+              },
+              'severity': {
+                'type': 'integer',
+                'description': 'Severity 0-10 or null',
+              },
+              'duration_minutes': {
+                'type': 'integer',
+                'description': 'Duration in minutes or null',
+              },
+              'body_location': {
+                'type': 'string',
+                'description': 'Body location or null',
+              },
+              'metadata_json': {
+                'type': 'object',
+                'description': 'Additional notes and flags',
+              },
+            },
+          },
+        },
+      },
+    },
+  );
+
   Future<VoiceCheckInDraft> buildDraftFromTranscript({
     required String transcript,
     required DateTime referenceDate,
   }) async {
-    final response = await _onDeviceAiService.generateText(
-      systemPrompt: _systemPrompt,
-      userPrompt: _buildUserPrompt(
-        transcript: transcript,
-        referenceDate: referenceDate,
-      ),
-    );
-    final parsedDraft = VoiceCheckInDraft.fromAiResponse(response);
-    return _ensureSymptomCoverage(draft: parsedDraft, transcript: transcript);
+    try {
+      final args = await _onDeviceAiService.callFunction(
+        systemPrompt: _systemPrompt,
+        userMessage: _buildUserMessage(transcript, referenceDate),
+        tools: [_fillCheckInTool],
+      );
+      final draft = VoiceCheckInDraft.fromJson(args);
+      return _ensureSymptomCoverage(draft: draft, transcript: transcript);
+    } on Exception {
+      final response = await _onDeviceAiService.generateText(
+        systemPrompt: _systemPrompt,
+        userPrompt: _buildUserPrompt(
+          transcript: transcript,
+          referenceDate: referenceDate,
+        ),
+      );
+      final parsedDraft = VoiceCheckInDraft.fromAiResponse(response);
+      return _ensureSymptomCoverage(draft: parsedDraft, transcript: transcript);
+    }
   }
 
   VoiceCheckInDraft _ensureSymptomCoverage({
@@ -84,6 +179,11 @@ class VoiceCheckInAssistant {
     return '${normalizedTranscript.substring(0, 177)}...';
   }
 
+  String _buildUserMessage(String transcript, DateTime referenceDate) {
+    final day = referenceDate.toIso8601String().split('T').first;
+    return 'Reference date: $day\n\nUser voice transcript:\n"""\n$transcript\n"""';
+  }
+
   String _buildUserPrompt({
     required String transcript,
     required DateTime referenceDate,
@@ -103,48 +203,8 @@ Fill in the check-up as JSON using the required schema.
 
   static const String _systemPrompt = '''
 You are Gemma 4 inside ClinDiary.
-Transform a voice transcript into pure JSON to fill in a daily check-up.
-
-Rules:
-- return only JSON, without markdown or extra text
-- do not invent data
-- if a field is missing, use null
-- use integers from 0 to 10 for sleep_quality, energy_level, mood_level, stress_level, appetite_level, hydration_level, and general_pain
-- sleep_hours must be a number between 0 and 24
-- general_notes must be a short note in English, not the full transcript
-- symptoms must be a list of objects
-- each symptom must contain symptom_code, severity, duration_minutes, body_location, and metadata_json
-- use these codes if they fit: headache, fever, nausea, cough, fatigue
-- if needed, use a free snake_case code
-- if the user describes multiple symptoms, include them all
-- if the symptom is not clear, leave the field empty instead of guessing
-- if useful details are missing or the text is ambiguous, add follow_up_questions with short questions in English
-- follow_up_questions must be an empty list if no clarification is needed
-- if the user reports symptoms but type is unclear, include one symptom with symptom_code "unspecified_symptom"
-- for unclear symptoms, place the short user detail in metadata_json.notes
-
-Required schema:
-{
-  "entry_date": "YYYY-MM-DD or null",
-  "sleep_hours": 7.5,
-  "sleep_quality": 7,
-  "energy_level": 6,
-  "mood_level": 6,
-  "stress_level": 4,
-  "appetite_level": 6,
-  "hydration_level": 6,
-  "general_pain": 2,
-  "general_notes": "stringa breve oppure null",
-  "follow_up_questions": ["Hai febbre?"],
-  "symptoms": [
-    {
-      "symptom_code": "headache",
-      "severity": 4,
-      "duration_minutes": 30,
-      "body_location": "head",
-      "metadata_json": {"notes": "short note"}
-    }
-  ]
-}
+Transform a voice transcript into structured check-in data.
+Do not invent data. If a field is missing, use null.
+For unclear symptoms, use symptom_code "unspecified_symptom" and place any short user detail in metadata_json.notes.
 ''';
 }

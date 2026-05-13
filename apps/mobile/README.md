@@ -12,7 +12,7 @@ Copre attualmente:
 - insights, alerts e reports
 - screenings, farmaci/aderenza e notifiche
 - vault documentale locale cifrato, cache Drift e token storage sicuro
-- AI on-device Android via LiteRT-LM, con fallback locale prudente
+- AI on-device via flutter_gemma su LiteRT-LM (NPU/GPU, speculative decoding, streaming, function calling, thinking mode, embeddings)
 
 ## Stack
 

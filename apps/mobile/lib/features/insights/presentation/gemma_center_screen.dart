@@ -45,7 +45,11 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   String? _observedActiveProfileId;
   bool _hasCompletedInitialProfileSync = false;
   List<_GemmaChatMessage> _chatMessages = const <_GemmaChatMessage>[];
-  Timer? _questionStreamingTimer;
+  StreamSubscription<String>? _questionStreamSub;
+  StreamSubscription<String>? _trendStreamSub;
+  StreamSubscription<String>? _preVisitStreamSub;
+  String _trendStreamBuffer = '';
+  String _preVisitStreamBuffer = '';
   bool _chatAutoSnapEnabled = true;
 
   @override
@@ -60,7 +64,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
 
   @override
   void dispose() {
-    _questionStreamingTimer?.cancel();
+    _questionStreamSub?.cancel();
+    _trendStreamSub?.cancel();
+    _preVisitStreamSub?.cancel();
     _pageScrollController.dispose();
     _chatScrollController.dispose();
     _questionController.dispose();
@@ -171,8 +177,8 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
 
     final profileScopeAtStart = _observedActiveProfileId;
 
+    _questionStreamSub?.cancel();
     final startedAt = DateTime.now();
-    _questionStreamingTimer?.cancel();
     setState(() {
       _isAskingQuestion = true;
       _questionError = null;
@@ -185,85 +191,82 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       ];
     });
     _scrollChatToBottom();
-    var streamingStarted = false;
-    try {
-      final answer = await ref
-          .read(gemmaCoachServiceProvider)
-          .answerQuestion(question: question, referenceDate: _referenceDate);
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      streamingStarted = true;
-      _streamAssistantAnswer(answer);
-      await _recordHistoryEntry(
-        GemmaCenterHistoryEntry.question(
+
+    var fullAnswer = '';
+    var thinkingContent = '';
+
+    final stream = ref
+        .read(gemmaCoachServiceProvider)
+        .answerQuestionStream(
           question: question,
-          response: answer,
           referenceDate: _referenceDate,
-          languageCode: languageCode,
-        ),
-        profileScopeAtStart,
-      );
-    } catch (error) {
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(() {
-        _questionError = error.toString().replaceFirst('Exception: ', '');
-        _replaceLastAssistantMessage(
-          l10n.insightsCouldNotAnswerThisTime(_questionError!),
-          isStreaming: false,
         );
-      });
-    } finally {
-      if (mounted &&
-          profileScopeAtStart == _observedActiveProfileId &&
-          !streamingStarted) {
+
+    _questionStreamSub = stream.listen(
+      (token) {
+        if (!mounted) return;
+        if (token.startsWith('[thinking]')) {
+          thinkingContent += token.replaceFirst('[thinking]', '');
+          return;
+        }
+        if (token.endsWith('[/thinking]')) {
+          thinkingContent += token.replaceFirst('[/thinking]', '');
+          return;
+        }
+        fullAnswer += token;
         setState(() {
+          _replaceLastAssistantMessage(fullAnswer, isStreaming: true);
+        });
+        _scrollChatToBottom();
+      },
+      onDone: () async {
+        if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        setState(() {
+          _replaceLastAssistantMessage(
+            fullAnswer,
+            isStreaming: false,
+            thinking: thinkingContent.isEmpty ? null : thinkingContent,
+          );
           _isAskingQuestion = false;
           _questionGenerationStartedAt = null;
         });
-      }
-    }
-  }
-
-  void _streamAssistantAnswer(String answer) {
-    _questionStreamingTimer?.cancel();
-    var index = 0;
-    final chunkSize = answer.length > 900 ? 10 : 5;
-    _questionStreamingTimer = Timer.periodic(const Duration(milliseconds: 24), (
-      timer,
-    ) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      index = (index + chunkSize).clamp(0, answer.length);
-      final completed = index >= answer.length;
-      setState(() {
-        _replaceLastAssistantMessage(
-          answer.substring(0, index),
-          isStreaming: !completed,
+        await _recordHistoryEntry(
+          GemmaCenterHistoryEntry.question(
+            question: question,
+            response: fullAnswer,
+            referenceDate: _referenceDate,
+            languageCode: languageCode,
+          ),
+          profileScopeAtStart,
         );
-        if (completed) {
+      },
+      onError: (error) {
+        if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        setState(() {
+          _questionError = error.toString().replaceFirst('Exception: ', '');
+          _replaceLastAssistantMessage(
+            l10n.insightsCouldNotAnswerThisTime(_questionError!),
+            isStreaming: false,
+          );
           _isAskingQuestion = false;
           _questionGenerationStartedAt = null;
-        }
-      });
-      _scrollChatToBottom();
-      if (completed) {
-        timer.cancel();
-      }
-    });
+        });
+      },
+    );
   }
 
-  void _replaceLastAssistantMessage(String text, {required bool isStreaming}) {
+  void _replaceLastAssistantMessage(
+    String text, {
+    required bool isStreaming,
+    String? thinking,
+  }) {
     final messages = [..._chatMessages];
     for (var index = messages.length - 1; index >= 0; index--) {
       if (!messages[index].isUser) {
         messages[index] = _GemmaChatMessage.assistant(
           text,
           isStreaming: isStreaming,
+          thinking: thinking,
         );
         _chatMessages = messages;
         return;
@@ -271,7 +274,11 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     }
     _chatMessages = [
       ...messages,
-      _GemmaChatMessage.assistant(text, isStreaming: isStreaming),
+      _GemmaChatMessage.assistant(
+        text,
+        isStreaming: isStreaming,
+        thinking: thinking,
+      ),
     ];
   }
 
@@ -296,43 +303,50 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       Localizations.localeOf(context),
     );
     final profileScopeAtStart = _observedActiveProfileId;
+    _trendStreamSub?.cancel();
     final startedAt = DateTime.now();
     setState(() {
       _isGeneratingTrend = true;
       _trendError = null;
       _trendGenerationStartedAt = startedAt;
+      _trendStreamBuffer = '';
+      _trendResult = null;
     });
-    try {
-      final answer = await ref
-          .read(gemmaCoachServiceProvider)
-          .explainTrend(referenceDate: _referenceDate);
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(() => _trendResult = answer);
-      await _recordHistoryEntry(
-        GemmaCenterHistoryEntry.trend(
-          response: answer,
-          referenceDate: _referenceDate,
-          languageCode: languageCode,
-        ),
-        profileScopeAtStart,
-      );
-    } catch (error) {
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(
-        () => _trendError = error.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      if (mounted && profileScopeAtStart == _observedActiveProfileId) {
+
+    final stream = ref
+        .read(gemmaCoachServiceProvider)
+        .explainTrendStream(referenceDate: _referenceDate);
+
+    _trendStreamSub = stream.listen(
+      (token) {
+        if (!mounted) return;
+        setState(() => _trendStreamBuffer += token);
+      },
+      onDone: () async {
+        if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
         setState(() {
+          _trendResult = _trendStreamBuffer;
           _isGeneratingTrend = false;
           _trendGenerationStartedAt = null;
         });
-      }
-    }
+        await _recordHistoryEntry(
+          GemmaCenterHistoryEntry.trend(
+            response: _trendStreamBuffer,
+            referenceDate: _referenceDate,
+            languageCode: languageCode,
+          ),
+          profileScopeAtStart,
+        );
+      },
+      onError: (error) {
+        if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        setState(() {
+          _trendError = error.toString().replaceFirst('Exception: ', '');
+          _isGeneratingTrend = false;
+          _trendGenerationStartedAt = null;
+        });
+      },
+    );
   }
 
   Future<void> _generatePreVisit() async {
@@ -340,43 +354,50 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       Localizations.localeOf(context),
     );
     final profileScopeAtStart = _observedActiveProfileId;
+    _preVisitStreamSub?.cancel();
     final startedAt = DateTime.now();
     setState(() {
       _isGeneratingPreVisit = true;
       _preVisitError = null;
       _preVisitGenerationStartedAt = startedAt;
+      _preVisitStreamBuffer = '';
+      _preVisitResult = null;
     });
-    try {
-      final answer = await ref
-          .read(gemmaCoachServiceProvider)
-          .buildPreVisitBrief(referenceDate: _referenceDate);
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(() => _preVisitResult = answer);
-      await _recordHistoryEntry(
-        GemmaCenterHistoryEntry.preVisit(
-          response: answer,
-          referenceDate: _referenceDate,
-          languageCode: languageCode,
-        ),
-        profileScopeAtStart,
-      );
-    } catch (error) {
-      if (!mounted || profileScopeAtStart != _observedActiveProfileId) {
-        return;
-      }
-      setState(
-        () => _preVisitError = error.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      if (mounted && profileScopeAtStart == _observedActiveProfileId) {
+
+    final stream = ref
+        .read(gemmaCoachServiceProvider)
+        .buildPreVisitBriefStream(referenceDate: _referenceDate);
+
+    _preVisitStreamSub = stream.listen(
+      (token) {
+        if (!mounted) return;
+        setState(() => _preVisitStreamBuffer += token);
+      },
+      onDone: () async {
+        if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
         setState(() {
+          _preVisitResult = _preVisitStreamBuffer;
           _isGeneratingPreVisit = false;
           _preVisitGenerationStartedAt = null;
         });
-      }
-    }
+        await _recordHistoryEntry(
+          GemmaCenterHistoryEntry.preVisit(
+            response: _preVisitStreamBuffer,
+            referenceDate: _referenceDate,
+            languageCode: languageCode,
+          ),
+          profileScopeAtStart,
+        );
+      },
+      onError: (error) {
+        if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        setState(() {
+          _preVisitError = error.toString().replaceFirst('Exception: ', '');
+          _isGeneratingPreVisit = false;
+          _preVisitGenerationStartedAt = null;
+        });
+      },
+    );
   }
 
   Widget _buildQuestionSection() {
@@ -510,7 +531,20 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
               ),
               const SizedBox(width: 10),
               FilledButton(
-                onPressed: _isAskingQuestion ? null : _askQuestion,
+                onPressed: _isAskingQuestion
+                    ? () {
+                        _questionStreamSub?.cancel();
+                        _questionStreamSub = null;
+                        setState(() {
+                          _replaceLastAssistantMessage(
+                            _chatMessages.lastWhere((m) => !m.isUser).text,
+                            isStreaming: false,
+                          );
+                          _isAskingQuestion = false;
+                          _questionGenerationStartedAt = null;
+                        });
+                      }
+                    : _askQuestion,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                   shape: RoundedRectangleBorder(
@@ -518,11 +552,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                   ),
                 ),
                 child: _isAskingQuestion
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const Icon(Icons.stop_rounded)
                     : const Icon(Icons.arrow_upward_rounded),
               ),
             ],
@@ -585,8 +615,24 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 ),
               ),
               FilledButton.tonalIcon(
-                onPressed: _isGeneratingTrend ? null : _generateTrend,
-                icon: const Icon(Icons.trending_up_outlined),
+                onPressed: _isGeneratingTrend
+                    ? () {
+                        _trendStreamSub?.cancel();
+                        _trendStreamSub = null;
+                        setState(() {
+                          if (_trendStreamBuffer.isNotEmpty) {
+                            _trendResult = _trendStreamBuffer;
+                          }
+                          _isGeneratingTrend = false;
+                          _trendGenerationStartedAt = null;
+                        });
+                      }
+                    : _generateTrend,
+                icon: Icon(
+                  _isGeneratingTrend
+                      ? Icons.stop_rounded
+                      : Icons.trending_up_outlined,
+                ),
                 label: GenerationPhaseLabel(
                   isActive: _isGeneratingTrend,
                   startedAt: _trendGenerationStartedAt,
@@ -647,8 +693,24 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 ),
               ),
               FilledButton.icon(
-                onPressed: _isGeneratingPreVisit ? null : _generatePreVisit,
-                icon: const Icon(Icons.assignment_outlined),
+                onPressed: _isGeneratingPreVisit
+                    ? () {
+                        _preVisitStreamSub?.cancel();
+                        _preVisitStreamSub = null;
+                        setState(() {
+                          if (_preVisitStreamBuffer.isNotEmpty) {
+                            _preVisitResult = _preVisitStreamBuffer;
+                          }
+                          _isGeneratingPreVisit = false;
+                          _preVisitGenerationStartedAt = null;
+                        });
+                      }
+                    : _generatePreVisit,
+                icon: Icon(
+                  _isGeneratingPreVisit
+                      ? Icons.stop_rounded
+                      : Icons.assignment_outlined,
+                ),
                 label: GenerationPhaseLabel(
                   isActive: _isGeneratingPreVisit,
                   startedAt: _preVisitGenerationStartedAt,
@@ -877,16 +939,26 @@ class _GemmaChatMessage {
     required this.text,
     required this.isUser,
     this.isStreaming = false,
+    this.thinking,
   });
 
   const _GemmaChatMessage.user(String text) : this._(text: text, isUser: true);
 
-  const _GemmaChatMessage.assistant(String text, {bool isStreaming = false})
-    : this._(text: text, isUser: false, isStreaming: isStreaming);
+  const _GemmaChatMessage.assistant(
+    String text, {
+    bool isStreaming = false,
+    String? thinking,
+  }) : this._(
+         text: text,
+         isUser: false,
+         isStreaming: isStreaming,
+         thinking: thinking,
+       );
 
   final String text;
   final bool isUser;
   final bool isStreaming;
+  final String? thinking;
 }
 
 class _GemmaWelcomePanel extends StatelessWidget {
@@ -970,17 +1042,110 @@ class _GemmaChatBubble extends StatelessWidget {
               bottomRight: Radius.circular(isUser ? 6 : 20),
             ),
           ),
-          child: message.isStreaming && message.text.isEmpty
-              ? const _GemmaTypingDots()
-              : message.isStreaming || message.isUser
-              ? SelectableText(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (message.thinking != null)
+                _GemmaThinkingTile(thinking: message.thinking!),
+              if (message.isStreaming && message.text.isEmpty)
+                const _GemmaTypingDots()
+              else if (message.isStreaming || message.isUser)
+                SelectableText(
                   message.isStreaming ? '${message.text}|' : message.text,
                   style: textTheme.bodyMedium?.copyWith(
                     color: foreground,
                     height: 1.42,
                   ),
                 )
-              : _MarkdownBubbleText(text: message.text, foreground: foreground),
+              else
+                _MarkdownBubbleText(text: message.text, foreground: foreground),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GemmaThinkingTile extends StatefulWidget {
+  const _GemmaThinkingTile({required this.thinking});
+
+  final String thinking;
+
+  @override
+  State<_GemmaThinkingTile> createState() => _GemmaThinkingTileState();
+}
+
+class _GemmaThinkingTileState extends State<_GemmaThinkingTile> {
+  var _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.psychology_outlined,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Ragionamento',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        _expanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_expanded)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Text(
+                      widget.thinking,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/local_ai_status.dart';
 import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
@@ -79,24 +78,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       if (_isOnDeviceMode) {
         ref.invalidate(onDeviceAiStatusProvider);
       }
-      ref.invalidate(billingStatusProvider);
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Report regenerated.')));
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      if (error.isFeatureLocked) {
-        _openBilling(error.featureCode ?? _featureCodeForType(_summaryType));
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Regeneration failed: $error')));
     } catch (error) {
       if (!mounted) {
         return;
@@ -199,7 +186,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         _isPrivateLocalMode || currentSummary?.providerName == 'local_gemma4';
     final showOnDeviceProof =
         _isOnDeviceMode || currentSummary?.providerName == 'on_device_litertlm';
-    final billingStatusAsync = ref.watch(billingStatusProvider);
     final localStatusAsync = showLocalProof
         ? ref.watch(localAiStatusProvider)
         : null;
@@ -215,10 +201,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     final dayFormat = DateFormat('dd MMM yyyy', 'en_US');
     final colorScheme = Theme.of(context).colorScheme;
     final requiredFeatureCode = _featureCodeForType(_summaryType);
-    final proactiveLock =
-        billingStatusAsync.asData?.value?.hasFeature(requiredFeatureCode) ==
-        false;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Recap'),
@@ -384,66 +366,41 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          if (proactiveLock)
-            FeatureLockCard(
-              title: 'AI Plus required',
-              featureLabel: _featureLabel(requiredFeatureCode),
-              message:
-                  'AI recaps for this period are part of ClinDiary AI Plus. The diary and history remain accessible even without a plan.',
-              onOpenBilling: () => _openBilling(requiredFeatureCode),
-            )
-          else
-            summaryAsync.when(
-              data: (summary) => Column(
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 360),
-                      child: _PromptBubble(
-                        summaryType: _summaryType,
-                        referenceDate: _referenceDate,
-                        dateFormat: dayFormat,
-                        summaryMode: _summaryMode,
-                      ),
+          summaryAsync.when(
+            data: (summary) => Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: _PromptBubble(
+                      summaryType: _summaryType,
+                      referenceDate: _referenceDate,
+                      dateFormat: dayFormat,
+                      summaryMode: _summaryMode,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  _AnswerBubble(
-                    summary: summary,
-                    dateFormat: dateFormat,
-                    providerLabelOverride:
-                        summary.providerName == 'local_gemma4'
-                        ? localStatusAsync?.asData?.value.activeProviderLabel ??
-                              'Private local mode'
-                        : summary.providerName == 'on_device_litertlm'
-                        ? onDeviceStatusAsync
-                                  ?.asData
-                                  ?.value
-                                  .activeProviderLabel ??
-                              'Local on-device'
-                        : null,
-                  ),
-                ],
-              ),
-              loading: () => const _LoadingState(),
-              error: (error, _) {
-                final apiError = error is ApiException ? error : null;
-                if (apiError != null && apiError.isFeatureLocked) {
-                  return FeatureLockCard(
-                    title: 'AI Plus required',
-                    featureLabel: _featureLabel(
-                      apiError.featureCode ?? requiredFeatureCode,
-                    ),
-                    message: apiError.message,
-                    onOpenBilling: () => _openBilling(
-                      apiError.featureCode ?? requiredFeatureCode,
-                    ),
-                  );
-                }
-                return _ErrorState(error: error.toString());
-              },
+                ),
+                const SizedBox(height: 12),
+                _AnswerBubble(
+                  summary: summary,
+                  dateFormat: dateFormat,
+                  providerLabelOverride: summary.providerName == 'local_gemma4'
+                      ? localStatusAsync?.asData?.value.activeProviderLabel ??
+                            'Private local mode'
+                      : summary.providerName == 'on_device_litertlm'
+                      ? onDeviceStatusAsync
+                                ?.asData
+                                ?.value
+                                .activeProviderLabel ??
+                            'Local on-device'
+                      : null,
+                ),
+              ],
             ),
+            loading: () => const _LoadingState(),
+            error: (error, _) => _ErrorState(error: error.toString()),
+          ),
         ],
       ),
     );

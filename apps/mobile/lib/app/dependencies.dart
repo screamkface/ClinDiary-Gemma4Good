@@ -1,6 +1,5 @@
 import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/app/core/network/session_expiry_notifier.dart';
-import 'package:clindiary/app/core/notifications/gemma_download_notification_service.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
@@ -56,11 +55,6 @@ final sessionExpiryNotifierProvider =
 final localMedicationReminderServiceProvider =
     Provider<LocalMedicationReminderService>(
       (ref) => LocalMedicationReminderService(),
-    );
-
-final gemmaDownloadNotificationServiceProvider =
-    Provider<GemmaDownloadNotificationService>(
-      (ref) => GemmaDownloadNotificationService(),
     );
 
 final wearableHealthServiceProvider = Provider<WearableHealthService>(

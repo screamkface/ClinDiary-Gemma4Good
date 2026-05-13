@@ -1,53 +1,73 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/insights/domain/on_device_recap_prompt.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 
 class OnDeviceAiService {
-  static const MethodChannel _channel = MethodChannel('clindiary/on_device_ai');
-  static final Uri _gemma4ModelDownloadUri = Uri.parse(
-    'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm?download=true',
-  );
-  static const String _gemma4ModelFileName = 'gemma-4-E2B-it.litertlm';
+  static const _modelName = 'gemma-4-E2B-it.litertlm';
+  static const _modelDownloadUrl =
+      'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm?download=true';
+  static const _geckoModelUrl =
+      'https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/gecko-110m-en.tflite';
+  static const _geckoTokenizerUrl =
+      'https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/tokenizer.model';
 
-  Future<Map<String, dynamic>?> _invokePrompt(
-    String method,
-    Map<String, dynamic> arguments,
-  ) async {
-    return _channel.invokeMapMethod<String, dynamic>(method, arguments);
+  static bool _initialized = false;
+
+  InferenceModel? _currentModel;
+  EmbeddingModel? _currentEmbedder;
+
+  Future<void> _ensureInitialized() async {
+    if (!_initialized) {
+      await FlutterGemma.initialize();
+      _initialized = true;
+    }
   }
 
   Future<OnDeviceAiStatus> fetchStatus() async {
+    await _ensureInitialized();
     try {
-      final response = await _channel.invokeMapMethod<String, dynamic>(
-        'getStatus',
+      final isInstalled = await FlutterGemma.isModelInstalled(_modelName);
+      if (!isInstalled) {
+        return const OnDeviceAiStatus(
+          isSupported: true,
+          isReady: false,
+          runtime: 'flutter_gemma (LiteRT-LM)',
+          provider: 'on_device_litertlm',
+          activeProviderLabel: 'On-device non configurato',
+          backendPreference: 'GPU',
+          isCloudBypassedForThisRequest: true,
+        );
+      }
+      final model = await FlutterGemma.getActiveModel(
+        maxTokens: 2048,
+        preferredBackend: PreferredBackend.npu,
+        enableSpeculativeDecoding: true,
       );
-      return OnDeviceAiStatus.fromJson(response ?? const {});
-    } on MissingPluginException {
-      return const OnDeviceAiStatus(
-        isSupported: false,
-        isReady: false,
-        runtime: 'LiteRT-LM Android',
+      _currentModel = model;
+      return OnDeviceAiStatus(
+        isSupported: true,
+        isReady: true,
+        runtime: 'flutter_gemma (LiteRT-LM)',
         provider: 'on_device_litertlm',
-        activeProviderLabel: 'On-device unavailable',
+        activeProviderLabel: 'Gemma 4 On-device',
         backendPreference: 'GPU',
+        modelName: _modelName,
         isCloudBypassedForThisRequest: true,
       );
-    } on PlatformException catch (error) {
+    } catch (e) {
       return OnDeviceAiStatus(
         isSupported: true,
         isReady: false,
-        runtime: 'LiteRT-LM Android',
+        runtime: 'flutter_gemma (LiteRT-LM)',
         provider: 'on_device_litertlm',
-        activeProviderLabel: 'On-device not ready',
+        activeProviderLabel: 'On-device non pronto',
         backendPreference: 'GPU',
-        lastError: error.message,
+        lastError: e.toString(),
         isCloudBypassedForThisRequest: true,
       );
     }
@@ -56,37 +76,24 @@ class OnDeviceAiService {
   Future<InsightSummary> generateDailyRecap({
     required OnDeviceRecapPrompt prompt,
   }) async {
+    await _ensureInitialized();
     try {
-      final response = await _invokePrompt(
-        'generateDailyRecap',
-        <String, dynamic>{
-          'systemPrompt': prompt.systemPrompt,
-          'userPrompt': prompt.userPrompt,
-        },
+      final content = await _generateText(
+        systemPrompt: prompt.systemPrompt,
+        userPrompt: prompt.userPrompt,
       );
-      if (response == null) {
-        throw Exception('The on-device runtime did not return a response.');
-      }
       return InsightSummary(
-        id:
-            response['id']?.toString() ??
-            'on-device-${DateTime.now().millisecondsSinceEpoch}',
+        id: 'on-device-${DateTime.now().millisecondsSinceEpoch}',
         summaryType: prompt.summaryType,
         periodStart: prompt.periodStart,
         periodEnd: prompt.periodEnd,
-        content: response['content']?.toString() ?? '',
-        providerName:
-            response['provider_name']?.toString() ?? 'on_device_litertlm',
-        modelName: response['model_name']?.toString(),
-        generatedAt: DateTime.parse(
-          response['generated_at']?.toString() ??
-              DateTime.now().toUtc().toIso8601String(),
-        ),
+        content: content,
+        providerName: 'on_device_litertlm',
+        modelName: _modelName,
+        generatedAt: DateTime.now().toUtc(),
       );
-    } on MissingPluginException {
-      throw Exception('On-device inference is available on Android only.');
-    } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'On-device generation failed.');
+    } catch (e) {
+      throw Exception('On-device generation failed: $e');
     }
   }
 
@@ -95,35 +102,38 @@ class OnDeviceAiService {
     required String userPrompt,
     String? modelPath,
   }) async {
+    await _ensureInitialized();
     try {
-      final response = await _invokePrompt('generateText', <String, dynamic>{
-        'systemPrompt': systemPrompt,
-        'userPrompt': userPrompt,
-        if (modelPath != null) 'modelPath': modelPath,
-      });
-      if (response == null) {
-        throw Exception('The on-device runtime did not return a response.');
-      }
-      final content = response['content']?.toString().trim() ?? '';
-      if (content.isEmpty) {
-        throw Exception('The on-device runtime returned empty content.');
-      }
-      return content;
-    } on MissingPluginException {
-      throw Exception('On-device inference is available on Android only.');
-    } on PlatformException catch (error) {
-      throw Exception(error.message ?? 'On-device generation failed.');
+      return await _generateText(
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt,
+      );
+    } catch (e) {
+      throw Exception('On-device generation failed: $e');
     }
   }
 
+  Stream<String> generateTextStream({
+    required String systemPrompt,
+    required String userPrompt,
+  }) {
+    return _streamForPrompt(systemPrompt: systemPrompt, userPrompt: userPrompt);
+  }
+
+  Future<List<double>> generateEmbedding({required String text}) async {
+    await _ensureInitialized();
+    final embedder = await _getOrCreateEmbedder();
+    return embedder.generateEmbedding(text, taskType: TaskType.retrievalQuery);
+  }
+
   Future<String?> importModelFromPicker() async {
-    if (!Platform.isAndroid) {
-      throw Exception('Model import is available on Android only.');
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      throw Exception('Model import is available on mobile only.');
     }
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['litertlm'],
+      allowedExtensions: ['litertlm'],
       withReadStream: true,
     );
     if (result == null || result.files.isEmpty) {
@@ -131,188 +141,209 @@ class OnDeviceAiService {
     }
 
     final file = result.files.single;
-    final targetDirectory = await _resolveModelDirectory();
-    await targetDirectory.create(recursive: true);
-
-    final sourcePath = file.path?.trim();
-    if (sourcePath != null && sourcePath.isNotEmpty) {
-      final sourceFile = File(sourcePath).absolute;
-      if (p.equals(p.dirname(sourceFile.path), targetDirectory.absolute.path)) {
-        await resetRuntime();
-        return sourceFile.path;
-      }
+    final path = file.path?.trim();
+    if (path == null || path.isEmpty) {
+      throw Exception('Selected file has no valid path.');
     }
 
-    await _removeExistingModelFiles(targetDirectory);
+    await FlutterGemma.installModel(
+      modelType: ModelType.gemma4,
+    ).fromFile(path).install();
 
-    final targetPath = p.join(targetDirectory.path, file.name);
-    await _copyPickedFile(file, targetPath);
-    await resetRuntime();
-    return targetPath;
+    final installedPath = path;
+    await _resetRuntime();
+    return installedPath;
   }
 
   Future<String> downloadGemma4Model({
     void Function(int receivedBytes, int? totalBytes)? onProgress,
   }) async {
-    if (!Platform.isAndroid) {
-      throw Exception('Model download is available on Android only.');
-    }
+    await _ensureInitialized();
 
-    final targetDirectory = await _resolveModelDirectory();
-    await targetDirectory.create(recursive: true);
+    String? installedPath;
+    await FlutterGemma.installModel(
+      modelType: ModelType.gemma4,
+    ).fromNetwork(_modelDownloadUrl).withProgress((progress) {
+      onProgress?.call(progress, 100);
+    }).install();
 
-    final targetPath = p.join(targetDirectory.path, _gemma4ModelFileName);
-    final targetFile = File(targetPath);
-    final tempFile = File('$targetPath.download');
+    await _resetRuntime();
+    return installedPath ?? '';
+  }
 
-    try {
-      _channel.setMethodCallHandler((call) async {
-        if (call.method != 'modelDownloadProgress') {
-          return null;
+  Future<Map<String, dynamic>> callFunction({
+    required String systemPrompt,
+    required String userMessage,
+    required List<Tool> tools,
+  }) async {
+    await _ensureInitialized();
+    final model = await _getOrCreateModel();
+    final chat = await model.createChat(
+      systemInstruction: systemPrompt,
+      tools: tools,
+      supportsFunctionCalls: true,
+      toolChoice: ToolChoice.required,
+    );
+    await chat.addQueryChunk(Message.text(text: userMessage, isUser: true));
+    final responses = await chat.generateChatResponseAsync().toList();
+    for (final response in responses) {
+      if (response is FunctionCallResponse) {
+        return response.args;
+      }
+      if (response is ParallelFunctionCallResponse) {
+        if (response.calls.isNotEmpty) {
+          return response.calls.first.args;
         }
-        final arguments = Map<String, dynamic>.from(call.arguments as Map);
-        final receivedBytes = arguments['receivedBytes'];
-        final totalBytes = arguments['totalBytes'];
-        onProgress?.call(
-          receivedBytes is int ? receivedBytes : (receivedBytes as num).toInt(),
-          totalBytes == null ? null : (totalBytes as num).toInt(),
-        );
-        return null;
-      });
-      final response = await _channel.invokeMapMethod<String, dynamic>(
-        'downloadGemma4Model',
-      );
-      final downloadedPath = response?['path']?.toString().trim();
-      if (downloadedPath == null || downloadedPath.isEmpty) {
-        throw Exception('Model download completed without a file path.');
       }
-      await resetRuntime();
-      return downloadedPath;
-    } on MissingPluginException {
-      // Fall back to the Dart downloader on non-Android test hosts.
-    } finally {
-      _channel.setMethodCallHandler(null);
     }
-
-    if (await tempFile.exists()) {
-      await tempFile.delete();
-    }
-
-    final client = http.Client();
-    try {
-      final request = http.Request('GET', _gemma4ModelDownloadUri)
-        ..headers[HttpHeaders.userAgentHeader] = 'ClinDiary/1.0'
-        ..headers[HttpHeaders.acceptHeader] = 'application/octet-stream';
-      final response = await client.send(request);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Model download failed: HTTP ${response.statusCode}');
-      }
-
-      final contentLength = response.contentLength;
-      final totalBytes = contentLength != null && contentLength > 0
-          ? contentLength
-          : null;
-      var receivedBytes = 0;
-      final sink = tempFile.openWrite();
-      try {
-        await for (final chunk in response.stream) {
-          sink.add(chunk);
-          receivedBytes += chunk.length;
-          onProgress?.call(receivedBytes, totalBytes);
-        }
-      } finally {
-        await sink.close();
-      }
-
-      if (await targetFile.exists()) {
-        await targetFile.delete();
-      }
-
-      await tempFile.rename(targetFile.path);
-      await _removeExistingModelFiles(
-        targetDirectory,
-        keepFileName: p.basename(targetFile.path),
-      );
-      await resetRuntime();
-      return targetFile.path;
-    } catch (_) {
-      if (await tempFile.exists()) {
-        await tempFile.delete();
-      }
-      rethrow;
-    } finally {
-      client.close();
-    }
+    throw Exception('Model did not return a function call.');
   }
 
   Future<void> resetRuntime() async {
-    try {
-      await _channel.invokeMethod<void>('resetRuntime');
-    } on MissingPluginException {
-      // Ignore on unsupported platforms.
-    }
+    await _resetRuntime();
   }
 
   Future<void> removeInstalledModels() async {
-    final targetDirectory = await _resolveModelDirectory();
-    await _removeExistingModelFiles(targetDirectory);
-    await resetRuntime();
+    await _resetRuntime();
+    await _removeModelFiles();
   }
 
-  Future<Directory> _resolveModelDirectory() async {
-    final status = await fetchStatus();
-    final explicitDirectory = status.defaultModelDirectory?.trim();
-    if (explicitDirectory != null && explicitDirectory.isNotEmpty) {
-      return Directory(explicitDirectory);
-    }
+  Stream<String> _streamForPrompt({
+    required String systemPrompt,
+    required String userPrompt,
+  }) {
+    final controller = StreamController<String>();
 
-    final externalDirectory = await getExternalStorageDirectory();
-    if (externalDirectory != null) {
-      return Directory(p.join(externalDirectory.path, 'models'));
-    }
+    _getOrCreateModel()
+        .then((model) async {
+          final chat = await model.createChat(systemInstruction: systemPrompt);
+          await chat.addQueryChunk(
+            Message.text(text: userPrompt, isUser: true),
+          );
 
-    throw Exception('Android model directory unavailable.');
+          var subscription = chat.generateChatResponseAsync().listen(
+            (response) {
+              if (response is TextResponse) {
+                controller.add(response.token);
+              } else if (response is ThinkingResponse) {
+                controller.add('[thinking]${response.content}[/thinking]');
+              }
+            },
+            onDone: () {
+              unawaited(controller.close());
+            },
+            onError: (e) {
+              if (!controller.isClosed) {
+                controller.addError(e);
+              }
+            },
+            cancelOnError: false,
+          );
+
+          controller.onCancel = () {
+            subscription.cancel();
+          };
+        })
+        .catchError((e) {
+          if (!controller.isClosed) {
+            controller.addError(e);
+          }
+        });
+
+    return controller.stream;
   }
 
-  Future<void> _removeExistingModelFiles(
-    Directory directory, {
-    String? keepFileName,
+  Future<String> _generateText({
+    required String systemPrompt,
+    required String userPrompt,
   }) async {
-    if (!await directory.exists()) {
-      return;
+    final model = await _getOrCreateModel();
+    final chat = await model.createChat(systemInstruction: systemPrompt);
+    await chat.addQueryChunk(Message.text(text: userPrompt, isUser: true));
+    final response = await chat.generateChatResponse();
+    final content = response.toString().trim();
+    if (content.isEmpty) {
+      throw Exception('Il modello on-device ha restituito una risposta vuota.');
     }
-    await for (final entity in directory.list()) {
-      if (entity is File && entity.path.toLowerCase().endsWith('.litertlm')) {
-        if (keepFileName != null && p.basename(entity.path) == keepFileName) {
-          continue;
-        }
-        await entity.delete();
-      }
-    }
+    return content;
   }
 
-  Future<void> _copyPickedFile(PlatformFile file, String targetPath) async {
-    if (file.readStream != null) {
-      final targetFile = File(targetPath);
-      final sink = targetFile.openWrite();
-      try {
-        await sink.addStream(file.readStream!);
-      } finally {
-        await sink.close();
+  Future<InferenceModel> _getOrCreateModel() async {
+    if (_currentModel != null) return _currentModel!;
+    final model = await FlutterGemma.getActiveModel(
+      maxTokens: 4096,
+      preferredBackend: PreferredBackend.npu,
+      enableSpeculativeDecoding: true,
+    );
+    _currentModel = model;
+    return model;
+  }
+
+  Future<void> installGeckoEmbedding({
+    void Function(int progress)? onProgress,
+  }) async {
+    await _ensureInitialized();
+    if (FlutterGemma.hasActiveEmbedder()) return;
+    await FlutterGemma.installEmbedder()
+        .modelFromNetwork(_geckoModelUrl)
+        .tokenizerFromNetwork(_geckoTokenizerUrl)
+        .withModelProgress((p) => onProgress?.call(p))
+        .withTokenizerProgress((_) {})
+        .install();
+  }
+
+  Future<EmbeddingModel> _getOrCreateEmbedder() async {
+    if (_currentEmbedder != null) return _currentEmbedder!;
+    if (FlutterGemma.hasActiveEmbedder()) {
+      final embedder = await FlutterGemma.getActiveEmbedder(
+        preferredBackend: PreferredBackend.gpu,
+      );
+      _currentEmbedder = embedder;
+      return embedder;
+    }
+    await FlutterGemma.installEmbedder()
+        .modelFromNetwork(_geckoModelUrl)
+        .tokenizerFromNetwork(_geckoTokenizerUrl)
+        .install();
+    final embedder = await FlutterGemma.getActiveEmbedder(
+      preferredBackend: PreferredBackend.gpu,
+    );
+    _currentEmbedder = embedder;
+    return embedder;
+  }
+
+  Future<void> _resetRuntime() async {
+    try {
+      await _currentModel?.close();
+    } catch (_) {}
+    _currentModel = null;
+    try {
+      await _currentEmbedder?.close();
+    } catch (_) {}
+    _currentEmbedder = null;
+  }
+
+  Future<void> _removeModelFiles() async {
+    try {
+      await _currentModel?.close();
+    } catch (_) {}
+    _currentModel = null;
+    try {
+      await _currentEmbedder?.close();
+    } catch (_) {}
+    _currentEmbedder = null;
+
+    try {
+      final dir = Directory(
+        '/sdcard/Android/data/it.clindiary.clindiary/files/models',
+      );
+      if (await dir.exists()) {
+        await for (final entity in dir.list()) {
+          if (entity is File && entity.path.endsWith('.litertlm')) {
+            await entity.delete();
+          }
+        }
       }
-      return;
-    }
-
-    if (file.bytes != null) {
-      await File(targetPath).writeAsBytes(file.bytes!, flush: true);
-      return;
-    }
-
-    if (file.path != null && file.path!.trim().isNotEmpty) {
-      await File(file.path!).copy(targetPath);
-      return;
-    }
-
-    throw Exception('Impossibile leggere il file selezionato.');
+    } catch (_) {}
   }
 }

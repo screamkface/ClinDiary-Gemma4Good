@@ -66,8 +66,6 @@ kotlin {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.health.connect:connect-client:1.2.0-alpha02")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
-    implementation("com.google.mediapipe:tasks-text:0.10.14")
 }
 
 flutter {

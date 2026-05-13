@@ -57,7 +57,7 @@ ClinDiary is a privacy-first, local-first clinical diary mobile app. The current
 - Deterministic/local document parsing for supported lab-style content
 - Document Q&A using local document chunks, local retrieval/heuristics, embeddings support and on-device/fallback answer generation
 - Gemma/AI center with model status/proof, daily/weekly/monthly/pre-visit recaps, clinical question answering and trend explanations
-- Android on-device LiteRT-LM model management: import, download, status and removal
+- On-device AI via `flutter_gemma` package (Dart API over LiteRT-LM): import, download, status, text generation, and embeddings
 - Medication schedules, adherence logging and local reminders
 - Notifications inbox and preferences
 - Screening/prevention center, alerts, health dossier and reports
@@ -90,10 +90,9 @@ When adding or changing code:
 
 ## AI And Model Reality
 
-The app supports on-device AI, but model packaging matters.
+The app supports on-device AI via the `flutter_gemma` package (Dart API over LiteRT-LM).
 
-- Android text generation is implemented through LiteRT-LM in native Kotlin
-- The method channel for on-device AI is `clindiary/on_device_ai`
+- Text generation and embeddings use `flutter_gemma` (`package:flutter_gemma`) instead of custom Kotlin method channels
 - Runtime behavior is GPU-first with CPU fallback where supported
 - Target model family: Gemma 4 in LiteRT-LM `.litertlm` format
 - Preferred model filename: `gemma-4-E2B-it.litertlm`

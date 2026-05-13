@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/shared/widgets/clin_diary_logo.dart';
@@ -50,9 +49,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
   }
 
   Future<void> retryDownload() async {
-    if (_running) {
-      return;
-    }
+    if (_running) return;
     state = const GemmaModelBootstrapState.checking(
       message: 'Retrying Gemma 4 E2B model setup...',
     );
@@ -73,162 +70,62 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
   }
 
   Future<void> _ensureModelReady({bool forceDownload = false}) async {
-    if (_running) {
-      return;
-    }
+    if (_running) return;
     _running = true;
     try {
       final service = ref.read(onDeviceAiServiceProvider);
       final status = await service.fetchStatus();
-      final modelDirectory = status.defaultModelDirectory;
-      final modelPath = status.modelPath?.trim();
-      final modelFileExists =
-          modelPath != null &&
-          modelPath.isNotEmpty &&
-          await File(modelPath).exists();
-
-      final embeddingModelPath =
-          '${modelDirectory ?? ''}/embeddinggemma-300m.tflite';
-      final embeddingModelExists = await File(embeddingModelPath).exists();
-      final activeGemmaDownload = await service.fetchGemma4DownloadProgress();
-
-      if (activeGemmaDownload != null) {
-        state = GemmaModelBootstrapState.downloading(
-          message: 'Downloading Gemma 4 E2B...',
-          modelDirectory: modelDirectory,
-          downloadedBytes: activeGemmaDownload.downloadedBytes,
-          totalBytes: activeGemmaDownload.totalBytes,
-        );
-
-        await service.downloadGemma4Model(
-          onProgress: (receivedBytes, totalBytes) {
-            state = GemmaModelBootstrapState.downloading(
-              message: 'Downloading Gemma 4 E2B...',
-              modelDirectory: modelDirectory,
-              downloadedBytes: receivedBytes,
-              totalBytes: totalBytes,
-            );
-          },
-        );
-      }
 
       if (!status.isSupported) {
         state = GemmaModelBootstrapState.ready(
           message: 'On-device AI is not available on this platform.',
-          modelDirectory: modelDirectory,
-          modelPath: modelPath,
+          modelDirectory: status.defaultModelDirectory,
+          modelPath: status.modelPath,
         );
         return;
       }
 
-      if (!forceDownload &&
-          status.isReady &&
-          modelFileExists &&
-          embeddingModelExists) {
+      if (!forceDownload && status.isReady) {
         state = GemmaModelBootstrapState.ready(
           message: 'On-device AI models are ready.',
-          modelDirectory: modelDirectory,
-          modelPath: modelPath,
+          modelDirectory: status.defaultModelDirectory,
+          modelPath: status.modelPath,
         );
         return;
       }
 
-      if (modelFileExists && embeddingModelExists && !forceDownload) {
-        state = GemmaModelBootstrapState.checking(
-          message: 'Models are already present. Verifying the runtime...',
-          modelDirectory: modelDirectory,
-          modelPath: modelPath,
-        );
-        await service.resetRuntime();
-        final refreshedStatus = await service.fetchStatus();
-        final refreshedModelPath = refreshedStatus.modelPath?.trim();
-        final refreshedModelFileExists =
-            refreshedModelPath != null &&
-            refreshedModelPath.isNotEmpty &&
-            await File(refreshedModelPath).exists();
-        if (refreshedStatus.isReady && refreshedModelFileExists) {
-          state = GemmaModelBootstrapState.ready(
-            message: 'On-device AI models are ready.',
-            modelDirectory: refreshedStatus.defaultModelDirectory,
-            modelPath: refreshedModelPath,
+      state = GemmaModelBootstrapState.downloading(
+        message: 'Downloading Gemma 4 E2B from Hugging Face...',
+        modelDirectory: status.defaultModelDirectory,
+      );
+
+      await service.downloadGemma4Model(
+        onProgress: (receivedBytes, totalBytes) {
+          state = GemmaModelBootstrapState.downloading(
+            message: 'Downloading Gemma 4 E2B...',
+            modelDirectory: status.defaultModelDirectory,
+            downloadedBytes: receivedBytes,
+            totalBytes: totalBytes,
           );
-          return;
-        }
-
-        state = GemmaModelBootstrapState.error(
-          message:
-              'Models are installed, but LiteRT-LM could not load them. You can retry the download or continue to the app.',
-          modelDirectory:
-              refreshedStatus.defaultModelDirectory ?? modelDirectory,
-          modelPath: refreshedModelPath,
-          lastError:
-              refreshedStatus.lastError ?? 'Runtime initialization failed.',
-        );
-        return;
-      }
-
-      String? installedPath = modelPath;
-
-      if (!modelFileExists || forceDownload) {
-        state = GemmaModelBootstrapState.downloading(
-          message: 'Downloading Gemma 4 E2B from Hugging Face...',
-          modelDirectory: modelDirectory,
-        );
-
-        installedPath = await service.downloadGemma4Model(
-          onProgress: (receivedBytes, totalBytes) {
-            state = GemmaModelBootstrapState.downloading(
-              message: totalBytes == null || totalBytes <= 0
-                  ? 'Downloading Gemma 4 E2B...'
-                  : 'Downloading Gemma 4 E2B...',
-              modelDirectory: modelDirectory,
-              downloadedBytes: receivedBytes,
-              totalBytes: totalBytes,
-            );
-          },
-        );
-      }
-
-      if (!embeddingModelExists || forceDownload) {
-        state = GemmaModelBootstrapState.downloading(
-          message: 'Downloading EmbeddingGemma 300M from Hugging Face...',
-          modelDirectory: modelDirectory,
-        );
-        await service.downloadEmbeddingModel(
-          onProgress: (receivedBytes, totalBytes) {
-            state = GemmaModelBootstrapState.downloading(
-              message: totalBytes == null || totalBytes <= 0
-                  ? 'Downloading EmbeddingGemma 300M...'
-                  : 'Downloading EmbeddingGemma 300M...',
-              modelDirectory: modelDirectory,
-              downloadedBytes: receivedBytes,
-              totalBytes: totalBytes,
-            );
-          },
-        );
-      }
+        },
+      );
 
       final refreshedStatus = await service.fetchStatus();
-      final refreshedModelPath =
-          refreshedStatus.modelPath?.trim().isNotEmpty == true
-          ? refreshedStatus.modelPath!.trim()
-          : installedPath;
-
       if (refreshedStatus.isReady) {
         state = GemmaModelBootstrapState.ready(
           message: 'On-device AI models are ready.',
-          modelDirectory:
-              refreshedStatus.defaultModelDirectory ?? modelDirectory,
-          modelPath: refreshedModelPath,
+          modelDirectory: refreshedStatus.defaultModelDirectory,
+          modelPath: refreshedStatus.modelPath,
         );
+        unawaited(service.installGeckoEmbedding());
         return;
       }
 
       state = GemmaModelBootstrapState.error(
         message:
-            'The models have been downloaded, but LiteRT-LM still could not initialize. You can continue to the app and try again from the model screen.',
-        modelDirectory: refreshedStatus.defaultModelDirectory ?? modelDirectory,
-        modelPath: refreshedModelPath,
+            'The model was downloaded but the runtime could not initialize.',
+        modelDirectory: refreshedStatus.defaultModelDirectory,
+        modelPath: refreshedStatus.modelPath,
         lastError: refreshedStatus.lastError,
         allowAppAccess: false,
       );
@@ -236,7 +133,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
       state = GemmaModelBootstrapState.error(
         message: 'Model download failed.',
         lastError: error.toString(),
-        modelDirectory: state.modelDirectory,
+        allowAppAccess: false,
       );
     } finally {
       _running = false;
@@ -249,79 +146,63 @@ enum GemmaModelBootstrapPhase { checking, downloading, ready, error }
 class GemmaModelBootstrapState {
   const GemmaModelBootstrapState({
     required this.phase,
-    required this.allowAppAccess,
-    this.message,
+    this.allowAppAccess = false,
+    this.message = '',
     this.modelDirectory,
     this.modelPath,
-    this.downloadedBytes = 0,
+    this.downloadedBytes,
     this.totalBytes,
     this.lastError,
   });
 
   const GemmaModelBootstrapState.checking({
-    this.message,
+    this.message = '',
     this.modelDirectory,
     this.modelPath,
   }) : phase = GemmaModelBootstrapPhase.checking,
        allowAppAccess = false,
-       downloadedBytes = 0,
+       downloadedBytes = null,
        totalBytes = null,
        lastError = null;
 
   const GemmaModelBootstrapState.downloading({
-    this.message,
+    this.message = '',
     this.modelDirectory,
-    this.downloadedBytes = 0,
+    this.downloadedBytes,
     this.totalBytes,
-    this.lastError,
   }) : phase = GemmaModelBootstrapPhase.downloading,
        allowAppAccess = false,
-       modelPath = null;
+       modelPath = null,
+       lastError = null;
 
   const GemmaModelBootstrapState.ready({
-    this.message,
+    this.message = '',
     this.modelDirectory,
     this.modelPath,
   }) : phase = GemmaModelBootstrapPhase.ready,
        allowAppAccess = true,
-       downloadedBytes = 0,
+       downloadedBytes = null,
        totalBytes = null,
        lastError = null;
 
   const GemmaModelBootstrapState.error({
-    this.message,
-    this.modelDirectory,
-    this.modelPath,
-    this.downloadedBytes = 0,
-    this.totalBytes,
+    this.message = '',
     this.lastError,
     this.allowAppAccess = false,
-  }) : phase = GemmaModelBootstrapPhase.error;
+    this.modelDirectory,
+    this.modelPath,
+  }) : phase = GemmaModelBootstrapPhase.error,
+       downloadedBytes = null,
+       totalBytes = null;
 
   final GemmaModelBootstrapPhase phase;
   final bool allowAppAccess;
-  final String? message;
+  final String message;
   final String? modelDirectory;
   final String? modelPath;
-  final int downloadedBytes;
+  final int? downloadedBytes;
   final int? totalBytes;
   final String? lastError;
-
-  bool get isChecking => phase == GemmaModelBootstrapPhase.checking;
-
-  bool get isDownloading => phase == GemmaModelBootstrapPhase.downloading;
-
-  bool get isReady => phase == GemmaModelBootstrapPhase.ready;
-
-  bool get hasError => phase == GemmaModelBootstrapPhase.error;
-
-  double? get progressFraction {
-    final total = totalBytes;
-    if (total == null || total <= 0) {
-      return null;
-    }
-    return downloadedBytes / total;
-  }
 }
 
 class _GemmaModelBootstrapView extends StatelessWidget {
@@ -332,156 +213,71 @@ class _GemmaModelBootstrapView extends StatelessWidget {
   });
 
   final GemmaModelBootstrapState state;
-  final Future<void> Function() onRetryDownload;
+  final VoidCallback onRetryDownload;
   final VoidCallback onContinueAnyway;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context).textTheme;
-    final progressFraction = state.progressFraction;
-    final totalBytesLabel = state.totalBytes == null
-        ? null
-        : _formatBytes(state.totalBytes!);
-    final downloadedBytesLabel = _formatBytes(state.downloadedBytes);
-
+    final theme = Theme.of(context);
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: Card.outlined(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ClinDiaryLogo(size: 64),
+              const SizedBox(height: 24),
+              Text(
+                state.message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium,
+              ),
+              if (state.phase == GemmaModelBootstrapPhase.downloading) ...[
+                const SizedBox(height: 24),
+                if (state.downloadedBytes != null && state.totalBytes != null)
+                  Column(
                     children: [
-                      const ClinDiaryLogo(size: 88),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Preparing Gemma 4 E2B',
-                        style: theme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                        textAlign: TextAlign.center,
+                      LinearProgressIndicator(
+                        value: state.totalBytes! > 0
+                            ? state.downloadedBytes! / state.totalBytes!
+                            : null,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        state.message ??
-                            'ClinDiary is setting up the on-device model for the demo.',
-                        style: theme.bodyMedium,
-                        textAlign: TextAlign.center,
+                        '${state.downloadedBytes} / ${state.totalBytes} MB',
+                        style: theme.textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 20),
-                      if (state.isDownloading) ...[
-                        LinearProgressIndicator(value: progressFraction),
-                        const SizedBox(height: 12),
-                        Text(
-                          totalBytesLabel == null
-                              ? 'Downloaded $downloadedBytesLabel'
-                              : 'Downloaded $downloadedBytesLabel of $totalBytesLabel',
-                          style: theme.labelMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                      ] else if (state.isChecking) ...[
-                        const CircularProgressIndicator(),
-                      ] else ...[
-                        const Icon(Icons.memory_outlined, size: 44),
-                      ],
-                      if (state.modelDirectory != null) ...[
-                        const SizedBox(height: 16),
-                        _BootstrapInfoLine(
-                          label: 'Model directory',
-                          value: state.modelDirectory!,
-                        ),
-                      ],
-                      if (state.modelPath != null) ...[
-                        const SizedBox(height: 10),
-                        _BootstrapInfoLine(
-                          label: 'Model file',
-                          value: state.modelPath!,
-                        ),
-                      ],
-                      if (state.hasError && state.lastError != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          state.lastError!,
-                          style: theme.bodySmall?.copyWith(
-                            color: colorScheme.error,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      if (state.hasError)
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: () => onRetryDownload(),
-                              icon: const Icon(Icons.download_outlined),
-                              label: const Text('Retry download'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: onContinueAnyway,
-                              icon: const Icon(Icons.arrow_forward_outlined),
-                              label: const Text('Continue to app'),
-                            ),
-                          ],
-                        )
-                      else
-                        const Text(
-                          'Do not close the app while the model is being prepared.',
-                          textAlign: TextAlign.center,
-                        ),
                     ],
+                  )
+                else
+                  const CircularProgressIndicator(),
+              ],
+              if (state.phase == GemmaModelBootstrapPhase.error) ...[
+                const SizedBox(height: 16),
+                Text(
+                  state.lastError ?? '',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
                   ),
                 ),
-              ),
-            ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: onRetryDownload,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: onContinueAnyway,
+                  child: const Text('Continue without AI'),
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
-}
-
-class _BootstrapInfoLine extends StatelessWidget {
-  const _BootstrapInfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        SelectableText(value, style: theme.bodySmall),
-      ],
-    );
-  }
-}
-
-String _formatBytes(int bytes) {
-  if (bytes < 1024) {
-    return '$bytes B';
-  }
-  if (bytes < 1024 * 1024) {
-    return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  }
-  if (bytes < 1024 * 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
 }

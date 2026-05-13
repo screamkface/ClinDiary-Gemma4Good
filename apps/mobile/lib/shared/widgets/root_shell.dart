@@ -1,5 +1,5 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/app/core/notifications/gemma_download_notification_service.dart';
+import 'package:clindiary/app/core/notifications/app_route_notifier.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:flutter/material.dart';

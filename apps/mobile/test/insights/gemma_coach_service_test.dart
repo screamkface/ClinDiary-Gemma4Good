@@ -148,4 +148,128 @@ void main() {
       ).called(1);
     },
   );
+
+  test('answerQuestionStream yields tokens when prompt is available', () async {
+    final aiService = MockOnDeviceAiService();
+    final promptBuilder = MockOnDevicePromptBuilder();
+    final documentsRepository = MockDocumentsRepository();
+    final profileRepository = MockProfileRepository();
+    final dailyJournalRepository = MockDailyJournalRepository();
+    final alertsRepository = MockAlertsRepository();
+    final medicationsRepository = MockMedicationsRepository();
+    final timelineRepository = MockTimelineRepository();
+    final wearablesRepository = MockWearablesRepository();
+    final dossierRepository = MockDossierRepository();
+
+    const question = 'How is my clinical picture?';
+    final referenceDate = DateTime.utc(2026, 4, 5);
+    final prompt = OnDeviceTextPrompt(
+      contextType: 'clinical_question',
+      periodStart: referenceDate,
+      periodEnd: referenceDate,
+      systemPrompt: 'system',
+      userPrompt: 'user',
+      providerName: 'on_device_litertlm',
+      suggestedModelFamily: 'Gemma 4',
+      isCloudBypassedForThisRequest: true,
+    );
+
+    when(
+      () => promptBuilder.buildClinicalQuestionPrompt(
+        question: question,
+        referenceDate: referenceDate,
+      ),
+    ).thenAnswer((_) async => prompt);
+
+    final tokens = <String>['hello', ' ', 'world'];
+    when(
+      () => aiService.generateTextStream(
+        systemPrompt: any(named: 'systemPrompt'),
+        userPrompt: any(named: 'userPrompt'),
+      ),
+    ).thenAnswer((_) => Stream.fromIterable(tokens));
+
+    final service = GemmaCoachService(
+      onDeviceAiService: aiService,
+      onDevicePromptBuilder: promptBuilder,
+      documentsRepository: documentsRepository,
+      profileRepository: profileRepository,
+      dailyJournalRepository: dailyJournalRepository,
+      alertsRepository: alertsRepository,
+      medicationsRepository: medicationsRepository,
+      timelineRepository: timelineRepository,
+      wearablesRepository: wearablesRepository,
+      dossierRepository: dossierRepository,
+    );
+
+    final collected = await service
+        .answerQuestionStream(question: question, referenceDate: referenceDate)
+        .toList();
+
+    expect(collected, tokens);
+    verify(
+      () => aiService.generateTextStream(
+        systemPrompt: any(named: 'systemPrompt'),
+        userPrompt: any(named: 'userPrompt'),
+      ),
+    ).called(1);
+  });
+
+  test('explainTrendStream yields tokens when prompt is available', () async {
+    final aiService = MockOnDeviceAiService();
+    final promptBuilder = MockOnDevicePromptBuilder();
+    final documentsRepository = MockDocumentsRepository();
+    final profileRepository = MockProfileRepository();
+    final dailyJournalRepository = MockDailyJournalRepository();
+    final alertsRepository = MockAlertsRepository();
+    final medicationsRepository = MockMedicationsRepository();
+    final timelineRepository = MockTimelineRepository();
+    final wearablesRepository = MockWearablesRepository();
+    final dossierRepository = MockDossierRepository();
+
+    final referenceDate = DateTime.utc(2026, 4, 5);
+    final prompt = OnDeviceTextPrompt(
+      contextType: 'trend_explanation',
+      periodStart: referenceDate,
+      periodEnd: referenceDate,
+      systemPrompt: 'sys',
+      userPrompt: 'usr',
+      providerName: 'on_device_litertlm',
+      suggestedModelFamily: 'Gemma 4',
+      isCloudBypassedForThisRequest: true,
+    );
+
+    when(
+      () => promptBuilder.buildTrendExplanationPrompt(
+        referenceDate: referenceDate,
+      ),
+    ).thenAnswer((_) async => prompt);
+
+    final tokens = <String>['trend', ' ', 'result'];
+    when(
+      () => aiService.generateTextStream(
+        systemPrompt: any(named: 'systemPrompt'),
+        userPrompt: any(named: 'userPrompt'),
+      ),
+    ).thenAnswer((_) => Stream.fromIterable(tokens));
+
+    final service = GemmaCoachService(
+      onDeviceAiService: aiService,
+      onDevicePromptBuilder: promptBuilder,
+      documentsRepository: documentsRepository,
+      profileRepository: profileRepository,
+      dailyJournalRepository: dailyJournalRepository,
+      alertsRepository: alertsRepository,
+      medicationsRepository: medicationsRepository,
+      timelineRepository: timelineRepository,
+      wearablesRepository: wearablesRepository,
+      dossierRepository: dossierRepository,
+    );
+
+    final collected = await service
+        .explainTrendStream(referenceDate: referenceDate)
+        .toList();
+
+    expect(collected, tokens);
+  });
 }

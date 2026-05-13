@@ -1,11 +1,21 @@
 import 'package:clindiary/features/daily_journal/data/voice_check_in_assistant.dart';
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _StubOnDeviceAiService extends OnDeviceAiService {
   _StubOnDeviceAiService(this._response);
 
   final String _response;
+
+  @override
+  Future<Map<String, dynamic>> callFunction({
+    required String systemPrompt,
+    required String userMessage,
+    required List<Tool> tools,
+  }) async {
+    throw Exception('Fallback to prompt-based generation');
+  }
 
   @override
   Future<String> generateText({
@@ -44,6 +54,25 @@ void main() {
         draft.followUpQuestions,
         contains('Which symptom did you feel exactly?'),
       );
+    },
+  );
+
+  test(
+    'buildDraftFromTranscript uses function calling and falls back to text generation',
+    () async {
+      final stub = _StubOnDeviceAiService(
+        '{"entry_date": "2026-03-22", "general_notes": null, "follow_up_questions": [], "symptoms": []}',
+      );
+
+      final assistant = VoiceCheckInAssistant(onDeviceAiService: stub);
+
+      final draft = await assistant.buildDraftFromTranscript(
+        transcript: 'Feeling fine today.',
+        referenceDate: DateTime.utc(2026, 3, 22),
+      );
+
+      expect(draft.generalNotes, isNull);
+      expect(draft.entryDate, DateTime(2026, 3, 22));
     },
   );
 
