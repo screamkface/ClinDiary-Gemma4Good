@@ -9,6 +9,7 @@ import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:intl/intl.dart';
 
 class GemmaCenterScreen extends ConsumerStatefulWidget {
@@ -214,6 +215,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           return;
         }
         fullAnswer += token;
+        if (!mounted) return;
         setState(() {
           _replaceLastAssistantMessage(fullAnswer, isStreaming: true);
         });
@@ -770,6 +772,186 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     }
   }
 
+  Future<void> _showAiSettingsSheet(BuildContext context) async {
+    final service = ref.read(onDeviceAiServiceProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    var selectedBackend = service.preferredBackend;
+    var speculativeEnabled = service.enableSpeculativeDecoding;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.4,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Icon(Icons.tune_rounded, color: colorScheme.primary),
+                      const SizedBox(width: 10),
+                      Text(
+                        'AI Engine Settings',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Backend selection
+                  Text(
+                    'Backend',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...PreferredBackend.values.map((backend) {
+                    if (backend == PreferredBackend.npu)
+                      return const SizedBox.shrink();
+                    return RadioListTile<PreferredBackend>(
+                      value: backend,
+                      groupValue: selectedBackend,
+                      title: Text(_backendLabel(backend)),
+                      subtitle: Text(
+                        backend == PreferredBackend.gpu
+                            ? 'Accelerazione GPU (default)'
+                            : backend == PreferredBackend.cpu
+                            ? 'CPU-only, più lento ma compatibile'
+                            : '',
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setSheetState(() => selectedBackend = value);
+                        service.setPreferredBackend(value);
+                        ref.invalidate(onDeviceAiStatusProvider);
+                      },
+                    );
+                  }),
+
+                  // NPU row
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          service.npuAvailable == true
+                              ? Icons.check_circle
+                              : Icons.hourglass_empty,
+                          size: 20,
+                          color: service.npuAvailable == true
+                              ? Colors.green
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            service.npuAvailable == true
+                                ? 'NPU disponibile'
+                                : service.npuAvailable == false
+                                ? 'NPU non disponibile'
+                                : 'NPU — verifica disponibilità',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            setSheetState(() {});
+                            final available = await service
+                                .checkNpuAvailability();
+                            setSheetState(() {});
+                            if (available && ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                  content: Text('NPU disponibile!'),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Test NPU'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Divider(height: 32),
+
+                  // Speculative decoding toggle
+                  SwitchListTile(
+                    value: speculativeEnabled,
+                    onChanged: (value) {
+                      setSheetState(() => speculativeEnabled = value);
+                      service.setEnableSpeculativeDecoding(value);
+                      ref.invalidate(onDeviceAiStatusProvider);
+                    },
+                    title: const Text('Speculative Decoding (MTP)'),
+                    subtitle: const Text(
+                      'Generazione multi-token, più veloce su Gemma 4',
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                  ),
+
+                  const SizedBox(height: 8),
+                  Text(
+                    'Le modifiche si applicano alla prossima generazione.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (selectedBackend == PreferredBackend.npu) {
+      ref.invalidate(onDeviceAiStatusProvider);
+    }
+  }
+
+  String _backendLabel(PreferredBackend backend) {
+    return switch (backend) {
+      PreferredBackend.cpu => 'CPU',
+      PreferredBackend.gpu => 'GPU',
+      PreferredBackend.npu => 'NPU',
+    };
+  }
+
   Widget _buildHistorySection(
     AsyncValue<List<GemmaCenterHistoryEntry>> historyAsync,
   ) {
@@ -838,6 +1020,11 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                 ),
               ),
         actions: [
+          IconButton(
+            tooltip: 'AI Settings',
+            icon: const Icon(Icons.tune_rounded),
+            onPressed: () => _showAiSettingsSheet(context),
+          ),
           IconButton(
             tooltip: l10n.insightsRefresh,
             onPressed: () => ref.invalidate(onDeviceAiStatusProvider),

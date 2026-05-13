@@ -245,7 +245,7 @@ class _GemmaModelBootstrapView extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${state.downloadedBytes} / ${state.totalBytes} MB',
+                        '${state.downloadedBytes}%',
                         style: theme.textTheme.bodySmall,
                       ),
                     ],

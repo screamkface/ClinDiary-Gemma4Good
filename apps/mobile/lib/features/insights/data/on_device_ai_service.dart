@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as dev;
 import 'dart:io';
 
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
@@ -20,6 +21,76 @@ class OnDeviceAiService {
 
   InferenceModel? _currentModel;
   EmbeddingModel? _currentEmbedder;
+  PreferredBackend _preferredBackend = PreferredBackend.gpu;
+  bool _enableSpeculativeDecoding = true;
+  bool? _npuAvailable;
+
+  PreferredBackend get preferredBackend => _preferredBackend;
+  bool get enableSpeculativeDecoding => _enableSpeculativeDecoding;
+  bool? get npuAvailable => _npuAvailable;
+
+  Future<void> setPreferredBackend(PreferredBackend backend) async {
+    if (_preferredBackend == backend) return;
+    _preferredBackend = backend;
+    _currentModel = null;
+    await _closePluginCachedModel();
+  }
+
+  Future<void> setEnableSpeculativeDecoding(bool value) async {
+    if (_enableSpeculativeDecoding == value) return;
+    _enableSpeculativeDecoding = value;
+    _currentModel = null;
+    await _closePluginCachedModel();
+  }
+
+  Future<void> _closePluginCachedModel() async {
+    try {
+      final cached = FlutterGemmaPlugin.instance.initializedModel;
+      if (cached != null) await cached.close();
+    } catch (_) {}
+  }
+
+  Future<bool> checkNpuAvailability() async {
+    await _ensureInitialized();
+    try {
+      final plugin = FlutterGemmaPlugin.instance;
+      final manager = plugin.modelManager;
+
+      final tempSpec = InferenceModelSpec.fromLegacyUrl(
+        name: '_npu_check',
+        modelUrl: _modelDownloadUrl,
+        modelType: ModelType.gemma4,
+        fileType: ModelFileType.litertlm,
+        replacePolicy: ModelReplacePolicy.replace,
+      );
+
+      await _closePluginCachedModel();
+      _currentModel = null;
+      manager.setActiveModel(tempSpec);
+
+      final model = await plugin.createModel(
+        modelType: ModelType.gemma4,
+        fileType: ModelFileType.litertlm,
+        maxTokens: 1,
+        preferredBackend: PreferredBackend.npu,
+      );
+      await model.close();
+      _npuAvailable = true;
+      return true;
+    } catch (_) {
+      _npuAvailable = false;
+      return false;
+    } finally {
+      await _closePluginCachedModel();
+      _currentModel = null;
+      if (!FlutterGemma.hasActiveModel()) {
+        await FlutterGemma.installModel(
+          modelType: ModelType.gemma4,
+          fileType: ModelFileType.litertlm,
+        ).fromNetwork(_modelDownloadUrl).install();
+      }
+    }
+  }
 
   Future<void> _ensureInitialized() async {
     if (!_initialized) {
@@ -43,19 +114,24 @@ class OnDeviceAiService {
           isCloudBypassedForThisRequest: true,
         );
       }
-      final model = await FlutterGemma.getActiveModel(
-        maxTokens: 2048,
-        preferredBackend: PreferredBackend.gpu,
-        enableSpeculativeDecoding: true,
-      );
-      _currentModel = model;
+
+      // After app restart the active model spec is null because
+      // it's held in-memory by flutter_gemma and only set during install().
+      // Call install() to re-establish the spec (skips download when model exists).
+      if (!FlutterGemma.hasActiveModel()) {
+        await FlutterGemma.installModel(
+          modelType: ModelType.gemma4,
+          fileType: ModelFileType.litertlm,
+        ).fromNetwork(_modelDownloadUrl).install();
+      }
+
       return OnDeviceAiStatus(
         isSupported: true,
         isReady: true,
         runtime: 'flutter_gemma (LiteRT-LM)',
         provider: 'on_device_litertlm',
         activeProviderLabel: 'Gemma 4 On-device',
-        backendPreference: 'GPU',
+        backendPreference: _preferredBackend.name.toUpperCase(),
         modelName: _modelName,
         isCloudBypassedForThisRequest: true,
       );
@@ -117,6 +193,9 @@ class OnDeviceAiService {
     required String systemPrompt,
     required String userPrompt,
   }) {
+    dev.log('[GemmaTest] generateTextStream called');
+    dev.log('[GemmaTest] systemPrompt length=${systemPrompt.length}');
+    dev.log('[GemmaTest] userPrompt length=${userPrompt.length}');
     return _streamForPrompt(systemPrompt: systemPrompt, userPrompt: userPrompt);
   }
 
@@ -148,6 +227,7 @@ class OnDeviceAiService {
 
     await FlutterGemma.installModel(
       modelType: ModelType.gemma4,
+      fileType: ModelFileType.litertlm,
     ).fromFile(path).install();
 
     final installedPath = path;
@@ -229,10 +309,13 @@ class OnDeviceAiService {
 
     _getOrCreateModel()
         .then((model) async {
+          dev.log('[GemmaTest] model obtained, creating chat...');
           final chat = await model.createChat(systemInstruction: systemPrompt);
+          dev.log('[GemmaTest] chat created, adding query...');
           await chat.addQueryChunk(
             Message.text(text: userPrompt, isUser: true),
           );
+          dev.log('[GemmaTest] query added, generating...');
 
           var subscription = chat.generateChatResponseAsync().listen(
             (response) {
@@ -285,8 +368,8 @@ class OnDeviceAiService {
     if (_currentModel != null) return _currentModel!;
     final model = await FlutterGemma.getActiveModel(
       maxTokens: 4096,
-      preferredBackend: PreferredBackend.gpu,
-      enableSpeculativeDecoding: true,
+      preferredBackend: _preferredBackend,
+      enableSpeculativeDecoding: _enableSpeculativeDecoding,
     );
     _currentModel = model;
     return model;
