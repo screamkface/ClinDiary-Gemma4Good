@@ -5,12 +5,10 @@ import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/insights/presentation/on_device_model_screen.dart';
 import 'package:clindiary/shared/widgets/compact_segmented_control.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
-import 'package:clindiary/shared/widgets/feature_lock_card.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -143,10 +141,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     }
   }
 
-  void _openBilling(String featureCode) {
-    context.push('/app/home/billing?feature=$featureCode');
-  }
-
   Future<void> _copySummary(String content) async {
     await Clipboard.setData(ClipboardData(text: content));
     if (!mounted) {
@@ -200,7 +194,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final dayFormat = DateFormat('dd MMM yyyy', 'en_US');
     final colorScheme = Theme.of(context).colorScheme;
-    final requiredFeatureCode = _featureCodeForType(_summaryType);
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Recap'),
@@ -404,29 +397,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         ],
       ),
     );
-  }
-}
-
-String _featureCodeForType(String summaryType) {
-  switch (summaryType) {
-    case 'daily':
-      return 'ai_daily_summary';
-    case 'weekly':
-    case 'monthly':
-      return 'ai_periodic_summaries';
-    default:
-      return 'ai_previsit_summary';
-  }
-}
-
-String _featureLabel(String featureCode) {
-  switch (featureCode) {
-    case 'ai_daily_summary':
-      return 'Daily recap';
-    case 'ai_periodic_summaries':
-      return 'Weekly and monthly recap';
-    default:
-      return 'Pre-visit recap';
   }
 }
 

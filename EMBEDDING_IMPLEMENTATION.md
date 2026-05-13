@@ -1,17 +1,21 @@
-# Embedding Gemma Implementation in ClinDiary
+# Embedding Implementation in ClinDiary (Current)
 
 ## Overview
-**Embedding Gemma 300M** (via MediaPipe TextEmbedder) è integrato in ClinDiary per **semantic search** sui documenti locali. Fornisce embeddings vettoriali ad alta dimensione per il matching semantico tra domande e documenti clinici.
+**Gecko 110M** (via LiteRT-LM TextEmbedder) è integrato in ClinDiary per **semantic search** sui documenti locali. Fornisce embeddings vettoriali a 768 dimensioni per il matching semantico tra domande e documenti clinici.
 
 ## What We're Using
 
 ### Model Details
-- **Model**: `embeddinggemma-300m.tflite` (MediaPipe TextEmbedder compatible)
-- **File Size**: ~170 MB
-- **Location**: Bundled in `apps/mobile/assets/models/`
-- **Runtime**: Android MediaPipe Text Embedder
-- **Provider**: `on_device_mediapipe`
+- **Model**: `gecko-110m-en.tflite` (LiteRT-LM TextEmbedder compatible)
+- **Parameters**: ~110 million (110M)
+- **Source**: Hugging Face (`litert-community/Gecko-110m-en`)
+- **Runtime**: flutter_gemma / LiteRT-LM
+- **Provider**: `on_device_litertlm`
 - **Execution**: Entirely on-device, no cloud calls
+
+### Tokenizer
+- **File**: `tokenizer.model`
+- **Source**: Hugging Face (`litert-community/Gecko-110m-en`)
 
 ## How It's Used
 
@@ -21,14 +25,14 @@
 When a user asks a question in **"Chiedi ai file"** (Ask files), the flow is:
 
 ```dart
-// Line 202: Generate embedding for the question
+// Generate embedding for the question
 final questionEmbedding = await _onDeviceAiService.generateEmbedding(text: normalizedQuestion)
   .catchError((_) => <double>[]);
 
-// Lines 289-314: For each local document, generate its embedding
+// For each local document, generate its embedding
 final embedding = await _onDeviceAiService.generateEmbedding(text: corpus);
 
-// Lines 334+: Compute cosine similarity between question and document embeddings
+// Then compute cosine similarity between question and document embeddings
 score = _cosineSimilarity(questionEmbedding, documentEmbedding);
 
 // Sort documents by semantic similarity
@@ -41,7 +45,6 @@ ranked.sort((a, b) => b.score.compareTo(a.score));
 - Uses Gemma 4 to generate an answer from the retrieved context
 
 ### 2. Semantic Scoring Algorithm
-**File**: [lib/features/documents/data/documents_repository.dart](lib/features/documents/data/documents_repository.dart) (lines 334-376)
 
 For each document, a **hybrid score** is calculated:
 
@@ -69,79 +72,29 @@ Where `A` = question embedding, `B` = document embedding.
 
 ## Loading Strategy
 
-### Fallback Mechanism
-**File**: [lib/features/insights/data/on_device_ai_service.dart](lib/features/insights/data/on_device_ai_service.dart)
+The embedding model is downloaded at runtime from Hugging Face:
+- `https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/gecko-110m-en.tflite`
+- `https://huggingface.co/litert-community/Gecko-110m-en/resolve/main/tokenizer.model`
 
-The `downloadEmbeddingModel()` function now:
-
-1. **First attempts**: Load from bundled assets (`_copyEmbeddingModelFromAssets()`)
-   - ✅ Fast (~170 MB extracted from APK)
-   - ✅ No network dependency
-   - ✅ Avoids Hugging Face 401 auth errors
-
-2. **Fallback**: Download from Hugging Face if asset not present
-   - Downloads from: `https://huggingface.co/litert-community/embeddinggemma-300m/`
-   - Requires Hugging Face authentication token
-
-### Asset Bundle Configuration
-**File**: [pubspec.yaml](apps/mobile/pubspec.yaml)
-
-```yaml
-flutter:
-  assets:
-    - assets/legal/
-    - assets/models/  # ← includes embeddinggemma-300m.tflite
+Installation uses `flutter_gemma`:
+```dart
+await FlutterGemma.installEmbedder()
+    .modelFromNetwork(geckoModelUrl)
+    .tokenizerFromNetwork(geckoTokenizerUrl)
+    .install();
 ```
 
-## Android Runtime
-
-### MediaPipe Text Embedder
-**File**: [android/app/src/main/kotlin/it/clindiary/clindiary/OnDeviceEmbeddingRuntime.kt](android/app/src/main/kotlin/it/clindiary/clindiary/OnDeviceEmbeddingRuntime.kt)
-
-```kotlin
-// Creates a TextEmbedder from the .tflite model file
-private fun createEmbedder(modelFile: File): TextEmbedder {
-    val baseOptions = BaseOptions.builder()
-        .setModelAssetPath(modelFile.absolutePath)
-        .build()
-    
-    val options = TextEmbedder.TextEmbedderOptions.builder()
-        .setBaseOptions(baseOptions)
-        .build()
-    
-    return TextEmbedder.createFromOptions(context, options)
-}
-
-// Generates a vector embedding for text
-fun generateEmbedding(modelPath: String?, text: String): Map<String, Any?> {
-    val embedderInstance = ensureEmbedder(modelFile)
-    val result = embedderInstance.embed(text)
-    val embedding = result.embeddingResult().embeddings().firstOrNull()
-    
-    return mapOf(
-        "embedding" to embedding.floatEmbedding().toList(),
-        "model_name" to "embeddinggemma-300m",
-        "provider_name" to "on_device_mediapipe"
-    )
-}
-```
+The model is NOT bundled in the APK. It is downloaded on first use or installed upfront via `installGeckoEmbedding()`.
 
 ## Dart Service Integration
 
 **File**: [lib/features/insights/data/on_device_ai_service.dart](lib/features/insights/data/on_device_ai_service.dart)
 
 ```dart
-Future<List<double>> generateEmbedding({
-  required String text,
-  String? modelPath,
-}) async {
-  final response = await _invokePrompt('generateEmbedding', {
-    'text': text,
-    if (modelPath != null) 'modelPath': modelPath,
-  });
-  
-  final rawEmbedding = response['embedding'] as List<dynamic>;
-  return rawEmbedding.map((e) => (e as num).toDouble()).toList();
+Future<List<double>> generateEmbedding({required String text}) async {
+  await _ensureInitialized();
+  final embedder = await _getOrCreateEmbedder();
+  return embedder.generateEmbedding(text, taskType: TaskType.retrievalQuery);
 }
 ```
 
@@ -150,22 +103,17 @@ Future<List<double>> generateEmbedding({
 ```
 User asks question
     ↓
-1. Generate embedding for question (Embedding Gemma)
+1. Generate embedding for question (Gecko 110M via LiteRT-LM)
 2. For each local document:
    a. Extract clinical fragments (lab results, OCR, imaging)
-   b. Generate embedding for document (Embedding Gemma)
+   b. Generate embedding for document (Gecko 110M)
    c. Calculate cosine similarity
    d. Apply heuristic boosts (lab/imaging relevance)
 3. Rank documents by combined score
 4. Take top 3-8 most relevant
-5. Pass to Gemma 4 (LiteRT) with context
+5. Pass to Gemma 4 E2B (LiteRT-LM) with context
 6. Gemma 4 generates answer with citations
-7. Return DocumentQueryResult with:
-   - answer: Gemma 4 generated text
-   - citations: Top matched documents + excerpts
-   - providerName: "on_device_litertlm"
-   - embeddingModelName: "on_device_mediapipe"
-   - rerankerModelName: "local-semantic-ranker"
+7. Return DocumentQueryResult with citations
 ```
 
 ## Performance Notes
@@ -175,23 +123,11 @@ User asks question
 - **Caching**: Document embeddings are cached in local SQLite after first generation
 - **No Network**: All operations run locally on the device
 
-## UI Integration
-
-### Document Query Screen
-**File**: [lib/features/documents/presentation/document_query_screen.dart](lib/features/documents/presentation/document_query_screen.dart)
-
-Shows embedding model info in results:
-```dart
-if (_result!.embeddingModelName != null)
-  Chip(label: Text('Embedding: ${_result!.embeddingModelName}'))
-  // Displays: "Embedding: on_device_mediapipe"
-```
-
 ## Summary
 
 ✅ **What's implemented**:
-- Embedding Gemma 300M (MediaPipe) for semantic document search
-- Bundled in app assets (no download needed)
+- Gecko 110M (LiteRT-LM) for semantic document search
+- Downloaded at runtime from Hugging Face (not bundled in APK)
 - Cosine similarity matching for question-document relevance
 - Cache layer to avoid redundant embeddings
 - Hybrid scoring (semantic + keyword fallback)
@@ -199,11 +135,9 @@ if (_result!.embeddingModelName != null)
 
 ✅ **Security & Privacy**:
 - No embeddings or documents sent to external servers
-- All computation happens on Android device
-- Embedded in encrypted local SQLite database
+- All computation happens on device
 - Patient data remains on device
 
 ✅ **Failure handling**:
 - If embedding generation fails → falls back to keyword search
 - Gracefully degrades to title/type matching
-- User can still get answers, just with lower accuracy

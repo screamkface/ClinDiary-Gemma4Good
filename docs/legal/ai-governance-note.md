@@ -28,7 +28,7 @@ Nel checkout pubblico corrente queste funzioni sono progettate per il flusso mob
 
 - provider generazione Android: `on_device_litertlm`
 - modello target: `gemma-4-E2B-it.litertlm`
-- embeddings documentali locali: `embeddinggemma-300m.tflite` dove disponibile
+- embeddings documentali locali: `Gecko-110m-en` via LiteRT-LM TextEmbedder
 - fallback: `rule_based` / fallback locale prudente
 
 Provider cloud, Regolo o pipeline backend non sono parte del flusso pubblico corrente salvo ripristino esplicito di sorgenti backend e contratti/vendor pack.

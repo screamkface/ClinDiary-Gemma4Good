@@ -5,6 +5,7 @@ import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/insights/domain/gemma_center_history_entry.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/generation_phase_label.dart';
+import 'package:clindiary/shared/widgets/chat_markdown_text.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -833,30 +834,65 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...PreferredBackend.values.map((backend) {
-                    if (backend == PreferredBackend.npu)
-                      return const SizedBox.shrink();
-                    return RadioListTile<PreferredBackend>(
-                      value: backend,
-                      groupValue: selectedBackend,
-                      title: Text(_backendLabel(backend)),
-                      subtitle: Text(
-                        backend == PreferredBackend.gpu
-                            ? 'Accelerazione GPU (default)'
-                            : backend == PreferredBackend.cpu
-                            ? 'CPU-only, più lento ma compatibile'
-                            : '',
-                      ),
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setSheetState(() => selectedBackend = value);
-                        service.setPreferredBackend(value);
-                        ref.invalidate(onDeviceAiStatusProvider);
-                      },
-                    );
-                  }),
+                  ...PreferredBackend.values
+                      .where((b) => b != PreferredBackend.npu)
+                      .map((backend) {
+                        final selected = selectedBackend == backend;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              setSheetState(() => selectedBackend = backend);
+                              service.setPreferredBackend(backend);
+                              ref.invalidate(onDeviceAiStatusProvider);
+                            },
+                            child: Row(
+                              children: [
+                                Radio<PreferredBackend>(
+                                  value: backend,
+                                  groupValue: selectedBackend,
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setSheetState(
+                                      () => selectedBackend = value,
+                                    );
+                                    service.setPreferredBackend(value);
+                                    ref.invalidate(onDeviceAiStatusProvider);
+                                  },
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _backendLabel(backend),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: selected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w400,
+                                            ),
+                                      ),
+                                      Text(
+                                        backend == PreferredBackend.gpu
+                                            ? 'Accelerazione GPU (default)'
+                                            : 'CPU-only, più lento ma compatibile',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
 
                   // NPU row
                   Padding(
@@ -938,10 +974,6 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         );
       },
     );
-
-    if (selectedBackend == PreferredBackend.npu) {
-      ref.invalidate(onDeviceAiStatusProvider);
-    }
   }
 
   String _backendLabel(PreferredBackend backend) {
@@ -1246,7 +1278,7 @@ class _GemmaChatBubble extends StatelessWidget {
                   ),
                 )
               else
-                _MarkdownBubbleText(text: message.text, foreground: foreground),
+                ChatMarkdownText(text: message.text, foreground: foreground),
             ],
           ),
         ),
@@ -1337,98 +1369,6 @@ class _GemmaThinkingTileState extends State<_GemmaThinkingTile> {
       ),
     );
   }
-}
-
-class _MarkdownBubbleText extends StatelessWidget {
-  const _MarkdownBubbleText({required this.text, required this.foreground});
-
-  final String text;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final baseStyle =
-        Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: foreground, height: 1.42) ??
-        const TextStyle();
-
-    return SelectableText.rich(
-      TextSpan(
-        style: baseStyle,
-        children: _bubbleInlineSpans(text, baseStyle, colorScheme),
-      ),
-    );
-  }
-}
-
-List<InlineSpan> _bubbleInlineSpans(
-  String text,
-  TextStyle baseStyle,
-  ColorScheme colorScheme,
-) {
-  final spans = <InlineSpan>[];
-  final pattern = RegExp(
-    r'(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)',
-  );
-  var lastEnd = 0;
-
-  for (final match in pattern.allMatches(text)) {
-    if (match.start > lastEnd) {
-      spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
-    }
-
-    final boldItalic = match.group(2);
-    final bold = match.group(3);
-    final italic = match.group(4);
-    final code = match.group(5);
-
-    if (boldItalic != null) {
-      spans.add(
-        TextSpan(
-          text: boldItalic,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      );
-    } else if (bold != null) {
-      spans.add(
-        TextSpan(
-          text: bold,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-      );
-    } else if (italic != null) {
-      spans.add(
-        TextSpan(
-          text: italic,
-          style: const TextStyle(fontStyle: FontStyle.italic),
-        ),
-      );
-    } else if (code != null) {
-      spans.add(
-        TextSpan(
-          text: code,
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: baseStyle.fontSize != null ? baseStyle.fontSize! - 1 : 12,
-            color: colorScheme.primary,
-          ),
-        ),
-      );
-    }
-
-    lastEnd = match.end;
-  }
-
-  if (lastEnd < text.length) {
-    spans.add(TextSpan(text: text.substring(lastEnd)));
-  }
-
-  return spans;
 }
 
 class _GemmaTypingDots extends StatefulWidget {

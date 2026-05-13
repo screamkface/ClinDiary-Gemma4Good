@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -172,17 +173,17 @@ class DocumentsRepository {
     );
   }
 
-  /// Query local documents using semantic search with Embedding Gemma 300M.
+  /// Query local documents using semantic search with Gecko 110M.
   ///
   /// Flow:
-  /// 1. Generate embedding for user question using Embedding Gemma 300M (MediaPipe TextEmbedder)
+  /// 1. Generate embedding for user question using Gecko 110M (LiteRT-LM TextEmbedder)
   /// 2. For each local document: extract clinical fragments and generate embedding
   /// 3. Rank documents by cosine similarity between question and document embeddings
   /// 4. Pass top 3-8 most relevant documents to Gemma 4 (LiteRT) for answer generation
   /// 5. Return DocumentQueryResult with answer and citations
   ///
   /// Models used:
-  /// - Embedding: Embedding Gemma 300M via MediaPipe (on_device_mediapipe)
+  /// - Embedding: Gecko 110M via LiteRT-LM (on_device_litertlm)
   /// - Generation: Gemma 4 E2B via LiteRT (on_device_litertlm)
   /// - Ranking: Local cosine similarity + heuristics (local-semantic-ranker)
   ///
@@ -272,7 +273,7 @@ class DocumentsRepository {
         citations: const [],
         providerName: 'on_device_litertlm',
         modelName: 'gemma-4-E2B-it.litertlm',
-        embeddingModelName: 'embeddinggemma-300m',
+        embeddingModelName: 'gecko-110m-en',
         rerankerModelName: 'local-semantic-ranker',
         retrievedChunks: 0,
         retrievedDocuments: 0,
@@ -312,7 +313,7 @@ class DocumentsRepository {
       citations: citations,
       providerName: 'on_device_litertlm',
       modelName: 'gemma-4-E2B-it.litertlm',
-      embeddingModelName: 'embeddinggemma-300m',
+      embeddingModelName: 'gecko-110m-en',
       rerankerModelName: 'local-semantic-ranker',
       retrievedChunks: limited.length,
       retrievedDocuments: limited.map((item) => item.summary.id).toSet().length,
@@ -324,13 +325,13 @@ class DocumentsRepository {
     );
   }
 
-  /// Generate embedding vector for clinical document using Embedding Gemma 300M.
+  /// Generate embedding vector for clinical document using Gecko 110M.
   ///
   /// Extracts clinical fragments (title, OCR, lab results, imaging reports) and
-  /// generates a semantic embedding using Embedding Gemma 300M via MediaPipe TextEmbedder.
+  /// generates a semantic embedding using Gecko 110M via LiteRT-LM TextEmbedder.
   /// Results are cached in local SQLite to avoid redundant computation.
   ///
-  /// Model: Embedding Gemma 300M (300-dimensional dense vectors)
+  /// Model: Gecko 110M (768-dimensional dense vectors)
   /// Provider: MediaPipe Text Embedder (on-device, no network)
   /// Cache: SQLite with key 'doc_embed_{documentId}'
   Future<List<double>> _getDocumentEmbedding(
@@ -372,7 +373,7 @@ class DocumentsRepository {
     }
   }
 
-  /// Compute cosine similarity between two Embedding Gemma 300M vectors.
+  /// Compute cosine similarity between two Gecko 110M vectors.
   ///
   /// Formula: similarity(A, B) = (A · B) / (||A|| × ||B||)
   /// Range: 0.0 (orthogonal/dissimilar) to 1.0 (identical)
@@ -393,10 +394,10 @@ class DocumentsRepository {
     return dotProduct / (sqrt(normA) * sqrt(normB));
   }
 
-  /// Build a ranked candidate document for local query using Embedding Gemma 300M.
+  /// Build a ranked candidate document for local query using Gecko 110M.
   ///
   /// Scoring strategy:
-  /// 1. PRIMARY: Semantic search using Embedding Gemma 300M
+  /// 1. PRIMARY: Semantic search using Gecko 110M
   ///    - Generate embeddings for both question and document
   ///    - Compute cosine similarity (0.0 to 1.0)
   /// 2. FALLBACK: If embeddings fail, use keyword matching
@@ -412,7 +413,7 @@ class DocumentsRepository {
   ) async {
     var score = 0.0;
 
-    // Semantic search using Embedding Gemma 300M
+    // Semantic search using Gecko 110M
     if (questionEmbedding.isNotEmpty) {
       final documentEmbedding = await _getDocumentEmbedding(detail);
       score = _cosineSimilarity(questionEmbedding, documentEmbedding);
@@ -526,6 +527,172 @@ class DocumentsRepository {
     }
   }
 
+  /// Same as [queryDocuments] but streams answer tokens in real time.
+  /// The returned [QueryDocumentsStreamResult.result] completes once streaming finishes.
+  Future<QueryDocumentsStreamResult> queryDocumentsStream({
+    required String question,
+    String? folderId,
+  }) async {
+    final normalizedQuestion = question.trim();
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
+
+    // Phase 1: embedding, ranking, prompt building (no streaming)
+    final candidates = await _rankLocalDocuments(
+      question: normalizedQuestion,
+      folderId: folderId,
+      languageCode: languageCode,
+    );
+
+    if (candidates.isEmpty) {
+      return QueryDocumentsStreamResult.identity(
+        answer: languageCode == 'it'
+            ? 'Non ci sono ancora documenti disponibili.'
+            : 'No local documents are available yet.',
+        languageCode: languageCode,
+      );
+    }
+
+    // Build the prompt
+    final context = candidates
+        .asMap()
+        .entries
+        .map(
+          (entry) =>
+              '[${entry.key + 1}] ${entry.value.summary.title}: ${entry.value.excerpt}',
+        )
+        .join('\n\n');
+
+    final isItalian = isItalianLanguageCode(languageCode);
+    final systemPrompt = isItalian
+        ? 'Sei un assistente clinico prudente. Usa solo il contesto dei documenti locali fornito. Non inventare dati e segnala chiaramente l\'incertezza quando le informazioni sono incomplete. Quando vedi valori segnati con [ABNORMAL] o intervalli di riferimento come (ref: 70-100), devi indicarli esplicitamente come fuori intervallo. Se l\'utente chiede valori alterati o fuori range, elencali in modo chiaro. Non dire "nessun valore alterato" se i documenti contengono valori marcati [ABNORMAL].'
+        : 'You are a careful clinical assistant. Use only the provided local document context. Do not invent data, and clearly mention uncertainty when information is incomplete. When you see lab values marked with [ABNORMAL] or reference ranges like (ref: 70-100), you MUST identify and clearly report these as out-of-range values in your answer. If the user asks about abnormal/out-of-range values, explicitly list which values are abnormal. Do not say "no abnormal values" if the documents contain values marked [ABNORMAL].';
+    final userPrompt = isItalian
+        ? 'Domanda: $question\n\n'
+              'Contesto dei documenti locali:\n$context\n\n'
+              'IMPORTANTE: I valori di laboratorio marcati con [ABNORMAL] sono fuori intervallo. Gli intervalli di riferimento sono mostrati come (ref: min-max). Se la domanda riguarda valori alterati o fuori range, riportali sempre in modo esplicito.\n\n'
+              'Scrivi una risposta concisa in italiano.\n'
+              'Usa esattamente queste righe:\n'
+              'Risposta diretta: ...\n'
+              'Punti chiave: ...\n'
+              'Nota di cautela: ...'
+        : 'Question: $question\n\n'
+              'Local document context:\n$context\n\n'
+              'IMPORTANT: Lab values marked with [ABNORMAL] are out of range. Reference ranges are shown as (ref: min-max). If the question asks about abnormal/out-of-range values, always explicitly report them.\n\n'
+              'Write a concise answer in English.\n'
+              'Use exactly these lines:\n'
+              'Direct answer: ...\n'
+              'Key findings: ...\n'
+              'Caution: ...';
+
+    // Phase 2: stream answer from the LLM
+    final answerController = StreamController<String>();
+    final resultCompleter = Completer<DocumentQueryResult>();
+
+    _onDeviceAiService
+        .generateTextStream(systemPrompt: systemPrompt, userPrompt: userPrompt)
+        .listen(
+          (token) => answerController.add(token),
+          onDone: () async {
+            answerController.close();
+            // Build result and build citations
+            final limited = candidates.take(3).toList();
+            final citations = limited
+                .map(
+                  (c) => DocumentQueryCitation(
+                    documentId: c.summary.id,
+                    documentTitle: c.summary.title,
+                    documentType: c.summary.documentType,
+                    folderName: c.summary.folderName,
+                    examDate: c.summary.examDate,
+                    chunkKind: c.chunkKind,
+                    chunkLabel: c.chunkLabel,
+                    excerpt: c.excerpt,
+                    score: c.score,
+                    viewerUrl: c.detail.viewerUrl,
+                  ),
+                )
+                .toList();
+            resultCompleter.complete(
+              DocumentQueryResult(
+                answer: '',
+                citations: citations,
+                providerName: 'on_device_litertlm',
+                modelName: 'gemma-4-E2B-it.litertlm',
+                embeddingModelName: 'gecko-110m-en',
+                rerankerModelName: 'local-semantic-ranker',
+                retrievedChunks: limited.length,
+                retrievedDocuments: limited
+                    .map((item) => item.summary.id)
+                    .toSet()
+                    .length,
+                searchScopeLabel: folderId == null
+                    ? (isItalian ? 'Tutto l\'archivio' : 'Entire archive')
+                    : (isItalian ? 'Cartella selezionata' : 'Selected folder'),
+                coverageNote: isItalian
+                    ? 'Risposta generata da estratti locali dei documenti.'
+                    : 'Answer generated from local encrypted document snippets.',
+                usedFallback: false,
+              ),
+            );
+          },
+          onError: (error) {
+            answerController.addError(error);
+            resultCompleter.completeError(error);
+          },
+        );
+
+    return QueryDocumentsStreamResult(
+      answerStream: answerController.stream,
+      result: resultCompleter.future,
+    );
+  }
+
+  /// Embedding + ranking phase (shared between streaming and non-streaming paths).
+  Future<List<_LocalQueryCandidate>> _rankLocalDocuments({
+    required String question,
+    String? folderId,
+    required String languageCode,
+  }) async {
+    final scope = await _resolveLocalScope();
+    final archive = await _localVaultService.fetchArchiveForScope(
+      userScopeId: scope.userId,
+      profileScopeId: scope.profileId,
+      folderId: folderId,
+      query: null,
+    );
+
+    final localDocuments = archive.documents
+        .where((item) => item.isLocal)
+        .toList();
+    if (localDocuments.isEmpty) return [];
+
+    final questionEmbedding = await _onDeviceAiService
+        .generateEmbedding(text: question)
+        .catchError((_) => <double>[]);
+
+    final ranked = <_LocalQueryCandidate>[];
+    for (final summary in localDocuments) {
+      final detail = await fetchDocumentDetail(summary.id);
+      final candidate = await _buildLocalQueryCandidate(
+        summary,
+        detail,
+        question,
+        questionEmbedding,
+      );
+      if (candidate.score > 0) {
+        ranked.add(candidate);
+      }
+    }
+
+    ranked.sort((a, b) {
+      final scoreOrder = b.score.compareTo(a.score);
+      if (scoreOrder != 0) return scoreOrder;
+      return b.summary.uploadDate.compareTo(a.summary.uploadDate);
+    });
+
+    return ranked.take(8).toList();
+  }
+
   Future<_LocalVaultScope> _resolveLocalScope() async {
     final userId =
         await _localDatabase.readCache(activeUserIdCacheKey) ?? 'anonymous';
@@ -591,4 +758,45 @@ class _LocalVaultScope {
 
   final String userId;
   final String? profileId;
+}
+
+class QueryDocumentsStreamResult {
+  const QueryDocumentsStreamResult({
+    required this.answerStream,
+    required this.result,
+  });
+
+  factory QueryDocumentsStreamResult.identity({
+    required String answer,
+    required String languageCode,
+  }) {
+    final controller = StreamController<String>();
+    controller.add(answer);
+    controller.close();
+    return QueryDocumentsStreamResult(
+      answerStream: controller.stream,
+      result: Future.value(
+        DocumentQueryResult(
+          answer: answer,
+          citations: const [],
+          providerName: 'on_device_litertlm',
+          modelName: 'gemma-4-E2B-it.litertlm',
+          embeddingModelName: 'gecko-110m-en',
+          rerankerModelName: 'local-heuristic-ranker',
+          retrievedChunks: 0,
+          retrievedDocuments: 0,
+          searchScopeLabel: languageCode == 'it'
+              ? 'Tutto l\'archivio'
+              : 'Entire archive',
+          coverageNote: languageCode == 'it'
+              ? 'Nessun documento utile trovato.'
+              : 'No matching local documents found.',
+          usedFallback: true,
+        ),
+      ),
+    );
+  }
+
+  final Stream<String> answerStream;
+  final Future<DocumentQueryResult> result;
 }

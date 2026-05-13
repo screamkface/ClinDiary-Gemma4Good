@@ -99,7 +99,7 @@ The app supports on-device AI via the `flutter_gemma` package (Dart API over Lit
 - The Gemma `.litertlm` model is not committed as a bundled repository asset by default
 - The app can import a `.litertlm` model, download it from the supported Hugging Face source, or use a manually provisioned device model
 - The expected Android model directory is `/sdcard/Android/data/it.clindiary.clindiary/files/models/`
-- The bundled embedding asset is `apps/mobile/assets/models/embeddinggemma-300m.tflite`
+- The bundled embedding asset is `apps/mobile/assets/models/embeddinggemma-300m.tflite` (note: the actual model used at runtime is Gecko-110m-en downloaded from Hugging Face; the older `embeddinggemma-300m` asset path is historical and the directory is currently empty)
 - Local embeddings support document retrieval/Q&A flows; do not describe the current public repo as Regolo/PostgreSQL/reranker-backed
 
 Safety boundaries:

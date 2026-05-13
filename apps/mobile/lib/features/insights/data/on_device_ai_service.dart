@@ -420,15 +420,7 @@ class OnDeviceAiService {
   }
 
   Future<void> _removeModelFiles() async {
-    try {
-      await _currentModel?.close();
-    } catch (_) {}
-    _currentModel = null;
-    try {
-      await _currentEmbedder?.close();
-    } catch (_) {}
-    _currentEmbedder = null;
-
+    await _resetRuntime();
     try {
       final dir = Directory(
         '/sdcard/Android/data/it.clindiary.clindiary/files/models',

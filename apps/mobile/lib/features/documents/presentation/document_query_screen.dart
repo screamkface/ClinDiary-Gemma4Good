@@ -6,6 +6,7 @@ import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_query_history_entry.dart';
 import 'package:clindiary/features/documents/presentation/document_ui.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
+import 'package:clindiary/shared/widgets/chat_markdown_text.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -41,7 +42,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
   bool _isReindexing = false;
   String? _errorMessage;
   List<_DocumentChatMessage> _messages = const <_DocumentChatMessage>[];
-  Timer? _answerStreamingTimer;
+  StreamSubscription<String>? _answerStreamSub;
   bool _chatAutoSnapEnabled = true;
 
   String? get _folderId => widget.initialFolderId;
@@ -55,7 +56,7 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
 
   @override
   void dispose() {
-    _answerStreamingTimer?.cancel();
+    _answerStreamSub?.cancel();
     _chatScrollController.dispose();
     _questionController.dispose();
     super.dispose();
@@ -82,78 +83,82 @@ class _DocumentQueryScreenState extends ConsumerState<DocumentQueryScreen> {
       ];
     });
     _scrollChatToBottom();
-    var streamingStarted = false;
 
     try {
-      final result = await ref
+      _answerStreamSub?.cancel();
+      final streamResult = await ref
           .read(documentsRepositoryProvider)
-          .queryDocuments(question: question, folderId: _folderId);
-      if (!mounted) {
-        return;
-      }
+          .queryDocumentsStream(question: question, folderId: _folderId);
+      if (!mounted) return;
 
-      // Save to history
-      final historyEntry = DocumentQueryHistoryEntry.fromQueryResult(
-        question: question,
-        result: result,
-      );
-      unawaited(
-        ref
-            .read(documentQueryHistoryStoreProvider)
-            .appendEntry(historyEntry)
-            .catchError((_) {
-              // Query results should remain visible even if the local history cache is unavailable.
-            }),
-      );
+      var fullAnswer = '';
+      _answerStreamSub = streamResult.answerStream.listen(
+        (token) {
+          if (!mounted) return;
+          fullAnswer += token;
+          setState(() {
+            _replaceLastAssistantMessage(fullAnswer, isStreaming: true);
+          });
+          _scrollChatToBottom();
+        },
+        onDone: () async {
+          if (!mounted) return;
+          final result = await streamResult.result;
+          if (!mounted) return;
 
-      setState(() => _result = result);
-      streamingStarted = true;
-      _streamAnswer(result.answer);
+          setState(() {
+            _replaceLastAssistantMessage(fullAnswer, isStreaming: false);
+            _result = result;
+            _isSubmitting = false;
+          });
+
+          // Save to history
+          final historyEntry = DocumentQueryHistoryEntry.fromQueryResult(
+            question: question,
+            result: DocumentQueryResult(
+              answer: fullAnswer,
+              citations: result.citations,
+              providerName: result.providerName,
+              modelName: result.modelName,
+              embeddingModelName: result.embeddingModelName,
+              rerankerModelName: result.rerankerModelName,
+              retrievedChunks: result.retrievedChunks,
+              retrievedDocuments: result.retrievedDocuments,
+              searchScopeLabel: result.searchScopeLabel,
+              coverageNote: result.coverageNote,
+              usedFallback: result.usedFallback,
+            ),
+          );
+          unawaited(
+            ref
+                .read(documentQueryHistoryStoreProvider)
+                .appendEntry(historyEntry)
+                .catchError((_) {}),
+          );
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _errorMessage = error.toString();
+            _replaceLastAssistantMessage(
+              l10n.documentsCouldNotReadFilesTryAgain,
+              isStreaming: false,
+            );
+            _isSubmitting = false;
+          });
+        },
+      );
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.toString();
         _replaceLastAssistantMessage(
           l10n.documentsCouldNotReadFilesTryAgain,
           isStreaming: false,
         );
+        _isSubmitting = false;
       });
-    } finally {
-      if (mounted && !streamingStarted) {
-        setState(() => _isSubmitting = false);
-      }
     }
-  }
-
-  void _streamAnswer(String answer) {
-    _answerStreamingTimer?.cancel();
-    var index = 0;
-    final chunkSize = answer.length > 900 ? 10 : 5;
-    _answerStreamingTimer = Timer.periodic(const Duration(milliseconds: 24), (
-      timer,
-    ) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      index = (index + chunkSize).clamp(0, answer.length);
-      final completed = index >= answer.length;
-      setState(() {
-        _replaceLastAssistantMessage(
-          answer.substring(0, index),
-          isStreaming: !completed,
-        );
-        if (completed) {
-          _isSubmitting = false;
-        }
-      });
-      _scrollChatToBottom();
-      if (completed) {
-        timer.cancel();
-      }
-    });
   }
 
   void _replaceLastAssistantMessage(String text, {required bool isStreaming}) {
@@ -489,6 +494,11 @@ class _DocumentChatPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
+    final chatHeight = (MediaQuery.of(context).size.height * 0.35).clamp(
+      240.0,
+      400.0,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -497,7 +507,7 @@ class _DocumentChatPanel extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: isDark
               ? const [Color(0xFF202544), Color(0xFF15192B)]
-              : const [Color(0xFFF0F2FF), Color(0xFFEFFFF9)],
+              : const [Color(0xFFF0F2FF), Color(0xFFFFF4EF)],
         ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: colorScheme.outlineVariant),
@@ -560,7 +570,7 @@ class _DocumentChatPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Container(
-            height: 320,
+            height: chatHeight,
             decoration: BoxDecoration(
               color: colorScheme.surface.withValues(
                 alpha: isDark ? 0.62 : 0.78,
@@ -729,13 +739,15 @@ class _DocumentChatBubble extends StatelessWidget {
           ),
           child: message.isStreaming && message.text.isEmpty
               ? const _DocumentTypingDots()
-              : SelectableText(
+              : message.isStreaming || message.isUser
+              ? SelectableText(
                   message.isStreaming ? '${message.text}|' : message.text,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: foreground,
                     height: 1.42,
                   ),
-                ),
+                )
+              : ChatMarkdownText(text: message.text, foreground: foreground),
         ),
       ),
     );

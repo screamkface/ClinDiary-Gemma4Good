@@ -7294,7 +7294,7 @@
   "@settingsWhatAiCanSee": {
     "description": "Title text (lib/features/settings/presentation/privacy_ai_screen.dart:216)"
   },
-  "settingsWhenYouAskQuestionsAboutYour": "When you ask questions about your documents, the app uses Embedding Gemma 300M (via MediaPipe TextEmbedder) to understand semantic meaning. The embedding model runs entirely on-device — your question and document context are never sent to external servers. Results are ranked locally and passed to Gemma 4 for answer generation with citations.",
+  "settingsWhenYouAskQuestionsAboutYour": "When you ask questions about your documents, the app uses Gecko 110M (via LiteRT-LM TextEmbedder) to understand semantic meaning. The embedding model runs entirely on-device — your question and document context are never sent to external servers. Results are ranked locally and passed to Gemma 4 for answer generation with citations.",
   "@settingsWhenYouAskQuestionsAboutYour": {
     "description": "User-facing UI text (lib/features/settings/presentation/privacy_ai_screen.dart:297)"
   },

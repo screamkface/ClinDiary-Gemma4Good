@@ -287,14 +287,14 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(label: Text('Embedding: Gemma 300M')),
-                        Chip(label: Text('Provider: MediaPipe')),
+                        Chip(label: Text('Embedding: Gecko 110M')),
+                        Chip(label: Text('Provider: LiteRT-LM')),
                         Chip(label: Text('Ranking: On-device')),
                       ],
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'When you ask questions about your documents, the app uses Embedding Gemma 300M (via MediaPipe TextEmbedder) to understand semantic meaning. The embedding model runs entirely on-device — your question and document context are never sent to external servers. Results are ranked locally and passed to Gemma 4 for answer generation with citations.',
+                      'When you ask questions about your documents, the app uses Gecko 110M (via LiteRT-LM TextEmbedder) to understand semantic meaning. The embedding model runs entirely on-device — your question and document context are never sent to external servers. Results are ranked locally and passed to Gemma 4 for answer generation with citations.',
                     ),
                   ],
                 ),

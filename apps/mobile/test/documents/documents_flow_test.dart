@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/data/document_picker_service.dart';
 import 'package:clindiary/features/documents/data/documents_repository.dart';
@@ -528,38 +530,47 @@ void main() {
     final repository = MockDocumentsRepository();
 
     when(
-      () => repository.queryDocuments(
+      () => repository.queryDocumentsStream(
         question: any(named: 'question'),
         folderId: any(named: 'folderId'),
-        topK: any(named: 'topK'),
       ),
-    ).thenAnswer(
-      (_) async => DocumentQueryResult(
-        answer:
-            'Recent reports: creatinine is elevated in a recent document [1].',
-        citations: const [
-          DocumentQueryCitation(
-            documentId: 'doc-42',
-            documentTitle: 'April labs',
-            documentType: 'lab_report',
-            folderName: 'Labs 2026',
-            chunkKind: 'lab_panel',
-            chunkLabel: 'Lab panel',
-            excerpt: 'Creatinine: 1.6 mg/dL range 0.7-1.2 out of range',
-            score: 0.92,
+    ).thenAnswer((_) async {
+      final ctrl = StreamController<String>();
+      ctrl.add(
+        'Recent reports: creatinine is elevated in a recent document [1].',
+      );
+      unawaited(ctrl.close());
+      return QueryDocumentsStreamResult(
+        answerStream: ctrl.stream,
+        result: Future.value(
+          DocumentQueryResult(
+            answer:
+                'Recent reports: creatinine is elevated in a recent document [1].',
+            citations: const [
+              DocumentQueryCitation(
+                documentId: 'doc-42',
+                documentTitle: 'April labs',
+                documentType: 'lab_report',
+                folderName: 'Labs 2026',
+                chunkKind: 'lab_panel',
+                chunkLabel: 'Lab panel',
+                excerpt: 'Creatinine: 1.6 mg/dL range 0.7-1.2 out of range',
+                score: 0.92,
+              ),
+            ],
+            providerName: 'regolo_ai',
+            modelName: 'qwen3-8b',
+            embeddingModelName: 'qwen3-embedding-8b',
+            rerankerModelName: 'qwen3-reranker-4b',
+            retrievedChunks: 1,
+            retrievedDocuments: 1,
+            searchScopeLabel: 'Folder: Labs',
+            coverageNote: '1 document and 1 passage used for the answer.',
+            usedFallback: false,
           ),
-        ],
-        providerName: 'regolo_ai',
-        modelName: 'qwen3-8b',
-        embeddingModelName: 'qwen3-embedding-8b',
-        rerankerModelName: 'qwen3-reranker-4b',
-        retrievedChunks: 1,
-        retrievedDocuments: 1,
-        searchScopeLabel: 'Folder: Labs',
-        coverageNote: '1 document and 1 passage used for the answer.',
-        usedFallback: false,
-      ),
-    );
+        ),
+      );
+    });
     when(() => repository.reindexDocuments()).thenAnswer((_) async => 3);
 
     final router = GoRouter(
@@ -609,10 +620,9 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => repository.queryDocuments(
+      () => repository.queryDocumentsStream(
         question: 'Are there out-of-range values?',
         folderId: 'folder-1',
-        topK: null,
       ),
     ).called(1);
     expect(find.textContaining('creatinine is elevated'), findsOneWidget);
