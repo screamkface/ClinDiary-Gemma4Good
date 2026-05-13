@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/dossier/data/dossier_repository.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -19,57 +18,8 @@ class PrivacyAiScreen extends ConsumerStatefulWidget {
 }
 
 class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
-  bool _savingAiPrivacy = false;
   bool _exporting = false;
   bool _deletingAccount = false;
-
-  Future<void> _updateAiPrivacy(bool enabled) async {
-    if (_savingAiPrivacy) {
-      return;
-    }
-
-    setState(() => _savingAiPrivacy = true);
-    try {
-      final bundle = await ref
-          .read(profileRepositoryProvider)
-          .updateAiPrivacyConsent(enabled);
-      final currentSession = ref.read(authControllerProvider).valueOrNull;
-      if (currentSession != null) {
-        await ref
-            .read(authControllerProvider.notifier)
-            .updateUser(
-              currentSession.user.copyWith(
-                aiExternalConsent: bundle.onboarding.aiExternalConsent,
-                aiExternalConsentedAt: bundle.onboarding.aiExternalConsentedAt,
-              ),
-            );
-      }
-      ref.invalidate(profileBundleProvider);
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            enabled
-                ? 'External AI consent updated.'
-                : 'External AI consent revoked.',
-          ),
-        ),
-      );
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    } finally {
-      if (mounted) {
-        setState(() => _savingAiPrivacy = false);
-      }
-    }
-  }
 
   Future<void> _shareExport({
     required Future<List<int>> Function(DossierRepository repository) loadBytes,
@@ -106,13 +56,6 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(successMessage)));
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
@@ -144,7 +87,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'This action deletes the account, profiles, AI recaps, share links, and associated cloud data. On the device, cache and local documents for your account will also be removed.',
+                  'This action deletes the account, profiles, AI recaps, share links, and associated local data on this device.',
                 ),
                 const SizedBox(height: 12),
                 const Text('To confirm, type DELETE.'),
@@ -164,10 +107,8 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(
-                  dialogContext,
-                  rootNavigator: true,
-                ).pop(false),
+                onPressed: () =>
+                    Navigator.of(dialogContext, rootNavigator: true).pop(false),
                 child: const Text('Cancel'),
               ),
               FilledButton(
@@ -191,22 +132,14 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
 
     setState(() => _deletingAccount = true);
     try {
-          await ref
+      await ref
           .read(authControllerProvider.notifier)
-          .deleteAccount(confirmationText: 'DELETE');
+          .deleteAccount(confirmationText: 'ELIMINA');
       invalidatePatientScopedProviders(ref);
-      ref.invalidate(billingStatusProvider);
       if (!mounted) {
         return;
       }
       context.go('/');
-    } on ApiException catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) {
         return;
@@ -224,46 +157,34 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
+    final onDeviceStatusAsync = ref.watch(onDeviceAiStatusProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Privacy')),
+      appBar: AppBar(title: const Text('Local AI')),
       body: profileAsync.when(
         data: (bundle) {
           if (bundle == null) {
             return const Center(
-              child: Text('Complete sign-in to manage privacy.'),
+              child: Text('Complete sign-in to manage settings.'),
             );
           }
-
-          final consentEnabled = bundle.onboarding.aiExternalConsent;
-          final consentAt = bundle.onboarding.aiExternalConsentedAt;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: 'External AI consent',
-                subtitle: 'Control whether recaps can use external providers here.',
+                title: 'Local AI',
+                subtitle: 'All AI processing stays on your device.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
+                    const Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(
-                          label: Text(
-                            consentEnabled
-                                ? 'External AI enabled'
-                                : 'External AI disabled',
-                          ),
-                        ),
-                        if (consentEnabled && consentAt != null)
-                          Chip(
-                            label: Text(
-                              'Last consent ${_dateLabel(consentAt.toLocal())}',
-                            ),
-                          ),
+                        Chip(label: Text('Local AI only')),
+                        Chip(label: Text('No external providers')),
+                        Chip(label: Text('No data leaves device')),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -274,34 +195,18 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                         OutlinedButton.icon(
                           onPressed: () => context.push('/legal/privacy'),
                           icon: const Icon(Icons.description_outlined),
-                          label: const Text('Beta privacy notice'),
+                          label: const Text('Privacy notice'),
                         ),
                         OutlinedButton.icon(
                           onPressed: () => context.push('/legal/ai'),
                           icon: const Icon(Icons.psychology_alt_outlined),
-                          label: const Text('Beta AI note'),
+                          label: const Text('AI note'),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: consentEnabled,
-                      onChanged: _savingAiPrivacy ? null : _updateAiPrivacy,
-                      title: const Text('Use external AI for recaps'),
-                      subtitle: Text(
-                        consentEnabled
-                            ? 'The backend may use a configured external provider.'
-                            : 'Recaps stay on the local cautious engine.',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.tonalIcon(
-                      onPressed: consentEnabled || _savingAiPrivacy
-                          ? () => _updateAiPrivacy(false)
-                          : null,
-                      icon: const Icon(Icons.block_outlined),
-                      label: const Text('Revoke AI consent'),
+                    const Text(
+                      'Recaps are generated on-device by Gemma via LiteRT. No recap content or health data is sent to any external server.',
                     ),
                   ],
                 ),
@@ -309,26 +214,87 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: 'What AI can see',
-                subtitle: 'Only the minimum context needed for a recap is sent.',
+                subtitle: 'Minimum context passed to the on-device model.',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(label: Text('Clinical context')),
+                        Chip(label: Text('Diary and symptoms')),
+                        Chip(label: Text('Wearable')),
+                        Chip(label: Text('Recent tests')),
+                        Chip(label: Text('Alerts')),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Distinct payloads for day, week, month, and pre-visit recaps. All processing runs locally — Gemma runs on-device via LiteRT.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
+                title: 'On-device AI status',
+                subtitle: 'Local-first execution readiness.',
+                action: TextButton.icon(
+                  onPressed: () {
+                    ref.invalidate(onDeviceAiStatusProvider);
+                    ref.invalidate(pendingOperationsProvider);
+                  },
+                  icon: const Icon(Icons.refresh_outlined),
+                  label: const Text('Refresh'),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: const [
-                        Chip(label: Text('Clinical context')),
-                        Chip(label: Text('Diary and symptoms')),
-                        Chip(label: Text('Wearable')),
-                        Chip(label: Text('Recent tests')),
-                        Chip(label: Text('Alert')),
+                      children: [
+                        const Chip(label: Text('Local-only: always active')),
+                        Chip(
+                          label: Text(
+                            onDeviceStatusAsync.asData == null
+                                ? 'On-device AI: checking...'
+                                : (onDeviceStatusAsync.asData!.value.isReady
+                                      ? 'On-device AI: ready'
+                                      : 'On-device AI: not ready'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      onDeviceStatusAsync.asData?.value.activeProviderLabel ??
+                          'No on-device provider detected yet.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
+                title: 'Document search models',
+                subtitle: 'Semantic search and ranking for clinical documents.',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Chip(label: Text('Embedding: Gemma 300M')),
+                        Chip(label: Text('Provider: MediaPipe')),
+                        Chip(label: Text('Ranking: On-device')),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      consentEnabled
-                          ? 'For recaps we use separate payloads for day, week, month, and pre-visit. Minor profiles remain on the local cautious engine.'
-                          : 'Without external AI consent, recaps stay on the local cautious engine.',
+                    const Text(
+                      'When you ask questions about your documents, the app uses Embedding Gemma 300M (via MediaPipe TextEmbedder) to understand semantic meaning. The embedding model runs entirely on-device — your question and document context are never sent to external servers. Results are ranked locally and passed to Gemma 4 for answer generation with citations.',
                     ),
                   ],
                 ),
@@ -336,7 +302,8 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
               const SizedBox(height: 16),
               SectionCard(
                 title: 'Data portability',
-                subtitle: 'Export dossier, emergency sheet, and structured backups.',
+                subtitle:
+                    'Export dossier, emergency data, and structured backups.',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -359,9 +326,9 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-dossier',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
-                                    shareText: 'ClinDiary health dossier',
-                                    shareSubject: 'ClinDiary health dossier',
-                                    successMessage:
+                                  shareText: 'ClinDiary health dossier',
+                                  shareSubject: 'ClinDiary health dossier',
+                                  successMessage:
                                       'Dossier PDF exported and shared.',
                                 ),
                           icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -376,13 +343,13 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                                   filePrefix: 'clindiary-dossier-backup',
                                   filenameExtension: 'json',
                                   mimeType: 'application/json',
-                                    shareText: 'Structured ClinDiary backup',
-                                    shareSubject: 'Structured ClinDiary backup',
-                                    successMessage:
+                                  shareText: 'ClinDiary structured backup',
+                                  shareSubject: 'ClinDiary structured backup',
+                                  successMessage:
                                       'JSON backup exported and shared.',
                                 ),
                           icon: const Icon(Icons.data_object_outlined),
-                          label: const Text('JSON backup'),
+                          label: const Text('Backup JSON'),
                         ),
                         FilledButton.icon(
                           onPressed: _exporting
@@ -390,18 +357,22 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                               : () => _shareExport(
                                   loadBytes: (repository) =>
                                       repository.exportEmergencyDossier(),
-                                  filePrefix: 'clindiary-scheda-emergenza',
+                                  filePrefix: 'clindiary-emergency-card',
                                   filenameExtension: 'pdf',
                                   mimeType: 'application/pdf',
-                                    shareText: 'ClinDiary emergency sheet',
-                                    shareSubject: 'ClinDiary emergency sheet',
-                                    successMessage:
-                                      'Emergency sheet exported and shared.',
+                                  shareText: 'ClinDiary emergency card',
+                                  shareSubject: 'ClinDiary emergency card',
+                                  successMessage:
+                                      'Emergency card exported and shared.',
                                 ),
                           icon: const Icon(Icons.emergency_outlined),
-                          label: const Text('Emergency sheet'),
+                          label: const Text('Emergency card'),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Exports are generated locally from on-device data.',
                     ),
                   ],
                 ),
@@ -414,16 +385,14 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'If you delete the account, we remove cloud data, tokens, recaps, and share links. On the device we also delete cache, local reminders, and free local documents for this account.',
+                      'Deleting the account removes all local data, tokens, AI recaps, cache, reminders, and local documents on this device.',
                     ),
                     const SizedBox(height: 12),
                     FilledButton.tonalIcon(
                       onPressed: _deletingAccount ? null : _deleteAccount,
                       icon: const Icon(Icons.delete_forever_outlined),
                       label: Text(
-                        _deletingAccount
-                            ? 'Deleting...'
-                            : 'Delete account',
+                        _deletingAccount ? 'Deleting...' : 'Delete account',
                       ),
                     ),
                   ],
@@ -434,7 +403,7 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
                 title: 'Operational note',
                 subtitle: 'Reminder for production use.',
                 child: const Text(
-                  'Before production, a full legal review is still required for privacy, DPIA, DPA, and non-EU transfers.',
+                  'Before production, a full legal review is still required for privacy, DPIA, DPA, and extra-EU transfers.',
                 ),
               ),
             ],
@@ -445,13 +414,4 @@ class _PrivacyAiScreenState extends ConsumerState<PrivacyAiScreen> {
       ),
     );
   }
-}
-
-String _dateLabel(DateTime value) {
-  final day = value.day.toString().padLeft(2, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final year = value.year.toString();
-  final hour = value.hour.toString().padLeft(2, '0');
-  final minute = value.minute.toString().padLeft(2, '0');
-  return '$day/$month/$year $hour:$minute';
 }

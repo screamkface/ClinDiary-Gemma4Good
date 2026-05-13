@@ -146,8 +146,12 @@ class WearableDaySummary {
     if (cleanedDeviceModel != null && cleanedDeviceModel.isNotEmpty) {
       sourceParts.add(cleanedDeviceModel);
     }
-    final sourceLabel = sourceParts.isEmpty ? '' : ' (${sourceParts.join(' - ')})';
-    final metricsLabel = metrics.isEmpty ? 'no metrics available' : metrics.join(', ');
+    final sourceLabel = sourceParts.isEmpty
+        ? ''
+        : ' (${sourceParts.join(' - ')})';
+    final metricsLabel = metrics.isEmpty
+        ? 'no metrics available'
+        : metrics.join(', ');
     return '$dateLabel$sourceLabel: $metricsLabel';
   }
 }

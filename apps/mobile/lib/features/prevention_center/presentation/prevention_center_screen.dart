@@ -24,7 +24,7 @@ class PreventionCenterScreen extends ConsumerWidget {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Prevention Center'),
+          title: const Text('Prevention center'),
           actions: [
             IconButton(
               onPressed: () => ref.invalidate(preventionCenterProvider),
@@ -36,9 +36,9 @@ class PreventionCenterScreen extends ConsumerWidget {
             tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: 'Summary'),
-              Tab(text: 'Checkups'),
+              Tab(text: 'Checks'),
               Tab(text: 'Vaccines'),
-              Tab(text: 'Paths'),
+              Tab(text: 'Pathways'),
               Tab(text: 'Follow-up'),
             ],
           ),
@@ -52,7 +52,7 @@ class PreventionCenterScreen extends ConsumerWidget {
                   const ClinicalScopeNotice(
                     title: 'Personal prevention',
                     message:
-                      'These recommendations help organize checkups and follow-up. They are not an automatic prescription and should be reviewed with a clinician.',
+                        'These recommendations help organize checks and follow-up. They are not an automatic prescription and must be contextualized with the doctor.',
                     icon: Icons.health_and_safety_outlined,
                   ),
                   const SizedBox(height: 12),
@@ -91,38 +91,39 @@ class PreventionCenterScreen extends ConsumerWidget {
                           runSpacing: 8,
                           children: [
                             _OverviewChip(
-                                label:
+                              label:
                                   'Region ${center.regionName ?? 'Italy (general)'}',
                               icon: Icons.place_outlined,
                             ),
                             _OverviewChip(
-                                label:
-                                  '${center.overview.actionableScreenings} checkups',
+                              label:
+                                  '${center.overview.actionableScreenings} checks',
                               icon: Icons.health_and_safety_outlined,
                             ),
                             _OverviewChip(
-                              label: '${center.overview.vaccineReviews} vaccines',
+                              label:
+                                  '${center.overview.vaccineReviews} vaccines',
                               icon: Icons.vaccines_outlined,
                             ),
                             _OverviewChip(
-                                label:
+                              label:
                                   '${center.overview.vaccineRegistryItems} registry',
                               icon: Icons.fact_check_outlined,
                             ),
                             if (center.overview.pregnancyItems > 0)
                               _OverviewChip(
                                 label:
-                                  '${center.overview.pregnancyItems} pregnancy',
+                                    '${center.overview.pregnancyItems} pregnancy',
                                 icon: Icons.pregnant_woman_outlined,
                               ),
                             if (center.overview.sharedDecisionItems > 0)
                               _OverviewChip(
                                 label:
-                                  '${center.overview.sharedDecisionItems} shared',
+                                    '${center.overview.sharedDecisionItems} shared',
                                 icon: Icons.balance_outlined,
                               ),
                             _OverviewChip(
-                                label:
+                              label:
                                   '${center.overview.seasonalChecks} seasonal',
                               icon: Icons.wb_sunny_outlined,
                             ),
@@ -140,7 +141,7 @@ class PreventionCenterScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     _RecommendationSection(
                       title: 'Recommended annual visit',
-                      subtitle: 'General checkup.',
+                      subtitle: 'General check.',
                       items: [center.annualVisit!],
                     ),
                   ],
@@ -150,11 +151,10 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   _RecommendationSection(
-                    title: 'Visits and checkups for your profile',
-                    subtitle: 'Guided by your profile.',
+                    title: 'Visits and checks for your profile',
+                    subtitle: 'Driven by the profile.',
                     items: center.visitsAndControls,
-                    emptyLabel:
-                        'No additional periodic checkups to show.',
+                    emptyLabel: 'No additional periodic checks to show.',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/screenings'),
                       child: const Text('Open screenings'),
@@ -167,19 +167,20 @@ class PreventionCenterScreen extends ConsumerWidget {
                 children: [
                   _RecommendationSection(
                     title: 'Recommended vaccines',
-                    subtitle: 'Review against your history.',
+                    subtitle: 'To verify with your history.',
                     items: center.vaccines,
                     emptyLabel:
-                      'No vaccines to highlight with the current data.',
+                        'No vaccine to highlight with the current data.',
                   ),
                   const SizedBox(height: 12),
                   _RecommendationSection(
-                    title: 'Vaccine registry',
-                    subtitle: 'Compact status of your history.',
+                    title: 'Vaccination registry',
+                    subtitle: 'Summary status of your history.',
                     items: center.vaccineRegistry,
-                    emptyLabel: 'No vaccine summary available.',
+                    emptyLabel: 'No vaccination summary available.',
                     action: TextButton(
-                      onPressed: () => context.push('/app/profile/vaccinations'),
+                      onPressed: () =>
+                          context.push('/app/profile/vaccinations'),
                       child: const Text('Open history'),
                     ),
                   ),
@@ -190,10 +191,10 @@ class PreventionCenterScreen extends ConsumerWidget {
                 children: [
                   _RecommendationSection(
                     title: 'Pregnancy and preconception',
-                    subtitle: 'Only when the profile requires it.',
+                    subtitle: 'Only if the profile requires it.',
                     items: center.pregnancyAndPreconception,
                     emptyLabel:
-                      'No active preconception or pregnancy pathway in the profile.',
+                        'No active preconception or pregnancy pathway in the profile.',
                   ),
                   const SizedBox(height: 12),
                   _RecommendationSection(
@@ -201,7 +202,7 @@ class PreventionCenterScreen extends ConsumerWidget {
                     subtitle: 'Areas where ClinDiary stays cautious.',
                     items: center.sharedDecisions,
                     emptyLabel:
-                      'No specific shared decisions to show with the current data.',
+                        'No specific shared decision to show with the current data.',
                   ),
                 ],
               ),
@@ -209,18 +210,17 @@ class PreventionCenterScreen extends ConsumerWidget {
                 onRefresh: refreshAll,
                 children: [
                   _RecommendationSection(
-                    title: 'Seasonal checkups',
+                    title: 'Seasonal checks',
                     subtitle: 'Seasonal reminders.',
                     items: center.seasonalChecks,
-                    emptyLabel:
-                      'No seasonal checkups active at the moment.',
+                    emptyLabel: 'No active seasonal check at the moment.',
                   ),
                   const SizedBox(height: 12),
                   _RecommendationSection(
                     title: 'Follow-up reminders',
-                    subtitle: 'Items to close out.',
+                    subtitle: 'Items to close.',
                     items: center.followUpReminders,
-                    emptyLabel: 'No open follow-up items.',
+                    emptyLabel: 'No open follow-up.',
                     action: TextButton(
                       onPressed: () => context.push('/app/home/notifications'),
                       child: const Text('Open notifications'),
@@ -449,7 +449,7 @@ String _kindLabel(String kind) {
     case 'follow_up':
       return 'Follow-up';
     default:
-      return 'Checkup';
+      return 'Check';
   }
 }
 

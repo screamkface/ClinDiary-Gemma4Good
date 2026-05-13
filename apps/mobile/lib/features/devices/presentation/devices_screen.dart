@@ -97,7 +97,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Remove the connector?'),
         content: Text(
-          'The connection to ${connection.providerName} will be removed from this profile. '
+          'The connection ${connection.providerName} will be removed from this profile. '
           'Already imported measurements will remain in the clinical history.',
         ),
         actions: [
@@ -168,7 +168,9 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            created == 1 ? 'Misura registrata.' : '$created misure registrate.',
+            created == 1
+                ? 'Measurement recorded.'
+                : '$created measurements recorded.',
           ),
         ),
       );
@@ -192,7 +194,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dispositivi'),
+        title: const Text('Devices'),
         actions: [
           if (_busy)
             const Padding(
@@ -221,9 +223,9 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 child: SectionCard(
-                  title: 'Clinical Wave 1',
+                  title: 'Wave 1 clinical',
                   subtitle:
-                      'OMRON, Withings, iHealth, A&D, and Dexcom in one module.',
+                      'OMRON, Withings, iHealth, A&D, and Dexcom in one unified module.',
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -238,7 +240,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
                       ),
                       _SummaryChip(
                         icon: Icons.pending_actions_outlined,
-                        label: '${overview.pendingCount} setting up',
+                        label: '${overview.pendingCount} in setup',
                       ),
                       _SummaryChip(
                         icon: Icons.monitor_heart_outlined,
@@ -254,8 +256,8 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
                 child: TabBar(
                   tabs: const [
                     Tab(text: 'Provider'),
-                    Tab(text: 'Connessi'),
-                    Tab(text: 'Misure'),
+                    Tab(text: 'Connected'),
+                    Tab(text: 'Measurements'),
                     Tab(text: 'Import'),
                   ],
                 ),
@@ -333,7 +335,7 @@ class _ProvidersTab extends StatelessWidget {
           subtitle: provider.summary,
           action: FilledButton.tonal(
             onPressed: () => onConfigure(provider, connection),
-            child: Text(connection == null ? 'Set up' : 'Update'),
+            child: Text(connection == null ? 'Configure' : 'Update'),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,8 +350,8 @@ class _ProvidersTab extends StatelessWidget {
                   ),
                   _ProviderBadge(
                     label: provider.providerConfigured
-                      ? 'Server ready'
-                      : 'Server needs setup',
+                        ? 'Server ready'
+                        : 'Server to configure',
                     tone: provider.providerConfigured
                         ? _BadgeTone.positive
                         : _BadgeTone.warning,
@@ -457,7 +459,7 @@ class _ConnectionsTab extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'configure', child: Text('Set up')),
+              const PopupMenuItem(value: 'configure', child: Text('Configure')),
               PopupMenuItem(
                 value: 'sync',
                 enabled: connection.supportsLiveSync,
@@ -481,15 +483,15 @@ class _ConnectionsTab extends StatelessWidget {
                   ),
                   _ProviderBadge(
                     label: connection.supportsLiveSync
-                      ? 'Live sync'
-                      : 'Live sync not ready',
+                        ? 'Sync live'
+                        : 'Live sync not ready',
                     tone: connection.supportsLiveSync
                         ? _BadgeTone.info
                         : _BadgeTone.neutral,
                   ),
                   if (connection.supportsManualIngest)
                     const _ProviderBadge(
-                      label: 'Ready for SDK',
+                      label: 'SDK ready',
                       tone: _BadgeTone.info,
                     ),
                 ],
@@ -503,7 +505,7 @@ class _ConnectionsTab extends StatelessWidget {
                   subtitle: Text(
                     DateFormat(
                       'dd MMM yyyy, HH:mm',
-                      'it_IT',
+                      'en_US',
                     ).format(latest.measuredAt.toLocal()),
                   ),
                   trailing: Text(
@@ -556,7 +558,7 @@ class _MeasurementsTab extends StatelessWidget {
       return const _EmptyState(
         title: 'No device measurements available yet',
         message:
-          'Measurements imported from Wave 1 providers will appear here in chronological order.',
+            'Measurements imported from Wave 1 providers will appear here in chronological order.',
       );
     }
 
@@ -584,7 +586,7 @@ class _MeasurementsTab extends StatelessWidget {
             subtitle: Text(
               DateFormat(
                 'dd MMM yyyy, HH:mm',
-                'it_IT',
+                'en_US',
               ).format(measurement.measuredAt.toLocal()),
             ),
             trailing: measurement.sourceDeviceModel == null
@@ -613,7 +615,7 @@ class _JobsTab extends StatelessWidget {
       return const _EmptyState(
         title: 'No recent imports',
         message:
-          'Imports, syncs, and provider bootstrap tasks will appear here with their outcome.',
+            'Imports, syncs, and bootstrap runs from Wave 1 providers will appear here with their results.',
       );
     }
 
@@ -651,7 +653,7 @@ class _JobsTab extends StatelessWidget {
               Text(
                 DateFormat(
                   'dd MMM yyyy, HH:mm',
-                  'it_IT',
+                  'en_US',
                 ).format(job.startedAt.toLocal()),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
@@ -775,11 +777,11 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
     final fields = _manualFieldsFor(_metricType);
 
     if (primary == null) {
-      _showError('Inserisci ${fields.primaryLabel.toLowerCase()}.');
+      _showError('Enter ${fields.primaryLabel.toLowerCase()}.');
       return;
     }
     if (fields.secondaryRequired && secondary == null) {
-      _showError('Inserisci ${fields.secondaryLabel!.toLowerCase()}.');
+      _showError('Enter ${fields.secondaryLabel!.toLowerCase()}.');
       return;
     }
 
@@ -838,7 +840,7 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _metricType,
-                  decoration: const InputDecoration(labelText: 'Metrica'),
+                  decoration: const InputDecoration(labelText: 'Metric'),
                   items: _manualMetricOptions
                       .map(
                         (item) => DropdownMenuItem(
@@ -909,7 +911,7 @@ class _ManualMeasurementSheetState extends State<_ManualMeasurementSheet> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'The measurement is saved with the current device time.',
+                  'The measurement is saved with the device current time.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
@@ -1057,7 +1059,7 @@ class _ProviderSetupSheetState extends ConsumerState<_ProviderSetupSheet> {
                     decoration: const InputDecoration(
                       labelText: 'Manual access token',
                       hintText:
-                          'Paste the token here if you obtained it from the partner portal',
+                          'Paste the token here if you get it from the partner portal',
                     ),
                     minLines: 2,
                     maxLines: 3,
@@ -1262,7 +1264,7 @@ String _categoryLabel(String value) {
 String _integrationLabel(String value) {
   switch (value) {
     case 'cloud_api':
-      return 'Cloud API';
+      return 'Remote API';
     case 'api_key':
       return 'API key';
     case 'partner_platform':
@@ -1345,45 +1347,48 @@ class _ManualMetricFields {
 }
 
 const _manualMetricOptions = [
-  _ManualMetricOption('blood_pressure', 'Pressione arteriosa'),
-  _ManualMetricOption('body_weight', 'Peso'),
-  _ManualMetricOption('spo2', 'Saturazione ossigeno'),
-  _ManualMetricOption('heart_rate', 'Frequenza cardiaca'),
-  _ManualMetricOption('temperature', 'Temperatura'),
-  _ManualMetricOption('blood_glucose_bgm', 'Glicemia capillare'),
+  _ManualMetricOption('blood_pressure', 'Blood pressure'),
+  _ManualMetricOption('body_weight', 'Weight'),
+  _ManualMetricOption('spo2', 'Oxygen saturation'),
+  _ManualMetricOption('heart_rate', 'Heart rate'),
+  _ManualMetricOption('temperature', 'Temperature'),
+  _ManualMetricOption('blood_glucose_bgm', 'Capillary glucose'),
 ];
 
 _ManualMetricFields _manualFieldsFor(String metricType) {
   switch (metricType) {
     case 'blood_pressure':
       return const _ManualMetricFields(
-        primaryLabel: 'Sistolica',
-        secondaryLabel: 'Diastolica',
-        tertiaryLabel: 'Frequenza cardiaca',
+        primaryLabel: 'Systolic',
+        secondaryLabel: 'Diastolic',
+        tertiaryLabel: 'Heart rate',
         defaultUnit: 'mmHg',
         tertiaryUnit: 'bpm',
         secondaryRequired: true,
       );
     case 'body_weight':
-      return const _ManualMetricFields(primaryLabel: 'Peso', defaultUnit: 'kg');
+      return const _ManualMetricFields(
+        primaryLabel: 'Weight',
+        defaultUnit: 'kg',
+      );
     case 'spo2':
       return const _ManualMetricFields(primaryLabel: 'SpO2', defaultUnit: '%');
     case 'heart_rate':
       return const _ManualMetricFields(
-        primaryLabel: 'Frequenza cardiaca',
+        primaryLabel: 'Heart rate',
         defaultUnit: 'bpm',
       );
     case 'temperature':
       return const _ManualMetricFields(
-        primaryLabel: 'Temperatura',
+        primaryLabel: 'Temperature',
         defaultUnit: '°C',
       );
     case 'blood_glucose_bgm':
       return const _ManualMetricFields(
-        primaryLabel: 'Glicemia',
+        primaryLabel: 'Glucose',
         defaultUnit: 'mg/dL',
       );
     default:
-      return const _ManualMetricFields(primaryLabel: 'Valore');
+      return const _ManualMetricFields(primaryLabel: 'Value');
   }
 }

@@ -22,7 +22,7 @@ String documentTypeLabel(String type) {
 String documentStatusLabel(String status) {
   switch (status) {
     case 'local_only':
-      return 'Local only';
+      return 'Ready';
     case 'pending':
       return 'Pending';
     case 'processing':
@@ -85,10 +85,10 @@ Color documentStatusColor(BuildContext context, String status) {
 String documentStorageLabel(String storageLocation) {
   switch (storageLocation) {
     case 'local':
-      return 'On device';
+      return 'Saved';
     case 'cloud':
     default:
-      return 'Cloud';
+      return 'Archived';
   }
 }
 

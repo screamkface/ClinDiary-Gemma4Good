@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
-  testWidgets('timeline screen mostra gli eventi disponibili', (tester) async {
-    await initializeDateFormatting('it_IT');
+  testWidgets('timeline screen shows available events', (tester) async {
+    await initializeDateFormatting('en_US');
 
     await tester.pumpWidget(
       ProviderScope(
@@ -18,8 +18,8 @@ void main() {
               TimelineEventItem(
                 id: '1',
                 eventType: 'daily_entry',
-                title: 'Check-up giornaliero completato',
-                description: 'Energia 6/10, umore 7/10',
+                title: 'Daily check-up completed',
+                description: 'Energy 6/10, mood 7/10',
                 eventDate: DateTime.utc(2026, 3, 20, 8),
               ),
             ],
@@ -31,7 +31,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Check-up giornaliero completato'), findsOneWidget);
-    expect(find.text('Energia 6/10, umore 7/10'), findsOneWidget);
+    expect(find.text('Daily check-up completed'), findsOneWidget);
+    expect(find.text('Energy 6/10, mood 7/10'), findsOneWidget);
   });
 }

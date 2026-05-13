@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('symptom entry screen supporta il testo libero', (tester) async {
+  testWidgets('symptom entry screen supports free text', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(home: SymptomEntryScreen(entryId: 'entry-1')),
@@ -12,13 +12,13 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(find.text('Lista'), findsOneWidget);
-    expect(find.text('Scrivi tu'), findsOneWidget);
+    expect(find.text('List'), findsOneWidget);
+    expect(find.text('Write your own'), findsOneWidget);
 
-    await tester.tap(find.text('Scrivi tu'));
+    await tester.tap(find.text('Write your own'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Descrivi il sintomo'), findsOneWidget);
-    expect(find.text('Associato a nausea'), findsNothing);
+    expect(find.text('Describe the symptom'), findsOneWidget);
+    expect(find.text('Associated with nausea'), findsNothing);
   });
 }

@@ -125,17 +125,16 @@ class IoWearableHealthService extends WearableHealthService {
 
       if (!permissionGranted && message == null) {
         if (!healthGranted && !activityGranted) {
-            message =
-              'Both Health Connect permissions and the Activity recognition permission are missing.';
+          message =
+              'Both Health Connect permissions and activity recognition permission are missing.';
         } else if (!healthGranted) {
-            message =
+          message =
               'Authorize ClinDiary in Health Connect to read health data.';
         } else if (!activityGranted) {
-            message =
-              'The Activity recognition permission is also required to read steps and movement.';
+          message =
+              'Activity recognition permission is also required to read steps and movement.';
         } else {
-            message =
-              'Authorize ClinDiary to read health data from the device.';
+          message = 'Authorize ClinDiary to read health data from the device.';
         }
       }
     }
@@ -201,8 +200,8 @@ class IoWearableHealthService extends WearableHealthService {
       if (!activityStatus.isGranted) {
         return status.copyWith(
           permissionGranted: false,
-            message:
-              'The Activity recognition permission is required to read steps and movement.',
+          message:
+              'Activity recognition permission is required to read steps and movement.',
         );
       }
     }
@@ -222,7 +221,7 @@ class IoWearableHealthService extends WearableHealthService {
         message:
             refreshed.message ??
             (Platform.isAndroid
-                ? 'Wearable permissions were not granted. If the prompt does not appear, open health settings directly.'
+                ? 'Wearable permissions were not granted. If the prompt does not appear, open the health settings directly.'
                 : 'Wearable permissions were not granted.'),
       );
     }
@@ -231,7 +230,7 @@ class IoWearableHealthService extends WearableHealthService {
       return refreshed.copyWith(
         historyAccessGranted: false,
         message:
-            'Sync is active, but historical access may still be limited to the last 30 authorized days.',
+            'Sync is active, but historical access may remain limited to the last 30 authorized days.',
       );
     }
     return refreshed;
@@ -250,12 +249,12 @@ class IoWearableHealthService extends WearableHealthService {
     }
     if (!status.isAvailable) {
       throw WearableSyncException(
-        status.message ?? 'Health provider not available.',
+        status.message ?? 'Health provider is not available.',
       );
     }
     if (!status.permissionGranted) {
       throw WearableSyncException(
-        status.message ?? 'Wearable permissions not granted.',
+        status.message ?? 'Wearable permissions were not granted.',
       );
     }
 
@@ -480,8 +479,10 @@ class _WearableAccumulator {
       sourceDeviceModel = nextDeviceModel;
     }
 
-    final durationMinutes =
-        point.dateTo.difference(point.dateFrom).inMinutes.toDouble();
+    final durationMinutes = point.dateTo
+        .difference(point.dateFrom)
+        .inMinutes
+        .toDouble();
     exerciseMinutes = (exerciseMinutes ?? 0) + durationMinutes;
 
     final workoutSummary = point.workoutSummary;

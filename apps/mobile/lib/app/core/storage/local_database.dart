@@ -7,6 +7,154 @@ import 'package:path_provider/path_provider.dart';
 
 part 'local_database.g.dart';
 
+class Profiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get givenName => text().nullable()();
+  TextColumn get familyName => text().nullable()();
+  TextColumn get dateOfBirth => text().nullable()();
+  TextColumn get gender => text().nullable()();
+  TextColumn get bloodType => text().nullable()();
+  TextColumn get avatarPath => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class DailyEntries extends Table {
+  TextColumn get id => text()();
+  TextColumn get profileId => text()();
+  TextColumn get entryDate => text()();
+  RealColumn get sleepHours => real().nullable()();
+  IntColumn get sleepQuality => integer().nullable()();
+  IntColumn get energyLevel => integer().nullable()();
+  IntColumn get moodLevel => integer().nullable()();
+  IntColumn get stressLevel => integer().nullable()();
+  IntColumn get appetiteLevel => integer().nullable()();
+  IntColumn get hydrationLevel => integer().nullable()();
+  IntColumn get generalPain => integer().nullable()();
+  TextColumn get generalNotes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class Symptoms extends Table {
+  TextColumn get id => text()();
+  TextColumn get dailyEntryId => text().references(DailyEntries, #id)();
+  TextColumn get symptomCode => text()();
+  IntColumn get severity => integer().nullable()();
+  IntColumn get durationMinutes => integer().nullable()();
+  TextColumn get bodyLocation => text().nullable()();
+  TextColumn get metadataJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class Vitals extends Table {
+  TextColumn get id => text()();
+  TextColumn get dailyEntryId => text().references(DailyEntries, #id)();
+  TextColumn get type => text()();
+  TextColumn get value => text()();
+  TextColumn get unit => text().nullable()();
+  DateTimeColumn get measuredAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class Medications extends Table {
+  TextColumn get id => text()();
+  TextColumn get profileId => text()();
+  TextColumn get name => text()();
+  TextColumn get activeIngredient => text().nullable()();
+  TextColumn get form => text().nullable()();
+  TextColumn get strength => text().nullable()();
+  TextColumn get unit => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class MedicationSchedules extends Table {
+  TextColumn get id => text()();
+  TextColumn get medicationId => text().references(Medications, #id)();
+  TextColumn get scheduleType => text()();
+  TextColumn get timeOfDay => text()();
+  RealColumn get dose => real()();
+  TextColumn get specificDaysJson => text().nullable()();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class Documents extends Table {
+  TextColumn get id => text()();
+  TextColumn get profileId => text()();
+  TextColumn get documentType => text()();
+  TextColumn get title => text()();
+  TextColumn get fileCategory => text().nullable()();
+  DateTimeColumn get documentDate => dateTime()();
+  TextColumn get localFilePath => text()();
+  TextColumn get mimeType => text()();
+  IntColumn get sizeBytes => integer()();
+  BoolColumn get isProcessed => boolean().withDefault(const Constant(false))();
+  TextColumn get extractedText => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class DocumentChunks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get documentId => text().references(Documents, #id)();
+  IntColumn get chunkIndex => integer()();
+  TextColumn get content => text()();
+  TextColumn get embeddingJson => text().nullable()();
+}
+
+class TimelineEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get profileId => text()();
+  TextColumn get eventType => text()();
+  DateTimeColumn get eventDate => dateTime()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get referenceId => text().nullable()();
+  TextColumn get metadataJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class Alerts extends Table {
+  TextColumn get id => text()();
+  TextColumn get profileId => text()();
+  TextColumn get alertType => text()();
+  TextColumn get severity => text()();
+  TextColumn get title => text()();
+  TextColumn get message => text()();
+  BoolColumn get isRead => boolean().withDefault(const Constant(false))();
+  TextColumn get referenceId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class CacheEntries extends Table {
   TextColumn get key => text()();
   TextColumn get payload => text()();
@@ -37,14 +185,30 @@ class RequestTraces extends Table {
   DateTimeColumn get createdAt => dateTime()();
 }
 
-@DriftDatabase(tables: [CacheEntries, PendingOperations, RequestTraces])
+@DriftDatabase(
+  tables: [
+    Profiles,
+    DailyEntries,
+    Symptoms,
+    Vitals,
+    Medications,
+    MedicationSchedules,
+    Documents,
+    DocumentChunks,
+    TimelineEvents,
+    Alerts,
+    CacheEntries,
+    PendingOperations,
+    RequestTraces,
+  ],
+)
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());
 
   LocalDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -52,12 +216,13 @@ class LocalDatabase extends _$LocalDatabase {
       await migrator.createAll();
     },
     onUpgrade: (migrator, from, to) async {
-      // Local storage contains cache, pending sync operations and request traces.
-      // On schema changes we prefer a safe reset over brittle in-place migrations.
-      await customStatement('DROP TABLE IF EXISTS request_traces');
-      await customStatement('DROP TABLE IF EXISTS pending_operations');
-      await customStatement('DROP TABLE IF EXISTS cache_entries');
+      // Never drop local health data during an app upgrade. Future schema
+      // changes should add targeted migrations here.
       await migrator.createAll();
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement('PRAGMA journal_mode = WAL');
     },
   );
 

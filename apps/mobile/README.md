@@ -11,7 +11,8 @@ Copre attualmente:
 - documenti clinici con review manuale
 - insights, alerts e reports
 - screenings, farmaci/aderenza e notifiche
-- cache locale Drift e token storage sicuro
+- vault documentale locale cifrato, cache Drift e token storage sicuro
+- AI on-device Android via LiteRT-LM, con fallback locale prudente
 
 ## Stack
 
@@ -36,6 +37,8 @@ Ogni feature e organizzata in:
 
 ## Avvio locale
 
+La configurazione pubblica corrente e local-first: non richiede un backend per il flusso mobile standard.
+
 1. Installa dipendenze:
 
 ```bash
@@ -45,29 +48,27 @@ flutter pub get
 2. Avvia l'app:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://localhost:8000
+flutter run
 ```
 
-Su Windows, dalla root del monorepo, puoi avviare backend e app Android insieme con:
+Su Windows, dalla root del monorepo, puoi usare lo script Android helper:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1
 ```
 
-Per usare l'app Android sul telefono via Wi-Fi locale senza dipendere da `adb reverse`:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --device-id TUO_DEVICE_ID --prefer-lan
-powershell -ExecutionPolicy Bypass -File scripts/run_android_app.ps1 --backend-only
-powershell -ExecutionPolicy Bypass -File scripts/stop_android_backend.ps1
-```
-
-La build debug Android consente il traffico HTTP locale verso il backend di sviluppo del PC.
-
-Per Android Emulator usa normalmente:
+Per forzare esplicitamente la modalita locale puoi usare:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+flutter run --dart-define=LOCAL_ONLY_MODE=true
+```
+
+Il modello Gemma `.litertlm` va importato, scaricato o provisionato sul device; non e incluso di default nel repository.
+
+Per disattivare la modalita locale in esperimenti futuri, serve codice/infrastruttura backend reale e configurata:
+
+```bash
+flutter run --dart-define=LOCAL_ONLY_MODE=false
 ```
 
 ## Test e analisi
@@ -75,6 +76,23 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```bash
 flutter analyze
 flutter test
+```
+
+## Build demo APK (local-only)
+
+Dalla root repository:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build_demo_apk.ps1
+```
+
+Oppure build manuale da `apps/mobile`:
+
+```bash
+flutter build apk --release \
+  --dart-define=HACKATHON_DEMO_MODE=true \
+  --dart-define=LOCAL_ONLY_MODE=true \
+  --dart-define=API_BASE_URL=http://localhost:8000
 ```
 
 ## Dove modificare cosa

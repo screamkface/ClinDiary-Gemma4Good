@@ -1,54 +1,45 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
 
 class PreventionCenterRepository {
-  PreventionCenterRepository({
-    required ApiClient apiClient,
-    required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  PreventionCenterRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'prevention_center';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<PreventionCenterData> fetchCenter({String? regionCode}) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJson(
-        _preventionCenterPath(resolvedRegionCode),
-      );
-      await _localDatabase.putCache(
-        key: await profileScopedCacheKey(
-          _localDatabase,
-          _cacheKeyForRegion(resolvedRegionCode),
+    final cached = await _readCachedCenter(resolvedRegionCode);
+    if (cached == null) {
+      return PreventionCenterData(
+        generatedAt: DateTime.now().toUtc(),
+        displayName: 'Clinical profile',
+        regionCode: resolvedRegionCode,
+        regionName: resolvedRegionCode == 'IT' ? 'Italy' : resolvedRegionCode,
+        overview: const PreventionCenterOverview(
+          actionableScreenings: 0,
+          vaccineReviews: 0,
+          vaccineRegistryItems: 0,
+          pregnancyItems: 0,
+          sharedDecisionItems: 0,
+          seasonalChecks: 0,
+          followUpItems: 0,
         ),
-        payload: jsonEncode(response),
-      );
-      return PreventionCenterData.fromJson(response);
-    } on ApiException {
-      final cached = await _readCachedCenter(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return PreventionCenterData.fromJson(
-        jsonDecode(cached) as Map<String, dynamic>,
-      );
-    } catch (error) {
-      final cached = await _readCachedCenter(resolvedRegionCode);
-      if (cached == null) rethrow;
-      return PreventionCenterData.fromJson(
-        jsonDecode(cached) as Map<String, dynamic>,
+        annualVisit: null,
+        visitsAndControls: const <PreventionRecommendationItem>[],
+        vaccines: const <PreventionRecommendationItem>[],
+        seasonalChecks: const <PreventionRecommendationItem>[],
+        followUpReminders: const <PreventionRecommendationItem>[],
       );
     }
-  }
-
-  String _preventionCenterPath(String regionCode) {
-    return '/api/v1/prevention-center?region_code=${Uri.encodeQueryComponent(regionCode)}';
+    return PreventionCenterData.fromJson(
+      jsonDecode(cached) as Map<String, dynamic>,
+    );
   }
 
   String _normalizedRegionCode(String? regionCode) {

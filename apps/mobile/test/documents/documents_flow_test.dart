@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/documents/data/document_picker_service.dart';
 import 'package:clindiary/features/documents/data/documents_repository.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
@@ -9,6 +8,7 @@ import 'package:clindiary/features/documents/presentation/document_query_screen.
 import 'package:clindiary/features/documents/presentation/document_review_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_upload_screen.dart';
 import 'package:clindiary/features/documents/presentation/documents_screen.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,11 +20,26 @@ class MockDocumentsRepository extends Mock implements DocumentsRepository {}
 
 class MockDocumentPickerService extends Mock implements DocumentPickerService {}
 
+Widget _testApp({Widget? home, RouterConfig<Object>? routerConfig}) {
+  if (routerConfig != null) {
+    return MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: routerConfig,
+    );
+  }
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
     registerFallbackValue(
       const SelectedUploadDocument(
         name: 'fallback.pdf',
@@ -38,7 +53,7 @@ void main() {
     );
   });
 
-  testWidgets('documents screen mostra elenco e stati documentali', (
+  testWidgets('documents screen shows list and document statuses', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -50,8 +65,8 @@ void main() {
               folders: const [
                 DocumentFolderItem(
                   id: 'folder-1',
-                  name: 'Esami',
-                  pathLabel: 'Esami',
+                  name: 'Labs',
+                  pathLabel: 'Labs',
                   childFolderCount: 0,
                   documentCount: 1,
                 ),
@@ -59,10 +74,10 @@ void main() {
               documents: [
                 ClinicalDocumentSummary(
                   id: 'doc-1',
-                  title: 'Esami marzo',
+                  title: 'March labs',
                   documentType: 'lab_report',
                   uploadDate: DateTime.utc(2026, 3, 20, 8),
-                  originalFilename: 'esami-marzo.pdf',
+                  originalFilename: 'march-labs.pdf',
                   mimeType: 'application/pdf',
                   fileSizeBytes: 182400,
                   parsedStatus: 'parsed',
@@ -75,31 +90,28 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: DocumentsScreen()),
+        child: _testApp(home: const DocumentsScreen()),
       ),
     );
 
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('Esami marzo'),
+      find.text('March labs'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Esami marzo'), findsOneWidget);
-    expect(find.text('Esami'), findsOneWidget);
-    expect(find.textContaining('Referto laboratorio'), findsOneWidget);
-    expect(find.text('Processato'), findsOneWidget);
-    expect(find.text('Vecchio'), findsOneWidget);
-    expect(find.text('Sync in attesa'), findsOneWidget);
-    expect(
-      find.textContaining('In attesa di sincronizzazione'),
-      findsOneWidget,
-    );
+    expect(find.text('March labs'), findsOneWidget);
+    expect(find.text('Labs'), findsOneWidget);
+    expect(find.textContaining('Lab report'), findsOneWidget);
+    expect(find.text('Parsed'), findsOneWidget);
+    expect(find.text('Old'), findsOneWidget);
+    expect(find.text('Sync pending'), findsOneWidget);
+    expect(find.textContaining('Waiting for sync'), findsOneWidget);
     expect(find.textContaining('178.1 KB'), findsOneWidget);
   });
 
-  testWidgets('documents screen crea una cartella senza eccezioni Flutter', (
+  testWidgets('documents screen creates a folder without Flutter exceptions', (
     tester,
   ) async {
     final repository = MockDocumentsRepository();
@@ -112,8 +124,8 @@ void main() {
     ).thenAnswer(
       (_) async => const DocumentFolderItem(
         id: 'folder-2',
-        name: 'Esami sangue',
-        pathLabel: 'Esami sangue',
+        name: 'Blood tests',
+        pathLabel: 'Blood tests',
         childFolderCount: 0,
         documentCount: 0,
       ),
@@ -132,33 +144,33 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: DocumentsScreen()),
+        child: _testApp(home: const DocumentsScreen()),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Nuova cartella'));
+    await tester.tap(find.text('New folder').first);
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Nome cartella'),
-      'Esami sangue',
+      find.widgetWithText(TextFormField, 'Folder name'),
+      'Blood tests',
     );
 
-    await tester.tap(find.text('Crea'));
+    await tester.tap(find.text('Create'));
     await tester.pump();
     await tester.pumpAndSettle();
 
     verify(
-      () => repository.createFolder(name: 'Esami sangue', parentFolderId: null),
+      () => repository.createFolder(name: 'Blood tests', parentFolderId: null),
     ).called(1);
     expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets(
-    'documents screen apre sposta file dal menu senza errori navigator',
+    'documents screen opens move file from menu without navigator errors',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -170,10 +182,10 @@ void main() {
                 documents: [
                   ClinicalDocumentSummary(
                     id: 'doc-1',
-                    title: 'Esami marzo',
+                    title: 'March labs',
                     documentType: 'lab_report',
                     uploadDate: DateTime.utc(2026, 3, 20, 8),
-                    originalFilename: 'esami-marzo.pdf',
+                    originalFilename: 'march-labs.pdf',
                     mimeType: 'application/pdf',
                     fileSizeBytes: 182400,
                     parsedStatus: 'parsed',
@@ -187,34 +199,48 @@ void main() {
               (ref) async => const [
                 DocumentFolderItem(
                   id: 'folder-1',
-                  name: 'Esami 2026',
-                  pathLabel: 'Esami 2026',
+                  name: 'Labs 2026',
+                  pathLabel: 'Labs 2026',
                   childFolderCount: 0,
                   documentCount: 1,
                 ),
               ],
             ),
           ],
-          child: const MaterialApp(home: DocumentsScreen()),
+          child: _testApp(home: const DocumentsScreen()),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Processato'));
+      final documentScrollView = find.byType(Scrollable).first;
+      final moveButtons = find.byTooltip('Move file');
+      for (
+        var attempts = 0;
+        attempts < 5 && moveButtons.evaluate().isEmpty;
+        attempts += 1
+      ) {
+        await tester.drag(documentScrollView, const Offset(0, -300));
+        await tester.pumpAndSettle();
+      }
+      await tester.scrollUntilVisible(
+        moveButtons.first,
+        120,
+        scrollable: documentScrollView,
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sposta file').last);
+      await tester.tap(moveButtons.first);
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Archivio principale'), findsOneWidget);
-      expect(find.text('Esami 2026'), findsWidgets);
+      expect(find.text('Main archive'), findsOneWidget);
+      expect(find.text('Labs 2026'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'document detail screen nasconde il testo estratto finché l’utente non lo apre',
+    'document detail screen hides extracted text until user opens it',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -222,12 +248,12 @@ void main() {
             documentDetailProvider.overrideWith(
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
-                title: 'Referto laboratorio aprile',
+                title: 'April lab report',
                 documentType: 'lab_report',
                 uploadDate: DateTime.utc(2026, 4, 2, 9),
                 examDate: DateTime.utc(2026, 4, 1),
-                source: 'Laboratorio locale',
-                originalFilename: 'lab-aprile.pdf',
+                source: 'Local lab',
+                originalFilename: 'lab-april.pdf',
                 mimeType: 'application/pdf',
                 fileSizeBytes: 64000,
                 parsedStatus: 'parsed',
@@ -236,18 +262,18 @@ void main() {
                 parsingConfidence: 0.84,
                 processingError: null,
                 pendingSync: true,
-                fileUrl: 'patients/demo/lab-aprile.pdf',
+                fileUrl: 'patients/demo/lab-april.pdf',
                 viewerUrl: '/api/v1/documents/doc-1/content?token=abc',
-                ocrText: 'Glucosio 110 mg/dL 70-99',
+                ocrText: 'Glucose 110 mg/dL 70-99',
                 processedAt: DateTime.utc(2026, 4, 2, 9, 5),
                 labPanels: const [
                   LabPanelItem(
                     id: 'panel-1',
-                    panelName: 'Esami del sangue',
+                    panelName: 'Blood tests',
                     results: [
                       LabResultItem(
                         id: 'result-1',
-                        analyteName: 'Glucosio',
+                        analyteName: 'Glucose',
                         value: '110',
                         unit: 'mg/dL',
                         refMin: 70,
@@ -261,84 +287,62 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: DocumentDetailScreen(documentId: 'doc-1'),
+          child: _testApp(
+            home: const DocumentDetailScreen(documentId: 'doc-1'),
           ),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Referto laboratorio aprile'), findsOneWidget);
-      expect(find.text('Sync in attesa'), findsOneWidget);
+      expect(find.text('April lab report'), findsOneWidget);
+      expect(find.text('Show technical details'), findsOneWidget);
+      await tester.tap(find.text('Show technical details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sync pending'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
-      expect(find.text('Testo estratto'), findsOneWidget);
-      expect(find.text('Mostra testo'), findsOneWidget);
-      expect(find.textContaining('Glucosio 110 mg/dL 70-99'), findsNothing);
-      await tester.tap(find.text('Mostra testo'));
+      expect(find.text('Extracted text'), findsOneWidget);
+      expect(find.text('Show text'), findsOneWidget);
+      expect(find.textContaining('Glucose 110 mg/dL 70-99'), findsNothing);
+      final showTextFinder = find.text('Show text').first;
+      await tester.ensureVisible(showTextFinder);
       await tester.pumpAndSettle();
-      expect(find.text('Nascondi testo'), findsOneWidget);
+      await tester.tap(showTextFinder, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Hide text'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -420));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Glucosio'), findsWidgets);
+      expect(find.textContaining('Glucose'), findsWidgets);
       await tester.drag(find.byType(ListView), const Offset(0, -240));
       await tester.pumpAndSettle();
       final abnormalValueText = tester.widget<Text>(find.text('110 mg/dL'));
       final context = tester.element(find.text('110 mg/dL'));
-      expect(find.text('Fuori range'), findsOneWidget);
+      expect(find.text('Out of range'), findsOneWidget);
       expect(
         abnormalValueText.style?.color,
         equals(Theme.of(context).colorScheme.error),
       );
-      expect(find.text('Vecchio'), findsWidgets);
-      expect(
-        find.textContaining('non viene incluso nei recap AI'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('modifiche in attesa di sincronizzazione'),
-        findsOneWidget,
-      );
-      expect(find.text('Apri file'), findsOneWidget);
-      expect(find.text('Revisione manuale'), findsOneWidget);
+      expect(find.text('Old'), findsWidgets);
+      expect(find.textContaining('not included in AI recaps'), findsOneWidget);
+      expect(find.textContaining('changes waiting to sync'), findsOneWidget);
+      expect(find.text('Open file'), findsOneWidget);
+      expect(find.text('Manual review'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'document detail screen apre sposta file dal menu senza errori navigator',
+    'document detail screen opens move file from menu without navigator errors',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            billingStatusProvider.overrideWith(
-              (ref) async => const BillingStatus(
-                currentPlan: BillingPlan(
-                  id: 'plan-ai-plus',
-                  code: 'ai_plus_yearly',
-                  name: 'AI Plus',
-                  billingInterval: 'yearly',
-                  priceCents: 4900,
-                  currency: 'EUR',
-                  sortOrder: 1,
-                  isActive: true,
-                  isPublic: true,
-                  isRecommended: true,
-                  featureCodes: ['cloud_document_storage'],
-                ),
-                availablePlans: [],
-                entitlementCodes: ['cloud_document_storage'],
-                hasActivePaidSubscription: true,
-                checkoutReady: false,
-                isHackathonDemoMode: false,
-              ),
-            ),
             documentFoldersProvider.overrideWith(
               (ref) async => const [
                 DocumentFolderItem(
                   id: 'folder-1',
-                  name: 'Esami 2026',
-                  pathLabel: 'Esami 2026',
+                  name: 'Labs 2026',
+                  pathLabel: 'Labs 2026',
                   childFolderCount: 0,
                   documentCount: 1,
                 ),
@@ -347,12 +351,12 @@ void main() {
             documentDetailProvider.overrideWith(
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
-                title: 'Referto laboratorio aprile',
+                title: 'April lab report',
                 documentType: 'lab_report',
                 uploadDate: DateTime.utc(2026, 4, 2, 9),
                 examDate: DateTime.utc(2026, 4, 1),
-                source: 'Laboratorio locale',
-                originalFilename: 'lab-aprile.pdf',
+                source: 'Local lab',
+                originalFilename: 'lab-april.pdf',
                 mimeType: 'application/pdf',
                 fileSizeBytes: 64000,
                 parsedStatus: 'parsed',
@@ -361,17 +365,19 @@ void main() {
                 parsingConfidence: 0.84,
                 processingError: null,
                 pendingSync: false,
-                fileUrl: 'patients/demo/lab-aprile.pdf',
+                fileUrl: 'patients/demo/lab-april.pdf',
                 viewerUrl: '/api/v1/documents/doc-1/content?token=abc',
-                ocrText: 'Glucosio 110 mg/dL 70-99',
+                ocrText: 'Glucose 110 mg/dL 70-99',
                 processedAt: DateTime.utc(2026, 4, 2, 9, 5),
                 labPanels: const [],
                 imagingReports: const [],
+                storageLocation: 'local',
+                localFilePath: '/tmp/doc-1.pdf',
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: DocumentDetailScreen(documentId: 'doc-1'),
+          child: _testApp(
+            home: const DocumentDetailScreen(documentId: 'doc-1'),
           ),
         ),
       );
@@ -380,25 +386,67 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sposta file').last);
+      await tester.tap(find.text('Move file').last);
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Archivio principale'), findsOneWidget);
-      expect(find.text('Esami 2026'), findsWidgets);
+      expect(find.text('Main archive'), findsOneWidget);
+      expect(find.text('Labs 2026'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
 
+  testWidgets('document detail screen shows manual review for local documents', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          documentDetailProvider.overrideWith(
+            (ref, documentId) async => ClinicalDocumentDetail(
+              id: documentId,
+              title: 'Blood report from phone',
+              documentType: 'lab_report',
+              uploadDate: DateTime.utc(2026, 4, 2, 9),
+              examDate: DateTime.utc(2026, 4, 1),
+              source: 'Camera upload',
+              originalFilename: 'blood-report.pdf',
+              mimeType: 'application/pdf',
+              fileSizeBytes: 64000,
+              parsedStatus: 'review_required',
+              contextStatus: 'active',
+              processingError:
+                  'No text could be extracted locally from this file. Open Manual review to add values.',
+              pendingSync: false,
+              fileUrl: '/local/blood-report.pdf',
+              ocrText: null,
+              labPanels: const [],
+              imagingReports: const [],
+              storageLocation: 'local',
+              localFilePath: '/tmp/local-doc.pdf',
+            ),
+          ),
+        ],
+        child: _testApp(home: const DocumentDetailScreen(documentId: 'doc-1')),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ready to use.'), findsOneWidget);
+    expect(find.text('Manual review'), findsOneWidget);
+    expect(find.text('Open file'), findsOneWidget);
+  });
+
   testWidgets(
-    'document upload screen seleziona file, invia upload e naviga al dettaglio',
+    'document upload screen selects file, uploads, and navigates to detail',
     (tester) async {
       final repository = MockDocumentsRepository();
       final picker = MockDocumentPickerService();
 
       when(() => picker.pickDocument()).thenAnswer(
         (_) async => const SelectedUploadDocument(
-          name: 'nuovo-referto.pdf',
+          name: 'new-report.pdf',
           bytes: [37, 80, 68, 70],
           mimeType: 'application/pdf',
         ),
@@ -411,10 +459,10 @@ void main() {
       ).thenAnswer(
         (_) async => ClinicalDocumentSummary(
           id: 'doc-42',
-          title: 'Nuovo referto',
+          title: 'New report',
           documentType: 'generic_document',
           uploadDate: DateTime.utc(2026, 3, 20, 10),
-          originalFilename: 'nuovo-referto.pdf',
+          originalFilename: 'new-report.pdf',
           mimeType: 'application/pdf',
           fileSizeBytes: 4096,
           parsedStatus: 'pending',
@@ -432,7 +480,7 @@ void main() {
           GoRoute(
             path: '/app/documents/:documentId',
             builder: (_, state) => Scaffold(
-              body: Text('Dettaglio ${state.pathParameters['documentId']}'),
+              body: Text('Detail ${state.pathParameters['documentId']}'),
             ),
           ),
         ],
@@ -444,25 +492,25 @@ void main() {
             documentsRepositoryProvider.overrideWith((ref) => repository),
             documentPickerServiceProvider.overrideWith((ref) => picker),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: _testApp(routerConfig: router),
         ),
       );
 
-      await tester.tap(find.text('Seleziona file'));
+      await tester.tap(find.text('Select file'));
       await tester.pumpAndSettle();
-      expect(find.text('nuovo-referto.pdf'), findsOneWidget);
+      expect(find.textContaining('new-report.pdf'), findsOneWidget);
       verify(() => picker.pickDocument()).called(1);
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Titolo documento'),
-        'Nuovo referto',
+        find.widgetWithText(TextFormField, 'Document title'),
+        'New report',
       );
       await tester.scrollUntilVisible(
-        find.byIcon(Icons.cloud_upload_outlined),
+        find.byIcon(Icons.save_alt_outlined),
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.byIcon(Icons.cloud_upload_outlined));
+      await tester.tap(find.byIcon(Icons.save_alt_outlined));
       await tester.pumpAndSettle();
 
       verify(
@@ -474,7 +522,7 @@ void main() {
     },
   );
 
-  testWidgets('document query screen mostra risposta e citazioni', (
+  testWidgets('document query screen shows answer and citations', (
     tester,
   ) async {
     final repository = MockDocumentsRepository();
@@ -488,16 +536,16 @@ void main() {
     ).thenAnswer(
       (_) async => DocumentQueryResult(
         answer:
-            'Referti recenti: la creatinina risulta elevata in un documento recente [1].',
+            'Recent reports: creatinine is elevated in a recent document [1].',
         citations: const [
           DocumentQueryCitation(
             documentId: 'doc-42',
-            documentTitle: 'Esami aprile',
+            documentTitle: 'April labs',
             documentType: 'lab_report',
-            folderName: 'Esami 2026',
+            folderName: 'Labs 2026',
             chunkKind: 'lab_panel',
-            chunkLabel: 'Pannello laboratorio',
-            excerpt: 'Creatinina: 1.6 mg/dL range 0.7-1.2 fuori range',
+            chunkLabel: 'Lab panel',
+            excerpt: 'Creatinine: 1.6 mg/dL range 0.7-1.2 out of range',
             score: 0.92,
           ),
         ],
@@ -507,15 +555,15 @@ void main() {
         rerankerModelName: 'qwen3-reranker-4b',
         retrievedChunks: 1,
         retrievedDocuments: 1,
-        searchScopeLabel: 'Cartella: Esami',
-        coverageNote: '1 documento e 1 passaggio usati per la risposta.',
+        searchScopeLabel: 'Folder: Labs',
+        coverageNote: '1 document and 1 passage used for the answer.',
         usedFallback: false,
       ),
     );
     when(() => repository.reindexDocuments()).thenAnswer((_) async => 3);
 
     final router = GoRouter(
-      initialLocation: '/app/documents/ask?folderId=folder-1&folderName=Esami',
+      initialLocation: '/app/documents/ask?folderId=folder-1&folderName=Labs',
       routes: [
         GoRoute(
           path: '/app/documents/ask',
@@ -527,7 +575,7 @@ void main() {
         GoRoute(
           path: '/app/documents/:documentId',
           builder: (_, state) => Scaffold(
-            body: Text('Dettaglio ${state.pathParameters['documentId']}'),
+            body: Text('Detail ${state.pathParameters['documentId']}'),
           ),
         ),
       ],
@@ -538,47 +586,53 @@ void main() {
         overrides: [
           documentsRepositoryProvider.overrideWith((ref) => repository),
         ],
-        child: MaterialApp.router(routerConfig: router),
+        child: _testApp(routerConfig: router),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Esami'), findsOneWidget);
+    expect(find.text('Labs'), findsOneWidget);
     await tester.enterText(
-      find.widgetWithText(TextField, 'Domanda'),
-      'Ci sono valori fuori range?',
+      find.byType(TextField),
+      'Are there out-of-range values?',
     );
     await tester.pump();
-    await tester.drag(find.byType(ListView), const Offset(0, -240));
+    final askButton = find.byIcon(Icons.arrow_upward_rounded);
+    await tester.scrollUntilVisible(
+      askButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cerca nei documenti'), warnIfMissed: false);
+    await tester.tap(askButton);
     await tester.pumpAndSettle();
 
     verify(
       () => repository.queryDocuments(
-        question: 'Ci sono valori fuori range?',
+        question: 'Are there out-of-range values?',
         folderId: 'folder-1',
         topK: null,
       ),
     ).called(1);
-    expect(find.textContaining('creatinina risulta elevata'), findsOneWidget);
-    expect(find.textContaining('1 documento e 1 passaggio'), findsOneWidget);
+    expect(find.textContaining('creatinine is elevated'), findsOneWidget);
+    expect(find.textContaining('1 file'), findsOneWidget);
+    expect(find.textContaining('1 useful part'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Esami aprile'),
+      find.text('April labs'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Esami aprile'), findsOneWidget);
-    expect(find.textContaining('qwen3-reranker-4b'), findsOneWidget);
+    expect(find.text('April labs'), findsOneWidget);
+    expect(find.text('Files used'), findsOneWidget);
 
-    await tester.tap(find.text('Aggiorna indice'), warnIfMissed: false);
+    await tester.tap(find.text('Refresh'), warnIfMissed: false);
     await tester.pump();
     verify(() => repository.reindexDocuments()).called(1);
   });
 
   testWidgets(
-    'document review screen invia revisione manuale e chiude la schermata',
+    'document review screen submits manual review and closes the screen',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(1080, 2400);
@@ -592,11 +646,11 @@ void main() {
       when(() => repository.submitManualReview(any(), any())).thenAnswer(
         (_) async => ClinicalDocumentDetail(
           id: 'doc-9',
-          title: 'Referto revisionato',
+          title: 'Revised report',
           documentType: 'generic_document',
           uploadDate: DateTime.utc(2026, 3, 20, 10),
           examDate: DateTime.utc(2026, 3, 19),
-          source: 'Laboratorio locale',
+          source: 'Local lab',
           originalFilename: 'scan.png',
           mimeType: 'image/png',
           fileSizeBytes: 4096,
@@ -606,7 +660,7 @@ void main() {
           processingError: null,
           fileUrl: 'patients/demo/scan.png',
           viewerUrl: '/api/v1/documents/doc-9/content?token=abc',
-          ocrText: 'Glucosio 102 mg/dL 70-99',
+          ocrText: 'Glucose 102 mg/dL 70-99',
           processedAt: DateTime.utc(2026, 3, 20, 10, 10),
           labPanels: const [],
           imagingReports: const [],
@@ -620,29 +674,29 @@ void main() {
             documentDetailProvider.overrideWith(
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
-                title: 'Scan da correggere',
+                title: 'Scan to correct',
                 documentType: 'generic_document',
                 uploadDate: DateTime.utc(2026, 3, 20, 8),
                 examDate: DateTime.utc(2026, 3, 19),
-                source: 'Laboratorio locale',
+                source: 'Local lab',
                 originalFilename: 'scan.png',
                 mimeType: 'image/png',
                 fileSizeBytes: 5120,
                 parsedStatus: 'review_required',
                 classificationConfidence: 0.4,
                 parsingConfidence: null,
-                processingError: 'Servono correzioni manuali',
+                processingError: 'Manual corrections required',
                 fileUrl: 'patients/demo/scan.png',
                 viewerUrl: '/api/v1/documents/doc-9/content?token=abc',
-                ocrText: 'Glucosio 102 mg/dL 70-99',
+                ocrText: 'Glucose 102 mg/dL 70-99',
                 processedAt: DateTime.utc(2026, 3, 20, 8, 30),
                 labPanels: const [],
                 imagingReports: const [],
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: DocumentReviewScreen(documentId: 'doc-9'),
+          child: _testApp(
+            home: const DocumentReviewScreen(documentId: 'doc-9'),
           ),
         ),
       );
@@ -650,11 +704,11 @@ void main() {
       await tester.pumpAndSettle();
 
       final textFields = find.byType(TextFormField);
-      await tester.enterText(textFields.at(0), 'Referto revisionato');
+      await tester.enterText(textFields.at(0), 'Revised report');
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
 
-      final saveLabel = find.text('Salva revisione manuale');
+      final saveLabel = find.text('Save manual review');
       expect(saveLabel, findsOneWidget);
       await tester.ensureVisible(saveLabel);
       final saveButton = find.ancestor(

@@ -1,13 +1,15 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/core/app_config.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
-import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/home/presentation/home_screen.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -16,61 +18,47 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  testWidgets('home screen mostra badge per notifiche non lette e farmaci', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          alertsProvider.overrideWith(
-            (ref) async => [
-              ClinicalAlert(
-                id: 'alert-1',
-                severity: 'high',
-                alertType: 'follow_up',
-                title: 'Alert di prova',
-                description: 'Controllo necessario.',
-                status: 'open',
-                triggeredAt: DateTime.utc(2026, 3, 20, 10),
-              ),
-            ],
-          ),
-          notificationsProvider.overrideWith(
-            (ref) async => [
-              AppNotificationItem(
-                id: 'notif-1',
-                notificationType: 'clinical_alert',
-                title: 'Alert clinico',
-                body: 'Promemoria da leggere.',
-                priority: 'high',
-                readStatus: false,
-                createdAt: DateTime.utc(2026, 3, 20, 9),
-              ),
-            ],
-          ),
-          unreadNotificationsProvider.overrideWith((ref) async => true),
-          pendingMedicationDosesProvider.overrideWith((ref) async => true),
-          activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
-          profileBundleProvider.overrideWith(
-            (ref) async => ProfileBundle(
-              profile: const PatientProfile(
-                id: 'profile-1',
-                userId: 'user-1',
-                isPrimary: true,
-                firstName: 'Anna',
-                lastName: 'Bianchi',
-                smoker: false,
-              ),
-              onboarding: const OnboardingStatus(healthDataConsent: true),
-              allergies: const [],
-              medicalConditions: const [],
-              medications: const [],
-              familyHistory: const [],
-              managedProfiles: const [
-                PatientProfile(
+  testWidgets(
+    'home screen shows badges for unread notifications and medications',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            alertsProvider.overrideWith(
+              (ref) async => [
+                ClinicalAlert(
+                  id: 'alert-1',
+                  severity: 'high',
+                  alertType: 'follow_up',
+                  title: 'Test alert',
+                  description: 'Check required.',
+                  status: 'open',
+                  triggeredAt: DateTime.utc(2026, 3, 20, 10),
+                ),
+              ],
+            ),
+            notificationsProvider.overrideWith(
+              (ref) async => [
+                AppNotificationItem(
+                  id: 'notif-1',
+                  notificationType: 'clinical_alert',
+                  title: 'Clinical alert',
+                  body: 'Reminder to read.',
+                  priority: 'high',
+                  readStatus: false,
+                  createdAt: DateTime.utc(2026, 3, 20, 9),
+                ),
+              ],
+            ),
+            unreadNotificationsProvider.overrideWith((ref) async => true),
+            pendingMedicationDosesProvider.overrideWith((ref) async => true),
+            activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
+            profileBundleProvider.overrideWith(
+              (ref) async => ProfileBundle(
+                profile: const PatientProfile(
                   id: 'profile-1',
                   userId: 'user-1',
                   isPrimary: true,
@@ -78,183 +66,175 @@ void main() {
                   lastName: 'Bianchi',
                   smoker: false,
                 ),
-                PatientProfile(
-                  id: 'profile-2',
-                  userId: 'user-1',
-                  isPrimary: false,
-                  firstName: 'Luca',
-                  lastName: 'Bianchi',
-                  smoker: false,
-                  relationshipLabel: 'figlio',
+                onboarding: const OnboardingStatus(healthDataConsent: true),
+                allergies: const [],
+                medicalConditions: const [],
+                medications: const [],
+                familyHistory: const [],
+                managedProfiles: const [
+                  PatientProfile(
+                    id: 'profile-1',
+                    userId: 'user-1',
+                    isPrimary: true,
+                    firstName: 'Anna',
+                    lastName: 'Bianchi',
+                    smoker: false,
+                  ),
+                  PatientProfile(
+                    id: 'profile-2',
+                    userId: 'user-1',
+                    isPrimary: false,
+                    firstName: 'Luca',
+                    lastName: 'Bianchi',
+                    smoker: false,
+                    relationshipLabel: 'son',
+                  ),
+                ],
+              ),
+            ),
+            dailyEntriesProvider.overrideWith(
+              (ref) async => [
+                DailyEntry(
+                  id: 'entry-1',
+                  entryDate: DateTime.utc(2026, 3, 20),
+                  generalNotes: 'Tutto ok.',
+                  symptoms: const [],
+                  vitals: const [],
                 ),
               ],
             ),
-          ),
-          dailyEntriesProvider.overrideWith(
-            (ref) async => [
-              DailyEntry(
-                id: 'entry-1',
-                entryDate: DateTime.utc(2026, 3, 20),
-                generalNotes: 'Tutto ok.',
-                symptoms: const [],
-                vitals: const [],
-              ),
-            ],
-          ),
-          preventionCenterProvider.overrideWith(
-            (ref) async => PreventionCenterData(
-              generatedAt: DateTime.utc(2026, 3, 20, 12),
-              displayName: 'Anna Bianchi',
-              age: 33,
-              biologicalSex: 'female',
-              overview: const PreventionCenterOverview(
-                actionableScreenings: 1,
-                vaccineReviews: 2,
-                seasonalChecks: 1,
-                followUpItems: 1,
-              ),
-              annualVisit: const PreventionRecommendationItem(
-                code: 'preventive_annual_visit',
-                title: 'Visita preventiva annuale',
-                subtitle: 'Controllo generale',
-                status: 'recommended',
-                priority: 'normal',
-                category: 'prevenzione_generale',
-                kind: 'screening',
-              ),
-              visitsAndControls: const [],
-              vaccines: const [
-                PreventionRecommendationItem(
-                  code: 'influenza_annual_review',
-                  title: 'Vaccino antinfluenzale',
+            preventionCenterProvider.overrideWith(
+              (ref) async => PreventionCenterData(
+                generatedAt: DateTime.utc(2026, 3, 20, 12),
+                displayName: 'Anna Bianchi',
+                age: 33,
+                biologicalSex: 'female',
+                overview: const PreventionCenterOverview(
+                  actionableScreenings: 1,
+                  vaccineReviews: 2,
+                  seasonalChecks: 1,
+                  followUpItems: 1,
+                ),
+                annualVisit: const PreventionRecommendationItem(
+                  code: 'preventive_annual_visit',
+                  title: 'Annual preventive visit',
+                  subtitle: 'General check-up',
                   status: 'recommended',
                   priority: 'normal',
-                  category: 'vaccini',
-                  kind: 'vaccine',
+                  category: 'general_prevention',
+                  kind: 'screening',
                 ),
-              ],
-              seasonalChecks: const [],
-              followUpReminders: const [],
-            ),
-          ),
-          healthDossierProvider.overrideWith(
-            (ref) async => HealthDossier(
-              generatedAt: DateTime.utc(2026, 3, 20, 12),
-              displayName: 'Anna Bianchi',
-              age: 33,
-              biologicalSex: 'female',
-              profileFacts: const [
-                DossierProfileFact(label: 'BMI', value: '22.1'),
-              ],
-              provenanceFacts: const [],
-              emergencySummary: DossierEmergencySummary(
-                generatedAt: DateTime.utc(2026, 3, 20, 12),
-                headline: 'Scheda emergenza ClinDiary',
-                keyPoints: const [
-                  'Nessun dato critico aggiuntivo disponibile al momento.',
+                visitsAndControls: const [],
+                vaccines: const [
+                  PreventionRecommendationItem(
+                    code: 'influenza_annual_review',
+                    title: 'Influenza vaccine',
+                    status: 'recommended',
+                    priority: 'normal',
+                    category: 'vaccines',
+                    kind: 'vaccine',
+                  ),
                 ],
-                activeProblems: const ['Asma allergica'],
-                activeMedications: const [],
-                allergies: const [],
-                conditions: const [],
-                openAlerts: const [],
+                seasonalChecks: const [],
+                followUpReminders: const [],
               ),
-              allergies: const [],
-              medicalConditions: const [],
-              medications: const [],
-              familyHistory: const [],
-              vaccinations: const [],
-              recentDailyEntries: const [],
-              recentDocuments: [
-                DossierDocumentItem(
-                  id: 'doc-1',
-                  title: 'Esami marzo',
-                  documentType: 'lab_report',
-                  uploadDate: DateTime.utc(2026, 3, 20),
-                  parsedStatus: 'parsed',
-                  contextStatus: 'active',
-                ),
-              ],
-              recentLabPanels: const [],
-              recentImagingReports: const [],
-              deviceMeasurementSummaries: const [],
-              recentInsights: const [],
-              recentReports: const [],
-              alerts: const [],
-              wearableSummaries: const [],
             ),
+            healthDossierProvider.overrideWith(
+              (ref) async => HealthDossier(
+                generatedAt: DateTime.utc(2026, 3, 20, 12),
+                displayName: 'Anna Bianchi',
+                age: 33,
+                biologicalSex: 'female',
+                profileFacts: const [
+                  DossierProfileFact(label: 'BMI', value: '22.1'),
+                ],
+                provenanceFacts: const [],
+                emergencySummary: DossierEmergencySummary(
+                  generatedAt: DateTime.utc(2026, 3, 20, 12),
+                  headline: 'ClinDiary emergency card',
+                  keyPoints: const [
+                    'No additional critical data currently available.',
+                  ],
+                  activeProblems: const ['Allergic asthma'],
+                  activeMedications: const [],
+                  allergies: const [],
+                  conditions: const [],
+                  openAlerts: const [],
+                ),
+                allergies: const [],
+                medicalConditions: const [],
+                medications: const [],
+                familyHistory: const [],
+                vaccinations: const [],
+                recentDailyEntries: const [],
+                recentDocuments: [
+                  DossierDocumentItem(
+                    id: 'doc-1',
+                    title: 'March labs',
+                    documentType: 'lab_report',
+                    uploadDate: DateTime.utc(2026, 3, 20),
+                    parsedStatus: 'parsed',
+                    contextStatus: 'active',
+                  ),
+                ],
+                recentLabPanels: const [],
+                recentImagingReports: const [],
+                deviceMeasurementSummaries: const [],
+                recentInsights: const [],
+                recentReports: const [],
+                alerts: const [],
+                wearableSummaries: const [],
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: HomeScreen(),
+            locale: Locale('en'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
           ),
-        ],
-        child: const MaterialApp(home: HomeScreen()),
-      ),
-    );
+        ),
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Oggi'), findsWidgets);
-    expect(find.text('Recap AI'), findsOneWidget);
-    expect(find.text('Check-up'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Profili'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Profili'), findsWidgets);
-    expect(find.text('Gestisci'), findsOneWidget);
-    expect(find.text('Aggiungi'), findsOneWidget);
-    expect(find.text('Anna Bianchi · principale'), findsOneWidget);
-    expect(find.textContaining('Luca'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Vai a'),
-      400,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Vai a'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Altro'),
-      400,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Altro'), findsOneWidget);
-    expect(find.text('Documenti'), findsOneWidget);
-    expect(find.text('Notifiche'), findsOneWidget);
-    expect(find.text('Prevenzione'), findsOneWidget);
-    expect(find.text('Dossier'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-notifications-badge')), findsOne);
-    expect(find.byKey(const ValueKey('home-medications-badge')), findsOne);
-  });
+      expect(find.text('Today'), findsWidgets);
+      expect(find.text('What do you need?'), findsOneWidget);
+      expect(find.text('Vaccines'), findsOneWidget);
+      expect(find.text('Local sync up to date'), findsNothing);
+      expect(find.text('Profiles'), findsWidgets);
+      expect(find.text('Manage'), findsOneWidget);
+      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('Anna Bianchi · Primary'), findsOneWidget);
+      expect(find.textContaining('Luca'), findsOneWidget);
+      expect(find.text('Recent check-ups'), findsNothing);
+      expect(find.text('Quick actions'), findsNothing);
+      expect(find.text('Secondary tools'), findsNothing);
+      expect(find.text('Prevention'), findsOneWidget);
+      expect(find.text('Dossier'), findsOneWidget);
+      expect(find.text('Vaccines'), findsOneWidget);
+      expect(find.text('Medications'), findsOneWidget);
+      expect(find.text('History'), findsOneWidget);
+      expect(find.text('Timeline'), findsOneWidget);
+      expect(find.text('Smartwatch'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-medications-badge')), findsOne);
+    },
+  );
 
-  testWidgets('home screen mostra scenari demo solo in hackathon mode', (
+  testWidgets('home screen shows demo profiles in the today card', (
     tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
-          billingStatusProvider.overrideWith(
-            (ref) async => const BillingStatus(
-              currentPlan: BillingPlan(
-                id: 'plan-free',
-                code: 'free',
-                name: 'ClinDiary Free',
-                billingInterval: 'free',
-                priceCents: 0,
-                currency: 'EUR',
-                sortOrder: 0,
-                isActive: true,
-                isPublic: true,
-                isRecommended: false,
-                featureCodes: [],
-              ),
-              availablePlans: [],
-              entitlementCodes: ['ai_daily_summary'],
-              hasActivePaidSubscription: false,
-              checkoutReady: false,
-              isHackathonDemoMode: true,
-            ),
+          appConfigProvider.overrideWith(
+            (ref) => const AppConfig(hackathonDemoMode: true),
           ),
           profileBundleProvider.overrideWith(
             (ref) async => ProfileBundle(
@@ -304,19 +284,32 @@ void main() {
             ),
           ),
           alertsProvider.overrideWith((ref) async => const []),
+          dailyEntriesProvider.overrideWith((ref) async => const []),
           unreadNotificationsProvider.overrideWith((ref) async => false),
           pendingMedicationDosesProvider.overrideWith((ref) async => false),
         ],
-        child: const MaterialApp(home: HomeScreen()),
+        child: const MaterialApp(
+          home: HomeScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Scenari demo'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Demo Scenarios'), findsNothing);
+    expect(find.text('Profiles'), findsOneWidget);
     expect(find.textContaining('Scenario A'), findsOneWidget);
     expect(find.textContaining('Scenario B'), findsOneWidget);
     expect(find.textContaining('Scenario C'), findsOneWidget);
-    expect(find.text('Apri Recap AI'), findsOneWidget);
   });
 }

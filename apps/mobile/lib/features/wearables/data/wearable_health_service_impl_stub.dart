@@ -16,7 +16,7 @@ class _StubWearableHealthService extends WearableHealthService {
   @override
   Future<WearableSyncStatus> getStatus() async {
     return const WearableSyncStatus.unsupported(
-      message: 'Wearable sync non disponibile su questa piattaforma.',
+      message: 'Wearable sync is not available on this platform.',
     );
   }
 

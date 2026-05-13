@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+T _byBrightness<T>(BuildContext context, {required T light, required T dark}) {
+  return Theme.of(context).brightness == Brightness.dark ? dark : light;
+}
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -16,7 +20,6 @@ class HomeScreen extends ConsumerWidget {
     final pendingMedicationsAsync = ref.watch(pendingMedicationDosesProvider);
     final profileAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
-    final billingStatusAsync = ref.watch(billingStatusProvider);
     final l10n = AppLocalizations.of(context);
 
     final alertsCount = alertsAsync.asData?.value.length ?? 0;
@@ -24,8 +27,6 @@ class HomeScreen extends ConsumerWidget {
         unreadNotificationsAsync.asData?.value ?? false;
     final hasPendingMedications =
         pendingMedicationsAsync.asData?.value ?? false;
-    final isHackathonDemoMode =
-        billingStatusAsync.asData?.value?.isHackathonDemoMode == true;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -49,17 +50,14 @@ class HomeScreen extends ConsumerWidget {
                             Text(
                               bundle?.profile.displayName ??
                                   l10n.profileSetupInProgress,
-                              style: Theme.of(
-                                context,
-                              ).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               bundle == null
                                   ? l10n.completeOnboardingToStart
-                                  : l10n.chooseRecapOrSaveCheckUp,
+                                  : 'Start with one action below.',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -78,6 +76,44 @@ class HomeScreen extends ConsumerWidget {
                         icon: alertsCount == 0
                             ? Icons.check_circle_outline
                             : Icons.notification_important_outlined,
+                        onTap: () => context.push('/app/home/alerts'),
+                        tone: alertsCount == 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.green.shade50,
+                                dark: Colors.green.shade900.withValues(
+                                  alpha: 0.36,
+                                ),
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.red.shade50,
+                                dark: Colors.red.shade900.withValues(
+                                  alpha: 0.36,
+                                ),
+                              ),
+                        iconColor: alertsCount == 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.green.shade700,
+                                dark: Colors.green.shade100,
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.red.shade700,
+                                dark: Colors.red.shade100,
+                              ),
+                        labelColor: alertsCount == 0
+                            ? _byBrightness(
+                                context,
+                                light: Colors.green.shade900,
+                                dark: Colors.green.shade100,
+                              )
+                            : _byBrightness(
+                                context,
+                                light: Colors.red.shade900,
+                                dark: Colors.red.shade100,
+                              ),
                         label: Text(
                           alertsCount == 0
                               ? l10n.alertsAllClear
@@ -88,6 +124,24 @@ class HomeScreen extends ConsumerWidget {
                         icon: hasUnreadNotifications
                             ? Icons.mark_email_unread_outlined
                             : Icons.notifications_none_outlined,
+                        onTap: () => context.push('/app/home/notifications'),
+                        tone: _byBrightness(
+                          context,
+                          light: Colors.lightBlue.shade50,
+                          dark: Colors.lightBlue.shade900.withValues(
+                            alpha: 0.36,
+                          ),
+                        ),
+                        iconColor: _byBrightness(
+                          context,
+                          light: Colors.lightBlue.shade700,
+                          dark: Colors.lightBlue.shade100,
+                        ),
+                        labelColor: _byBrightness(
+                          context,
+                          light: Colors.lightBlue.shade900,
+                          dark: Colors.lightBlue.shade100,
+                        ),
                         label: Text(
                           hasUnreadNotifications
                               ? l10n.notificationsUnread
@@ -98,6 +152,22 @@ class HomeScreen extends ConsumerWidget {
                         icon: hasPendingMedications
                             ? Icons.medication_outlined
                             : Icons.checklist_outlined,
+                        onTap: () => context.push('/app/home/medications'),
+                        tone: _byBrightness(
+                          context,
+                          light: Colors.amber.shade50,
+                          dark: Colors.amber.shade900.withValues(alpha: 0.34),
+                        ),
+                        iconColor: _byBrightness(
+                          context,
+                          light: Colors.amber.shade800,
+                          dark: Colors.amber.shade100,
+                        ),
+                        labelColor: _byBrightness(
+                          context,
+                          light: Colors.amber.shade900,
+                          dark: Colors.amber.shade100,
+                        ),
                         label: Text(
                           hasPendingMedications
                               ? l10n.medicationsDue
@@ -107,39 +177,12 @@ class HomeScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isCompact = constraints.maxWidth < 380;
-                      final aiButton = FilledButton.icon(
-                        onPressed: () => context.go('/app/ai'),
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        label: Text(l10n.aiRecap),
-                      );
-                      final checkUpButton = FilledButton.tonalIcon(
-                        onPressed: () => context.push('/app/diary/check-up'),
-                        icon: const Icon(Icons.add_circle_outline),
-                        label: Text(l10n.checkUp),
-                      );
-
-                      if (isCompact) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            aiButton,
-                            const SizedBox(height: 12),
-                            checkUpButton,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          Expanded(child: aiButton),
-                          const SizedBox(width: 12, height: 12),
-                          Expanded(child: checkUpButton),
-                        ],
-                      );
-                    },
+                  _HomeProfileChooser(
+                    bundle: bundle,
+                    activeProfileId: activeProfileIdAsync.asData?.value,
+                    onSelectProfile: (profileId) =>
+                        _setActiveProfile(context, ref, profileId),
+                    onManageProfiles: () => context.push('/app/profile/family'),
                   ),
                 ],
               ),
@@ -148,218 +191,19 @@ class HomeScreen extends ConsumerWidget {
               title: l10n.todayTitle,
               child: const Center(child: CircularProgressIndicator()),
             ),
-            error: (error, _) =>
-                SectionCard(title: l10n.todayTitle, child: Text(error.toString())),
-          ),
-          if (isHackathonDemoMode) ...[
-            const SizedBox(height: 12),
-            profileAsync.when(
-              data: (bundle) {
-                if (bundle == null) {
-                  return const SizedBox.shrink();
-                }
-                final profiles = bundle.managedProfiles.isNotEmpty
-                    ? bundle.managedProfiles
-                    : <PatientProfile>[bundle.profile];
-                if (profiles.length < 3) {
-                  return const SizedBox.shrink();
-                }
-                final selectedId = activeProfileIdAsync.asData?.value;
-                return SectionCard(
-                  title: l10n.demoScenarios,
-                  subtitle: l10n.judgeModeSubtitle,
-                  action: FilledButton.tonalIcon(
-                    onPressed: () => context.go('/app/ai'),
-                    icon: const Icon(Icons.auto_awesome_outlined),
-                    label: Text(l10n.openAiRecap),
-                  ),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (var index = 0; index < profiles.length && index < 3; index++)
-                        FilterChip(
-                          selected: profiles[index].id == selectedId,
-                          label: Text(
-                            _hackathonScenarioLabel(index, profiles[index]),
-                          ),
-                          onSelected: (_) =>
-                              _setActiveProfile(context, ref, profiles[index].id),
-                        ),
-                    ],
-                  ),
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
-            ),
-          ],
-          const SizedBox(height: 12),
-          SectionCard(
-            title: l10n.goTo,
-            child: GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.3,
-              children: [
-                _DashboardActionCard(
-                  title: l10n.documents,
-                  subtitle: l10n.reports,
-                  icon: Icons.description_outlined,
-                  onTap: () => context.go('/app/documents'),
-                ),
-                _DashboardActionCard(
-                  title: l10n.medications,
-                  subtitle: l10n.treatments,
-                  icon: Icons.medication_outlined,
-                  onTap: () => context.push('/app/home/medications'),
-                  showBadge: hasPendingMedications,
-                  badgeKey: const ValueKey('home-medications-badge'),
-                ),
-                _DashboardActionCard(
-                  title: l10n.prevention,
-                  subtitle: l10n.checkups,
-                  icon: Icons.health_and_safety_outlined,
-                  onTap: () => context.push('/app/home/prevention-center'),
-                ),
-                _DashboardActionCard(
-                  title: l10n.devices,
-                  subtitle: 'Wave 1',
-                  icon: Icons.device_hub_outlined,
-                  onTap: () => context.push('/app/home/devices'),
-                ),
-                _DashboardActionCard(
-                  title: l10n.dossier,
-                  subtitle: l10n.history,
-                  icon: Icons.folder_shared_outlined,
-                  onTap: () => context.push('/app/home/dossier'),
-                ),
-              ],
+            error: (error, _) => SectionCard(
+              title: l10n.todayTitle,
+              child: Text(error.toString()),
             ),
           ),
           const SizedBox(height: 12),
-          profileAsync.when(
-            data: (bundle) {
-              if (bundle == null) {
-                return SectionCard(
-                  title: l10n.profiles,
-                  child: Text(l10n.completeOnboardingToStart),
-                );
-              }
-              final selectedId = activeProfileIdAsync.asData?.value;
-              final managedProfiles = bundle.managedProfiles.isNotEmpty
-                  ? bundle.managedProfiles
-                  : <PatientProfile>[bundle.profile];
-              final activeProfile = managedProfiles.firstWhere(
-                (profile) => profile.id == selectedId,
-                orElse: () => bundle.profile,
-              );
-              return SectionCard(
-                title: l10n.profiles,
-                subtitle: l10n.activeProfileLabel(activeProfile.displayName),
-                action: TextButton.icon(
-                  onPressed: () => context.push('/app/profile/family'),
-                  icon: const Icon(Icons.manage_accounts_outlined),
-                  label: Text(l10n.manage),
-                ),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ..._buildProfileChips(
-                      context,
-                      ref,
-                      bundle,
-                      activeProfileIdAsync.asData?.value,
-                    ),
-                    ActionChip(
-                      avatar: const Icon(Icons.add, size: 18),
-                      label: Text(l10n.add),
-                      onPressed: () => context.push('/app/profile/family'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            loading: () => SectionCard(
-              title: l10n.profiles,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, _) =>
-                SectionCard(title: l10n.profiles, child: Text(error.toString())),
-          ),
-          const SizedBox(height: 12),
-          SectionCard(
-            title: l10n.more,
-            subtitle: l10n.secondaryTools,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _MiniActionChip(
-                  label: l10n.timeline,
-                  icon: Icons.timeline_outlined,
-                  onPressed: () => context.push('/app/home/timeline'),
-                ),
-                _MiniActionChip(
-                  label: l10n.notifications,
-                  icon: Icons.notifications_outlined,
-                  onPressed: () => context.push('/app/home/notifications'),
-                  showBadge: hasUnreadNotifications,
-                  badgeKey: const ValueKey('home-notifications-badge'),
-                ),
-                _MiniActionChip(
-                  label: l10n.smartwatch,
-                  icon: Icons.watch_outlined,
-                  onPressed: () => context.push('/app/home/wearables'),
-                ),
-                _MiniActionChip(
-                  label: l10n.aiPlus,
-                  icon: Icons.workspace_premium_outlined,
-                  onPressed: () => context.push('/app/home/billing'),
-                ),
-                _MiniActionChip(
-                  label: l10n.alerts,
-                  icon: Icons.notification_important_outlined,
-                  onPressed: () => context.push('/app/home/alerts'),
-                ),
-              ],
-            ),
+          _FriendlyShortcutSection(
+            hasPendingMedications: hasPendingMedications,
           ),
         ],
       ),
     );
   }
-}
-
-List<Widget> _buildProfileChips(
-  BuildContext context,
-  WidgetRef ref,
-  ProfileBundle? bundle,
-  String? activeProfileId,
-) {
-  if (bundle == null) {
-    return const [];
-  }
-  final l10n = AppLocalizations.of(context);
-  final profiles = bundle.managedProfiles.isNotEmpty
-      ? bundle.managedProfiles
-      : <PatientProfile>[bundle.profile];
-  final selectedId = activeProfileId?.trim().isNotEmpty == true
-      ? activeProfileId!.trim()
-      : bundle.profile.id;
-
-  return profiles.map((profile) {
-    final label = _profileChipLabel(profile, l10n);
-    return FilterChip(
-      selected: profile.id == selectedId,
-      label: Text(label),
-      onSelected: (_) => _setActiveProfile(context, ref, profile.id),
-    );
-  }).toList();
 }
 
 String _profileChipLabel(PatientProfile profile, AppLocalizations l10n) {
@@ -372,14 +216,6 @@ String _profileChipLabel(PatientProfile profile, AppLocalizations l10n) {
     parts.add(l10n.primaryProfileLabel);
   }
   return parts.join(' · ');
-}
-
-String _hackathonScenarioLabel(int index, PatientProfile profile) {
-  const prefixes = ['Scenario A', 'Scenario B', 'Scenario C'];
-  final prefix = index < prefixes.length
-      ? prefixes[index]
-      : 'Scenario ${index + 1}';
-  return '$prefix · ${profile.displayName}';
 }
 
 Future<void> _setActiveProfile(
@@ -398,87 +234,343 @@ Future<void> _setActiveProfile(
   }
 }
 
-class _DashboardActionCard extends StatelessWidget {
-  const _DashboardActionCard({
+class _HomeProfileChooser extends StatelessWidget {
+  const _HomeProfileChooser({
+    required this.bundle,
+    required this.activeProfileId,
+    required this.onSelectProfile,
+    required this.onManageProfiles,
+  });
+
+  final ProfileBundle? bundle;
+  final String? activeProfileId;
+  final ValueChanged<String> onSelectProfile;
+  final VoidCallback onManageProfiles;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (bundle == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colorScheme.primaryContainer.withValues(alpha: 0.42),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.profiles, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 6),
+            Text(l10n.completeOnboardingToStart),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: onManageProfiles,
+              icon: const Icon(Icons.add_circle_outline),
+              label: Text(l10n.add),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final profiles = bundle!.managedProfiles.isNotEmpty
+        ? bundle!.managedProfiles
+        : <PatientProfile>[bundle!.profile];
+    final selectedId = activeProfileId?.trim().isNotEmpty == true
+        ? activeProfileId!.trim()
+        : bundle!.profile.id;
+    final activeProfile = profiles.firstWhere(
+      (profile) => profile.id == selectedId,
+      orElse: () => bundle!.profile,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.switch_account_outlined, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.profiles,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      l10n.activeProfileLabel(activeProfile.displayName),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onManageProfiles,
+                icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+                label: Text(l10n.manage),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final profile in profiles)
+                FilterChip(
+                  selected: profile.id == selectedId,
+                  label: Text(_profileChipLabel(profile, l10n)),
+                  onSelected: (_) => onSelectProfile(profile.id),
+                ),
+              ActionChip(
+                avatar: const Icon(Icons.add, size: 18),
+                label: Text(l10n.add),
+                onPressed: onManageProfiles,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendlyShortcutSection extends StatelessWidget {
+  const _FriendlyShortcutSection({required this.hasPendingMedications});
+
+  final bool hasPendingMedications;
+
+  @override
+  Widget build(BuildContext context) {
+    final shortcuts = <_FriendlyShortcut>[
+      _FriendlyShortcut(
+        title: 'Vaccines',
+        subtitle: 'History and boosters',
+        icon: Icons.vaccines_rounded,
+        color: const Color(0xFFFF7A59),
+        route: '/app/profile/vaccinations',
+      ),
+      _FriendlyShortcut(
+        title: 'Medications',
+        subtitle: 'Today schedule',
+        icon: Icons.medication_rounded,
+        color: const Color(0xFF18A999),
+        route: '/app/home/medications',
+        showBadge: hasPendingMedications,
+        badgeKey: const ValueKey('home-medications-badge'),
+      ),
+      _FriendlyShortcut(
+        title: 'Prevention',
+        subtitle: 'Checks to plan',
+        icon: Icons.health_and_safety_rounded,
+        color: const Color(0xFFF4A62A),
+        route: '/app/home/prevention-center',
+      ),
+      _FriendlyShortcut(
+        title: 'History',
+        subtitle: 'Diary timeline',
+        icon: Icons.event_note_rounded,
+        color: const Color(0xFF6C8AE4),
+        route: '/app/home/history',
+      ),
+      _FriendlyShortcut(
+        title: 'Dossier',
+        subtitle: 'Health profile',
+        icon: Icons.folder_shared_rounded,
+        color: const Color(0xFF4B9F72),
+        route: '/app/home/dossier',
+      ),
+      _FriendlyShortcut(
+        title: 'Timeline',
+        subtitle: 'All events',
+        icon: Icons.timeline_rounded,
+        color: const Color(0xFFEF6F6C),
+        route: '/app/home/timeline',
+      ),
+      _FriendlyShortcut(
+        title: 'Smartwatch',
+        subtitle: 'Daily data sync',
+        icon: Icons.watch_rounded,
+        color: const Color(0xFF17A2B8),
+        route: '/app/home/wearables',
+      ),
+    ];
+
+    return SectionCard(
+      title: 'What do you need?',
+      subtitle: 'The important sections are now one tap away.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final crossAxisCount = constraints.maxWidth >= 760 ? 3 : 2;
+          return GridView.builder(
+            itemCount: shortcuts.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: constraints.maxWidth >= 760 ? 1.9 : 1.24,
+            ),
+            itemBuilder: (context, index) {
+              final item = shortcuts[index];
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.96, end: 1),
+                duration: Duration(milliseconds: 260 + index * 36),
+                curve: Curves.easeOutCubic,
+                builder: (context, scale, child) {
+                  return Transform.scale(scale: scale, child: child);
+                },
+                child: _FriendlyShortcutCard(
+                  item: item,
+                  onTap: () => context.push(item.route),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FriendlyShortcut {
+  const _FriendlyShortcut({
     required this.title,
-    this.subtitle,
+    required this.subtitle,
     required this.icon,
-    required this.onTap,
+    required this.color,
+    required this.route,
     this.showBadge = false,
     this.badgeKey,
   });
 
   final String title;
-  final String? subtitle;
+  final String subtitle;
   final IconData icon;
-  final VoidCallback onTap;
+  final Color color;
+  final String route;
   final bool showBadge;
   final Key? badgeKey;
+}
+
+class _FriendlyShortcutCard extends StatelessWidget {
+  const _FriendlyShortcutCard({required this.item, required this.onTap});
+
+  final _FriendlyShortcut item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card.outlined(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.08),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: colorScheme.primary),
-                  ),
-                  if (showBadge)
-                    Positioned(
-                      top: -1,
-                      right: -2,
-                      child: Container(
-                        key: badgeKey,
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: colorScheme.error,
-                          shape: BoxShape.circle,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark ? Colors.white : const Color(0xFF20262F);
+    return Semantics(
+      button: true,
+      label: item.title,
+      child: Material(
+        color: item.color.withValues(alpha: isDark ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: item.color,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: item.color.withValues(alpha: 0.24),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Icon(item.icon, color: Colors.white),
                         ),
+                        if (item.showBadge)
+                          Positioned(
+                            key: item.badgeKey,
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 11,
+                              height: 11,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.error,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: item.color,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: foreground,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (subtitle != null && subtitle!.trim().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        subtitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
+                    const SizedBox(height: 3),
+                    Text(
+                      item.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: foreground.withValues(alpha: 0.72),
                       ),
                     ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -497,9 +589,7 @@ class _HomeAvatar extends StatelessWidget {
     final parts = label
         .trim()
         .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .toList();
+        .where((part) => part.isNotEmpty);
     final initials = parts.isEmpty
         ? 'CD'
         : parts.map((part) => part.substring(0, 1).toUpperCase()).join();
@@ -523,81 +613,66 @@ class _HomeAvatar extends StatelessWidget {
   }
 }
 
-class _MiniActionChip extends StatelessWidget {
-  const _MiniActionChip({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.showBadge = false,
-    this.badgeKey,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final bool showBadge;
-  final Key? badgeKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ActionChip(
-          avatar: Icon(icon, size: 18, color: colorScheme.primary),
-          label: Text(label),
-          onPressed: onPressed,
-        ),
-        if (showBadge)
-          Positioned(
-            top: -2,
-            right: -2,
-            child: Container(
-              key: badgeKey,
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: colorScheme.error,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, this.icon});
+  const _StatusPill({
+    required this.label,
+    this.icon,
+    this.onTap,
+    this.tone,
+    this.iconColor,
+    this.labelColor,
+  });
 
   final Widget label;
   final IconData? icon;
+  final VoidCallback? onTap;
+  final Color? tone;
+  final Color? iconColor;
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final baseLabelStyle =
+        Theme.of(context).textTheme.labelMedium ?? const TextStyle();
+    final background =
+        tone ?? colorScheme.surfaceContainerHighest.withValues(alpha: 0.52);
+    final resolvedIconColor = iconColor ?? colorScheme.primary;
 
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.52),
+        color: background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: colorScheme.primary),
+            Icon(icon, size: 16, color: resolvedIconColor),
             const SizedBox(width: 6),
           ],
           DefaultTextStyle(
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium!.copyWith(fontWeight: FontWeight.w700),
+            style: baseLabelStyle.copyWith(
+              fontWeight: FontWeight.w700,
+              color: labelColor ?? baseLabelStyle.color,
+            ),
             child: label,
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: content,
       ),
     );
   }

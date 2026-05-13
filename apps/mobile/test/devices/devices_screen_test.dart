@@ -10,10 +10,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  testWidgets('devices screen mostra provider, connessioni e misure', (
+  testWidgets('devices screen shows providers, connections, and measurements', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -25,13 +25,13 @@ void main() {
                 DeviceProviderItem(
                   code: 'omron',
                   displayName: 'OMRON Connect',
-                  summary: 'Monitor pressione e peso.',
+                  summary: 'Monitor blood pressure and weight.',
                   category: 'clinical_device',
                   integrationKind: 'partner_platform',
                   connectionFlow: 'partner_setup',
                   docsUrl: 'https://example.com/omron',
-                  capabilities: ['Pressione', 'Peso'],
-                  setupNotes: ['Nota 1'],
+                  capabilities: ['Blood pressure', 'Weight'],
+                  setupNotes: ['Note 1'],
                   isWaveOne: true,
                   requiresVendorContract: false,
                   providerConfigured: true,
@@ -48,7 +48,7 @@ void main() {
                   connectionFlow: 'oauth2',
                   docsUrl: 'https://example.com/dexcom',
                   capabilities: ['CGM'],
-                  setupNotes: ['Nota 2'],
+                  setupNotes: ['Note 2'],
                   isWaveOne: true,
                   requiresVendorContract: true,
                   providerConfigured: false,
@@ -65,14 +65,14 @@ void main() {
                   integrationKind: 'partner_platform',
                   connectionFlow: 'partner_setup',
                   status: 'connected',
-                  accountLabel: 'Misuratore casa',
+                  accountLabel: 'Home monitor',
                   measurementCount: 1,
                   latestMeasurement: DeviceMeasurementItem(
                     id: 'meas-1',
                     providerCode: 'omron',
                     metricType: 'blood_pressure',
                     measuredAt: DateTime.utc(2026, 4, 1, 8, 30),
-                    displayTitle: 'Pressione arteriosa',
+                    displayTitle: 'Blood pressure',
                     displayValue: '122/78 mmHg · FC 66 bpm',
                   ),
                   supportsLiveSync: false,
@@ -85,7 +85,7 @@ void main() {
                   providerCode: 'omron',
                   metricType: 'blood_pressure',
                   measuredAt: DateTime.utc(2026, 4, 1, 8, 30),
-                  displayTitle: 'Pressione arteriosa',
+                  displayTitle: 'Blood pressure',
                   displayValue: '122/78 mmHg · FC 66 bpm',
                 ),
               ],
@@ -99,19 +99,19 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Dispositivi'), findsOneWidget);
+    expect(find.text('Devices'), findsOneWidget);
     expect(find.text('OMRON Connect'), findsAtLeastNWidgets(1));
-    expect(find.text('Wave 1 clinica'), findsOneWidget);
-    await tester.tap(find.text('Connessi'));
+    expect(find.text('Wave 1 clinical'), findsOneWidget);
+    await tester.tap(find.text('Connected'));
     await tester.pumpAndSettle();
-    expect(find.text('Misuratore casa'), findsOneWidget);
+    expect(find.text('Home monitor'), findsOneWidget);
     expect(find.text('122/78 mmHg · FC 66 bpm'), findsOneWidget);
-    expect(find.text('Registra misura'), findsOneWidget);
-    await tester.tap(find.text('Misure'));
+    expect(find.text('Record measurement'), findsOneWidget);
+    await tester.tap(find.text('Measurements'));
     await tester.pumpAndSettle();
-    expect(find.text('Pressione arteriosa'), findsOneWidget);
+    expect(find.text('Blood pressure'), findsOneWidget);
     await tester.tap(find.text('Import'));
     await tester.pumpAndSettle();
-    expect(find.text('Nessun import recente'), findsOneWidget);
+    expect(find.text('No recent imports'), findsOneWidget);
   });
 }

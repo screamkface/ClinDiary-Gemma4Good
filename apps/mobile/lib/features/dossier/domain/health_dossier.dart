@@ -49,7 +49,7 @@ class DossierEmergencySummary {
 
   DossierEmergencySummary.empty()
     : generatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      headline = 'Scheda emergenza ClinDiary',
+      headline = 'ClinDiary emergency card',
       keyPoints = const [],
       activeProblems = const [],
       activeMedications = const [],
@@ -102,27 +102,27 @@ class DossierEmergencySummary {
 
   String toShareText({required String displayName}) {
     final buffer = StringBuffer()
-      ..writeln('ClinDiary - Scheda emergenza')
+      ..writeln('ClinDiary - Emergency card')
       ..writeln(displayName)
-      ..writeln('Aggiornata: ${generatedAt.toLocal()}')
+      ..writeln('Updated: ${generatedAt.toLocal()}')
       ..writeln(headline);
     for (final point in keyPoints) {
       buffer.writeln('- $point');
     }
     if (activeProblems.isNotEmpty) {
-      buffer.writeln('Problemi attivi: ${activeProblems.join(', ')}');
+      buffer.writeln('Active problems: ${activeProblems.join(', ')}');
     }
     if (activeMedications.isNotEmpty) {
-      buffer.writeln('Farmaci attivi: ${activeMedications.join(', ')}');
+      buffer.writeln('Active medications: ${activeMedications.join(', ')}');
     }
     if (allergies.isNotEmpty) {
-      buffer.writeln('Allergie: ${allergies.join(', ')}');
+      buffer.writeln('Allergies: ${allergies.join(', ')}');
     }
     if (conditions.isNotEmpty) {
-      buffer.writeln('Patologie: ${conditions.join(', ')}');
+      buffer.writeln('Conditions: ${conditions.join(', ')}');
     }
     if (openAlerts.isNotEmpty) {
-      buffer.writeln('Alert aperti: ${openAlerts.join(', ')}');
+      buffer.writeln('Open alerts: ${openAlerts.join(', ')}');
     }
     if (latestWearableSummary != null && latestWearableSummary!.isNotEmpty) {
       buffer.writeln('Wearable: $latestWearableSummary');

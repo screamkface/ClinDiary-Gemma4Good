@@ -1,111 +1,65 @@
+import 'dart:convert';
+
 import 'package:clindiary/app/core/app_config.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/app/core/demo_seed_data.dart';
 import 'package:clindiary/app/core/notifications/local_medication_reminder_service.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/secure_token_storage.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthRepository {
   AuthRepository({
-    required ApiClient apiClient,
     required SecureTokenStorage tokenStorage,
     required LocalDatabase localDatabase,
-    required AppConfig appConfig,
     required LocalDocumentVaultService localDocumentVaultService,
     required LocalMedicationReminderService localMedicationReminderService,
-  }) : _apiClient = apiClient,
-       _tokenStorage = tokenStorage,
+    required AppConfig appConfig,
+  }) : _tokenStorage = tokenStorage,
        _localDatabase = localDatabase,
-       _googleAuthClientId = appConfig.googleAuthClientId.trim(),
        _localDocumentVaultService = localDocumentVaultService,
-       _localMedicationReminderService = localMedicationReminderService;
+       _localMedicationReminderService = localMedicationReminderService,
+       _appConfig = appConfig;
 
-  final ApiClient _apiClient;
   final SecureTokenStorage _tokenStorage;
   final LocalDatabase _localDatabase;
-  final String _googleAuthClientId;
   final LocalDocumentVaultService _localDocumentVaultService;
   final LocalMedicationReminderService _localMedicationReminderService;
-  Future<void>? _googleSignInInitialization;
+  final AppConfig _appConfig;
 
   Future<AuthSession?> restoreSession() async {
-    final session = await _tokenStorage.readSession();
-    if (session != null) {
-      final now = DateTime.now().toUtc();
-      if (session.refreshTokenExpiresAt.isBefore(
-        now.add(const Duration(seconds: 30)),
-      )) {
-        await clearLocalSessionState();
-        return null;
-      }
-      await _persistSessionContext(session);
-    }
-    return session;
+    return _appConfig.hackathonDemoMode
+        ? _restoreOrCreateDemoSession()
+        : _restoreOrCreateLocalSession();
   }
 
   Future<AuthSession> login({
     required String email,
     required String password,
   }) async {
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/login',
-      authenticated: false,
-      body: {'email': email, 'password': password},
-    );
-    final session = AuthSession.fromJson(response);
-    await _tokenStorage.saveSession(session);
-    await _persistSessionContext(session);
-    return session;
+    return _appConfig.hackathonDemoMode
+        ? _restoreOrCreateDemoSession()
+        : _restoreOrCreateLocalSession();
   }
 
   Future<AuthSession> loginWithGoogle({required String idToken}) async {
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/google',
-      authenticated: false,
-      body: {'id_token': idToken},
-    );
-    final session = AuthSession.fromJson(response);
-    await _tokenStorage.saveSession(session);
-    await _persistSessionContext(session);
-    return session;
+    return _appConfig.hackathonDemoMode
+        ? _restoreOrCreateDemoSession()
+        : _restoreOrCreateLocalSession();
   }
 
   Future<AuthSession> register({
     required String email,
     required String password,
   }) async {
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/register',
-      authenticated: false,
-      body: {'email': email, 'password': password},
-    );
-    final session = AuthSession.fromJson(response);
-    await _tokenStorage.saveSession(session);
-    await _persistSessionContext(session);
-    return session;
+    return _appConfig.hackathonDemoMode
+        ? _restoreOrCreateDemoSession()
+        : _restoreOrCreateLocalSession();
   }
 
   Future<void> logout() async {
-    final session = await _tokenStorage.readSession();
-    try {
-      if (session != null && session.user.authProvider == 'google') {
-        await _disconnectGoogleSession();
-      }
-      if (session != null) {
-        await _apiClient.postJson(
-          '/api/v1/auth/logout',
-          authenticated: false,
-          body: {'refresh_token': session.refreshToken},
-        );
-      }
-    } catch (_) {
-      // Logout best-effort: we still clear the local session below.
-    } finally {
-      await clearLocalSessionState();
-    }
+    await clearLocalSessionState();
   }
 
   Future<void> clearLocalSessionState() async {
@@ -118,25 +72,10 @@ class AuthRepository {
 
   Future<void> deleteAccount({required String confirmationText}) async {
     final session = await _tokenStorage.readSession();
-    if (session == null) {
-      return;
-    }
-
-    await _apiClient.postJson(
-      '/api/v1/auth/account/delete',
-      body: {'confirmation_text': confirmationText},
-    );
-
-    try {
-      if (session.user.authProvider == 'google') {
-        await _disconnectGoogleSession();
-      }
-    } catch (_) {
-      // Continue local cleanup even if provider disconnect fails.
-    }
-
     await clearLocalSessionState();
-    await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
+    if (session != null) {
+      await _localDocumentVaultService.deleteAllForUserScope(session.user.id);
+    }
   }
 
   Future<void> updateUser(UserSummary user) async {
@@ -149,39 +88,95 @@ class AuthRepository {
   }
 
   Future<String?> requestPasswordReset(String email) async {
-    final response = await _apiClient.postJson(
-      '/api/v1/auth/password-reset/request',
-      authenticated: false,
-      body: {'email': email},
-    );
-    return response['preview_token'] as String?;
+    // No-op in local-only mode.
+    return null;
   }
 
-  Future<void> _disconnectGoogleSession() async {
-    if (_googleAuthClientId.isEmpty) {
-      return;
-    }
-    try {
-      await _ensureGoogleSignInInitialized();
-      await GoogleSignIn.instance.disconnect();
-    } catch (_) {
+  Future<AuthSession> _restoreOrCreateDemoSession() async {
+    final session =
+        await _tokenStorage.readSession() ?? DemoSeedData.createDemoSession();
+    await _tokenStorage.saveSession(session);
+    await _persistSessionContext(session);
+    await _localDatabase.putCache(
+      key: activeProfileIdCacheKey,
+      payload: DemoSeedData.primaryProfileId,
+    );
+    await DemoSeedData.ensureSeeded(
+      _localDatabase,
+      localDocumentVaultService: _localDocumentVaultService,
+    );
+    return session;
+  }
+
+  Future<AuthSession> _restoreOrCreateLocalSession() async {
+    final restored = await _tokenStorage.readSession();
+    final session = restored ?? await _createLocalSession();
+    await _tokenStorage.saveSession(session);
+    await _persistSessionContext(session);
+    await _ensureActiveLocalProfile();
+    return session;
+  }
+
+  Future<AuthSession> _createLocalSession() async {
+    final now = DateTime.now().toUtc();
+    final onboardingCompleted = await _hasCompletedLocalOnboarding();
+    return AuthSession(
+      accessToken: 'local-access-token',
+      refreshToken: 'local-refresh-token',
+      accessTokenExpiresAt: now.add(const Duration(days: 3650)),
+      refreshTokenExpiresAt: now.add(const Duration(days: 3650)),
+      user: UserSummary(
+        id: 'local-user-001',
+        email: 'local@clindiary.app',
+        role: 'patient',
+        onboardingCompleted: onboardingCompleted,
+        healthDataConsent: onboardingCompleted,
+        authProvider: 'local_device',
+      ),
+    );
+  }
+
+  Future<bool> _hasCompletedLocalOnboarding() async {
+    final activeProfileId = await _localDatabase.readCache(
+      activeProfileIdCacheKey,
+    );
+    final candidates = <String>[
+      if (activeProfileId != null && activeProfileId.trim().isNotEmpty)
+        'profile_bundle::${activeProfileId.trim()}',
+      'profile_bundle::pending-profile',
+      'profile_bundle',
+    ];
+
+    for (final key in candidates) {
+      final payload = await _localDatabase.readCache(key);
+      if (payload == null || payload.trim().isEmpty) {
+        continue;
+      }
       try {
-        await GoogleSignIn.instance.signOut();
+        final decoded = jsonDecode(payload) as Map<String, dynamic>;
+        final onboarding = decoded['onboarding'] as Map<String, dynamic>?;
+        if (onboarding?['health_data_consent'] == true &&
+            onboarding?['onboarding_completed_at'] != null) {
+          return true;
+        }
       } catch (_) {
-        // Ignore Google sign-out failures during app logout.
+        continue;
       }
     }
+    return false;
   }
 
-  Future<void> _ensureGoogleSignInInitialized() {
-    final existing = _googleSignInInitialization;
-    if (existing != null) {
-      return existing;
-    }
-    _googleSignInInitialization = GoogleSignIn.instance.initialize(
-      serverClientId: _googleAuthClientId,
+  Future<void> _ensureActiveLocalProfile() async {
+    final activeProfileId = await _localDatabase.readCache(
+      activeProfileIdCacheKey,
     );
-    return _googleSignInInitialization!;
+    if (activeProfileId != null && activeProfileId.trim().isNotEmpty) {
+      return;
+    }
+    await _localDatabase.putCache(
+      key: activeProfileIdCacheKey,
+      payload: 'pending-profile',
+    );
   }
 
   Future<void> _persistSessionContext(AuthSession session) {

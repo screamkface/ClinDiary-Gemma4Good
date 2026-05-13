@@ -2,6 +2,7 @@ import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/profile/data/profile_repository.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/features/profile/presentation/family_profiles_screen.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,16 +11,24 @@ import 'package:mocktail/mocktail.dart';
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
 
+Widget _testApp({required Widget home}) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
     registerFallbackValue(<String, dynamic>{});
   });
 
   testWidgets(
-    'family profiles screen crea un profilo senza usare controller dismessi',
+    'family profiles screen creates a profile without using disposed controllers',
     (tester) async {
       final repository = MockProfileRepository();
       const primaryProfile = PatientProfile(
@@ -37,7 +46,7 @@ void main() {
         firstName: 'Luca',
         lastName: 'Bianchi',
         smoker: false,
-        relationshipLabel: 'Figlio',
+        relationshipLabel: 'Son',
       );
       final initialBundle = ProfileBundle(
         profile: primaryProfile,
@@ -61,9 +70,7 @@ void main() {
       when(
         () => repository.createManagedProfile(any()),
       ).thenAnswer((_) async => createdBundle);
-      when(
-        () => repository.setActiveProfileId(any()),
-      ).thenAnswer((_) async {});
+      when(() => repository.setActiveProfileId(any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(
         ProviderScope(
@@ -72,25 +79,25 @@ void main() {
             profileBundleProvider.overrideWith((ref) async => initialBundle),
             activeProfileIdProvider.overrideWith((ref) async => 'profile-1'),
           ],
-          child: const MaterialApp(home: FamilyProfilesScreen()),
+          child: _testApp(home: const FamilyProfilesScreen()),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Nuovo profilo'));
+      await tester.tap(find.text('New profile'));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Nome'),
+        find.widgetWithText(TextFormField, 'First name'),
         'Luca',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Relazione'),
-        'Figlio',
+        find.widgetWithText(TextFormField, 'Relationship'),
+        'Son',
       );
 
-      await tester.tap(find.text('Salva'));
+      await tester.tap(find.text('Save'));
       await tester.pump();
       await tester.pumpAndSettle();
 

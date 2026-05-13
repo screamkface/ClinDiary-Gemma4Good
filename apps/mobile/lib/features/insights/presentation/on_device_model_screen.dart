@@ -8,7 +8,8 @@ class OnDeviceModelScreen extends ConsumerStatefulWidget {
   const OnDeviceModelScreen({super.key});
 
   @override
-  ConsumerState<OnDeviceModelScreen> createState() => _OnDeviceModelScreenState();
+  ConsumerState<OnDeviceModelScreen> createState() =>
+      _OnDeviceModelScreenState();
 }
 
 class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
@@ -42,9 +43,9 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Import failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isImporting = false);
@@ -63,16 +64,16 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('On-device model removed.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('On-device model removed.')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Model removal failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Model removal failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isRemoving = false);
@@ -91,16 +92,16 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('On-device runtime reset.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('On-device runtime reset.')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Runtime reset failed: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Runtime reset failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isResetting = false);
@@ -118,7 +119,7 @@ class _OnDeviceModelScreenState extends ConsumerState<OnDeviceModelScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Manage the LiteRT-LM model used for the on-device recap.',
+            'Manage the LiteRT-LM model used for on-device recaps.',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 16),
@@ -171,10 +172,10 @@ class _StatusCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Runtime status',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              'Stato runtime',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -183,8 +184,12 @@ class _StatusCard extends StatelessWidget {
               children: [
                 _StatusChip(label: 'Provider: ${status.activeProviderLabel}'),
                 _StatusChip(label: 'Runtime: ${status.runtime}'),
-                _StatusChip(label: 'Backend used: ${status.backendResolved ?? '-'}'),
-                _StatusChip(label: 'Status: ${status.isReady ? 'Ready' : 'Not ready'}'),
+                _StatusChip(
+                  label: 'Backend used: ${status.backendResolved ?? '-'}',
+                ),
+                _StatusChip(
+                  label: 'Status: ${status.isReady ? 'Ready' : 'Not ready'}',
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -196,13 +201,14 @@ class _StatusCard extends StatelessWidget {
             ),
             _InfoLine(label: 'File size', value: fileSizeLabel),
             _InfoLine(label: 'Last modified', value: updatedAtLabel),
-            if (status.lastError != null && status.lastError!.trim().isNotEmpty) ...[
+            if (status.lastError != null &&
+                status.lastError!.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 status.lastError!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.error,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
               ),
             ],
           ],
@@ -241,9 +247,9 @@ class _ActionsCard extends StatelessWidget {
           children: [
             Text(
               'Actions',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
@@ -261,10 +267,10 @@ class _ActionsCard extends StatelessWidget {
                     ),
               label: Text(
                 isImporting
-                  ? 'Importing model...'
-                  : status.isReady
-                  ? 'Replace model'
-                  : 'Import .litertlm model',
+                    ? 'Importing model...'
+                    : status.isReady
+                    ? 'Replace model'
+                    : 'Import .litertlm model',
               ),
             ),
             const SizedBox(height: 10),
@@ -279,9 +285,7 @@ class _ActionsCard extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.delete_outline),
-              label: Text(
-                isRemoving ? 'Removing model...' : 'Remove model',
-              ),
+              label: Text(isRemoving ? 'Removing model...' : 'Remove model'),
             ),
             const SizedBox(height: 10),
             TextButton.icon(
@@ -318,11 +322,11 @@ class _HintCard extends StatelessWidget {
             Text('Practical notes'),
             SizedBox(height: 10),
             Text(
-              'Use a .litertlm file compatible with LiteRT-LM Android. For the on-device recap demo, the target remains Gemma 4 E2B.',
+              'Use a .litertlm file compatible with LiteRT-LM on Android. For the on-device recap demo, the target remains Gemma 4 E2B.',
             ),
             SizedBox(height: 8),
             Text(
-              'If you import a new model, ClinDiary resets the runtime and reloads the file from the app model folder.',
+              'If you import a new model, ClinDiary resets the runtime and rereads the file from the app models folder.',
             ),
           ],
         ),
@@ -365,7 +369,7 @@ class _ErrorCard extends StatelessWidget {
     return Card.outlined(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text('Error loading model status: $error'),
+        child: Text('Model status load error: $error'),
       ),
     );
   }

@@ -79,8 +79,14 @@ class _SummaryBlockCard extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  parsedBlock.heading!,
+                child: Text.rich(
+                  TextSpan(
+                    children: _buildInlineSpans(
+                      parsedBlock.heading!,
+                      theme.textTheme.bodyMedium!,
+                      theme.colorScheme,
+                    ),
+                  ),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -113,10 +119,17 @@ class _SummaryLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (line.isHeading) {
-      return Text(
-        line.text,
+      return Text.rich(
+        TextSpan(
+          children: _buildInlineSpans(
+            line.text,
+            textTheme.bodyMedium!,
+            colorScheme,
+          ),
+        ),
         style: textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.w800,
           height: 1.25,
@@ -141,8 +154,14 @@ class _SummaryLine extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              line.text,
+            child: Text.rich(
+              TextSpan(
+                children: _buildInlineSpans(
+                  line.text,
+                  textTheme.bodyMedium!,
+                  colorScheme,
+                ),
+              ),
               style: textTheme.bodyMedium?.copyWith(height: 1.35),
             ),
           ),
@@ -150,11 +169,85 @@ class _SummaryLine extends StatelessWidget {
       );
     }
 
-    return Text(
-      line.text,
+    return Text.rich(
+      TextSpan(
+        children: _buildInlineSpans(
+          line.text,
+          textTheme.bodyMedium!,
+          colorScheme,
+        ),
+      ),
       style: textTheme.bodyMedium?.copyWith(height: 1.4),
     );
   }
+}
+
+List<InlineSpan> _buildInlineSpans(
+  String text,
+  TextStyle baseStyle,
+  ColorScheme colorScheme,
+) {
+  final spans = <InlineSpan>[];
+  final pattern = RegExp(
+    r'(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)',
+  );
+  var lastEnd = 0;
+
+  for (final match in pattern.allMatches(text)) {
+    if (match.start > lastEnd) {
+      spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+    }
+
+    final boldItalic = match.group(2);
+    final bold = match.group(3);
+    final italic = match.group(4);
+    final code = match.group(5);
+
+    if (boldItalic != null) {
+      spans.add(
+        TextSpan(
+          text: boldItalic,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    } else if (bold != null) {
+      spans.add(
+        TextSpan(
+          text: bold,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      );
+    } else if (italic != null) {
+      spans.add(
+        TextSpan(
+          text: italic,
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+      );
+    } else if (code != null) {
+      spans.add(
+        TextSpan(
+          text: code,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: baseStyle.fontSize != null ? baseStyle.fontSize! - 1 : 12,
+            color: colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    lastEnd = match.end;
+  }
+
+  if (lastEnd < text.length) {
+    spans.add(TextSpan(text: text.substring(lastEnd)));
+  }
+
+  return spans;
 }
 
 class _SummaryTable extends StatelessWidget {
@@ -255,12 +348,16 @@ bool _looksLikeHeading(String line) {
   final trimmed = line.trim();
   return trimmed.startsWith('#') ||
       RegExp(r'^\d+\.\s+').hasMatch(trimmed) ||
-      (trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length > 4);
+      (trimmed.startsWith('**') &&
+          trimmed.endsWith('**') &&
+          trimmed.length > 4);
 }
 
 bool _looksLikeBullet(String line) {
   final trimmed = line.trim();
-  return RegExp(r'^([-+*•]\s+|[-+*]\s+\[[xX ]\]\s*|\d+\)\s+)').hasMatch(trimmed);
+  return RegExp(
+    r'^([-+*•]\s+|[-+*]\s+\[[xX ]\]\s*|\d+\)\s+)',
+  ).hasMatch(trimmed);
 }
 
 bool _isVisualDivider(String line) {
@@ -292,15 +389,18 @@ _ParsedSummaryLine? _parseSummaryLine(String rawLine) {
   );
 }
 
-String _normalizeMarkdownLine(
-  String line, {
-  required bool stripBulletMarker,
-}) {
+String _normalizeMarkdownLine(String line, {required bool stripBulletMarker}) {
   var cleaned = line.trim();
   cleaned = cleaned.replaceAll(RegExp(r'^#{1,6}\s*'), '');
   cleaned = cleaned.replaceAll(RegExp(r'^>\s*'), '');
-  cleaned = cleaned.replaceAll(RegExp(r'^[-+*]\s+\[[xX ]\]\s*'), stripBulletMarker ? '' : '- ');
-  cleaned = cleaned.replaceAll(RegExp(r'^\d+\)\s+'), stripBulletMarker ? '' : '- ');
+  cleaned = cleaned.replaceAll(
+    RegExp(r'^[-+*]\s+\[[xX ]\]\s*'),
+    stripBulletMarker ? '' : '- ',
+  );
+  cleaned = cleaned.replaceAll(
+    RegExp(r'^\d+\)\s+'),
+    stripBulletMarker ? '' : '- ',
+  );
 
   if (stripBulletMarker) {
     cleaned = cleaned.replaceAll(RegExp(r'^[-+*•]\s+'), '');
@@ -317,7 +417,7 @@ String _normalizeMarkdownLine(
     (match) => match.group(1) ?? '',
   );
   cleaned = cleaned.replaceAll('```', '');
-  cleaned = _stripInlineMarkdown(cleaned);
+  cleaned = _stripInlineLatex(cleaned);
   cleaned = cleaned.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
   return cleaned;
 }
@@ -359,7 +459,8 @@ _ParsedSummaryBlock? _parseSummaryBlock(String block) {
       var cursor = index;
       while (cursor < remainingLines.length) {
         final candidate = remainingLines[cursor];
-        if (!_looksLikeTableRow(candidate) && !_isTableSeparatorRow(candidate)) {
+        if (!_looksLikeTableRow(candidate) &&
+            !_isTableSeparatorRow(candidate)) {
           break;
         }
         tableLines.add(candidate);
@@ -384,10 +485,7 @@ _ParsedSummaryBlock? _parseSummaryBlock(String block) {
     return null;
   }
 
-  return _ParsedSummaryBlock(
-    heading: heading,
-    items: items,
-  );
+  return _ParsedSummaryBlock(heading: heading, items: items);
 }
 
 bool _looksLikeTableRow(String line) {
@@ -401,7 +499,8 @@ bool _isTableSeparatorRow(String line) {
     return false;
   }
   return cells.every(
-    (cell) => cell.trim().isNotEmpty && RegExp(r'^:?-{2,}:?$').hasMatch(cell.trim()),
+    (cell) =>
+        cell.trim().isNotEmpty && RegExp(r'^:?-{2,}:?$').hasMatch(cell.trim()),
   );
 }
 
@@ -467,27 +566,127 @@ _ParsedSummaryTable? _parseSummaryTable(List<String> lines) {
   );
 }
 
-String _stripInlineMarkdown(String value) {
+String _stripInlineLatex(String value) {
   var cleaned = value;
-  final patterns = <RegExp>[
-    RegExp(r'\*\*\*([^*]+)\*\*\*'),
-    RegExp(r'___([^_]+)___'),
-    RegExp(r'\*\*([^*]+)\*\*'),
-    RegExp(r'__([^_]+)__'),
-    RegExp(r'\*([^*\n]+)\*'),
-    RegExp(r'_([^_\n]+)_'),
-    RegExp(r'~~([^~]+)~~'),
-    RegExp(r'`([^`]+)`'),
-  ];
 
-  for (final pattern in patterns) {
+  // Preserve math payload while removing inline/display delimiters.
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\$\$([\s\S]*?)\$\$'),
+    (match) => match.group(1) ?? '',
+  );
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\$([^$\n]+)\$'),
+    (match) => match.group(1) ?? '',
+  );
+
+  cleaned = _replaceLatexCommandsWithInnerText(
+    cleaned,
+    commands: const [
+      'text',
+      'mathrm',
+      'mathbf',
+      'mathit',
+      'operatorname',
+      'textbf',
+      'textit',
+      'underline',
+      'overline',
+    ],
+  );
+
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\\frac\s*\{([^{}]+)\}\{([^{}]+)\}'),
+    (match) => '${match.group(1) ?? ''}/${match.group(2) ?? ''}',
+  );
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\\sqrt\s*\{([^{}]+)\}'),
+    (match) => 'sqrt(${match.group(1) ?? ''})',
+  );
+
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\^\{([^{}]+)\}'),
+    (match) => '^${match.group(1) ?? ''}',
+  );
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'_\{([^{}]+)\}'),
+    (match) => '_${match.group(1) ?? ''}',
+  );
+
+  const symbolReplacements = {
+    r'\pm': '+/-',
+    r'\times': 'x',
+    r'\cdot': '*',
+    r'\ge': '>=',
+    r'\le': '<=',
+    r'\neq': '!=',
+    r'\approx': '~',
+    r'\to': '->',
+    r'\degree': 'deg',
+  };
+  symbolReplacements.forEach((pattern, replacement) {
+    cleaned = cleaned.replaceAll(pattern, replacement);
+  });
+
+  const escapedReplacements = {
+    r'\%': '%',
+    r'\_': '_',
+    r'\&': '&',
+    r'\#': '#',
+    r'\\$': r'$',
+    r'\{': '{',
+    r'\}': '}',
+  };
+  escapedReplacements.forEach((pattern, replacement) {
+    cleaned = cleaned.replaceAll(pattern, replacement);
+  });
+
+  // Unwrap remaining commands that still carry one argument.
+  for (var i = 0; i < 3; i++) {
+    final next = cleaned.replaceAllMapped(
+      RegExp(r'\\[a-zA-Z]+\s*\{([^{}]*)\}'),
+      (match) => match.group(1) ?? '',
+    );
+    if (next == cleaned) {
+      break;
+    }
+    cleaned = next;
+  }
+
+  cleaned = cleaned.replaceAllMapped(
+    RegExp(r'\\[a-zA-Z]+'),
+    (match) => match.group(0)!.replaceFirst('\\', ''),
+  );
+
+  cleaned = cleaned
+      .replaceAll(r'\(', '')
+      .replaceAll(r'\)', '')
+      .replaceAll(r'\[', '')
+      .replaceAll(r'\]', '')
+      .replaceAll('{', '')
+      .replaceAll('}', '');
+
+  cleaned = cleaned.replaceAll(RegExp(r'(?<=\s)\$(?=\s|[A-Za-z])'), '');
+  cleaned = cleaned.replaceAll(RegExp(r'^\$+|\$+$'), '');
+
+  return cleaned;
+}
+
+String _replaceLatexCommandsWithInnerText(
+  String value, {
+  required List<String> commands,
+}) {
+  var cleaned = value;
+  for (final command in commands) {
+    final pattern = RegExp('\\\\$command\\s*\\{([^{}]+)\\}');
     var previous = '';
     while (previous != cleaned) {
       previous = cleaned;
-      cleaned = cleaned.replaceAllMapped(pattern, (match) => match.group(1) ?? '');
+      cleaned = cleaned.replaceAllMapped(
+        pattern,
+        (match) => match.group(1) ?? '',
+      );
     }
   }
-
   return cleaned;
 }
 
@@ -520,10 +719,7 @@ class _ParsedSummaryLine extends _ParsedSummaryItem {
 }
 
 class _ParsedSummaryBlock {
-  const _ParsedSummaryBlock({
-    required this.heading,
-    required this.items,
-  });
+  const _ParsedSummaryBlock({required this.heading, required this.items});
 
   final String? heading;
   final List<_ParsedSummaryItem> items;

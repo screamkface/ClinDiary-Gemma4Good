@@ -1,2 +1,0 @@
-"""ClinDiary backend package."""
-

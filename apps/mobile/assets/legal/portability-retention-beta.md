@@ -1,26 +1,26 @@
-# Portabilita e retention beta
+# Beta portability and retention
 
-ClinDiary espone gia strumenti tecnici per portabilita e lifecycle dei dati.
+ClinDiary already exposes technical tools for data portability and lifecycle.
 
-## Export disponibili
+## Available exports
 
-- dossier PDF
-- scheda emergenza PDF
-- backup JSON strutturato
+- PDF dossier
+- PDF emergency card
+- structured JSON backup
 
-## Eliminazione account
+## Account deletion
 
-L'eliminazione account rimuove:
+Account deletion removes:
 
-- account e profili cloud
-- recap AI e share link
-- token
-- cache e documenti locali dell'account sul dispositivo
+- linked accounts and profiles
+- AI recaps and share links
+- tokens
+- cache and local documents for the account on the device
 
-## Condivisioni dossier
+## Dossier sharing
 
-I link dossier sono temporanei e con TTL ridotto.
+Dossier links are temporary and have a short TTL.
 
-## Stato del documento
+## Document status
 
-Le regole finali di retention e la procedura completa dei diritti dell'interessato devono ancora essere formalizzate nei documenti legali finali.
+The final retention rules and the full data-subject rights procedure still need to be formalized in the final legal documents.

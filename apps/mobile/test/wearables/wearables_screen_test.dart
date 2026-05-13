@@ -2,7 +2,9 @@ import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/wearables/domain/wearable_day_summary.dart';
 import 'package:clindiary/features/wearables/domain/wearable_sync.dart';
 import 'package:clindiary/features/wearables/presentation/wearables_screen.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -11,12 +13,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  testWidgets('wearables screen mostra stato e giornate sincronizzate', (
-    tester,
-  ) async {
+  testWidgets('wearables screen shows status and synced days', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -46,20 +46,35 @@ void main() {
             ],
           ),
         ],
-        child: const MaterialApp(home: WearablesScreen()),
+        child: const MaterialApp(
+          home: WearablesScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Connessione salute'), findsOneWidget);
-    expect(find.text('Diagnostica wearable'), findsOneWidget);
-    expect(find.text('Verifica rapida'), findsOneWidget);
-    expect(find.text('Copia diagnostica'), findsOneWidget);
-    expect(find.textContaining('Ultimo sync:'), findsOneWidget);
+    expect(find.text('Health connection'), findsWidgets);
+    expect(find.text('Wearable diagnostics'), findsOneWidget);
+    expect(find.text('Quick check'), findsOneWidget);
+    expect(find.text('Copy diagnostics'), findsOneWidget);
+    expect(find.textContaining('Last sync:'), findsOneWidget);
     expect(find.text('Health Connect'), findsOneWidget);
     expect(find.text('Google Fit'), findsOneWidget);
-    expect(find.text('Passi'), findsOneWidget);
-    expect(find.textContaining('Health Connect sta esponendo a ClinDiary solo dati attività da Google Fit'), findsOneWidget);
+    expect(find.text('Steps'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Health Connect is exposing only activity data from Google Fit to ClinDiary',
+      ),
+      findsOneWidget,
+    );
   });
 }

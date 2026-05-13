@@ -1,6 +1,6 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/profile/domain/italian_regions.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,13 +17,14 @@ class FamilyProfilesScreen extends ConsumerStatefulWidget {
 class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final bundleAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
+    final dateFormat = DateFormat(l10n.profileDdMmmYyyy, l10n.localeName);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Family profiles'),
+        title: Text(l10n.profileFamilyProfiles),
         actions: [
           IconButton(
             onPressed: () {
@@ -39,15 +40,15 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
             : FloatingActionButton.extended(
                 onPressed: () => _showCreateProfileDialog(context, bundle),
                 icon: const Icon(Icons.person_add_alt_1_outlined),
-                label: const Text('New profile'),
+                label: Text(l10n.profileNewProfile),
               ),
         orElse: () => null,
       ),
       body: bundleAsync.when(
         data: (bundle) {
           if (bundle == null) {
-            return const Center(
-              child: Text('Complete onboarding to manage profiles.'),
+            return Center(
+              child: Text(l10n.profileCompleteOnboardingToManageProfiles),
             );
           }
 
@@ -67,12 +68,12 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
                 SectionCard(
-                  title: 'Active status',
+                  title: l10n.profileActiveStatus,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Each profile has separate data, screenings, and recaps. Select the one to use now.',
+                        l10n.profileEachProfileHasSeparateDataScreenings,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 12),
@@ -82,7 +83,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                         children: [
                           Chip(
                             label: Text(
-                              '${profiles.length} profiles total',
+                              l10n.profileProfilesCount(profiles.length),
                             ),
                           ),
                           Chip(
@@ -90,8 +91,8 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                               profiles.any(
                                     (profile) => profile.id == selectedId,
                                   )
-                                  ? 'Active profile ready'
-                                  : 'No profile selected',
+                                  ? l10n.profileActiveProfileReady
+                                  : l10n.profileNoProfileSelected,
                             ),
                           ),
                         ],
@@ -101,7 +102,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
-                  title: 'Profile list',
+                  title: l10n.profileProfileList,
                   child: Column(
                     children: profiles.map((profile) {
                       final isSelected = profile.id == selectedId;
@@ -120,17 +121,17 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                             ),
                             title: Text(profile.displayName),
                             subtitle: Text(
-                              _profileSubtitle(profile, dateFormat),
+                              _profileSubtitle(context, profile, dateFormat),
                             ),
                             trailing: FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerRight,
                               child: isSelected
-                                    ? const Chip(label: Text('Active'))
+                                  ? Chip(label: Text(l10n.profileActive))
                                   : TextButton(
                                       onPressed: () =>
                                           _activateProfile(profile.id),
-                                      child: const Text('Activate'),
+                                      child: Text(l10n.profileActivate),
                                     ),
                             ),
                           ),
@@ -167,14 +168,18 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
     BuildContext context,
     ProfileBundle bundle,
   ) async {
+    final l10n = AppLocalizations.of(context);
     var firstName = '';
     var lastName = bundle.profile.lastName ?? '';
     var relationshipLabel = '';
     String? birthDateValue;
     String? biologicalSex = bundle.profile.biologicalSex;
-    String regionCode = bundle.profile.regionCode ?? 'IT';
     var submitting = false;
     String? createdProfileId;
+    final displayDateFormat = DateFormat(
+      l10n.profileDdMmmYyyy,
+      l10n.localeName,
+    );
 
     DateTime fallbackBirthDate() {
       final now = DateTime.now();
@@ -189,8 +194,11 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogBodyContext, dialogSetState) => AlertDialog(
           scrollable: true,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          title: const Text('New profile'),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          title: Text(l10n.profileNewProfile),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
@@ -198,21 +206,21 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
               children: [
                 TextFormField(
                   initialValue: firstName,
-                  decoration: const InputDecoration(labelText: 'First name'),
+                  decoration: InputDecoration(labelText: l10n.profileFirstName),
                   onChanged: (value) => firstName = value,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   initialValue: lastName,
-                  decoration: const InputDecoration(labelText: 'Last name'),
+                  decoration: InputDecoration(labelText: l10n.profileLastName),
                   onChanged: (value) => lastName = value,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   initialValue: relationshipLabel,
-                  decoration: const InputDecoration(
-                    labelText: 'Relationship',
-                    hintText: 'Son, daughter, mother, father...',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileRelationship,
+                    hintText: l10n.profileSonDaughterMotherFather,
                   ),
                   onChanged: (value) => relationshipLabel = value,
                 ),
@@ -228,26 +236,31 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                           : fallbackBirthDate(),
                       firstDate: DateTime(1900, 1, 1),
                       lastDate: DateTime.now().add(const Duration(days: 1)),
-                      helpText: 'Select birth date',
+                      helpText: l10n.profileSelectDateOfBirth,
                     );
                     if (picked != null && dialogBodyContext.mounted) {
                       dialogSetState(() {
-                        birthDateValue = picked.toIso8601String().split('T').first;
+                        birthDateValue = picked
+                            .toIso8601String()
+                            .split('T')
+                            .first;
                       });
                     }
                   },
                   child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Birth date',
-                      hintText: 'Tap to choose',
-                      suffixIcon: Icon(Icons.calendar_today_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.profileDateOfBirth,
+                      hintText: l10n.profileTapToPick,
+                      suffixIcon: const Icon(Icons.calendar_today_outlined),
                     ),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         birthDateValue?.trim().isNotEmpty == true
-                            ? birthDateValue!
-                            : 'Tap to choose',
+                            ? displayDateFormat.format(
+                                DateTime.parse(birthDateValue!),
+                              )
+                            : l10n.profileTapToPick,
                       ),
                     ),
                   ),
@@ -256,51 +269,38 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                 DropdownButtonFormField<String>(
                   initialValue: biologicalSex,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Biological sex',
+                  decoration: InputDecoration(
+                    labelText: l10n.profileBiologicalSex,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'female', child: Text('Female')),
-                    DropdownMenuItem(value: 'male', child: Text('Male')),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'female',
+                      child: Text(l10n.profileFemale),
+                    ),
+                    DropdownMenuItem(
+                      value: 'male',
+                      child: Text(l10n.profileMale),
+                    ),
                     DropdownMenuItem(
                       value: 'intersex',
-                      child: Text('Intersex'),
+                      child: Text(l10n.profileIntersex),
                     ),
                     DropdownMenuItem(
                       value: 'unknown',
-                      child: Text('Not specified'),
+                      child: Text(l10n.profileNotSpecified),
                     ),
                   ],
                   onChanged: (value) =>
                       dialogSetState(() => biologicalSex = value),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: regionCode,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Region'),
-                  items: italianRegionOptions
-                      .map(
-                        (option) => DropdownMenuItem<String>(
-                          value: option.code,
-                          child: Text(option.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => dialogSetState(() {
-                    regionCode = value ?? 'IT';
-                  }),
                 ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(
-                dialogContext,
-                rootNavigator: true,
-              ).maybePop(),
-              child: const Text('Cancel'),
+              onPressed: () =>
+                  Navigator.of(dialogContext, rootNavigator: true).maybePop(),
+              child: Text(l10n.profileCancel),
             ),
             FilledButton(
               onPressed: submitting
@@ -325,16 +325,16 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                                   ? birthDateValue!.trim()
                                   : null,
                               'biological_sex': biologicalSex,
-                              'region_code': regionCode,
                             });
                         final createdProfile = bundle.managedProfiles.isNotEmpty
                             ? bundle.managedProfiles.last
                             : bundle.profile;
                         if (dialogContext.mounted) {
                           dialogClosed = true;
-                          Navigator.of(dialogContext, rootNavigator: true).pop(
-                            createdProfile.id,
-                          );
+                          Navigator.of(
+                            dialogContext,
+                            rootNavigator: true,
+                          ).pop(createdProfile.id);
                         }
                       } catch (error) {
                         if (!mounted) {
@@ -349,7 +349,7 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
                         }
                       }
                     },
-              child: const Text('Save'),
+              child: Text(l10n.profileSave),
             ),
           ],
         ),
@@ -376,21 +376,25 @@ class _FamilyProfilesScreenState extends ConsumerState<FamilyProfilesScreen> {
     }
   }
 
-  String _profileSubtitle(PatientProfile profile, DateFormat dateFormat) {
+  String _profileSubtitle(
+    BuildContext context,
+    PatientProfile profile,
+    DateFormat dateFormat,
+  ) {
+    final l10n = AppLocalizations.of(context);
     final parts = <String>[];
     if (profile.relationshipLabel != null &&
         profile.relationshipLabel!.isNotEmpty) {
       parts.add(profile.relationshipLabel!);
     }
     if (profile.birthDate != null) {
-      parts.add('Born on ${dateFormat.format(profile.birthDate!)}');
-    }
-    if (profile.regionCode != null) {
-      parts.add(italianRegionLabel(profile.regionCode));
+      parts.add(l10n.profileBornDate(dateFormat.format(profile.birthDate!)));
     }
     if (profile.isPrimary) {
-      parts.add('Primary profile');
+      parts.add(l10n.profilePrimaryProfile);
     }
-    return parts.isEmpty ? 'Separate clinical profile' : parts.join(' / ');
+    return parts.isEmpty
+        ? l10n.profileSeparateClinicalProfile
+        : parts.join(' / ');
   }
 }

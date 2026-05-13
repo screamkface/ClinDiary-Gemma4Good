@@ -4,11 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('TableCalendar isolated test', (tester) async {
-    FlutterError.onError = (details) {
-      print('FLUTTER_ERROR_MSG: ' + details.exception.toString());
-      print(details.stack);
-    };
-
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -45,7 +40,7 @@ void main() {
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),

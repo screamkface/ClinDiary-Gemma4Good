@@ -8,7 +8,9 @@ import 'package:clindiary/features/prevention_center/domain/prevention_center.da
 import 'package:clindiary/features/prevention_center/presentation/prevention_center_screen.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/features/wearables/domain/wearable_day_summary.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -17,12 +19,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  testWidgets('prevention center screen mostra sezioni principali', (
-    tester,
-  ) async {
+  testWidgets('prevention center screen shows main sections', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -40,48 +40,48 @@ void main() {
               ),
               annualVisit: const PreventionRecommendationItem(
                 code: 'preventive_annual_visit',
-                title: 'Visita preventiva annuale',
-                subtitle: 'Controllo generale',
+                title: 'Annual preventive visit',
+                subtitle: 'General check-up',
                 status: 'recommended',
                 priority: 'normal',
-                category: 'prevenzione_generale',
+                category: 'general_prevention',
                 kind: 'screening',
               ),
               visitsAndControls: const [
                 PreventionRecommendationItem(
                   code: 'blood_pressure_adults',
-                  title: 'Controllo pressione arteriosa',
-                  subtitle: 'Da discutere col medico',
+                  title: 'Blood pressure check',
+                  subtitle: 'To discuss with your doctor',
                   status: 'recommended',
                   priority: 'normal',
-                  category: 'cardiometabolico',
+                  category: 'cardiometabolic',
                   kind: 'screening',
                 ),
               ],
               vaccines: const [
                 PreventionRecommendationItem(
                   code: 'influenza_annual_review',
-                  title: 'Vaccino antinfluenzale',
+                  title: 'Influenza vaccine',
                   status: 'recommended',
                   priority: 'normal',
-                  category: 'vaccini',
+                  category: 'vaccines',
                   kind: 'vaccine',
                 ),
               ],
               seasonalChecks: const [
                 PreventionRecommendationItem(
                   code: 'spring_allergy_review',
-                  title: 'Revisione allergie stagionali',
+                  title: 'Seasonal allergy review',
                   status: 'seasonal',
                   priority: 'normal',
-                  category: 'stagionale',
+                  category: 'seasonal',
                   kind: 'seasonal_check',
                 ),
               ],
               followUpReminders: const [
                 PreventionRecommendationItem(
                   code: 'report_ready',
-                  title: 'Report pronto: Weekly summary',
+                  title: 'Report ready: Weekly summary',
                   status: 'ready',
                   priority: 'low',
                   category: 'follow_up',
@@ -91,28 +91,38 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: PreventionCenterScreen()),
+        child: const MaterialApp(
+          home: PreventionCenterScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Centro prevenzione'), findsOneWidget);
-    expect(find.text('Visita annuale consigliata'), findsOneWidget);
-    await tester.tap(find.text('Vaccini'));
+    expect(find.text('Prevention center'), findsOneWidget);
+    expect(find.text('Recommended annual visit'), findsOneWidget);
+    await tester.tap(find.text('Vaccines'));
     await tester.pumpAndSettle();
-    expect(find.text('Vaccini consigliati'), findsOneWidget);
-    expect(find.text('Vaccino antinfluenzale'), findsOneWidget);
+    expect(find.text('Recommended vaccines'), findsOneWidget);
+    expect(find.text('Influenza vaccine'), findsOneWidget);
     await tester.tap(find.text('Follow-up'));
     await tester.pumpAndSettle();
-    expect(find.text('Controlli stagionali'), findsOneWidget);
-    expect(find.text('Reminder di follow-up'), findsOneWidget);
-    await tester.tap(find.text('Controlli'));
+    expect(find.text('Seasonal checks'), findsOneWidget);
+    expect(find.text('Follow-up reminders'), findsOneWidget);
+    await tester.tap(find.text('Checks'));
     await tester.pumpAndSettle();
-    expect(find.text('Visite e controlli per il tuo profilo'), findsOneWidget);
+    expect(find.text('Visits and checks for your profile'), findsOneWidget);
   });
 
-  testWidgets('health dossier screen mostra sezioni ordinate', (tester) async {
+  testWidgets('health dossier screen shows ordered sections', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -124,29 +134,29 @@ void main() {
               biologicalSex: 'female',
               profileFacts: const [
                 DossierProfileFact(label: 'BMI', value: '23.1'),
-                DossierProfileFact(label: 'Fumo', value: 'No'),
+                DossierProfileFact(label: 'Smoker', value: 'No'),
               ],
               provenanceFacts: const [
                 DossierProvenanceFact(
-                  label: 'Profilo',
-                  value: 'Aggiornato il 24/03/2026 09:00',
+                  label: 'Profile',
+                  value: 'Updated on 24/03/2026 09:00',
                 ),
               ],
               emergencySummary: DossierEmergencySummary(
                 generatedAt: DateTime.utc(2026, 3, 24, 9),
-                headline: 'Scheda emergenza ClinDiary',
-                keyPoints: const ['Ultimo check-up del 2026-03-23.'],
-                activeProblems: const ['Asma'],
+                headline: 'ClinDiary emergency card',
+                keyPoints: const ['Last check-up on 2026-03-23.'],
+                activeProblems: const ['Asthma'],
                 activeMedications: const ['Cetirizina'],
                 allergies: const ['Pollini'],
-                conditions: const ['Asma'],
+                conditions: const ['Asthma'],
                 openAlerts: const ['attention: Alert follow-up'],
               ),
-              allergies: const [AllergyItem(id: 'all-1', allergen: 'Pollini')],
+              allergies: const [AllergyItem(id: 'all-1', allergen: 'Pollen')],
               medicalConditions: const [
                 MedicalConditionItem(
                   id: 'cond-1',
-                  name: 'Asma',
+                  name: 'Asthma',
                   status: 'active',
                 ),
               ],
@@ -155,7 +165,7 @@ void main() {
                   id: 'med-1',
                   name: 'Cetirizina',
                   dosage: '10 mg',
-                  frequency: '1/die',
+                  frequency: '1/day',
                   active: true,
                   schedules: [
                     MedicationScheduleItem(
@@ -170,8 +180,8 @@ void main() {
               familyHistory: const [
                 FamilyHistoryItem(
                   id: 'fam-1',
-                  relation: 'madre',
-                  conditionName: 'ipertensione',
+                  relation: 'mother',
+                  conditionName: 'hypertension',
                 ),
               ],
               vaccinations: const [],
@@ -179,7 +189,7 @@ void main() {
                 DailyEntry(
                   id: 'entry-1',
                   entryDate: DateTime.utc(2026, 3, 23),
-                  generalNotes: 'Giornata stabile.',
+                  generalNotes: 'Stable day.',
                   energyLevel: 7,
                   moodLevel: 7,
                   generalPain: 1,
@@ -190,7 +200,7 @@ void main() {
               recentDocuments: [
                 DossierDocumentItem(
                   id: 'doc-1',
-                  title: 'Esami sangue annuali',
+                  title: 'Annual blood tests',
                   documentType: 'lab_report',
                   uploadDate: DateTime.utc(2026, 3, 20),
                   examDate: DateTime.utc(2026, 3, 20),
@@ -201,10 +211,10 @@ void main() {
               recentLabPanels: const [
                 DossierLabPanelItem(
                   documentId: 'doc-1',
-                  documentTitle: 'Esami sangue annuali',
-                  panelName: 'Esami del sangue',
+                  documentTitle: 'Annual blood tests',
+                  panelName: 'Blood tests',
                   abnormalResultsCount: 1,
-                  keyResults: ['Creatinina: 1.4 mg/dL'],
+                  keyResults: ['Creatinine: 1.4 mg/dL'],
                 ),
               ],
               recentImagingReports: const [],
@@ -213,15 +223,15 @@ void main() {
                   providerCode: 'ad_medical',
                   providerName: 'A&D Medical',
                   metricType: 'blood_pressure',
-                  metricLabel: 'Pressione arteriosa',
+                  metricLabel: 'Blood pressure',
                   measurementCount: 2,
                   latestMeasuredAt: DateTime.utc(2026, 3, 24, 20, 5),
                   latestValue: '128/80 mmHg · FC 68 bpm',
-                  trendLabel: 'Media 127/80 mmHg',
+                  trendLabel: 'Average 127/80 mmHg',
                   concernLevel: null,
                   concernNote: null,
                   summary:
-                      'A&D Medical: 2 misure, media 127/80 mmHg, ultima 128/80 mmHg · FC 68 bpm.',
+                      'A&D Medical: 2 measurements, average 127/80 mmHg, latest 128/80 mmHg · HR 68 bpm.',
                 ),
               ],
               recentInsights: [
@@ -230,7 +240,7 @@ void main() {
                   summaryType: 'daily',
                   periodStart: DateTime.utc(2026, 3, 23),
                   periodEnd: DateTime.utc(2026, 3, 23),
-                  content: 'Sintesi prudente della giornata.',
+                  content: 'Cautious summary of the day.',
                   providerName: 'gemini_ai_studio',
                   modelName: 'gemini-2.5-flash',
                   generatedAt: DateTime.utc(2026, 3, 23, 20),
@@ -252,7 +262,7 @@ void main() {
                   severity: 'attention',
                   alertType: 'follow_up',
                   title: 'Alert follow-up',
-                  description: 'Serve un controllo.',
+                  description: 'A follow-up check is needed.',
                   status: 'open',
                   triggeredAt: DateTime.utc(2026, 3, 23, 10),
                 ),
@@ -270,31 +280,38 @@ void main() {
           ),
           dossierShareLinksProvider.overrideWith((ref) async => const []),
         ],
-        child: const MaterialApp(home: HealthDossierScreen()),
+        child: const MaterialApp(
+          home: HealthDossierScreen(),
+          locale: Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Dossier salute'), findsOneWidget);
+    expect(find.text('Health dossier'), findsOneWidget);
     expect(find.byKey(const ValueKey('dossier-emergency-nfc')), findsOneWidget);
-    await tester.tap(find.text('Clinico'));
+    await tester.tap(find.text('Clinical'));
     await tester.pumpAndSettle();
-    expect(find.text('Farmaci attuali'), findsOneWidget);
-    expect(find.text('Dispositivi clinici'), findsOneWidget);
-    expect(find.text('Pressione arteriosa'), findsOneWidget);
-    await tester.tap(find.text('Diario'));
+    expect(find.text('Current medications'), findsOneWidget);
+    expect(find.text('Clinical devices'), findsOneWidget);
+    expect(find.text('Blood pressure'), findsOneWidget);
+    await tester.tap(find.text('Diary'));
     await tester.pumpAndSettle();
-    expect(find.text('Diario recente'), findsOneWidget);
-    await tester.tap(find.text('Referti'));
+    expect(find.text('Recent diary'), findsOneWidget);
+    await tester.tap(find.text('Reports'));
     await tester.pumpAndSettle();
-    expect(find.text('Documenti e referti'), findsOneWidget);
-    expect(find.text('Esami sangue annuali'), findsWidgets);
-    await tester.tap(find.text('Diario'));
+    expect(find.text('Documents and reports'), findsOneWidget);
+    expect(find.text('Annual blood tests'), findsWidgets);
+    await tester.tap(find.text('Share'));
     await tester.pumpAndSettle();
-    expect(find.text('Insight, report e alert'), findsOneWidget);
-    await tester.tap(find.text('Condividi'));
-    await tester.pumpAndSettle();
-    expect(find.text('Condivisioni sicure'), findsOneWidget);
+    expect(find.text('Secure shares'), findsOneWidget);
   });
 }

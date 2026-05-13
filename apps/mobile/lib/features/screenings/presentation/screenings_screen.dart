@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -14,27 +13,42 @@ class ScreeningsScreen extends ConsumerStatefulWidget {
 }
 
 class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
+  static final DateFormat _statusDateFormat = DateFormat(
+    'dd MMM yyyy',
+    'en_US',
+  );
+  static final DateFormat _compactChecklistDateFormat = DateFormat(
+    'dd MMM',
+    'en_US',
+  );
+
   bool _isRecomputing = false;
   String? _busyScreeningId;
+  List<PatientScreeningStatusItem>? _cachedGroupedItems;
+  _MyScreeningsGroups? _cachedGroups;
+
+  _MyScreeningsGroups _groupsFor(List<PatientScreeningStatusItem> items) {
+    if (identical(_cachedGroupedItems, items) && _cachedGroups != null) {
+      return _cachedGroups!;
+    }
+
+    final grouped = _MyScreeningsGroups.fromItems(items);
+    _cachedGroupedItems = items;
+    _cachedGroups = grouped;
+    return grouped;
+  }
 
   Future<void> _recompute() async {
-    final regionCode = await ref.read(profileRegionCodeProvider.future);
     if (!mounted) return;
     setState(() => _isRecomputing = true);
     try {
-      await ref
-          .read(screeningsRepositoryProvider)
-          .recompute(regionCode: regionCode);
-      ref.invalidate(myScreeningsProvider);
-      ref.invalidate(screeningCatalogProvider);
-      ref.invalidate(preventionCenterProvider);
-      ref.invalidate(notificationsProvider);
-      ref.invalidate(timelineEventsProvider);
-    } on ApiException catch (error) {
+      await ref.read(screeningsRepositoryProvider).recompute();
+      invalidateScreeningProviders(ref, includeCatalog: true);
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _isRecomputing = false);
@@ -43,22 +57,16 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
   }
 
   Future<void> _markDone(PatientScreeningStatusItem item) async {
-    final regionCode = await ref.read(profileRegionCodeProvider.future);
     if (!mounted) return;
     setState(() => _busyScreeningId = item.id);
     try {
-      await ref
-          .read(screeningsRepositoryProvider)
-          .markDone(item.id, regionCode: regionCode);
-      ref.invalidate(myScreeningsProvider);
-      ref.invalidate(preventionCenterProvider);
-      ref.invalidate(notificationsProvider);
-      ref.invalidate(timelineEventsProvider);
-    } on ApiException catch (error) {
+      await ref.read(screeningsRepositoryProvider).markDone(item.id);
+      invalidateScreeningProviders(ref);
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScreeningId = null);
@@ -69,28 +77,22 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
   Future<void> _toggleCurrentYearChecklist(
     PatientScreeningStatusItem item,
   ) async {
-    final regionCode = await ref.read(profileRegionCodeProvider.future);
     if (!mounted) return;
     setState(() => _busyScreeningId = item.id);
     try {
       if (item.completedThisYear) {
         await ref
             .read(screeningsRepositoryProvider)
-            .clearCurrentYearCompletion(item.id, regionCode: regionCode);
+            .clearCurrentYearCompletion(item.id);
       } else {
-        await ref
-            .read(screeningsRepositoryProvider)
-            .markDone(item.id, regionCode: regionCode);
+        await ref.read(screeningsRepositoryProvider).markDone(item.id);
       }
-      ref.invalidate(myScreeningsProvider);
-      ref.invalidate(preventionCenterProvider);
-      ref.invalidate(notificationsProvider);
-      ref.invalidate(timelineEventsProvider);
-    } on ApiException catch (error) {
+      invalidateScreeningProviders(ref);
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScreeningId = null);
@@ -102,7 +104,6 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
   Widget build(BuildContext context) {
     final myScreeningsAsync = ref.watch(myScreeningsProvider);
     final catalogAsync = ref.watch(screeningCatalogProvider);
-    final dateFormat = DateFormat('dd MMM yyyy', 'it_IT');
 
     return Scaffold(
       appBar: AppBar(
@@ -110,9 +111,11 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
         actions: [
           IconButton(
             onPressed: () {
-              ref.invalidate(myScreeningsProvider);
-              ref.invalidate(screeningCatalogProvider);
-              ref.invalidate(notificationsProvider);
+              invalidateScreeningProviders(
+                ref,
+                includeCatalog: true,
+                includeTimeline: false,
+              );
             },
             icon: const Icon(Icons.refresh),
           ),
@@ -123,23 +126,27 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
         children: [
           SectionCard(
             title: 'Prevention catalog',
-            subtitle: 'Annual visits, checkups, and useful notes.',
+            subtitle: 'Annual visit, checks, and useful notes.',
             action: FilledButton.tonalIcon(
               onPressed: _isRecomputing ? null : _recompute,
               icon: const Icon(Icons.autorenew),
-              label: Text(_isRecomputing ? 'Updating...' : 'Recompute'),
+              label: Text(_isRecomputing ? 'Updating...' : 'Recalculate'),
             ),
-            child: const Text('Checkups adapted to the profile and region.'),
+            child: const Text('Checks adapted to the profile and region.'),
           ),
           const SizedBox(height: 12),
           myScreeningsAsync.when(
-            data: (items) => _MyScreeningsSection(
-              items: items,
-              dateFormat: dateFormat,
-              busyScreeningId: _busyScreeningId,
-              onMarkDone: _markDone,
-              onToggleChecklist: _toggleCurrentYearChecklist,
-            ),
+            data: (items) {
+              final groups = _groupsFor(items);
+              return _MyScreeningsSection(
+                groups: groups,
+                dateFormat: _statusDateFormat,
+                compactChecklistDateFormat: _compactChecklistDateFormat,
+                busyScreeningId: _busyScreeningId,
+                onMarkDone: _markDone,
+                onToggleChecklist: _toggleCurrentYearChecklist,
+              );
+            },
             loading: () => const SectionCard(
               title: 'For your profile',
               child: Center(child: CircularProgressIndicator()),
@@ -184,31 +191,22 @@ String _statusLabel(String status) {
   }
 }
 
-class _MyScreeningsSection extends StatelessWidget {
-  const _MyScreeningsSection({
+class _MyScreeningsGroups {
+  const _MyScreeningsGroups({
     required this.items,
-    required this.dateFormat,
-    required this.busyScreeningId,
-    required this.onMarkDone,
-    required this.onToggleChecklist,
+    required this.actionable,
+    required this.upToDate,
+    required this.annualVisitItems,
+    required this.discussItems,
+    required this.actionableDiscuss,
+    required this.upToDateDiscuss,
+    required this.sharedDecisionItems,
+    required this.sortedChecklistItems,
   });
 
-  final List<PatientScreeningStatusItem> items;
-  final DateFormat dateFormat;
-  final String? busyScreeningId;
-  final Future<void> Function(PatientScreeningStatusItem item) onMarkDone;
-  final Future<void> Function(PatientScreeningStatusItem item)
-  onToggleChecklist;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const SectionCard(
-        title: 'For your profile',
-        child: Text('No personalized checkups to show.'),
-      );
-    }
-
+  factory _MyScreeningsGroups.fromItems(
+    List<PatientScreeningStatusItem> items,
+  ) {
     final actionable = items.where((item) => item.isActionable).toList();
     final upToDate = items.where((item) => !item.isActionable).toList();
     final annualVisitItems = items
@@ -235,10 +233,74 @@ class _MyScreeningsSection extends StatelessWidget {
               item.carePathway != 'shared_decision',
         )
         .toList();
+    final sortedChecklistItems = [...items]
+      ..sort((a, b) {
+        final pathwayRank = _carePathwayRank(
+          a.carePathway,
+        ).compareTo(_carePathwayRank(b.carePathway));
+        if (pathwayRank != 0) {
+          return pathwayRank;
+        }
+        if (a.completedThisYear != b.completedThisYear) {
+          return a.completedThisYear ? 1 : -1;
+        }
+        return a.screeningName.compareTo(b.screeningName);
+      });
+
+    return _MyScreeningsGroups(
+      items: items,
+      actionable: actionable,
+      upToDate: upToDate,
+      annualVisitItems: annualVisitItems,
+      discussItems: discussItems,
+      actionableDiscuss: actionableDiscuss,
+      upToDateDiscuss: upToDateDiscuss,
+      sharedDecisionItems: sharedDecisionItems,
+      sortedChecklistItems: sortedChecklistItems,
+    );
+  }
+
+  final List<PatientScreeningStatusItem> items;
+  final List<PatientScreeningStatusItem> actionable;
+  final List<PatientScreeningStatusItem> upToDate;
+  final List<PatientScreeningStatusItem> annualVisitItems;
+  final List<PatientScreeningStatusItem> discussItems;
+  final List<PatientScreeningStatusItem> actionableDiscuss;
+  final List<PatientScreeningStatusItem> upToDateDiscuss;
+  final List<PatientScreeningStatusItem> sharedDecisionItems;
+  final List<PatientScreeningStatusItem> sortedChecklistItems;
+}
+
+class _MyScreeningsSection extends StatelessWidget {
+  const _MyScreeningsSection({
+    required this.groups,
+    required this.dateFormat,
+    required this.compactChecklistDateFormat,
+    required this.busyScreeningId,
+    required this.onMarkDone,
+    required this.onToggleChecklist,
+  });
+
+  final _MyScreeningsGroups groups;
+  final DateFormat dateFormat;
+  final DateFormat compactChecklistDateFormat;
+  final String? busyScreeningId;
+  final Future<void> Function(PatientScreeningStatusItem item) onMarkDone;
+  final Future<void> Function(PatientScreeningStatusItem item)
+  onToggleChecklist;
+
+  @override
+  Widget build(BuildContext context) {
+    if (groups.items.isEmpty) {
+      return const SectionCard(
+        title: 'For your profile',
+        child: Text('No personalized checks to show.'),
+      );
+    }
 
     return SectionCard(
       title: 'For your profile',
-      subtitle: 'Quello che conta adesso.',
+      subtitle: 'What matters now.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -247,30 +309,31 @@ class _MyScreeningsSection extends StatelessWidget {
             runSpacing: 8,
             children: [
               _SummaryChip(
-                label: '${actionable.length} da fare',
+                label: '${groups.actionable.length} to do',
                 tone: Colors.orange,
               ),
               _SummaryChip(
-                label: '${upToDate.length} in regola',
+                label: '${groups.upToDate.length} up to date',
                 tone: Colors.green,
               ),
             ],
           ),
           const SizedBox(height: 12),
           _CurrentYearChecklist(
-            items: items,
+            sortedItems: groups.sortedChecklistItems,
             year: DateTime.now().year,
+            compactDateFormat: compactChecklistDateFormat,
             busyScreeningId: busyScreeningId,
             onToggle: onToggleChecklist,
           ),
           const SizedBox(height: 16),
-          if (annualVisitItems.isNotEmpty) ...[
+          if (groups.annualVisitItems.isNotEmpty) ...[
             _SubsectionHeader(
               title: 'Recommended annual visit',
-              subtitle: 'General checkup.',
+              subtitle: 'General check.',
             ),
             const SizedBox(height: 8),
-            ...annualVisitItems.map(
+            ...groups.annualVisitItems.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _StatusCard(
@@ -283,14 +346,14 @@ class _MyScreeningsSection extends StatelessWidget {
             ),
             const SizedBox(height: 4),
           ],
-          if (discussItems.isNotEmpty) ...[
+          if (groups.discussItems.isNotEmpty) ...[
             _SubsectionHeader(
-              title: 'Tests and checkups to discuss with the clinician',
-              subtitle: 'To review together.',
+              title: 'Tests and checks to discuss with the doctor',
+              subtitle: 'To evaluate together.',
             ),
             const SizedBox(height: 8),
           ],
-          ...actionableDiscuss.map(
+          ...groups.actionableDiscuss.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _StatusCard(
@@ -301,16 +364,16 @@ class _MyScreeningsSection extends StatelessWidget {
               ),
             ),
           ),
-          if (upToDateDiscuss.isNotEmpty) ...[
+          if (groups.upToDateDiscuss.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              'Already recorded',
+              'Gia registrati',
               style: Theme.of(
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
-            ...upToDateDiscuss.map(
+            ...groups.upToDateDiscuss.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _StatusCard(
@@ -322,14 +385,14 @@ class _MyScreeningsSection extends StatelessWidget {
               ),
             ),
           ],
-          if (sharedDecisionItems.isNotEmpty) ...[
+          if (groups.sharedDecisionItems.isNotEmpty) ...[
             const SizedBox(height: 8),
             _SubsectionHeader(
               title: 'Shared decisions',
-              subtitle: 'Areas where the clinician discussion matters.',
+              subtitle: 'Areas where a clinician discussion matters.',
             ),
             const SizedBox(height: 8),
-            ...sharedDecisionItems.map(
+            ...groups.sharedDecisionItems.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _StatusCard(
@@ -349,34 +412,21 @@ class _MyScreeningsSection extends StatelessWidget {
 
 class _CurrentYearChecklist extends StatelessWidget {
   const _CurrentYearChecklist({
-    required this.items,
+    required this.sortedItems,
     required this.year,
+    required this.compactDateFormat,
     required this.busyScreeningId,
     required this.onToggle,
   });
 
-  final List<PatientScreeningStatusItem> items;
+  final List<PatientScreeningStatusItem> sortedItems;
   final int year;
+  final DateFormat compactDateFormat;
   final String? busyScreeningId;
   final Future<void> Function(PatientScreeningStatusItem item) onToggle;
 
   @override
   Widget build(BuildContext context) {
-    final sortedItems = [...items]
-      ..sort((a, b) {
-        final pathwayRank = _carePathwayRank(
-          a.carePathway,
-        ).compareTo(_carePathwayRank(b.carePathway));
-        if (pathwayRank != 0) {
-          return pathwayRank;
-        }
-        if (a.completedThisYear != b.completedThisYear) {
-          return a.completedThisYear ? 1 : -1;
-        }
-        return a.screeningName.compareTo(b.screeningName);
-      });
-    final compactDateFormat = DateFormat('dd MMM', 'en_US');
-
     String? currentSection;
 
     return Column(
@@ -466,7 +516,7 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dueText = item.nextDueDate == null
-        ? 'To be defined'
+        ? 'Da definire'
         : dateFormat.format(item.nextDueDate!.toLocal());
     final availability = item.regionalAvailability.isEmpty
         ? null
@@ -520,7 +570,7 @@ class _StatusCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Prossima data: $dueText',
+              'Next date: $dueText',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (item.isActionable) ...[
@@ -643,7 +693,7 @@ class _CatalogCard extends StatelessWidget {
                   _ToneChip(label: item.cadenceLabel!, tone: Colors.blueGrey),
                 _ToneChip(label: item.category, tone: Colors.brown),
                 if (item.catalogOnly)
-                  const _ToneChip(label: 'Informational only', tone: Colors.grey),
+                  const _ToneChip(label: 'Solo informativo', tone: Colors.grey),
                 if (availability != null && item.publicCoverageFlag)
                   _ToneChip(label: availability.regionName, tone: Colors.teal),
               ],
@@ -735,7 +785,7 @@ Color _recommendationTone(String recommendationLevel) {
 String _recommendationLevelLabel(String recommendationLevel) {
   switch (recommendationLevel) {
     case 'risk_based':
-      return 'To review';
+      return 'To evaluate';
     case 'not_routine':
       return 'Not routine';
     default:
@@ -767,19 +817,19 @@ String _carePathwaySectionTitle(String carePathway) {
     case 'not_routine':
       return 'Not routine';
     default:
-      return 'Tests and checkups to discuss with the clinician';
+      return 'Tests and checks to discuss with the doctor';
   }
 }
 
 String _carePathwaySectionSubtitle(String carePathway) {
   switch (carePathway) {
     case 'annual_visit':
-      return 'The annual general checkup helps organize prevention, lifestyle, and clinical priorities.';
+      return 'The annual general check helps organize prevention, lifestyle, and clinical priorities.';
     case 'shared_decision':
-      return 'Here ClinDiary stays cautious: the value of the checkup depends on shared decision-making, not on a strong automatic reminder.';
+      return 'ClinDiary stays cautious here: the purpose of the check depends on a shared decision, not a strong automatic reminder.';
     case 'not_routine':
-      return 'These items remain informational and should not be presented as routine for asymptomatic people.';
+      return 'These items remain informational and should not be proposed as routine for asymptomatic users.';
     default:
-      return 'Here you will find specific tests and checkups to review with the clinician based on the profile.';
+      return 'Here you will find specific tests and checks to evaluate with the doctor based on the profile.';
   }
 }

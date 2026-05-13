@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 ThemeData buildClinDiaryTheme({required Brightness brightness}) {
   final isDark = brightness == Brightness.dark;
 
-  final background = isDark ? const Color(0xFF0F131A) : const Color(0xFFF8F8F6);
-  final surface = isDark ? const Color(0xFF171C24) : Colors.white;
-  final primary = isDark ? const Color(0xFF8FA5D7) : const Color(0xFF3F4A5D);
-  final accent = isDark ? const Color(0xFFD0A27C) : const Color(0xFF8B6C55);
+  final background = isDark ? const Color(0xFF101322) : const Color(0xFFFBFAFF);
+  final surface = isDark ? const Color(0xFF181C2F) : Colors.white;
+  final primary = isDark ? const Color(0xFFAAB4FF) : const Color(0xFF5B5CE2);
+  final accent = isDark ? const Color(0xFFFFB085) : const Color(0xFFFF7A59);
   final ink = isDark ? const Color(0xFFF2F4F8) : const Color(0xFF20262F);
-  final outline = isDark ? const Color(0xFF313A48) : const Color(0xFFD9DEE6);
-  final fill = isDark ? const Color(0xFF202634) : const Color(0xFFF4F6F9);
+  final outline = isDark ? const Color(0xFF323A55) : const Color(0xFFE4E8F8);
+  final fill = isDark ? const Color(0xFF202641) : const Color(0xFFF4F6FF);
 
   final baseTheme = ThemeData(
     useMaterial3: true,
@@ -30,9 +29,26 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
         ),
   );
 
-  final textTheme = GoogleFonts.manropeTextTheme(
-    baseTheme.textTheme,
-  ).apply(bodyColor: ink, displayColor: ink);
+  final textTheme = baseTheme.textTheme
+      .apply(bodyColor: ink, displayColor: ink)
+      .copyWith(
+        headlineSmall: baseTheme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+        titleLarge: baseTheme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.1,
+        ),
+        titleMedium: baseTheme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        bodyMedium: baseTheme.textTheme.bodyMedium?.copyWith(height: 1.42),
+        bodySmall: baseTheme.textTheme.bodySmall?.copyWith(height: 1.38),
+        labelLarge: baseTheme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      );
 
   return baseTheme.copyWith(
     scaffoldBackgroundColor: background,
@@ -78,7 +94,6 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
       ),
       splashFactory: NoSplash.splashFactory,
       overlayColor: WidgetStateProperty.all(Colors.transparent),
-      tabAlignment: TabAlignment.start,
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
@@ -121,14 +136,14 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         side: BorderSide(color: outline),
         textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -156,16 +171,18 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: primary, width: 1.2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     ),
     cardTheme: CardThemeData(
       color: surface,
-      elevation: 0,
-      shadowColor: Colors.transparent,
+      elevation: isDark ? 0 : 0.6,
+      shadowColor: isDark
+          ? Colors.transparent
+          : const Color(0xFF7B7FEA).withValues(alpha: 0.08),
       surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(color: outline, width: 1),
       ),
       margin: EdgeInsets.zero,
@@ -185,8 +202,8 @@ ThemeData buildClinDiaryTheme({required Brightness brightness}) {
     ),
     listTileTheme: const ListTileThemeData(
       dense: false,
-      visualDensity: VisualDensity(horizontal: 0, vertical: -2),
-      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      visualDensity: VisualDensity(horizontal: 0, vertical: -1),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
     ),
   );
 }

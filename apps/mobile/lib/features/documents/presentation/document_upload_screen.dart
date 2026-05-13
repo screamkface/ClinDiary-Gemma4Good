@@ -1,22 +1,27 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
+import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+AppLocalizations _uploadL10nOf(BuildContext context) {
+  return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+      lookupAppLocalizations(const Locale('en'));
+}
+
 class DocumentUploadScreen extends ConsumerStatefulWidget {
   const DocumentUploadScreen({
     this.initialFolderId,
     this.initialFolderName,
-    this.initialStorageLocation,
+    this.initialCaptureMode,
     super.key,
   });
 
   final String? initialFolderId;
   final String? initialFolderName;
-  final String? initialStorageLocation;
+  final String? initialCaptureMode;
 
   @override
   ConsumerState<DocumentUploadScreen> createState() =>
@@ -31,8 +36,20 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   String _documentType = 'generic_document';
   SelectedUploadDocument? _selectedDocument;
   bool _uploading = false;
+  bool get _shouldOpenCameraOnStart =>
+      widget.initialCaptureMode?.toLowerCase() == 'camera';
 
-  bool get _isLocalStorage => widget.initialStorageLocation == 'local';
+  @override
+  void initState() {
+    super.initState();
+    if (_shouldOpenCameraOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _pickPhotoFromCamera();
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -50,7 +67,18 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     setState(() => _selectedDocument = selected);
   }
 
+  Future<void> _pickPhotoFromCamera() async {
+    final selected = await ref
+        .read(documentPickerServiceProvider)
+        .pickPhotoFromCamera();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _selectedDocument = selected);
+  }
+
   Future<void> _pickExamDate() async {
+    final l10n = _uploadL10nOf(context);
     final parsed = DateTime.tryParse(_examDateController.text.trim());
     final now = DateTime.now();
     final selected = await showDatePicker(
@@ -58,7 +86,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       initialDate: parsed ?? now,
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
-      helpText: 'Select exam date',
+      helpText: l10n.documentsSelectExamDate,
     );
     if (selected == null || !mounted) {
       return;
@@ -70,11 +98,12 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = _uploadL10nOf(context);
     if (!_formKey.currentState!.validate() || _selectedDocument == null) {
       if (_selectedDocument == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Select a file first.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.documentsSelectAFileFirst)));
       }
       return;
     }
@@ -104,11 +133,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       context.pushReplacement('/app/documents/${document.id}');
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _uploading = false);
@@ -118,8 +147,9 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = _uploadL10nOf(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload document')),
+      appBar: AppBar(title: Text(l10n.documentsAddFile)),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -127,28 +157,13 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               SectionCard(
-                title: 'File',
+                title: l10n.documentsFile,
                 subtitle: widget.initialFolderName == null
-                    ? (_isLocalStorage
-                          ? 'Choose the document to save on the device.'
-                          : 'Choose the document to upload to the ClinDiary cloud.')
-                    : (_isLocalStorage
-                          ? 'The file will be saved locally in the current folder.'
-                          : 'The file will be uploaded to the current cloud folder.'),
+                    ? l10n.documentsChooseWhatYouWantToAdd
+                    : l10n.documentsItWillGoInThisFolder,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Chip(
-                      avatar: Icon(
-                        _isLocalStorage
-                            ? Icons.phone_android_outlined
-                            : Icons.cloud_outlined,
-                      ),
-                      label: Text(
-                        _isLocalStorage ? 'On-device archive' : 'Cloud archive',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     if (widget.initialFolderName != null &&
                         widget.initialFolderName!.trim().isNotEmpty) ...[
                       Chip(
@@ -157,20 +172,36 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    FilledButton.tonalIcon(
-                      onPressed: _uploading ? null : _pickDocument,
-                      icon: const Icon(Icons.attach_file),
-                      label: Text(
-                        _selectedDocument == null
-                            ? 'Select file'
-                            : _selectedDocument!.name,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: _uploading ? null : _pickDocument,
+                          icon: const Icon(Icons.attach_file),
+                          label: Text(l10n.documentsSelectFile),
+                        ),
+                        FilledButton.icon(
+                          onPressed: _uploading ? null : _pickPhotoFromCamera,
+                          icon: const Icon(Icons.camera_alt_outlined),
+                          label: Text(l10n.documentsTakePhoto),
+                        ),
+                      ],
                     ),
+                    if (_selectedDocument == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          l10n.documentsPdfJpgOrPng,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                      ),
                     if (_selectedDocument != null) ...[
                       const SizedBox(height: 12),
                       _UploadInfoTile(
-                        label: 'Selected',
+                        label: l10n.documentsSelected,
                         value:
                             '${_selectedDocument!.name} • ${_selectedDocument!.mimeType}',
                       ),
@@ -180,51 +211,51 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               ),
               const SizedBox(height: 12),
               SectionCard(
-                title: 'Details',
-                subtitle: 'Add only the useful information.',
+                title: l10n.documentsDetails,
+                subtitle: l10n.documentsAddOnlyTheUsefulInformation,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Document title',
+                      decoration: InputDecoration(
+                        labelText: l10n.documentsDocumentTitle2,
                       ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _documentType,
-                      decoration: const InputDecoration(
-                        labelText: 'Document type',
+                      decoration: InputDecoration(
+                        labelText: l10n.documentsDocumentType2,
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'generic_document',
-                          child: Text('General document'),
+                          child: Text(l10n.documentsGeneralDocument2),
                         ),
                         DropdownMenuItem(
                           value: 'lab_report',
-                          child: Text('Lab report'),
+                          child: Text(l10n.documentsLabReport2),
                         ),
                         DropdownMenuItem(
                           value: 'imaging_report',
-                          child: Text('Imaging report'),
+                          child: Text(l10n.documentsImagingReport4),
                         ),
                         DropdownMenuItem(
                           value: 'discharge_letter',
-                          child: Text('Discharge summary'),
+                          child: Text(l10n.documentsDischargeSummary3),
                         ),
                         DropdownMenuItem(
                           value: 'specialist_visit',
-                          child: Text('Specialist visit'),
+                          child: Text(l10n.documentsSpecialistVisit2),
                         ),
                         DropdownMenuItem(
                           value: 'prescription',
-                          child: Text('Prescription'),
+                          child: Text(l10n.documentsPrescription2),
                         ),
                         DropdownMenuItem(
                           value: 'medical_certificate',
-                          child: Text('Medical certificate'),
+                          child: Text(l10n.documentsMedicalCertificate2),
                         ),
                       ],
                       onChanged: (value) => setState(
@@ -236,9 +267,9 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                       controller: _examDateController,
                       readOnly: true,
                       onTap: _uploading ? null : _pickExamDate,
-                      decoration: const InputDecoration(
-                        labelText: 'Exam date',
-                        hintText: 'YYYY-MM-DD',
+                      decoration: InputDecoration(
+                        labelText: l10n.documentsExamDate,
+                        hintText: l10n.documentsYyyyMmDd,
                         suffixIcon: Icon(Icons.calendar_month_outlined),
                       ),
                       validator: (value) {
@@ -246,14 +277,16 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                           return null;
                         }
                         return DateTime.tryParse(value) == null
-                            ? 'Invalid date'
+                            ? l10n.documentsInvalidDate2
                             : null;
                       },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _sourceController,
-                      decoration: const InputDecoration(labelText: 'Source'),
+                      decoration: InputDecoration(
+                        labelText: l10n.documentsSource2,
+                      ),
                     ),
                   ],
                 ),
@@ -261,19 +294,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _uploading ? null : _submit,
-                icon: Icon(
-                  _isLocalStorage
-                      ? Icons.save_alt_outlined
-                      : Icons.cloud_upload_outlined,
-                ),
+                icon: const Icon(Icons.save_alt_outlined),
                 label: Text(
                   _uploading
-                      ? (_isLocalStorage
-                            ? 'Saving...'
-                            : 'Uploading...')
-                      : (_isLocalStorage
-                            ? 'Save on device'
-                            : 'Upload document'),
+                      ? l10n.documentsSaving2
+                      : l10n.documentsSaveOnDevice,
                 ),
               ),
             ],

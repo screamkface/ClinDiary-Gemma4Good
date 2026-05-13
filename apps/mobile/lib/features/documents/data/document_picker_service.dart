@@ -2,8 +2,12 @@ import 'dart:io';
 
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
 
 class DocumentPickerService {
+  final ImagePicker _imagePicker = ImagePicker();
+
   Future<SelectedUploadDocument?> pickDocument() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -22,7 +26,7 @@ class DocumentPickerService {
       return null;
     }
 
-    final mimeType = _inferMimeType(file);
+    final mimeType = _inferMimeTypeFromName(file.name);
     return SelectedUploadDocument(
       name: file.name,
       bytes: bytes,
@@ -30,8 +34,33 @@ class DocumentPickerService {
     );
   }
 
-  String _inferMimeType(PlatformFile file) {
-    final lower = file.name.toLowerCase();
+  Future<SelectedUploadDocument?> pickPhotoFromCamera() async {
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 92,
+    );
+    if (image == null) {
+      return null;
+    }
+
+    final bytes = await image.readAsBytes();
+    if (bytes.isEmpty) {
+      return null;
+    }
+
+    final filename = path.basename(image.path).trim().isEmpty
+        ? 'camera-${DateTime.now().millisecondsSinceEpoch}.jpg'
+        : path.basename(image.path);
+
+    return SelectedUploadDocument(
+      name: filename,
+      bytes: bytes,
+      mimeType: _inferMimeTypeFromName(filename),
+    );
+  }
+
+  String _inferMimeTypeFromName(String filename) {
+    final lower = filename.toLowerCase();
     if (lower.endsWith('.pdf')) {
       return 'application/pdf';
     }

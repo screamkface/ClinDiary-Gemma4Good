@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/shared/widgets/metric_slider.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
@@ -108,14 +107,15 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
             },
           );
       ref.invalidate(dailyEntriesProvider);
+      ref.invalidate(insightSummaryProvider);
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       context.pop();
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -143,12 +143,12 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
                       ButtonSegment(
                         value: _SymptomInputMode.suggested,
                         icon: Icon(Icons.list_alt_outlined),
-                        label: Text('Suggested'),
+                        label: Text('List'),
                       ),
                       ButtonSegment(
                         value: _SymptomInputMode.custom,
                         icon: Icon(Icons.edit_note_outlined),
-                        label: Text('Custom'),
+                        label: Text('Write your own'),
                       ),
                     ],
                     selected: {_inputMode},
@@ -222,7 +222,7 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'If you prefer to describe the symptom in words, ClinDiary saves the free text so you can find it in the history and recaps.',
+                          'If you prefer to describe the symptom in words, ClinDiary saves the free text so you can find it later in the history and recaps.',
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
@@ -231,7 +231,7 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Additional details',
                             hintText:
-                              'For example: appears after lunch and improves when lying down',
+                                'E.g. it appears after lunch and improves when lying down',
                           ),
                         ),
                       ],
@@ -335,13 +335,15 @@ class _AdaptiveSymptomFields extends StatelessWidget {
             ),
             TextFormField(
               controller: associatedSymptomsController,
-              decoration: const InputDecoration(labelText: 'Associated symptoms'),
+              decoration: const InputDecoration(
+                labelText: 'Associated symptoms',
+              ),
             ),
           ],
         );
       default:
         return const Text(
-          'For this symptom, you can use duration, intensity, and location.',
+          'For this symptom you can use duration, intensity and location.',
         );
     }
   }

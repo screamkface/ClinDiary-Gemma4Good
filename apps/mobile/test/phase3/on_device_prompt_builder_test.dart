@@ -10,7 +10,7 @@ class MockLocalDatabase extends Mock implements LocalDatabase {}
 
 void main() {
   test(
-    'on-device prompt builder usa la cache locale quando disponibile',
+    'on-device prompt builder uses the local cache when available',
     () async {
       final database = MockLocalDatabase();
 
@@ -31,17 +31,17 @@ void main() {
           },
           'onboarding': {'health_data_consent': true},
           'allergies': [
-            {'id': 'allergy-1', 'allergen': 'Penicillina'},
+            {'id': 'allergy-1', 'allergen': 'Penicillin'},
           ],
           'medical_conditions': [
-            {'id': 'cond-1', 'name': 'Asma'},
+            {'id': 'cond-1', 'name': 'Asthma'},
           ],
           'medications': [
             {
               'id': 'med-1',
               'name': 'Salbutamolo',
               'dosage': '100 mcg',
-              'frequency': 'al bisogno',
+              'frequency': 'as needed',
               'active': true,
               'schedules': [],
             },
@@ -49,8 +49,8 @@ void main() {
           'family_history': [
             {
               'id': 'fh-1',
-              'relation': 'madre',
-              'condition_name': 'ipertensione',
+              'relation': 'mother',
+              'condition_name': 'hypertension',
             },
           ],
           'managed_profiles': [],
@@ -67,13 +67,13 @@ void main() {
             'energy_level': 4,
             'stress_level': 6,
             'general_pain': 2,
-            'general_notes': 'Tosse leggera al mattino.',
+            'general_notes': 'Mild cough in the morning.',
             'symptoms': [
               {
                 'id': 'sym-1',
                 'symptom_code': 'cough',
                 'severity': 5,
-                'metadata_json': {'notes': 'Peggiora dopo il lavoro'},
+                'metadata_json': {'notes': 'Worse with work stress'},
               },
             ],
             'vitals': [
@@ -120,8 +120,8 @@ void main() {
           {
             'id': 'evt-1',
             'event_type': 'daily_entry',
-            'title': 'Check-up giornaliero',
-            'description': 'Diario aggiornato con sintomi e parametri.',
+            'title': 'Daily check-up',
+            'description': 'Diary updated with symptoms and measurements.',
             'event_date': '2026-04-05T08:15:00Z',
           },
         ]),
@@ -136,22 +136,22 @@ void main() {
           'age': 36,
           'biological_sex': 'female',
           'profile_facts': [
-            {'label': 'peso', 'value': '62 kg'},
+            {'label': 'weight', 'value': '62 kg'},
           ],
           'provenance_facts': [],
           'emergency_summary': null,
           'allergies': [
-            {'id': 'allergy-1', 'allergen': 'Penicillina'},
+            {'id': 'allergy-1', 'allergen': 'Penicillin'},
           ],
           'medical_conditions': [
-            {'id': 'cond-1', 'name': 'Asma'},
+            {'id': 'cond-1', 'name': 'Asthma'},
           ],
           'medications': [
             {
               'id': 'med-1',
               'name': 'Salbutamolo',
               'dosage': '100 mcg',
-              'frequency': 'al bisogno',
+              'frequency': 'as needed',
               'active': true,
               'schedules': [],
             },
@@ -159,8 +159,8 @@ void main() {
           'family_history': [
             {
               'id': 'fh-1',
-              'relation': 'madre',
-              'condition_name': 'ipertensione',
+              'relation': 'mother',
+              'condition_name': 'hypertension',
             },
           ],
           'vaccinations': [],
@@ -169,7 +169,7 @@ void main() {
           'recent_documents': [
             {
               'id': 'doc-1',
-              'title': 'RX torace',
+              'title': 'Chest X-ray',
               'document_type': 'imaging_report',
               'upload_date': '2026-04-04T12:00:00Z',
               'exam_date': '2026-04-04T10:00:00Z',
@@ -181,8 +181,8 @@ void main() {
           'recent_lab_panels': [
             {
               'document_id': 'lab-doc-1',
-              'document_title': 'Emocromo completo',
-              'panel_name': 'Emocromo',
+              'document_title': 'Complete blood count',
+              'panel_name': 'Complete blood count',
               'panel_date': '2026-04-04T07:30:00Z',
               'abnormal_results_count': 1,
               'key_results': ['PCR 12 mg/L', 'GB 10.8'],
@@ -191,11 +191,11 @@ void main() {
           'recent_imaging_reports': [
             {
               'document_id': 'img-doc-1',
-              'document_title': 'RX torace',
+              'document_title': 'Chest X-ray',
               'exam_date': '2026-04-04T10:00:00Z',
               'exam_type': 'RX',
-              'body_part': 'Torace',
-              'impression': 'Nessun addensamento focale',
+              'body_part': 'Chest',
+              'impression': 'No focal consolidation',
             },
           ],
           'device_measurement_summaries': [
@@ -203,15 +203,14 @@ void main() {
               'provider_code': 'omron',
               'provider_name': 'Omron',
               'metric_type': 'blood_pressure',
-              'metric_label': 'Pressione arteriosa',
+              'metric_label': 'Blood pressure',
               'measurement_count': 3,
               'latest_measured_at': '2026-04-05T07:20:00Z',
               'latest_value': '128/82 mmHg',
-              'trend_label': 'stabile',
+              'trend_label': 'stable',
               'concern_level': null,
               'concern_note': null,
-              'summary':
-                  'Pressione arteriosa: media recente 128/82 mmHg, stabile.',
+              'summary': 'Blood pressure: recent average 128/82 mmHg, stable.',
             },
           ],
           'recent_insights': [
@@ -220,8 +219,7 @@ void main() {
               'summary_type': 'daily',
               'period_start': '2026-04-04',
               'period_end': '2026-04-04',
-              'content':
-                  'Stabile rispetto ai giorni precedenti con tosse lieve.',
+              'content': 'Stable compared to previous days with mild cough.',
               'provider_name': 'local_gemma4',
               'model_name': 'gemma-4-e2b',
               'generated_at': '2026-04-04T20:00:00Z',
@@ -246,33 +244,27 @@ void main() {
 
       expect(prompt, isNotNull);
       expect(prompt!.suggestedModelFamily, 'Gemma 4');
-      expect(
-        prompt.systemPrompt,
-        contains('Usa esclusivamente i dati presenti'),
-      );
+      expect(prompt.systemPrompt, contains('Use only the data present'));
       expect(prompt.userPrompt, contains('Giulia Rossi'));
       expect(prompt.userPrompt, contains('Salbutamolo'));
-      expect(prompt.userPrompt, contains('4200 passi'));
-      expect(prompt.userPrompt, contains('"general_note_tags":["tosse"]'));
-      expect(prompt.userPrompt, contains('"general_notes":"tags: tosse"'));
-      expect(prompt.userPrompt, contains('"note_tags":["stress_lavoro"]'));
-      expect(prompt.userPrompt, isNot(contains('Tosse leggera al mattino.')));
+      expect(prompt.userPrompt, contains('4200 steps'));
+      expect(prompt.userPrompt, contains('"general_note_tags":["cough"]'));
+      expect(prompt.userPrompt, contains('"general_notes":"tags: cough"'));
+      expect(prompt.userPrompt, contains('"note_tags":["work_stress"]'));
+      expect(prompt.userPrompt, isNot(contains('Mild cough in the morning.')));
       expect(
         prompt.userPrompt,
-        contains('Pressione arteriosa: media recente 128/82 mmHg, stabile.'),
+        contains('Blood pressure: recent average 128/82 mmHg, stable.'),
       );
-      expect(prompt.userPrompt, contains('Emocromo'));
-      expect(prompt.userPrompt, contains('RX - Torace'));
-      expect(prompt.userPrompt, contains('RX torace'));
-      expect(
-        prompt.userPrompt,
-        contains('Stabile rispetto ai giorni precedenti'),
-      );
+      expect(prompt.userPrompt, contains('Complete blood count'));
+      expect(prompt.userPrompt, contains('RX - Chest'));
+      expect(prompt.userPrompt, contains('Chest X-ray'));
+      expect(prompt.userPrompt, contains('Stable compared to previous days'));
     },
   );
 
   test(
-    'on-device prompt builder usa il dossier locale come fallback quando le altre cache mancano',
+    'on-device prompt builder uses local dossier as fallback when other caches are missing',
     () async {
       final database = MockLocalDatabase();
 
@@ -310,20 +302,20 @@ void main() {
           'age': 68,
           'biological_sex': 'female',
           'profile_facts': [
-            {'label': 'profilo', 'value': 'ipertensione in follow-up'},
+            {'label': 'profile', 'value': 'hypertension in follow-up'},
           ],
           'provenance_facts': [],
           'emergency_summary': null,
           'allergies': [],
           'medical_conditions': [
-            {'id': 'cond-1', 'name': 'Ipertensione'},
+            {'id': 'cond-1', 'name': 'Hypertension'},
           ],
           'medications': [
             {
               'id': 'med-1',
               'name': 'Ramipril',
               'dosage': '5 mg',
-              'frequency': 'mattina',
+              'frequency': 'morning',
               'active': true,
               'schedules': [],
             },
@@ -338,7 +330,7 @@ void main() {
               'sleep_hours': 6.0,
               'energy_level': 5,
               'stress_level': 3,
-              'general_notes': 'Sensazione di stanchezza al risveglio.',
+              'general_notes': 'Feeling tired on waking.',
               'symptoms': [],
               'vitals': [],
             },
@@ -347,8 +339,8 @@ void main() {
           'recent_lab_panels': [
             {
               'document_id': 'lab-doc-1',
-              'document_title': 'Esami ematici',
-              'panel_name': 'Glicemia a digiuno',
+              'document_title': 'Blood tests',
+              'panel_name': 'Fasting glucose',
               'panel_date': '2026-04-03T07:30:00Z',
               'abnormal_results_count': 0,
               'key_results': ['96 mg/dL'],
@@ -360,14 +352,14 @@ void main() {
               'provider_code': 'omron',
               'provider_name': 'Omron',
               'metric_type': 'blood_pressure',
-              'metric_label': 'Pressione arteriosa',
+              'metric_label': 'Blood pressure',
               'measurement_count': 4,
               'latest_measured_at': '2026-04-05T07:15:00Z',
               'latest_value': '134/84 mmHg',
-              'trend_label': 'stabile',
+              'trend_label': 'stable',
               'concern_level': null,
               'concern_note': null,
-              'summary': 'Pressione arteriosa: ultimo valore 134/84 mmHg.',
+              'summary': 'Blood pressure: latest value 134/84 mmHg.',
             },
           ],
           'recent_insights': [],
@@ -375,11 +367,10 @@ void main() {
           'alerts': [
             {
               'id': 'alert-1',
-              'title': 'Pressione da ricontrollare',
+              'title': 'Blood pressure to recheck',
               'severity': 'medium',
               'alert_type': 'monitoring',
-              'description':
-                  'Controllare di nuovo la pressione nelle prossime rilevazioni.',
+              'description': 'Check blood pressure again in upcoming readings.',
               'status': 'open',
               'triggered_at': '2026-04-05T07:25:00Z',
             },
@@ -407,15 +398,15 @@ void main() {
       expect(prompt.userPrompt, contains('Ramipril'));
       expect(
         prompt.userPrompt,
-        contains('Pressione arteriosa: ultimo valore 134/84 mmHg.'),
+        contains('Blood pressure: latest value 134/84 mmHg.'),
       );
-      expect(prompt.userPrompt, contains('Glicemia a digiuno'));
-      expect(prompt.userPrompt, contains('3100 passi'));
+      expect(prompt.userPrompt, contains('Fasting glucose'));
+      expect(prompt.userPrompt, contains('3100 steps'));
     },
   );
 
   test(
-    'on-device prompt builder rinuncia al prompt locale quando la cache e troppo povera',
+    'on-device prompt builder skips local prompt when cache is too sparse',
     () async {
       final database = MockLocalDatabase();
 
@@ -437,14 +428,14 @@ void main() {
           'onboarding': {'health_data_consent': true},
           'allergies': [],
           'medical_conditions': [
-            {'id': 'cond-1', 'name': 'Rinite ricorrente'},
+            {'id': 'cond-1', 'name': 'Recurring rhinitis'},
           ],
           'medications': [
             {
               'id': 'med-1',
-              'name': 'Spray nasale salino',
+              'name': 'Saline nasal spray',
               'dosage': '2 puff',
-              'frequency': '2/die',
+              'frequency': '2/day',
               'active': true,
               'schedules': [],
             },
@@ -463,7 +454,7 @@ void main() {
           {
             'id': 'log-1',
             'medication_id': 'med-1',
-            'medication_name': 'Spray nasale salino',
+            'medication_name': 'Saline nasal spray',
             'medication_dosage': '2 puff',
             'scheduled_at': '2026-04-05T09:00:00Z',
             'status': 'taken',
@@ -488,9 +479,8 @@ void main() {
             'id': 'alert-1',
             'severity': 'attention',
             'alert_type': 'sleep_decline',
-            'title': 'Sonno ridotto negli ultimi giorni',
-            'description':
-                'Pattern di sonno scarso da contestualizzare nel recap.',
+            'title': 'Reduced sleep in recent days',
+            'description': 'Poor sleep pattern to contextualize in the recap.',
             'status': 'open',
             'triggered_at': '2026-04-05T07:30:00Z',
           },

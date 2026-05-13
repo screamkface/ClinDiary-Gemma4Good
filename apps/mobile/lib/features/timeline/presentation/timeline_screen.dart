@@ -97,13 +97,13 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           setState(() => _selectedFilter = 'prevention'),
                     ),
                     _TimelineFilterChip(
-                      label: 'Alerts',
+                      label: 'Alert',
                       selected: _selectedFilter == 'alerts',
                       onSelected: () =>
                           setState(() => _selectedFilter = 'alerts'),
                     ),
                     _TimelineFilterChip(
-                      label: 'Reports',
+                      label: 'Report',
                       selected: _selectedFilter == 'reports',
                       onSelected: () =>
                           setState(() => _selectedFilter = 'reports'),
@@ -228,7 +228,7 @@ class _TimelineEventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final timeFormat = DateFormat('HH:mm', 'it_IT');
+    final timeFormat = DateFormat('HH:mm', 'en_US');
 
     return Container(
       width: double.infinity,

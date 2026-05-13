@@ -87,27 +87,55 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
           modelPath.isNotEmpty &&
           await File(modelPath).exists();
 
+      final embeddingModelPath =
+          '${modelDirectory ?? ''}/embeddinggemma-300m.tflite';
+      final embeddingModelExists = await File(embeddingModelPath).exists();
+      final activeGemmaDownload = await service.fetchGemma4DownloadProgress();
+
+      if (activeGemmaDownload != null) {
+        state = GemmaModelBootstrapState.downloading(
+          message: 'Downloading Gemma 4 E2B...',
+          modelDirectory: modelDirectory,
+          downloadedBytes: activeGemmaDownload.downloadedBytes,
+          totalBytes: activeGemmaDownload.totalBytes,
+        );
+
+        await service.downloadGemma4Model(
+          onProgress: (receivedBytes, totalBytes) {
+            state = GemmaModelBootstrapState.downloading(
+              message: 'Downloading Gemma 4 E2B...',
+              modelDirectory: modelDirectory,
+              downloadedBytes: receivedBytes,
+              totalBytes: totalBytes,
+            );
+          },
+        );
+      }
+
       if (!status.isSupported) {
         state = GemmaModelBootstrapState.ready(
-          message: 'On-device Gemma is not available on this platform.',
+          message: 'On-device AI is not available on this platform.',
           modelDirectory: modelDirectory,
           modelPath: modelPath,
         );
         return;
       }
 
-      if (!forceDownload && status.isReady && modelFileExists) {
+      if (!forceDownload &&
+          status.isReady &&
+          modelFileExists &&
+          embeddingModelExists) {
         state = GemmaModelBootstrapState.ready(
-          message: 'Gemma 4 E2B is ready.',
+          message: 'On-device AI models are ready.',
           modelDirectory: modelDirectory,
           modelPath: modelPath,
         );
         return;
       }
 
-      if (modelFileExists && !forceDownload) {
+      if (modelFileExists && embeddingModelExists && !forceDownload) {
         state = GemmaModelBootstrapState.checking(
-          message: 'Gemma 4 E2B is already present. Verifying the runtime...',
+          message: 'Models are already present. Verifying the runtime...',
           modelDirectory: modelDirectory,
           modelPath: modelPath,
         );
@@ -120,7 +148,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
             await File(refreshedModelPath).exists();
         if (refreshedStatus.isReady && refreshedModelFileExists) {
           state = GemmaModelBootstrapState.ready(
-            message: 'Gemma 4 E2B is ready.',
+            message: 'On-device AI models are ready.',
             modelDirectory: refreshedStatus.defaultModelDirectory,
             modelPath: refreshedModelPath,
           );
@@ -129,7 +157,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
 
         state = GemmaModelBootstrapState.error(
           message:
-              'Gemma 4 E2B is installed, but LiteRT-LM could not load it. You can retry the download or continue to the app.',
+              'Models are installed, but LiteRT-LM could not load them. You can retry the download or continue to the app.',
           modelDirectory:
               refreshedStatus.defaultModelDirectory ?? modelDirectory,
           modelPath: refreshedModelPath,
@@ -139,23 +167,46 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
         return;
       }
 
-      state = GemmaModelBootstrapState.downloading(
-        message: 'Downloading Gemma 4 E2B from Hugging Face...',
-        modelDirectory: modelDirectory,
-      );
+      String? installedPath = modelPath;
 
-      final installedPath = await service.downloadGemma4Model(
-        onProgress: (receivedBytes, totalBytes) {
-          state = GemmaModelBootstrapState.downloading(
-            message: totalBytes == null || totalBytes <= 0
-                ? 'Downloading Gemma 4 E2B...'
-                : 'Downloading Gemma 4 E2B...',
-            modelDirectory: modelDirectory,
-            downloadedBytes: receivedBytes,
-            totalBytes: totalBytes,
-          );
-        },
-      );
+      if (!modelFileExists || forceDownload) {
+        state = GemmaModelBootstrapState.downloading(
+          message: 'Downloading Gemma 4 E2B from Hugging Face...',
+          modelDirectory: modelDirectory,
+        );
+
+        installedPath = await service.downloadGemma4Model(
+          onProgress: (receivedBytes, totalBytes) {
+            state = GemmaModelBootstrapState.downloading(
+              message: totalBytes == null || totalBytes <= 0
+                  ? 'Downloading Gemma 4 E2B...'
+                  : 'Downloading Gemma 4 E2B...',
+              modelDirectory: modelDirectory,
+              downloadedBytes: receivedBytes,
+              totalBytes: totalBytes,
+            );
+          },
+        );
+      }
+
+      if (!embeddingModelExists || forceDownload) {
+        state = GemmaModelBootstrapState.downloading(
+          message: 'Downloading EmbeddingGemma 300M from Hugging Face...',
+          modelDirectory: modelDirectory,
+        );
+        await service.downloadEmbeddingModel(
+          onProgress: (receivedBytes, totalBytes) {
+            state = GemmaModelBootstrapState.downloading(
+              message: totalBytes == null || totalBytes <= 0
+                  ? 'Downloading EmbeddingGemma 300M...'
+                  : 'Downloading EmbeddingGemma 300M...',
+              modelDirectory: modelDirectory,
+              downloadedBytes: receivedBytes,
+              totalBytes: totalBytes,
+            );
+          },
+        );
+      }
 
       final refreshedStatus = await service.fetchStatus();
       final refreshedModelPath =
@@ -165,7 +216,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
 
       if (refreshedStatus.isReady) {
         state = GemmaModelBootstrapState.ready(
-          message: 'Gemma 4 E2B is ready.',
+          message: 'On-device AI models are ready.',
           modelDirectory:
               refreshedStatus.defaultModelDirectory ?? modelDirectory,
           modelPath: refreshedModelPath,
@@ -175,7 +226,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
 
       state = GemmaModelBootstrapState.error(
         message:
-            'The model file has been downloaded, but LiteRT-LM still could not initialize it. You can continue to the app and try again from the model screen.',
+            'The models have been downloaded, but LiteRT-LM still could not initialize. You can continue to the app and try again from the model screen.',
         modelDirectory: refreshedStatus.defaultModelDirectory ?? modelDirectory,
         modelPath: refreshedModelPath,
         lastError: refreshedStatus.lastError,
@@ -183,7 +234,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
       );
     } catch (error) {
       state = GemmaModelBootstrapState.error(
-        message: 'Gemma 4 E2B download failed.',
+        message: 'Model download failed.',
         lastError: error.toString(),
         modelDirectory: state.modelDirectory,
       );

@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -43,11 +42,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
       if (!mounted) return;
       context.go('/onboarding');
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.registrationFailed(error.message))),
-      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +124,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         child: FilledButton(
                           onPressed: _isSubmitting ? null : _submit,
                           child: Text(
-                            _isSubmitting ? l10n.creatingAccount : l10n.continueButton,
+                            _isSubmitting
+                                ? l10n.creatingAccount
+                                : l10n.continueButton,
                           ),
                         ),
                       ),

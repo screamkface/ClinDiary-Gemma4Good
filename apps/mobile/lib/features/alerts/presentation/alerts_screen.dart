@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/alerts/presentation/alert_ui.dart';
@@ -22,11 +21,11 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
       await ref.read(alertsRepositoryProvider).resolveAlert(alert.id);
       ref.invalidate(alertsProvider);
       ref.invalidate(timelineEventsProvider);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _resolvingAlertId = null);
@@ -37,7 +36,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     final alertsAsync = ref.watch(alertsProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
     return Scaffold(
       appBar: AppBar(
@@ -104,9 +103,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                             ),
                           ),
                           Chip(
-                            label: Text(
-                              alert.isResolved ? 'Risolto' : 'Aperto',
-                            ),
+                            label: Text(alert.isResolved ? 'Resolved' : 'Open'),
                           ),
                         ],
                       ),
@@ -121,7 +118,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                           child: Text(
                             _resolvingAlertId == alert.id
                                 ? '...'
-                                : 'Segna risolto',
+                                : 'Mark resolved',
                           ),
                         ),
                 ),

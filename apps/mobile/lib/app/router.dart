@@ -1,17 +1,19 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/app/bootstrap/gemma_model_bootstrap.dart';
 import 'package:clindiary/features/alerts/presentation/alerts_screen.dart';
 import 'package:clindiary/features/auth/presentation/login_screen.dart';
 import 'package:clindiary/features/auth/presentation/register_screen.dart';
 import 'package:clindiary/features/auth/presentation/session_gate_screen.dart';
-import 'package:clindiary/features/billing/presentation/billing_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/daily_check_in_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/diary_screen.dart';
+import 'package:clindiary/features/daily_journal/presentation/symptom_follow_up_screen.dart';
 import 'package:clindiary/features/daily_journal/presentation/symptom_entry_screen.dart';
 import 'package:clindiary/features/devices/presentation/devices_screen.dart';
 import 'package:clindiary/features/debug/presentation/sync_debug_screen.dart';
 import 'package:clindiary/features/dossier/presentation/health_dossier_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_detail_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_query_screen.dart';
+import 'package:clindiary/features/documents/presentation/document_query_history_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_review_screen.dart';
 import 'package:clindiary/features/documents/presentation/document_upload_screen.dart';
 import 'package:clindiary/features/documents/presentation/documents_screen.dart';
@@ -53,6 +55,8 @@ final _profileBranchNavigatorKey = GlobalKey<NavigatorState>(
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
+  final appConfig = ref.read(appConfigProvider);
+  final shouldBypassAuth = appConfig.hackathonDemoMode;
 
   bool isPublicRoute(String location) {
     return location == '/' ||
@@ -76,6 +80,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      if (shouldBypassAuth) {
+        if (location == '/' ||
+            isAuthRoute(location) ||
+            location == '/onboarding') {
+          return '/app/home';
+        }
+        return null;
+      }
+
       if (session == null) {
         if (isPublicRoute(location)) {
           return null;
@@ -90,7 +103,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/onboarding';
       }
 
-      if (location == '/' || isAuthRoute(location) || location == '/onboarding') {
+      if (location == '/' ||
+          isAuthRoute(location) ||
+          location == '/onboarding') {
         return '/app/home';
       }
 
@@ -176,12 +191,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const ReportsScreen(),
                   ),
                   GoRoute(
-                    path: 'billing',
-                    builder: (context, state) => BillingScreen(
-                      featureCode: state.uri.queryParameters['feature'],
-                    ),
-                  ),
-                  GoRoute(
                     path: 'screenings',
                     builder: (context, state) => const ScreeningsScreen(),
                   ),
@@ -221,6 +230,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const DailyCheckInScreen(),
                   ),
                   GoRoute(
+                    path: 'symptom-follow-up',
+                    builder: (context, state) => SymptomFollowUpScreen(
+                      sourceEntryId:
+                          state.uri.queryParameters['sourceEntryId'] ?? '',
+                      sourceSymptomId:
+                          state.uri.queryParameters['sourceSymptomId'] ?? '',
+                      initialResponse: state.uri.queryParameters['response'],
+                    ),
+                  ),
+                  GoRoute(
                     path: ':entryId/symptom',
                     builder: (context, state) => SymptomEntryScreen(
                       entryId: state.pathParameters['entryId']!,
@@ -235,9 +254,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/ai',
-                builder: (context, state) => GemmaCenterScreen(
-                  initialQuestion: state.uri.queryParameters['question'],
-                  documentId: state.uri.queryParameters['documentId'],
+                builder: (context, state) => GemmaModelBootstrap(
+                  child: GemmaCenterScreen(
+                    initialQuestion: state.uri.queryParameters['question'],
+                    documentId: state.uri.queryParameters['documentId'],
+                  ),
                 ),
               ),
             ],
@@ -253,8 +274,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'ask',
                     builder: (context, state) => DocumentQueryScreen(
                       initialFolderId: state.uri.queryParameters['folderId'],
-                      initialFolderName: state.uri.queryParameters['folderName'],
+                      initialFolderName:
+                          state.uri.queryParameters['folderName'],
                     ),
+                    routes: [
+                      GoRoute(
+                        path: 'history',
+                        builder: (context, state) =>
+                            const DocumentQueryHistoryScreen(),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'upload',
@@ -262,8 +291,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       initialFolderId: state.uri.queryParameters['folderId'],
                       initialFolderName:
                           state.uri.queryParameters['folderName'],
-                      initialStorageLocation:
-                          state.uri.queryParameters['storageMode'],
+                      initialCaptureMode: state.uri.queryParameters['capture'],
                     ),
                   ),
                   GoRoute(

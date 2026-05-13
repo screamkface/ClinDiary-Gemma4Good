@@ -1,14 +1,11 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/reports/domain/clinical_report.dart';
 import 'package:clindiary/shared/widgets/clinical_scope_notice.dart';
-import 'package:clindiary/shared/widgets/feature_lock_card.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:clindiary/shared/widgets/summary_content_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -46,17 +43,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ref.invalidate(timelineEventsProvider);
       if (!mounted) return;
       setState(() => _latestReport = report);
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
-      if (error.isFeatureLocked) {
-        context.push(
-          '/app/home/billing?feature=${error.featureCode ?? 'ai_report_generation'}',
-        );
-        return;
-      }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
@@ -68,28 +59,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     if (report.downloadUrl == null || report.downloadUrl!.isEmpty) {
       return;
     }
-    final config = ref.read(appConfigProvider);
-    final uri = report.downloadUrl!.startsWith('http')
-        ? Uri.parse(report.downloadUrl!)
-        : Uri.parse('${config.apiBaseUrl}${report.downloadUrl!}');
+    if (!report.downloadUrl!.startsWith('http')) {
+      return;
+    }
+    final uri = Uri.parse(report.downloadUrl!);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossibile aprire il report.')),
+        const SnackBar(content: Text('Unable to open the report.')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'it_IT');
+    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final activeProfileId = ref.watch(activeProfileIdProvider).asData?.value;
-    final billingStatusAsync = ref.watch(billingStatusProvider);
-    final requiresAiPlan = _reportType != 'screening_status_report';
-    final proactiveLock =
-        requiresAiPlan &&
-        billingStatusAsync.asData?.value?.hasFeature('ai_report_generation') ==
-            false;
 
     if (_observedActiveProfileId != activeProfileId) {
       _observedActiveProfileId = activeProfileId;
@@ -121,21 +106,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 const ClinicalScopeNotice(
-                    title: 'Informational report',
+                  title: 'Informational report',
                   message:
-                      'AI reports are used to organize information and clinical trend. They are not equivalent to a medical assessment or prescription.',
+                      'AI reports are used to organize information and clinical trends. They are not equivalent to a medical assessment or prescription.',
                   icon: Icons.description_outlined,
                 ),
                 const SizedBox(height: 12),
                 SectionCard(
                   title: 'Generate report',
-                  subtitle: 'Choose the period and create an organized report.',
+                  subtitle: 'Choose the period and create an ordered report.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: _reportType,
-                        decoration: const InputDecoration(labelText: 'Report type'),
+                        decoration: const InputDecoration(
+                          labelText: 'Report type',
+                        ),
                         items: const [
                           DropdownMenuItem(
                             value: 'weekly_summary',
@@ -147,7 +134,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           ),
                           DropdownMenuItem(
                             value: 'pre_visit_report',
-                            child: Text('Pre-visit prep'),
+                            child: Text('Visit preparation'),
                           ),
                           DropdownMenuItem(
                             value: 'screening_status_report',
@@ -155,29 +142,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           ),
                         ],
                         onChanged: (value) {
-                          setState(() => _reportType = value ?? 'weekly_summary');
+                          setState(
+                            () => _reportType = value ?? 'weekly_summary',
+                          );
                         },
                       ),
                       const SizedBox(height: 16),
-                      if (proactiveLock)
-                        FeatureLockCard(
-                          title: 'AI Plus required',
-                          compact: true,
-                          featureLabel: 'AI report',
-                          message:
-                              'Narrative AI reports are part of ClinDiary AI Plus. The deterministic prevention report remains available even on the Free plan.',
-                          onOpenBilling: () => context.push(
-                            '/app/home/billing?feature=ai_report_generation',
-                          ),
-                        )
-                      else
-                        FilledButton.icon(
-                          onPressed: _isGenerating ? null : _generateReport,
-                          icon: const Icon(Icons.picture_as_pdf_outlined),
-                          label: Text(
-                            _isGenerating ? 'Generating...' : 'Regenerate report',
-                          ),
+                      FilledButton.icon(
+                        onPressed: _isGenerating ? null : _generateReport,
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        label: Text(
+                          _isGenerating ? 'Generating...' : 'Regenerate report',
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -204,7 +181,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            Chip(label: Text(_labelFor(_latestReport!.reportType))),
+                            Chip(
+                              label: Text(_labelFor(_latestReport!.reportType)),
+                            ),
                             Chip(
                               label: Text(
                                 '${_latestReport!.periodStart.toIso8601String().split('T').first} - ${_latestReport!.periodEnd.toIso8601String().split('T').first}',
@@ -238,9 +217,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   )
                 else
                   const SectionCard(
-                      title: 'Latest report',
+                    title: 'Latest report',
                     child: Text(
-                        'You have not generated any reports for this profile yet.',
+                      'You have not generated a report for this profile yet.',
                     ),
                   ),
               ],
@@ -257,7 +236,7 @@ String _labelFor(String reportType) {
     case 'monthly_summary':
       return 'Monthly recap';
     case 'pre_visit_report':
-      return 'Pre-visit prep';
+      return 'Visit preparation';
     case 'screening_status_report':
       return 'Prevention status';
     default:

@@ -27,7 +27,6 @@ class PatientProfile {
     this.tryingToConceive = false,
     this.currentlyPregnant = false,
     this.takingFolicAcid = false,
-    this.regionCode,
     this.relationshipLabel,
     this.occupation,
     this.exerciseHabits,
@@ -63,7 +62,6 @@ class PatientProfile {
   final bool tryingToConceive;
   final bool currentlyPregnant;
   final bool takingFolicAcid;
-  final String? regionCode;
   final String? relationshipLabel;
   final String? occupation;
   final String? exerciseHabits;
@@ -104,16 +102,13 @@ class PatientProfile {
       fallsLastYear: json['falls_last_year'] as int?,
       feelsUnsteady: json['feels_unsteady'] as bool? ?? false,
       sexuallyActive: json['sexually_active'] as bool?,
-      newOrMultiplePartners:
-          json['new_or_multiple_partners'] as bool? ?? false,
+      newOrMultiplePartners: json['new_or_multiple_partners'] as bool? ?? false,
       partnerWithSti: json['partner_with_sti'] as bool? ?? false,
       sexWithMen: json['sex_with_men'] as bool? ?? false,
-      stiOrExposureConcerns:
-          json['sti_or_exposure_concerns'] as bool? ?? false,
+      stiOrExposureConcerns: json['sti_or_exposure_concerns'] as bool? ?? false,
       tryingToConceive: json['trying_to_conceive'] as bool? ?? false,
       currentlyPregnant: json['currently_pregnant'] as bool? ?? false,
       takingFolicAcid: json['taking_folic_acid'] as bool? ?? false,
-      regionCode: json['region_code'] as String?,
       relationshipLabel: json['relationship_label'] as String?,
       occupation: json['occupation'] as String?,
       exerciseHabits: json['exercise_habits'] as String?,

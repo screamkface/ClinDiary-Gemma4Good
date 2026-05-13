@@ -12,10 +12,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    await initializeDateFormatting('it_IT');
+    await initializeDateFormatting('en_US');
   });
 
-  test('insight summary query distingue la modalita on-device', () {
+  test('insight summary query distinguishes on-device mode', () {
     const standard = InsightSummaryQuery(summaryType: 'daily');
     const onDevice = InsightSummaryQuery(
       summaryType: 'daily',
@@ -26,7 +26,7 @@ void main() {
     expect(standard.hashCode, isNot(onDevice.hashCode));
   });
 
-  testWidgets('on-device proof card mostra runtime e modello', (tester) async {
+  testWidgets('on-device proof card shows runtime and model', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -65,16 +65,16 @@ void main() {
 
     expect(find.text('Proof on-device'), findsOneWidget);
     expect(
-      find.textContaining('Provider attivo: Gemma 4 On-device'),
+      find.textContaining('Active provider: Gemma 4 On-device'),
       findsOneWidget,
     );
-    expect(find.textContaining('Modello: gemma-4-E2B-it'), findsOneWidget);
-    expect(find.textContaining('Cloud esterno usato: No'), findsOneWidget);
-    expect(find.text('Sostituisci modello'), findsOneWidget);
-    expect(find.text('Gestisci modello'), findsOneWidget);
+    expect(find.textContaining('Model: gemma-4-E2B-it'), findsOneWidget);
+    expect(find.textContaining('External cloud used: No'), findsOneWidget);
+    expect(find.text('Replace model'), findsOneWidget);
+    expect(find.text('Manage model'), findsOneWidget);
   });
 
-  testWidgets('insights screen espone la modalita on-device nel selettore recap', (
+  testWidgets('insights screen exposes on-device mode in recap selector', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -86,7 +86,7 @@ void main() {
               summaryType: query.summaryType,
               periodStart: DateTime.utc(2026, 4, 5),
               periodEnd: DateTime.utc(2026, 4, 5),
-              content: 'Osservazioni: giornata regolare con sintomi lievi.',
+              content: 'Observations: regular day with mild symptoms.',
               providerName: 'on_device_litertlm',
               modelName: 'gemma-4-E2B-it',
               generatedAt: DateTime.utc(2026, 4, 5, 9),
@@ -126,8 +126,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Modalita recap'), findsOneWidget);
-    expect(find.text('Sul dispositivo'), findsOneWidget);
+    expect(find.text('Recap mode'), findsOneWidget);
+    expect(find.text('On device'), findsOneWidget);
   });
 }
 

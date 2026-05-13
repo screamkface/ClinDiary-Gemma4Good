@@ -2,22 +2,16 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class AppConfig {
-  const AppConfig({
-    required this.apiBaseUrl,
-    this.googleAuthClientId = '',
-  });
+  const AppConfig({this.hackathonDemoMode = false, this.localOnlyMode = false});
 
-  final String apiBaseUrl;
-  final String googleAuthClientId;
+  final bool hackathonDemoMode;
+  final bool localOnlyMode;
 }
 
 const defaultAppConfig = AppConfig(
-  apiBaseUrl: String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
+  hackathonDemoMode: bool.fromEnvironment(
+    'HACKATHON_DEMO_MODE',
+    defaultValue: false,
   ),
-  googleAuthClientId: String.fromEnvironment(
-    'GOOGLE_AUTH_CLIENT_ID',
-    defaultValue: '',
-  ),
+  localOnlyMode: bool.fromEnvironment('LOCAL_ONLY_MODE', defaultValue: true),
 );

@@ -7,12 +7,12 @@ enum LegalDocumentType {
   privacy(
     title: 'Beta privacy notice',
     assetPath: 'assets/legal/privacy-notice-beta.md',
-    description: 'Data processing and product structure.',
+    description: 'Data handling and product structure.',
   ),
   ai(
     title: 'Beta AI note',
     assetPath: 'assets/legal/ai-notice-beta.md',
-    description: 'Cautious AI use and external providers.',
+    description: 'Prudent AI use and external providers.',
   ),
   portability(
     title: 'Beta portability and retention',

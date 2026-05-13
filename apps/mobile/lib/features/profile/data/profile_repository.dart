@@ -1,143 +1,55 @@
 import 'dart:convert';
 
+import 'package:clindiary/app/core/json/json_deep_copy.dart';
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 
 class ProfileRepository {
-  ProfileRepository({
-    required ApiClient apiClient,
-    required LocalDatabase localDatabase,
-  }) : _apiClient = apiClient,
-       _localDatabase = localDatabase;
+  ProfileRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'profile_bundle';
 
-  final ApiClient _apiClient;
   final LocalDatabase _localDatabase;
 
   Future<ProfileBundle> fetchProfile() async {
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.getJson('/api/v1/profile/me');
-      await _ensureActiveProfileSelection(response);
-      await _writeBundle(response);
-      return ProfileBundle.fromJson(response);
-    } on ApiException {
-      final cached = await _readCachedBundleJson();
-      if (cached == null) rethrow;
-      return ProfileBundle.fromJson(cached);
-    } catch (error) {
-      final cached = await _readCachedBundleJson();
-      if (cached == null) rethrow;
-      return ProfileBundle.fromJson(cached);
+    final cached = await _readCachedBundleJson();
+    if (cached == null) {
+      final defaultBundle = _bundleTemplateJson();
+      await _writeBundle(defaultBundle);
+      return ProfileBundle.fromJson(defaultBundle);
     }
+    return ProfileBundle.fromJson(cached);
   }
 
   Future<ProfileBundle> completeOnboarding({
     required Map<String, dynamic> payload,
   }) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.postJson(
-        '/api/v1/profile/onboarding/complete',
-        body: payload,
-      );
-      await _ensureActiveProfileSelection(response);
-      await _writeBundle(response);
-      return ProfileBundle.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/onboarding/complete',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _applyOnboardingPatch(bundle, payload),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/onboarding/complete',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _applyOnboardingPatch(bundle, payload),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _applyOnboardingPatch(bundle, payload),
+    );
   }
 
   Future<ProfileBundle> updateProfile(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.putJson(
-        '/api/v1/profile/me',
-        body: payload,
-      );
-      await _writeBundle(response);
-      return ProfileBundle.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'PUT',
-        path: '/api/v1/profile/me',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _applyProfilePatch(bundle, payload),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'PUT',
-        path: '/api/v1/profile/me',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _applyProfilePatch(bundle, payload),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _applyProfilePatch(bundle, payload),
+    );
   }
 
   Future<ProfileBundle> updateAiPrivacyConsent(bool enabled) async {
     final payload = {'ai_external_consent': enabled};
-    try {
-      await _apiClient.flushPendingOperations();
-      final response = await _apiClient.patchJson(
-        '/api/v1/profile/privacy/ai',
-        body: payload,
-      );
-      await _writeBundle(response);
-      return ProfileBundle.fromJson(response);
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'PATCH',
-        path: '/api/v1/profile/privacy/ai',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _applyAiPrivacyPatch(bundle, payload),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'PATCH',
-        path: '/api/v1/profile/privacy/ai',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _applyAiPrivacyPatch(bundle, payload),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _applyAiPrivacyPatch(bundle, payload),
+    );
   }
 
-  Future<ProfileBundle> createManagedProfile(Map<String, dynamic> payload) async {
-    await _apiClient.postJson(
-      '/api/v1/profile/profiles',
-      body: payload,
+  Future<ProfileBundle> createManagedProfile(
+    Map<String, dynamic> payload,
+  ) async {
+    return _queueBundleMutation(
+      patch: (bundle) => _appendManagedProfile(bundle, payload),
     );
-    return fetchProfile();
   }
 
   Future<List<PatientProfile>> fetchManagedProfiles() async {
@@ -157,446 +69,119 @@ class ProfileRepository {
   }
 
   Future<ProfileBundle> addAllergy(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.postJson('/api/v1/profile/allergies', body: payload);
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/allergies',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) =>
-            _appendResource(bundle, 'allergies', _buildPendingAllergy(payload)),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/allergies',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _appendResource(bundle, 'allergies', _buildPendingAllergy(payload)),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) =>
+          _appendResource(bundle, 'allergies', _buildPendingAllergy(payload)),
+    );
   }
 
   Future<ProfileBundle> addCondition(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.postJson('/api/v1/profile/conditions', body: payload);
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/conditions',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _appendResource(
-          bundle,
-          'medical_conditions',
-          _buildPendingCondition(payload),
-        ),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/conditions',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _appendResource(
-          bundle,
-          'medical_conditions',
-          _buildPendingCondition(payload),
-        ),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _appendResource(
+        bundle,
+        'medical_conditions',
+        _buildPendingCondition(payload),
+      ),
+    );
   }
 
   Future<ProfileBundle> addMedication(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.postJson('/api/v1/profile/medications', body: payload);
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/medications',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _appendResource(
-          bundle,
-          'medications',
-          _buildPendingMedication(payload),
-        ),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/medications',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _appendResource(
-          bundle,
-          'medications',
-          _buildPendingMedication(payload),
-        ),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _appendResource(
+        bundle,
+        'medications',
+        _buildPendingMedication(payload),
+      ),
+    );
   }
 
   Future<ProfileBundle> addFamilyHistory(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.postJson(
-        '/api/v1/profile/family-history',
-        body: payload,
-      );
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/family-history',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _appendResource(
-          bundle,
-          'family_history',
-          _buildPendingFamilyHistory(payload),
-        ),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/family-history',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _appendResource(
-          bundle,
-          'family_history',
-          _buildPendingFamilyHistory(payload),
-        ),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _appendResource(
+        bundle,
+        'family_history',
+        _buildPendingFamilyHistory(payload),
+      ),
+    );
   }
 
   Future<ProfileBundle> addVaccination(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.postJson('/api/v1/profile/vaccinations', body: payload);
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/vaccinations',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _appendResource(
-          bundle,
-          'vaccinations',
-          _buildPendingVaccination(payload),
-        ),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/vaccinations',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _appendResource(
-          bundle,
-          'vaccinations',
-          _buildPendingVaccination(payload),
-        ),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _appendResource(
+        bundle,
+        'vaccinations',
+        _buildPendingVaccination(payload),
+      ),
+    );
   }
 
   Future<ProfileBundle> addClinicalEpisode(Map<String, dynamic> payload) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.postJson('/api/v1/profile/problems', body: payload);
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/problems',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) => _appendResource(
-          bundle,
-          'clinical_episodes',
-          _buildPendingClinicalEpisode(payload),
-        ),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'POST',
-        path: '/api/v1/profile/problems',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) => _appendResource(
-          bundle,
-          'clinical_episodes',
-          _buildPendingClinicalEpisode(payload),
-        ),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) => _appendResource(
+        bundle,
+        'clinical_episodes',
+        _buildPendingClinicalEpisode(payload),
+      ),
+    );
   }
 
   Future<ProfileBundle> updateVaccination(
     String vaccinationId,
     Map<String, dynamic> payload,
   ) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.putJson(
-        '/api/v1/profile/vaccinations/$vaccinationId',
-        body: payload,
-      );
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'PUT',
-        path: '/api/v1/profile/vaccinations/$vaccinationId',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) =>
-            _upsertVaccinationResource(bundle, vaccinationId, payload),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'PUT',
-        path: '/api/v1/profile/vaccinations/$vaccinationId',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _upsertVaccinationResource(bundle, vaccinationId, payload),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) =>
+          _upsertVaccinationResource(bundle, vaccinationId, payload),
+    );
   }
 
   Future<ProfileBundle> updateClinicalEpisode(
     String episodeId,
     Map<String, dynamic> payload,
   ) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.putJson(
-        '/api/v1/profile/problems/$episodeId',
-        body: payload,
-      );
-      return fetchProfile();
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      return _queueBundleMutation(
-        method: 'PUT',
-        path: '/api/v1/profile/problems/$episodeId',
-        body: payload,
-        lastError: error.message,
-        patch: (bundle) =>
-            _upsertClinicalEpisodeResource(bundle, episodeId, payload),
-      );
-    } catch (error) {
-      return _queueBundleMutation(
-        method: 'PUT',
-        path: '/api/v1/profile/problems/$episodeId',
-        body: payload,
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _upsertClinicalEpisodeResource(bundle, episodeId, payload),
-      );
-    }
+    return _queueBundleMutation(
+      patch: (bundle) =>
+          _upsertClinicalEpisodeResource(bundle, episodeId, payload),
+    );
   }
 
   Future<void> deleteAllergy(String allergyId) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.delete('/api/v1/profile/allergies/$allergyId');
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/allergies/$allergyId',
-        body: const {},
-        lastError: error.message,
-        patch: (bundle) => _removeResource(bundle, 'allergies', allergyId),
-      );
-    } catch (error) {
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/allergies/$allergyId',
-        body: const {},
-        lastError: error.toString(),
-        patch: (bundle) => _removeResource(bundle, 'allergies', allergyId),
-      );
-    }
+    await _queueBundleMutation(
+      patch: (bundle) => _removeResource(bundle, 'allergies', allergyId),
+    );
   }
 
   Future<void> deleteCondition(String conditionId) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.delete('/api/v1/profile/conditions/$conditionId');
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/conditions/$conditionId',
-        body: const {},
-        lastError: error.message,
-        patch: (bundle) =>
-            _removeResource(bundle, 'medical_conditions', conditionId),
-      );
-    } catch (error) {
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/conditions/$conditionId',
-        body: const {},
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _removeResource(bundle, 'medical_conditions', conditionId),
-      );
-    }
+    await _queueBundleMutation(
+      patch: (bundle) =>
+          _removeResource(bundle, 'medical_conditions', conditionId),
+    );
   }
 
   Future<void> deleteMedication(String medicationId) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.delete('/api/v1/profile/medications/$medicationId');
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/medications/$medicationId',
-        body: const {},
-        lastError: error.message,
-        patch: (bundle) => _removeResource(bundle, 'medications', medicationId),
-      );
-    } catch (error) {
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/medications/$medicationId',
-        body: const {},
-        lastError: error.toString(),
-        patch: (bundle) => _removeResource(bundle, 'medications', medicationId),
-      );
-    }
+    await _queueBundleMutation(
+      patch: (bundle) => _removeResource(bundle, 'medications', medicationId),
+    );
   }
 
   Future<void> deleteFamilyHistory(String familyHistoryId) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.delete(
-        '/api/v1/profile/family-history/$familyHistoryId',
-      );
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/family-history/$familyHistoryId',
-        body: const {},
-        lastError: error.message,
-        patch: (bundle) =>
-            _removeResource(bundle, 'family_history', familyHistoryId),
-      );
-    } catch (error) {
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/family-history/$familyHistoryId',
-        body: const {},
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _removeResource(bundle, 'family_history', familyHistoryId),
-      );
-    }
+    await _queueBundleMutation(
+      patch: (bundle) =>
+          _removeResource(bundle, 'family_history', familyHistoryId),
+    );
   }
 
   Future<void> deleteVaccination(String vaccinationId) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.delete('/api/v1/profile/vaccinations/$vaccinationId');
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/vaccinations/$vaccinationId',
-        body: const {},
-        lastError: error.message,
-        patch: (bundle) =>
-            _removeResource(bundle, 'vaccinations', vaccinationId),
-      );
-    } catch (error) {
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/vaccinations/$vaccinationId',
-        body: const {},
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _removeResource(bundle, 'vaccinations', vaccinationId),
-      );
-    }
+    await _queueBundleMutation(
+      patch: (bundle) => _removeResource(bundle, 'vaccinations', vaccinationId),
+    );
   }
 
   Future<void> deleteClinicalEpisode(String episodeId) async {
-    try {
-      await _apiClient.flushPendingOperations();
-      await _apiClient.delete('/api/v1/profile/problems/$episodeId');
-    } on ApiException catch (error) {
-      if (!_shouldQueue(error.statusCode)) {
-        rethrow;
-      }
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/problems/$episodeId',
-        body: const {},
-        lastError: error.message,
-        patch: (bundle) =>
-            _removeResource(bundle, 'clinical_episodes', episodeId),
-      );
-    } catch (error) {
-      await _queueBundleMutation(
-        method: 'DELETE',
-        path: '/api/v1/profile/problems/$episodeId',
-        body: const {},
-        lastError: error.toString(),
-        patch: (bundle) =>
-            _removeResource(bundle, 'clinical_episodes', episodeId),
-      );
-    }
+    await _queueBundleMutation(
+      patch: (bundle) =>
+          _removeResource(bundle, 'clinical_episodes', episodeId),
+    );
   }
 
   Future<void> _writeBundle(Map<String, dynamic> bundle) {
@@ -604,18 +189,6 @@ class ProfileRepository {
       key: _cacheKeyForActiveProfile(bundle),
       payload: jsonEncode(bundle),
     );
-  }
-
-  Future<void> _ensureActiveProfileSelection(Map<String, dynamic> bundle) async {
-    final current = await getActiveProfileId();
-    if (current != null && current.trim().isNotEmpty) {
-      return;
-    }
-    final profile = bundle['profile'] as Map<String, dynamic>?;
-    final profileId = profile?['id']?.toString();
-    if (profileId != null && profileId.isNotEmpty) {
-      await setActiveProfileId(profileId);
-    }
   }
 
   Future<Map<String, dynamic>?> _readCachedBundleJson() async {
@@ -635,10 +208,9 @@ class ProfileRepository {
         final decoded = Map<String, dynamic>.from(
           jsonDecode(legacyCache) as Map<String, dynamic>,
         );
-        final cachedProfileId =
-            decoded['profile'] is Map<String, dynamic>
-                ? (decoded['profile'] as Map<String, dynamic>)['id']?.toString()
-                : null;
+        final cachedProfileId = decoded['profile'] is Map<String, dynamic>
+            ? (decoded['profile'] as Map<String, dynamic>)['id']?.toString()
+            : null;
         if (cachedProfileId == normalizedActiveId) {
           return decoded;
         }
@@ -655,19 +227,8 @@ class ProfileRepository {
   }
 
   Future<ProfileBundle> _queueBundleMutation({
-    required String method,
-    required String path,
-    required Map<String, dynamic> body,
-    required String lastError,
     required Map<String, dynamic> Function(Map<String, dynamic> bundle) patch,
   }) async {
-    await _apiClient.enqueueJsonOperation(
-      method: method,
-      path: path,
-      body: body,
-      lastError: lastError,
-      replaceExisting: true,
-    );
     final cached = await _readCachedBundleJson();
     final updated = patch(
       cached == null ? _bundleTemplateJson() : _cloneBundleJson(cached),
@@ -677,9 +238,7 @@ class ProfileRepository {
   }
 
   Map<String, dynamic> _cloneBundleJson(Map<String, dynamic> bundle) {
-    return Map<String, dynamic>.from(
-      jsonDecode(jsonEncode(bundle)) as Map<String, dynamic>,
-    );
+    return deepCopyJsonMap(bundle);
   }
 
   Map<String, dynamic> _bundleTemplateJson() {
@@ -736,7 +295,6 @@ class ProfileRepository {
       'trying_to_conceive': false,
       'currently_pregnant': false,
       'taking_folic_acid': false,
-      'region_code': null,
       'occupation': null,
       'exercise_habits': null,
       'sleep_pattern': null,
@@ -787,7 +345,6 @@ class ProfileRepository {
       'trying_to_conceive',
       'currently_pregnant',
       'taking_folic_acid',
-      'region_code',
       'occupation',
       'exercise_habits',
       'sleep_pattern',
@@ -852,6 +409,62 @@ class ProfileRepository {
     final items = _readResourceList(bundle, key)..add(item);
     bundle[key] = items;
     return bundle;
+  }
+
+  Map<String, dynamic> _appendManagedProfile(
+    Map<String, dynamic> bundle,
+    Map<String, dynamic> payload,
+  ) {
+    final managed =
+        (bundle['managed_profiles'] as List<dynamic>? ?? const <dynamic>[])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+    managed.add(_buildPendingManagedProfile(bundle, payload));
+    bundle['managed_profiles'] = managed;
+    return bundle;
+  }
+
+  Map<String, dynamic> _buildPendingManagedProfile(
+    Map<String, dynamic> bundle,
+    Map<String, dynamic> payload,
+  ) {
+    final activeProfile = Map<String, dynamic>.from(
+      bundle['profile'] as Map<String, dynamic>? ?? _templateProfileJson(),
+    );
+    return {
+      'id': _pendingId('managed-profile'),
+      'user_id': activeProfile['user_id'] ?? 'pending-user',
+      'is_primary': false,
+      'first_name': payload['first_name'],
+      'last_name': payload['last_name'],
+      'birth_date': payload['birth_date'],
+      'biological_sex': payload['biological_sex'],
+      'height_cm': payload['height_cm'],
+      'weight_kg': payload['weight_kg'],
+      'smoker': payload['smoker'] as bool? ?? false,
+      'former_smoker': payload['former_smoker'] as bool? ?? false,
+      'postmenopausal': payload['postmenopausal'] as bool? ?? false,
+      'fragility_fracture_history':
+          payload['fragility_fracture_history'] as bool? ?? false,
+      'feels_unsteady': payload['feels_unsteady'] as bool? ?? false,
+      'new_or_multiple_partners':
+          payload['new_or_multiple_partners'] as bool? ?? false,
+      'partner_with_sti': payload['partner_with_sti'] as bool? ?? false,
+      'sex_with_men': payload['sex_with_men'] as bool? ?? false,
+      'sti_or_exposure_concerns':
+          payload['sti_or_exposure_concerns'] as bool? ?? false,
+      'trying_to_conceive': payload['trying_to_conceive'] as bool? ?? false,
+      'currently_pregnant': payload['currently_pregnant'] as bool? ?? false,
+      'taking_folic_acid': payload['taking_folic_acid'] as bool? ?? false,
+      'relationship_label':
+          payload['relationship_label'] ?? payload['relationship'],
+      'occupation': payload['occupation'],
+      'exercise_habits': payload['exercise_habits'],
+      'sleep_pattern': payload['sleep_pattern'],
+      'symptom_triggers': payload['symptom_triggers'],
+      'functional_limitations': payload['functional_limitations'],
+      'pending_sync': true,
+    };
   }
 
   Map<String, dynamic> _removeResource(
@@ -1061,6 +674,4 @@ class ProfileRepository {
   String _pendingId(String prefix) {
     return 'pending-$prefix-${DateTime.now().microsecondsSinceEpoch}';
   }
-
-  bool _shouldQueue(int? statusCode) => statusCode == null || statusCode >= 500;
 }

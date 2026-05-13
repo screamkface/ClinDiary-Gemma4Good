@@ -1,4 +1,3 @@
-import 'package:clindiary/app/core/network/api_client.dart';
 import 'package:clindiary/app/providers.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
@@ -15,21 +14,22 @@ class MedicationsScreen extends ConsumerStatefulWidget {
 }
 
 class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
+  static final DateFormat _historyDateFormat = DateFormat(
+    'dd MMM yyyy, HH:mm',
+    'en_US',
+  );
+  static final DateFormat _pausedUntilDateFormat = DateFormat('dd/MM/yyyy');
+
   String? _busyMedicationId;
   String? _busyScheduleId;
 
-  Future<void> _refreshMedicationState() async {
-    ref.invalidate(profileBundleProvider);
-    ref.invalidate(medicationLogsProvider);
-    ref.invalidate(notificationsProvider);
-    ref.invalidate(localMedicationReminderStatusProvider);
+  Future<void> _refreshMedicationState({bool includeTimeline = false}) async {
+    final bundle = await ref.read(profileRepositoryProvider).fetchProfile();
+    final preferences = await ref
+        .read(notificationsRepositoryProvider)
+        .fetchPreferences();
+    final logs = await ref.read(medicationsRepositoryProvider).fetchLogs();
 
-    final bundle = await ref.read(profileBundleProvider.future);
-    final preferences = await ref.read(notificationPreferencesProvider.future);
-    final logs = await ref.read(medicationLogsProvider.future);
-    if (bundle == null) {
-      return;
-    }
     await ref
         .read(localMedicationReminderServiceProvider)
         .syncMedicationReminders(
@@ -37,7 +37,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           preferences: preferences,
           logs: logs,
         );
-    ref.invalidate(localMedicationReminderStatusProvider);
+
+    invalidateMedicationProviders(ref, includeTimeline: includeTimeline);
   }
 
   Future<void> _logMedication(
@@ -62,8 +63,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             medicationId: medication.id,
             targetDate: DateTime.now(),
           );
-      await _refreshMedicationState();
-      ref.invalidate(timelineEventsProvider);
+      await _refreshMedicationState(includeTimeline: true);
       if (!mounted) return;
       if (result.pendingSync) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -74,11 +74,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
           ),
         );
       }
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyMedicationId = null);
@@ -105,11 +105,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Schedule updated.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -127,7 +127,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       initialDate: schedule.pausedUntil ?? now,
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 365)),
-      locale: const Locale('en', 'US'),
+      locale: const Locale('it', 'IT'),
     );
     if (picked == null) {
       return;
@@ -146,15 +146,15 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Reminder paused until ${DateFormat('dd/MM/yyyy').format(picked)}.',
+            'Reminder paused until ${_pausedUntilDateFormat.format(picked)}.',
           ),
         ),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -176,11 +176,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Reminder resumed.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -193,8 +193,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
     MedicationScheduleItem schedule,
   ) async {
     final confirmed = await _confirmRemoval(
-      title: 'Delete schedule?',
-      message: 'The ${schedule.compactLabel} schedule will be removed.',
+      title: 'Remove schedule?',
+      message: 'The schedule ${schedule.compactLabel} will be removed.',
     );
     if (!confirmed) {
       return;
@@ -210,11 +210,11 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Schedule removed.')));
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyScheduleId = null);
@@ -224,9 +224,9 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 
   Future<void> _deleteMedication(MedicationItem medication) async {
     final confirmed = await _confirmRemoval(
-        title: 'Delete medication?',
-        message:
-          'The ${medication.name} treatment and its reminders will be removed.',
+      title: 'Remove medication?',
+      message:
+          'The therapy ${medication.name} and its reminders will be removed.',
     );
     if (!confirmed) {
       return;
@@ -237,17 +237,16 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       await ref
           .read(medicationsRepositoryProvider)
           .deleteMedication(medication.id);
-      await _refreshMedicationState();
-      ref.invalidate(timelineEventsProvider);
+      await _refreshMedicationState(includeTimeline: true);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${medication.name} removed from the profile.')),
+        SnackBar(content: Text('${medication.name} removed from profile.')),
       );
-    } on ApiException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _busyMedicationId = null);
@@ -274,7 +273,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             horizontal: 16,
             vertical: 24,
           ),
-          title: Text('${medication.name} schedule'),
+          title: Text('Orario ${medication.name}'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
             child: Column(
@@ -283,7 +282,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Time'),
+                  title: const Text('Orario'),
                   subtitle: Text(selectedTime.format(context)),
                   trailing: const Icon(Icons.schedule_outlined),
                   onTap: () async {
@@ -353,7 +352,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         scrollable: true,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: Text(
-          status == 'taken' ? 'Confirm dose taken' : 'Record skipped dose',
+          status == 'taken' ? 'Confirm intake' : 'Record missed dose',
         ),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -386,7 +385,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                 Navigator.of(dialogContext, rootNavigator: true).maybePop();
               }
             },
-              child: const Text('Save'),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -423,7 +422,6 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileBundleProvider);
     final logsAsync = ref.watch(medicationLogsProvider);
-    final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
     final recentLogs = logsAsync.asData?.value ?? const <MedicationLogItem>[];
 
     return Scaffold(
@@ -431,11 +429,17 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         title: const Text('Medications'),
         actions: [
           IconButton(
-            onPressed: () {
-              ref.invalidate(profileBundleProvider);
-              ref.invalidate(medicationLogsProvider);
-              ref.invalidate(notificationsProvider);
-              ref.invalidate(localMedicationReminderStatusProvider);
+            onPressed: () async {
+              try {
+                await _refreshMedicationState();
+              } catch (error) {
+                if (!context.mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(error.toString())));
+              }
             },
             icon: const Icon(Icons.refresh),
           ),
@@ -446,10 +450,10 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
         children: [
           profileAsync.when(
             data: (bundle) => SectionCard(
-                title: 'Treatment',
-                subtitle: 'Active medications and reminders.',
-                child: bundle == null || bundle.medications.isEmpty
-                  ? const Text('No active treatment recorded.')
+              title: 'Medication therapy',
+              subtitle: 'Active medications and reminders.',
+              child: bundle == null || bundle.medications.isEmpty
+                  ? const Text('No active therapy recorded.')
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -462,9 +466,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                 '${bundle.medications.where((item) => item.active).length} active',
                               ),
                             ),
-                            Chip(
-                              label: Text('${recentLogs.length} logs'),
-                            ),
+                            Chip(label: Text('${recentLogs.length} logs')),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -483,8 +485,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                               item.frequency!,
                             if (item.route != null && item.route!.isNotEmpty)
                               item.route!,
-                            if (item.pendingSync)
-                              'Pending sync',
+                            if (item.pendingSync) 'Pending sync',
                           ];
 
                           return Card.outlined(
@@ -517,7 +518,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                         itemBuilder: (context) => const [
                                           PopupMenuItem(
                                             value: 'delete',
-                                            child: Text('Delete medication'),
+                                            child: Text('Remove medication'),
                                           ),
                                         ],
                                       ),
@@ -623,7 +624,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                                     const PopupMenuItem(
                                                       value: 'delete',
                                                       child: Text(
-                                                        'Delete schedule',
+                                                        'Remove schedule',
                                                       ),
                                                     ),
                                                   ],
@@ -654,9 +655,9 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                                         ),
                                         label: Text(
                                           _busyMedicationId == item.id
-                                                  ? '...'
-                                                  : (todayLog == null
-                                                    ? 'Mark taken'
+                                              ? '...'
+                                              : (todayLog == null
+                                                    ? 'Mark as taken'
                                                     : 'Already logged'),
                                         ),
                                       ),
@@ -686,19 +687,21 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                     ),
             ),
             loading: () => const SectionCard(
-              title: 'Treatment',
+              title: 'Medication therapy',
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (error, _) =>
-                SectionCard(title: 'Treatment', child: Text(error.toString())),
+            error: (error, _) => SectionCard(
+              title: 'Medication therapy',
+              child: Text(error.toString()),
+            ),
           ),
           const SizedBox(height: 16),
           logsAsync.when(
             data: (logs) => SectionCard(
-                title: 'Adherence history',
-                subtitle: 'Latest confirmations.',
-                child: logs.isEmpty
-                  ? const Text('No dose confirmations yet.')
+              title: 'Adherence history',
+              subtitle: 'Latest confirmations.',
+              child: logs.isEmpty
+                  ? const Text('No intake confirmations yet.')
                   : Column(
                       children: logs.take(6).map((log) {
                         return Card.outlined(
@@ -707,7 +710,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                             dense: true,
                             title: Text(log.medicationName),
                             subtitle: Text(
-                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • Pending sync' : ''} • ${dateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
+                              '${_adherenceLabel(log.status)}${log.pendingSync ? ' • Sync pending' : ''} • ${_historyDateFormat.format(log.scheduledAt.toLocal())}${log.notes == null ? '' : '\n${log.notes}'}',
                             ),
                             trailing: Text(
                               log.medicationDosage ?? '',
@@ -740,7 +743,7 @@ String _adherenceLabel(String status) {
     case 'skipped':
       return 'Skipped';
     case 'missed':
-      return 'Missed';
+      return 'Not confirmed';
     default:
       return status;
   }

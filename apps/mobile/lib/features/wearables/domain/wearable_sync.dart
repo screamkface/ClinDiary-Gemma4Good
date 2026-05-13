@@ -81,32 +81,30 @@ class WearableSyncStatus {
     List<WearableDaySummary> recentSummaries = const [],
   }) {
     if (!isSupported) {
-      return const [
-        'Wearable sync is available only on Android and iPhone.',
-      ];
+      return const ['Wearable sync disponibile solo su Android e iPhone.'];
     }
     if (!isAvailable) {
       return const [
-        'Install or update Health Connect before attempting to sync.',
+        'Install or update Health Connect before attempting synchronization.',
       ];
     }
 
     final steps = <String>[];
     if (!hasHealthPermissions) {
       steps.add(
-        'Open Health Connect permissions and enable data reading for ClinDiary.',
+        'Open Health Connect permissions and enable data access for ClinDiary.',
       );
     }
     if (!hasActivityRecognition) {
       steps.add(
-        'Grant Android the Activity recognition permission, otherwise steps and movement will remain blocked.',
+        'Grant Android activity recognition permission, otherwise steps and movement stay blocked.',
       );
     }
     if (hasHealthPermissions &&
         hasActivityRecognition &&
         recentSummaries.isEmpty) {
       steps.add(
-        'ClinDiary has permissions but cannot find recent days: verify that Xiaomi Fitness/Mi Fitness is actually writing to Health Connect.',
+        'ClinDiary has permissions, but no recent days are found: verify that Xiaomi Fitness / Mi Fitness is actually writing to Health Connect.',
       );
       steps.add(
         'In Health Connect, check App permissions and verify that Xiaomi Fitness has write access for steps, sleep, heart rate, and SpO2.',
@@ -114,7 +112,7 @@ class WearableSyncStatus {
     }
     if (!historyAccessGranted) {
       steps.add(
-        'Historical access may be limited: also enable historical data access in the health permissions.',
+        'History access may be limited: also enable historical data access in health permissions.',
       );
     }
     if (steps.isEmpty) {
@@ -130,16 +128,18 @@ class WearableSyncStatus {
   }) {
     final lines = <String>[
       'Wearable diagnostics',
-      'Supportato: ${_boolLabel(isSupported)}',
-      'Piattaforma: $platformLabel',
+      'Supported: ${_boolLabel(isSupported)}',
+      'Platform: $platformLabel',
       'Provider: $providerName',
-      'Disponibile: ${_boolLabel(isAvailable)}',
+      'Available: ${_boolLabel(isAvailable)}',
       'Read permission: ${_boolLabel(permissionGranted)}',
       'Provider installable: ${_boolLabel(canInstallProvider)}',
       'History accessible: ${_boolLabel(historyAccessGranted)}',
     ];
     if (isAndroid) {
-      lines.add('Health Connect permissions: ${_boolLabel(hasHealthPermissions)}');
+      lines.add(
+        'Health Connect permissions: ${_boolLabel(hasHealthPermissions)}',
+      );
       lines.add(
         'Activity recognition permission: ${_boolLabel(hasActivityRecognition)}',
       );
@@ -153,9 +153,7 @@ class WearableSyncStatus {
     if (recentSummaries.isEmpty) {
       lines.add('Wearable sync: no recent day saved.');
     } else {
-      lines.add(
-        'Wearable sync: ${recentSummaries.length} recent days.',
-      );
+      lines.add('Wearable sync: ${recentSummaries.length} recent days.');
       for (final summary in recentSummaries.take(3)) {
         lines.add(summary.toDiagnosticText());
       }

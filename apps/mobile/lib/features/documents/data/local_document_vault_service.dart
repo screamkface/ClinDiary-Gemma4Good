@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:clindiary/app/core/network/api_client.dart';
+import 'package:clindiary/features/documents/data/local_lab_text_parser.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_cipher.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
+import 'package:clindiary/features/documents/domain/document_manual_review.dart';
+import 'package:flutter_pdf_text/flutter_pdf_text.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -14,18 +17,45 @@ class LocalDocumentVaultService {
     Directory? rootDirectory,
     FlutterSecureStorage? secureStorage,
     LocalDocumentVaultCipher? cipher,
+    LocalLabTextParser? labTextParser,
   }) : _rootDirectory = rootDirectory,
+       _labTextParser = labTextParser ?? const LocalLabTextParser(),
        _cipher =
-           cipher ??
-           LocalDocumentVaultCipher(secureStorage: secureStorage);
+           cipher ?? LocalDocumentVaultCipher(secureStorage: secureStorage);
 
   static const int maxDocumentCount = 80;
   static const int maxSingleFileBytes = 10 * 1024 * 1024;
   static const int maxTotalBytes = 200 * 1024 * 1024;
 
   final Directory? _rootDirectory;
+  final LocalLabTextParser _labTextParser;
   final LocalDocumentVaultCipher _cipher;
   final Random _random = Random.secure();
+  final Map<String, _LocalStructuredData> _structuredDataCache = {};
+  final Map<String, Future<_LocalStructuredData>> _inFlightStructuredData = {};
+  Future<void> _parseQueueTail = Future<void>.value();
+  final Map<String, LocalDocumentParseProgress> _parseProgressByDocumentId = {};
+  final StreamController<LocalDocumentParseProgressSnapshot>
+  _parseProgressController =
+      StreamController<LocalDocumentParseProgressSnapshot>.broadcast();
+
+  Stream<LocalDocumentParseProgressSnapshot> watchParseProgress() async* {
+    yield currentParseProgress();
+    yield* _parseProgressController.stream;
+  }
+
+  LocalDocumentParseProgressSnapshot currentParseProgress() {
+    return LocalDocumentParseProgressSnapshot(
+      updatedAt: DateTime.now().toUtc(),
+      items: Map<String, LocalDocumentParseProgress>.unmodifiable(
+        _parseProgressByDocumentId,
+      ),
+    );
+  }
+
+  void dispose() {
+    _parseProgressController.close();
+  }
 
   Future<List<ClinicalDocumentSummary>> fetchDocuments() async {
     throw UnimplementedError('Use scoped fetchDocumentsForScope.');
@@ -40,10 +70,11 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
-    final documents = state.documents
-        .map((item) => item.toSummary(folderName: _pathLabelForFolder(item.folderId, folders)))
-        .toList()
-      ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+    final documents = await _buildSummariesForDocuments(
+      state.documents,
+      folders: folders,
+    );
+    documents.sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
     return documents;
   }
 
@@ -62,7 +93,16 @@ class LocalDocumentVaultService {
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
     final document = _requireDocument(state, documentId);
-    return document.toDetail(folderName: _pathLabelForFolder(document.folderId, folders));
+    final structuredData = await _resolveStructuredData(document);
+    return document.toDetail(
+      folderName: _pathLabelForFolder(document.folderId, folders),
+      parsedStatusOverride: structuredData.parsedStatus,
+      parsingConfidence: structuredData.parsingConfidence,
+      processingError: structuredData.processingError,
+      processedAt: structuredData.processedAt,
+      labPanels: structuredData.labPanels,
+      imagingReports: structuredData.imagingReports,
+    );
   }
 
   Future<DocumentArchiveView> fetchArchive({
@@ -83,7 +123,9 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in state.folders) folder.id: folder};
-    final currentFolder = folderId == null ? null : _requireFolder(state, folderId);
+    final currentFolder = folderId == null
+        ? null
+        : _requireFolder(state, folderId);
     final normalizedQuery = _normalizeText(query);
 
     final childFolderCounts = <String?, int>{};
@@ -94,33 +136,37 @@ class LocalDocumentVaultService {
 
     final documentCounts = <String?, int>{};
     for (final document in state.documents) {
-      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+      documentCounts[document.folderId] =
+          (documentCounts[document.folderId] ?? 0) + 1;
     }
 
     final foldersForView = normalizedQuery == null
         ? state.folders
-            .where((folder) => folder.parentFolderId == currentFolder?.id)
-            .map(
-              (folder) => _folderToItem(
-                folder,
-                folders,
-                childFolderCounts,
-                documentCounts,
-              ),
-            )
-            .toList()
+              .where((folder) => folder.parentFolderId == currentFolder?.id)
+              .map(
+                (folder) => _folderToItem(
+                  folder,
+                  folders,
+                  childFolderCounts,
+                  documentCounts,
+                ),
+              )
+              .toList()
         : <DocumentFolderItem>[];
 
-    final documentsForView = state.documents
+    final filteredDocuments = state.documents
         .where((document) {
           if (normalizedQuery != null) {
             return _matchesSearch(document, folders, normalizedQuery);
           }
           return document.folderId == currentFolder?.id;
         })
-        .map((document) => document.toSummary(folderName: _pathLabelForFolder(document.folderId, folders)))
-        .toList()
-      ..sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
+        .toList(growable: false);
+    final documentsForView = await _buildSummariesForDocuments(
+      filteredDocuments,
+      folders: folders,
+    );
+    documentsForView.sort((a, b) => b.uploadDate.compareTo(a.uploadDate));
 
     final breadcrumbs = <DocumentFolderItem>[];
     var node = currentFolder;
@@ -135,7 +181,12 @@ class LocalDocumentVaultService {
     return DocumentArchiveView(
       currentFolder: currentFolder == null
           ? null
-          : _folderToItem(currentFolder, folders, childFolderCounts, documentCounts),
+          : _folderToItem(
+              currentFolder,
+              folders,
+              childFolderCounts,
+              documentCounts,
+            ),
       breadcrumbs: breadcrumbs,
       folders: foldersForView,
       documents: documentsForView,
@@ -165,10 +216,14 @@ class LocalDocumentVaultService {
     }
     final documentCounts = <String?, int>{};
     for (final document in state.documents) {
-      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+      documentCounts[document.folderId] =
+          (documentCounts[document.folderId] ?? 0) + 1;
     }
     return state.folders
-        .map((folder) => _folderToItem(folder, folders, childFolderCounts, documentCounts))
+        .map(
+          (folder) =>
+              _folderToItem(folder, folders, childFolderCounts, documentCounts),
+        )
         .toList()
       ..sort((a, b) => a.pathLabel.compareTo(b.pathLabel));
   }
@@ -187,10 +242,7 @@ class LocalDocumentVaultService {
     required Map<String, String> fields,
   }) async {
     if (file.bytes.length > maxSingleFileBytes) {
-      throw ApiException(
-        'On the free plan, local files can be at most 10 MB.',
-        statusCode: 413,
-      );
+      throw Exception('Local files can be at most 10 MB.');
     }
 
     final state = await _loadState(
@@ -198,27 +250,16 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     if (state.documents.length >= maxDocumentCount) {
-      throw ApiException(
-        'You have reached the local limit of 80 documents. Cloud storage and sync require AI Plus.',
-        statusCode: 402,
-        code: 'feature_locked',
-        details: const {
-          'feature_code': 'cloud_document_storage',
-          'recommended_plan_code': 'ai_plus_yearly',
-        },
-      );
+      throw Exception(
+        'You have reached the local limit of 80 documents.');
     }
-    final totalBytes = state.documents.fold<int>(0, (sum, item) => sum + item.fileSizeBytes);
+    final totalBytes = state.documents.fold<int>(
+      0,
+      (sum, item) => sum + item.fileSizeBytes,
+    );
     if (totalBytes + file.bytes.length > maxTotalBytes) {
-      throw ApiException(
-        'You have reached the local limit of 200 MB. More space and cloud backup require AI Plus.',
-        statusCode: 402,
-        code: 'feature_locked',
-        details: const {
-          'feature_code': 'cloud_document_storage',
-          'recommended_plan_code': 'ai_plus_yearly',
-        },
-      );
+      throw Exception(
+        'You have reached the local storage limit of 200 MB.');
     }
 
     final normalizedFolderId = _normalizeText(fields['folder_id']);
@@ -233,7 +274,9 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final safeExtension = extension.isEmpty ? '' : extension.toLowerCase();
-    final savedFile = File(path.join(documentsDir.path, '$documentId$safeExtension'));
+    final savedFile = File(
+      path.join(documentsDir.path, '$documentId$safeExtension'),
+    );
     final encryptedBytes = await _cipher.encryptDocument(
       file.bytes,
       userScopeId: userScopeId,
@@ -242,14 +285,19 @@ class LocalDocumentVaultService {
     );
     await savedFile.writeAsBytes(encryptedBytes, flush: true);
 
-    final title = _normalizeText(fields['title']) ?? path.basenameWithoutExtension(file.name);
+    final title =
+        _normalizeText(fields['title']) ??
+        path.basenameWithoutExtension(file.name);
     final source = _normalizeText(fields['source']);
     final examDate = _tryParseDate(fields['exam_date']);
+    final explicitOcrText = _normalizeText(fields['ocr_text']);
+    final inferredOcrText = await _inferTextPreview(file);
     final document = _StoredDocument(
       id: documentId,
       folderId: normalizedFolderId,
       title: title,
-      documentType: _normalizeText(fields['document_type']) ?? 'generic_document',
+      documentType:
+          _normalizeText(fields['document_type']) ?? 'generic_document',
       uploadDateIso: DateTime.now().toUtc().toIso8601String(),
       examDateIso: examDate?.toIso8601String(),
       source: source,
@@ -259,6 +307,7 @@ class LocalDocumentVaultService {
       parsedStatus: 'local_only',
       contextStatus: 'active',
       localFilePath: savedFile.path,
+      ocrText: explicitOcrText ?? inferredOcrText,
     );
 
     final nextState = state.copyWith(documents: [...state.documents, document]);
@@ -267,6 +316,8 @@ class LocalDocumentVaultService {
       userScopeId: userScopeId,
       profileScopeId: profileScopeId,
     );
+
+    unawaited(_warmStructuredData(document));
 
     final folders = {for (final folder in nextState.folders) folder.id: folder};
     return document.toSummary(
@@ -289,7 +340,7 @@ class LocalDocumentVaultService {
   }) async {
     final normalizedName = name.trim();
     if (normalizedName.isEmpty) {
-      throw ApiException('Il nome della cartella non puo essere vuoto.');
+      throw Exception('Folder name cannot be empty.');
     }
 
     final state = await _loadState(
@@ -307,7 +358,8 @@ class LocalDocumentVaultService {
           folder.name.toLowerCase() == normalizedName.toLowerCase(),
     );
     if (siblingExists) {
-      throw ApiException('Esiste gia una cartella con questo nome in questo percorso.', statusCode: 409);
+      throw Exception(
+        'A folder with this name already exists in this path.');
     }
 
     final folder = _StoredFolder(
@@ -325,11 +377,13 @@ class LocalDocumentVaultService {
     final folders = {for (final item in nextState.folders) item.id: item};
     final childFolderCounts = <String?, int>{};
     for (final item in nextState.folders) {
-      childFolderCounts[item.parentFolderId] = (childFolderCounts[item.parentFolderId] ?? 0) + 1;
+      childFolderCounts[item.parentFolderId] =
+          (childFolderCounts[item.parentFolderId] ?? 0) + 1;
     }
     final documentCounts = <String?, int>{};
     for (final document in nextState.documents) {
-      documentCounts[document.folderId] = (documentCounts[document.folderId] ?? 0) + 1;
+      documentCounts[document.folderId] =
+          (documentCounts[document.folderId] ?? 0) + 1;
     }
     return _folderToItem(folder, folders, childFolderCounts, documentCounts);
   }
@@ -364,7 +418,7 @@ class LocalDocumentVaultService {
     }).toList();
 
     if (!updatedDocuments.any((item) => item.id == documentId)) {
-      throw ApiException('Document not found.', statusCode: 404);
+      throw Exception('Document not found.');
     }
 
     final nextState = state.copyWith(documents: updatedDocuments);
@@ -374,8 +428,12 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in nextState.folders) folder.id: folder};
-    final updated = updatedDocuments.firstWhere((item) => item.id == documentId);
-    return updated.toDetail(folderName: _pathLabelForFolder(updated.folderId, folders));
+    final updated = updatedDocuments.firstWhere(
+      (item) => item.id == documentId,
+    );
+    return updated.toDetail(
+      folderName: _pathLabelForFolder(updated.folderId, folders),
+    );
   }
 
   Future<ClinicalDocumentDetail> updateDocumentContextStatus(
@@ -393,7 +451,7 @@ class LocalDocumentVaultService {
   }) async {
     final normalizedStatus = contextStatus.trim().toLowerCase();
     if (normalizedStatus != 'active' && normalizedStatus != 'old') {
-      throw ApiException('Invalid document status.', statusCode: 422);
+      throw Exception('Invalid document status.');
     }
 
     final state = await _loadState(
@@ -407,7 +465,7 @@ class LocalDocumentVaultService {
       return item.copyWith(contextStatus: normalizedStatus);
     }).toList();
     if (!updatedDocuments.any((item) => item.id == documentId)) {
-      throw ApiException('Document not found.', statusCode: 404);
+      throw Exception('Document not found.');
     }
 
     final nextState = state.copyWith(documents: updatedDocuments);
@@ -417,8 +475,55 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     final folders = {for (final folder in nextState.folders) folder.id: folder};
-    final updated = updatedDocuments.firstWhere((item) => item.id == documentId);
-    return updated.toDetail(folderName: _pathLabelForFolder(updated.folderId, folders));
+    final updated = updatedDocuments.firstWhere(
+      (item) => item.id == documentId,
+    );
+    return updated.toDetail(
+      folderName: _pathLabelForFolder(updated.folderId, folders),
+    );
+  }
+
+  Future<ClinicalDocumentDetail> submitManualReview(
+    String documentId, {
+    required DocumentManualReviewInput input,
+  }) async {
+    throw UnimplementedError('Use scoped submitManualReviewForScope.');
+  }
+
+  Future<ClinicalDocumentDetail> submitManualReviewForScope(
+    String documentId, {
+    required String userScopeId,
+    String? profileScopeId,
+    required DocumentManualReviewInput input,
+  }) async {
+    final state = await _loadState(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+    final folders = {for (final folder in state.folders) folder.id: folder};
+    final document = _requireDocument(state, documentId);
+    final updatedDocument = _applyManualReview(document, input);
+
+    final updatedDocuments = state.documents.map((item) {
+      if (item.id != documentId) {
+        return item;
+      }
+      return updatedDocument;
+    }).toList();
+
+    final nextState = state.copyWith(documents: updatedDocuments);
+    await _saveState(
+      nextState,
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+    );
+
+    _evictStructuredDataCache(documentId);
+    unawaited(_warmStructuredData(updatedDocument));
+
+    return updatedDocument.toDetail(
+      folderName: _pathLabelForFolder(updatedDocument.folderId, folders),
+    );
   }
 
   Future<void> deleteDocument(String documentId) async {
@@ -436,7 +541,9 @@ class LocalDocumentVaultService {
     );
     final document = _requireDocument(state, documentId);
     final nextState = state.copyWith(
-      documents: state.documents.where((item) => item.id != documentId).toList(),
+      documents: state.documents
+          .where((item) => item.id != documentId)
+          .toList(),
     );
     await _saveState(
       nextState,
@@ -460,6 +567,7 @@ class LocalDocumentVaultService {
     if (await previewFile.exists()) {
       await previewFile.delete();
     }
+    _evictStructuredDataCache(documentId);
   }
 
   Future<void> deleteAllForUserScope(String userScopeId) async {
@@ -470,6 +578,7 @@ class LocalDocumentVaultService {
       await dir.delete(recursive: true);
     }
     await _cipher.deleteKeyForUserScope(userScopeId);
+    _clearStructuredDataCache();
   }
 
   Future<String> prepareViewerFileForScope(
@@ -484,7 +593,7 @@ class LocalDocumentVaultService {
     final document = _requireDocument(state, documentId);
     final sourceFile = File(document.localFilePath);
     if (!await sourceFile.exists()) {
-      throw ApiException('Local file not found.', statusCode: 404);
+      throw Exception('Local file not found.');
     }
     final encryptedBytes = await sourceFile.readAsBytes();
     final clearBytes = await _cipher.decryptDocument(
@@ -555,7 +664,9 @@ class LocalDocumentVaultService {
       return rootDirectory;
     }
     final applicationDocuments = await getApplicationDocumentsDirectory();
-    final dir = Directory(path.join(applicationDocuments.path, 'clindiary-local-documents'));
+    final dir = Directory(
+      path.join(applicationDocuments.path, 'clindiary-local-documents'),
+    );
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
@@ -664,6 +775,199 @@ class LocalDocumentVaultService {
     return state;
   }
 
+  Future<_LocalStructuredData> _resolveStructuredData(
+    _StoredDocument document,
+  ) async {
+    final text = document.ocrText?.trim();
+    if (text == null || text.isEmpty) {
+      if (_requiresStructuredData(document.documentType)) {
+        return const _LocalStructuredData(
+          parsedStatus: 'review_required',
+          processingError:
+              'No text could be extracted locally from this file. Open Manual review to add values.',
+        );
+      }
+      return const _LocalStructuredData();
+    }
+
+    final cacheKey = _structuredDataCacheKey(document, text);
+    final cached = _structuredDataCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    final inFlight = _inFlightStructuredData[cacheKey];
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    _setParseProgress(documentId: document.id, stage: 'queued', progress: 0.1);
+    final future = _enqueueParseTask(() async {
+      _setParseProgress(
+        documentId: document.id,
+        stage: 'processing',
+        progress: 0.45,
+      );
+      final parsed = await _labTextParser.parse(
+        documentId: document.id,
+        documentType: document.documentType,
+        title: document.title,
+        examDateIso: document.examDateIso,
+        text: text,
+      );
+      final isParsed = parsed.parsedStatus == 'parsed';
+      final requiresStructuredData = _requiresStructuredData(
+        document.documentType,
+      );
+
+      _setParseProgress(
+        documentId: document.id,
+        stage: 'finalizing',
+        progress: 0.9,
+      );
+
+      return _LocalStructuredData(
+        parsedStatus: isParsed
+            ? 'parsed'
+            : (requiresStructuredData ? 'review_required' : null),
+        parsingConfidence: parsed.parsingConfidence,
+        processingError: isParsed || !requiresStructuredData
+            ? null
+            : 'Automatic parsing could not detect structured values. Open Manual review to confirm them.',
+        processedAt: parsed.processedAt,
+        labPanels: parsed.labPanels,
+        imagingReports: parsed.imagingReports,
+      );
+    });
+    _inFlightStructuredData[cacheKey] = future;
+
+    try {
+      final resolved = await future;
+      _rememberStructuredData(cacheKey, resolved);
+      return resolved;
+    } finally {
+      _inFlightStructuredData.remove(cacheKey);
+      _clearParseProgress(document.id);
+    }
+  }
+
+  Future<_LocalStructuredData> _resolveStructuredDataForView(
+    _StoredDocument document,
+  ) async {
+    final text = document.ocrText?.trim();
+    if (text == null || text.isEmpty) {
+      if (_requiresStructuredData(document.documentType)) {
+        return const _LocalStructuredData(
+          parsedStatus: 'review_required',
+          processingError:
+              'No text could be extracted locally from this file. Open Manual review to add values.',
+        );
+      }
+      return const _LocalStructuredData();
+    }
+
+    final cacheKey = _structuredDataCacheKey(document, text);
+    final cached = _structuredDataCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    if (!_inFlightStructuredData.containsKey(cacheKey)) {
+      unawaited(_resolveStructuredData(document));
+    }
+
+    return const _LocalStructuredData(
+      parsedStatus: 'processing',
+      processingError: 'Local parsing is running in background.',
+    );
+  }
+
+  Future<void> _warmStructuredData(_StoredDocument document) async {
+    try {
+      await _resolveStructuredData(document);
+    } catch (_) {
+      // Parsing is best-effort during warm-up; on-demand detail loading retries.
+    }
+  }
+
+  String _structuredDataCacheKey(_StoredDocument document, String text) {
+    return '${document.id}|${document.documentType}|${document.title}|${document.examDateIso ?? ''}|${text.hashCode}';
+  }
+
+  void _rememberStructuredData(String cacheKey, _LocalStructuredData data) {
+    _structuredDataCache[cacheKey] = data;
+    if (_structuredDataCache.length <= 64) {
+      return;
+    }
+    _structuredDataCache.remove(_structuredDataCache.keys.first);
+  }
+
+  void _evictStructuredDataCache(String documentId) {
+    final cachedKeys = _structuredDataCache.keys
+        .where((key) => key.startsWith('$documentId|'))
+        .toList(growable: false);
+    for (final key in cachedKeys) {
+      _structuredDataCache.remove(key);
+    }
+
+    final inFlightKeys = _inFlightStructuredData.keys
+        .where((key) => key.startsWith('$documentId|'))
+        .toList(growable: false);
+    for (final key in inFlightKeys) {
+      _inFlightStructuredData.remove(key);
+    }
+
+    _clearParseProgress(documentId);
+  }
+
+  void _clearStructuredDataCache() {
+    _structuredDataCache.clear();
+    _inFlightStructuredData.clear();
+    _parseProgressByDocumentId.clear();
+    _emitParseProgress();
+  }
+
+  void _setParseProgress({
+    required String documentId,
+    required String stage,
+    required double progress,
+  }) {
+    final normalizedProgress = progress.clamp(0.0, 1.0);
+    _parseProgressByDocumentId[documentId] = LocalDocumentParseProgress(
+      documentId: documentId,
+      stage: stage,
+      progress: normalizedProgress,
+      updatedAt: DateTime.now().toUtc(),
+    );
+    _emitParseProgress();
+  }
+
+  void _clearParseProgress(String documentId) {
+    if (_parseProgressByDocumentId.remove(documentId) != null) {
+      _emitParseProgress();
+    }
+  }
+
+  void _emitParseProgress() {
+    if (_parseProgressController.isClosed) {
+      return;
+    }
+    _parseProgressController.add(currentParseProgress());
+  }
+
+  Future<T> _enqueueParseTask<T>(Future<T> Function() task) {
+    final completer = Completer<T>();
+    final run = _parseQueueTail.then((_) async {
+      try {
+        completer.complete(await task());
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    _parseQueueTail = run.catchError((_) {});
+    return completer.future;
+  }
+
   String _sanitizeSegment(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
@@ -675,14 +979,14 @@ class LocalDocumentVaultService {
   _StoredFolder _requireFolder(_LocalVaultState state, String folderId) {
     return state.folders.firstWhere(
       (folder) => folder.id == folderId,
-      orElse: () => throw ApiException('Cartella non trovata.', statusCode: 404),
+      orElse: () => throw Exception('Folder not found.'),
     );
   }
 
   _StoredDocument _requireDocument(_LocalVaultState state, String documentId) {
     return state.documents.firstWhere(
       (document) => document.id == documentId,
-      orElse: () => throw ApiException('Document not found.', statusCode: 404),
+      orElse: () => throw Exception('Document not found.'),
     );
   }
 
@@ -702,7 +1006,10 @@ class LocalDocumentVaultService {
     );
   }
 
-  String _pathLabelForFolder(String? folderId, Map<String, _StoredFolder> folders) {
+  String _pathLabelForFolder(
+    String? folderId,
+    Map<String, _StoredFolder> folders,
+  ) {
     if (folderId == null) {
       return '';
     }
@@ -710,7 +1017,9 @@ class LocalDocumentVaultService {
     var current = folders[folderId];
     while (current != null) {
       labels.insert(0, current.name);
-      current = current.parentFolderId == null ? null : folders[current.parentFolderId];
+      current = current.parentFolderId == null
+          ? null
+          : folders[current.parentFolderId];
     }
     return labels.join(' / ');
   }
@@ -730,10 +1039,96 @@ class LocalDocumentVaultService {
     return haystack.contains(normalizedQuery);
   }
 
+  Future<List<ClinicalDocumentSummary>> _buildSummariesForDocuments(
+    List<_StoredDocument> documents, {
+    required Map<String, _StoredFolder> folders,
+  }) {
+    return Future.wait(
+      documents.map(
+        (document) => _toSummaryWithStructuredData(document, folders: folders),
+      ),
+    );
+  }
+
+  Future<ClinicalDocumentSummary> _toSummaryWithStructuredData(
+    _StoredDocument document, {
+    required Map<String, _StoredFolder> folders,
+  }) async {
+    final folderName = _pathLabelForFolder(document.folderId, folders);
+    if (!_requiresStructuredData(document.documentType)) {
+      return document.toSummary(folderName: folderName);
+    }
+
+    final structuredData = await _resolveStructuredDataForView(document);
+    return document.toSummary(
+      folderName: folderName,
+      parsedStatusOverride: structuredData.parsedStatus,
+      parsingConfidence: structuredData.parsingConfidence,
+      processingError: structuredData.processingError,
+    );
+  }
+
+  bool _requiresStructuredData(String documentType) {
+    final normalizedType = documentType.trim().toLowerCase();
+    return normalizedType == 'lab_report' || normalizedType == 'imaging_report';
+  }
+
   String _newId(String prefix) {
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     final random = _random.nextInt(1 << 32).toRadixString(16);
     return '$prefix-$timestamp-$random';
+  }
+
+  _StoredDocument _applyManualReview(
+    _StoredDocument document,
+    DocumentManualReviewInput input,
+  ) {
+    final updatedExamDateIso = _resolveManualReviewExamDateIso(
+      requestedExamDate: input.examDate,
+      existingExamDateIso: document.examDateIso,
+    );
+
+    return _StoredDocument(
+      id: document.id,
+      folderId: document.folderId,
+      title: _normalizeText(input.title) ?? document.title,
+      documentType: _normalizeText(input.documentType) ?? document.documentType,
+      uploadDateIso: document.uploadDateIso,
+      examDateIso: updatedExamDateIso,
+      source: input.source == null
+          ? document.source
+          : _normalizeText(input.source),
+      originalFilename: document.originalFilename,
+      mimeType: document.mimeType,
+      fileSizeBytes: document.fileSizeBytes,
+      parsedStatus: document.parsedStatus,
+      contextStatus: document.contextStatus,
+      localFilePath: document.localFilePath,
+      ocrText: input.ocrText == null
+          ? document.ocrText
+          : _normalizeText(input.ocrText),
+    );
+  }
+
+  String? _resolveManualReviewExamDateIso({
+    required String? requestedExamDate,
+    required String? existingExamDateIso,
+  }) {
+    if (requestedExamDate == null) {
+      return existingExamDateIso;
+    }
+
+    final trimmed = requestedExamDate.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final parsed = DateTime.tryParse(trimmed);
+    if (parsed == null) {
+      throw Exception(
+        'Exam date is invalid. Use ISO format YYYY-MM-DD.');
+    }
+    return parsed.toIso8601String();
   }
 
   String? _normalizeText(String? value) {
@@ -751,13 +1146,92 @@ class LocalDocumentVaultService {
     }
     return DateTime.tryParse(normalized);
   }
+
+  Future<String?> _inferTextPreview(SelectedUploadDocument file) async {
+    final mimeType = file.mimeType.toLowerCase();
+    final extension = path.extension(file.name).toLowerCase();
+    final isTextMime = mimeType.startsWith('text/');
+    final isTxtFile = extension == '.txt';
+
+    if (isTextMime || isTxtFile) {
+      final text = utf8.decode(file.bytes, allowMalformed: true).trim();
+      return text.isEmpty ? null : text;
+    }
+
+    final isPdf = mimeType == 'application/pdf' || extension == '.pdf';
+    if (!isPdf) {
+      return null;
+    }
+
+    return _extractPdfTextPreview(file);
+  }
+
+  Future<String?> _extractPdfTextPreview(SelectedUploadDocument file) async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return null;
+    }
+
+    File? tempFile;
+    try {
+      final tempDir = await _temporaryExtractionDirectory();
+      final tempName =
+          'vault-parse-${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(1 << 32).toRadixString(16)}.pdf';
+      tempFile = File(path.join(tempDir.path, tempName));
+      await tempFile.writeAsBytes(file.bytes, flush: true);
+
+      final document = await PDFDoc.fromPath(tempFile.path);
+      final extracted = await document.text;
+      return _normalizeExtractedText(extracted);
+    } catch (_) {
+      return null;
+    } finally {
+      if (tempFile != null) {
+        try {
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        } catch (_) {
+          // Ignore cleanup failures for temporary extraction files.
+        }
+      }
+    }
+  }
+
+  String? _normalizeExtractedText(String rawText) {
+    final normalized = rawText
+        .replaceAll('\u0000', '')
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    if (normalized.length <= 50000) {
+      return normalized;
+    }
+    return normalized.substring(0, 50000);
+  }
+
+  Future<Directory> _temporaryExtractionDirectory() async {
+    if (_rootDirectory != null) {
+      final directory = Directory(
+        path.join(_rootDirectory.path, '.tmp_extract'),
+      );
+      return directory.create(recursive: true);
+    }
+
+    final tempRoot = await getTemporaryDirectory();
+    final directory = Directory(
+      path.join(tempRoot.path, 'clindiary_tmp_extract'),
+    );
+    return directory.create(recursive: true);
+  }
 }
 
 class _LocalVaultState {
-  const _LocalVaultState({
-    required this.folders,
-    required this.documents,
-  });
+  const _LocalVaultState({required this.folders, required this.documents});
 
   final List<_StoredFolder> folders;
   final List<_StoredDocument> documents;
@@ -819,7 +1293,9 @@ class _StoredFolder {
       id: json['id'].toString(),
       name: json['name'].toString(),
       parentFolderId: json['parent_folder_id'] as String?,
-      createdAtIso: json['created_at']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      createdAtIso:
+          json['created_at']?.toString() ??
+          DateTime.now().toUtc().toIso8601String(),
     );
   }
 }
@@ -839,6 +1315,7 @@ class _StoredDocument {
     required this.parsedStatus,
     required this.contextStatus,
     required this.localFilePath,
+    this.ocrText,
   });
 
   final String id;
@@ -854,10 +1331,12 @@ class _StoredDocument {
   final String parsedStatus;
   final String contextStatus;
   final String localFilePath;
+  final String? ocrText;
 
   _StoredDocument copyWith({
     String? folderId,
     String? contextStatus,
+    String? ocrText,
   }) {
     return _StoredDocument(
       id: id,
@@ -873,10 +1352,16 @@ class _StoredDocument {
       parsedStatus: parsedStatus,
       contextStatus: contextStatus ?? this.contextStatus,
       localFilePath: localFilePath,
+      ocrText: ocrText ?? this.ocrText,
     );
   }
 
-  ClinicalDocumentSummary toSummary({String? folderName}) {
+  ClinicalDocumentSummary toSummary({
+    String? folderName,
+    String? parsedStatusOverride,
+    double? parsingConfidence,
+    String? processingError,
+  }) {
     return ClinicalDocumentSummary(
       id: id,
       folderId: folderId,
@@ -889,15 +1374,25 @@ class _StoredDocument {
       originalFilename: originalFilename,
       mimeType: mimeType,
       fileSizeBytes: fileSizeBytes,
-      parsedStatus: parsedStatus,
+      parsedStatus: parsedStatusOverride ?? parsedStatus,
       contextStatus: contextStatus,
+      parsingConfidence: parsingConfidence,
+      processingError: processingError,
       pendingSync: false,
       storageLocation: 'local',
       localFilePath: localFilePath,
     );
   }
 
-  ClinicalDocumentDetail toDetail({String? folderName}) {
+  ClinicalDocumentDetail toDetail({
+    String? folderName,
+    String? parsedStatusOverride,
+    double? parsingConfidence,
+    String? processingError,
+    DateTime? processedAt,
+    List<LabPanelItem> labPanels = const [],
+    List<ImagingReportItem> imagingReports = const [],
+  }) {
     return ClinicalDocumentDetail(
       id: id,
       folderId: folderId,
@@ -910,15 +1405,17 @@ class _StoredDocument {
       originalFilename: originalFilename,
       mimeType: mimeType,
       fileSizeBytes: fileSizeBytes,
-      parsedStatus: parsedStatus,
+      parsedStatus: parsedStatusOverride ?? parsedStatus,
       contextStatus: contextStatus,
+      parsingConfidence: parsingConfidence,
+      processingError: processingError,
       pendingSync: false,
       fileUrl: localFilePath,
-      ocrText: null,
+      ocrText: ocrText,
       viewerUrl: null,
-      processedAt: null,
-      labPanels: const [],
-      imagingReports: const [],
+      processedAt: processedAt,
+      labPanels: labPanels,
+      imagingReports: imagingReports,
       storageLocation: 'local',
       localFilePath: localFilePath,
     );
@@ -939,6 +1436,7 @@ class _StoredDocument {
       'parsed_status': parsedStatus,
       'context_status': contextStatus,
       'local_file_path': localFilePath,
+      'ocr_text': ocrText,
     };
   }
 
@@ -948,7 +1446,9 @@ class _StoredDocument {
       folderId: json['folder_id'] as String?,
       title: json['title'].toString(),
       documentType: json['document_type']?.toString() ?? 'generic_document',
-      uploadDateIso: json['upload_date']?.toString() ?? DateTime.now().toUtc().toIso8601String(),
+      uploadDateIso:
+          json['upload_date']?.toString() ??
+          DateTime.now().toUtc().toIso8601String(),
       examDateIso: json['exam_date'] as String?,
       source: json['source'] as String?,
       originalFilename: json['original_filename']?.toString() ?? 'document',
@@ -957,6 +1457,59 @@ class _StoredDocument {
       parsedStatus: json['parsed_status']?.toString() ?? 'local_only',
       contextStatus: json['context_status']?.toString() ?? 'active',
       localFilePath: json['local_file_path']?.toString() ?? '',
+      ocrText: json['ocr_text'] as String?,
     );
   }
+}
+
+class _LocalStructuredData {
+  const _LocalStructuredData({
+    this.parsedStatus,
+    this.parsingConfidence,
+    this.processingError,
+    this.processedAt,
+    this.labPanels = const [],
+    this.imagingReports = const [],
+  });
+
+  final String? parsedStatus;
+  final double? parsingConfidence;
+  final String? processingError;
+  final DateTime? processedAt;
+  final List<LabPanelItem> labPanels;
+  final List<ImagingReportItem> imagingReports;
+}
+
+class LocalDocumentParseProgressSnapshot {
+  const LocalDocumentParseProgressSnapshot({
+    required this.updatedAt,
+    required this.items,
+  });
+
+  const LocalDocumentParseProgressSnapshot.empty()
+    : updatedAt = null,
+      items = const <String, LocalDocumentParseProgress>{};
+
+  final DateTime? updatedAt;
+  final Map<String, LocalDocumentParseProgress> items;
+
+  int get activeCount => items.length;
+
+  LocalDocumentParseProgress? progressFor(String documentId) {
+    return items[documentId];
+  }
+}
+
+class LocalDocumentParseProgress {
+  const LocalDocumentParseProgress({
+    required this.documentId,
+    required this.stage,
+    required this.progress,
+    required this.updatedAt,
+  });
+
+  final String documentId;
+  final String stage;
+  final double progress;
+  final DateTime updatedAt;
 }

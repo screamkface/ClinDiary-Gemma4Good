@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:clindiary/app/core/storage/local_database.dart';
+import 'package:clindiary/app/core/localization/app_language.dart';
+import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
@@ -23,6 +24,8 @@ class OnDevicePromptBuilder {
   Future<OnDeviceRecapPrompt?> buildDailyRecapPrompt({
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
+    final isItalian = isItalianLanguageCode(languageCode);
     final profileBundle = await _readProfileBundle();
     final dossier = await _readHealthDossier();
     final entries = await _readDailyEntries();
@@ -120,10 +123,10 @@ class OnDevicePromptBuilder {
     }
 
     final dataConsidered = <String>[
-      '${entriesForDay.length} local check-ups',
+      '${entriesForDay.length} local check-ins',
       '${entriesForDay.fold<int>(0, (total, entry) => total + entry.symptoms.length)} symptoms',
-      '${entriesForDay.fold<int>(0, (total, entry) => total + entry.vitals.length)} vitals',
-      '${relevantLogs.length} treatment logs',
+      '${entriesForDay.fold<int>(0, (total, entry) => total + entry.vitals.length)} vital signs',
+      '${relevantLogs.length} medication logs',
       '${relevantWearables.length} wearable summaries',
       '${relevantTimeline.length} timeline events',
       '${openAlerts.length} open alerts',
@@ -131,7 +134,7 @@ class OnDevicePromptBuilder {
       '${recentLabResults.length} recent lab panels',
       '${recentImagingReports.length} recent imaging reports',
       '${recentDocumentLines.length} recent documents/events',
-      '${priorDailySummaries.length} prior recaps',
+      '${priorDailySummaries.length} previous recaps',
     ];
 
     final patientSnapshot = _patientSnapshot(profileBundle, dossier);
@@ -186,7 +189,9 @@ class OnDevicePromptBuilder {
 
     final payload = <String, Object?>{
       'summary_type': 'daily',
-      'summary_label': 'on-device daily recap',
+      'summary_label': isItalian
+          ? 'riepilogo giornaliero locale'
+          : 'on-device daily summary',
       'period_start': targetDay.toIso8601String().split('T').first,
       'period_end': targetDay.toIso8601String().split('T').first,
       'data_considered': dataConsidered,
@@ -219,8 +224,8 @@ class OnDevicePromptBuilder {
       summaryType: 'daily',
       periodStart: targetDay,
       periodEnd: targetDay,
-      systemPrompt: _systemPrompt(),
-      userPrompt: _userPrompt(payload),
+      systemPrompt: _systemPrompt(languageCode),
+      userPrompt: _userPrompt(payload, languageCode),
       providerName: 'on_device_litertlm',
       suggestedModelFamily: 'Gemma 4',
       isCloudBypassedForThisRequest: true,
@@ -231,6 +236,7 @@ class OnDevicePromptBuilder {
     required String question,
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
       lookbackDays: 30,
@@ -249,14 +255,15 @@ class OnDevicePromptBuilder {
       contextType: 'clinical_question',
       periodStart: context.periodStart,
       periodEnd: context.periodEnd,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _questionUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _questionUserPrompt(payload, languageCode),
     );
   }
 
   Future<OnDeviceTextPrompt?> buildTrendExplanationPrompt({
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
       lookbackDays: 30,
@@ -274,14 +281,15 @@ class OnDevicePromptBuilder {
       contextType: 'trend_explanation',
       periodStart: context.periodStart,
       periodEnd: context.periodEnd,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _trendUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _trendUserPrompt(payload, languageCode),
     );
   }
 
   Future<OnDeviceTextPrompt?> buildPreVisitBriefPrompt({
     required DateTime referenceDate,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
       lookbackDays: 30,
@@ -299,14 +307,15 @@ class OnDevicePromptBuilder {
       contextType: 'pre_visit_brief',
       periodStart: context.periodStart,
       periodEnd: context.periodEnd,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _preVisitUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _preVisitUserPrompt(payload, languageCode),
     );
   }
 
   Future<OnDeviceTextPrompt?> buildDocumentSummaryPrompt({
     required ClinicalDocumentDetail detail,
   }) async {
+    final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final referenceDate = detail.examDate ?? detail.uploadDate;
     final context = await _buildClinicalTextContext(
       referenceDate: referenceDate,
@@ -324,8 +333,8 @@ class OnDevicePromptBuilder {
       contextType: 'document_summary',
       periodStart: referenceDate,
       periodEnd: referenceDate,
-      systemPrompt: _assistantSystemPrompt(),
-      userPrompt: _documentUserPrompt(payload),
+      systemPrompt: _assistantSystemPrompt(languageCode),
+      userPrompt: _documentUserPrompt(payload, languageCode),
     );
   }
 
@@ -573,10 +582,10 @@ class OnDevicePromptBuilder {
     );
 
     final dataConsidered = <String>[
-      '${entriesForPeriod.length} local check-ups',
+      '${entriesForPeriod.length} local check-ins',
       '${entriesForPeriod.fold<int>(0, (total, entry) => total + entry.symptoms.length)} symptoms',
       '${entriesForPeriod.fold<int>(0, (total, entry) => total + entry.vitals.length)} vital signs',
-      '${logsForPeriod.length} treatment logs',
+      '${logsForPeriod.length} medication logs',
       '${wearablesForPeriod.length} wearable summaries',
       '${timelineForPeriod.length} timeline events',
       '${openAlerts.length} open alerts',
@@ -585,7 +594,7 @@ class OnDevicePromptBuilder {
       '${recentImagingReports.length} recent imaging reports',
       '${recentDocuments.length} recent documents/events',
       '${recentReports.length} recent reports',
-      '${priorDailySummaries.length} prior recaps',
+      '${priorDailySummaries.length} previous recaps',
     ];
 
     final hasClinicalContext =
@@ -711,95 +720,189 @@ class OnDevicePromptBuilder {
     );
   }
 
-  static String _assistantSystemPrompt() {
+  static String _assistantSystemPrompt(String languageCode) {
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Sei Gemma 4 dentro ClinDiary.
+Usa solo i dati presenti nel payload fornito.
+Rispondi in italiano, con un tono calmo e professionale.
+Non fare diagnosi e non prescrivere.
+Non inventare dati mancanti.
+Se i dati non bastano, dillo chiaramente.
+Se trovi elementi rilevanti, spiega cosa monitorare o cosa portare al medico senza toni allarmistici.
+''';
+    }
     return '''
-  You are Gemma 4 inside ClinDiary.
-  Use only the data present in the provided payload.
-  Respond in English, with a calm and professional tone.
-  Do not make diagnoses or prescriptions.
-  Do not invent missing data.
-  If the data are insufficient, say so clearly.
-  If you find relevant elements, point out what to monitor or discuss with the clinician without being alarmist.
-  ''';
+You are Gemma 4 inside ClinDiary.
+Use only the data present in the provided payload.
+Respond in English, with a calm and professional tone.
+Do not diagnose or prescribe.
+Do not invent missing data.
+If the data are insufficient, say so clearly.
+If you find relevant items, explain what to monitor or discuss with the doctor without sounding alarmist.
+''';
   }
 
-  static String _questionUserPrompt(Map<String, Object?> payload) {
+  static String _questionUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+L'utente sta facendo una domanda sulla propria storia clinica.
+
+Domanda:
+${payload['question']}
+
+Rispondi usando questa struttura:
+1. Risposta diretta e concisa
+2. Cosa osservi nei dati disponibili
+3. Limiti dei dati o informazioni mancanti
+4. Se utile, 2-3 domande da portare al medico
+
+Restituisci solo il testo finale, senza markdown inutile.
+
+DATI:
+$serialized
+''';
+    }
     return '''
-  The user is asking a question about their clinical history.
+The user is asking a question about their medical history.
 
-  Question:
-  ${payload['question']}
+Question:
+${payload['question']}
 
-  Respond using this structure:
-  1. Direct and concise answer
-  2. What you observe in the available data
-  3. Limits of the data or missing information
-  4. If useful, 2-3 questions to bring to the clinician
+Respond using this structure:
+1. Direct and concise answer
+2. What you observe in the available data
+3. Data limits or missing information
+4. If useful, 2-3 questions to bring to the doctor
 
-  Return only the final text, without unnecessary markdown.
+Return only the final text, without unnecessary markdown.
 
-  DATA:
-  $serialized
-  ''';
+DATA:
+$serialized
+''';
   }
 
-  static String _trendUserPrompt(Map<String, Object?> payload) {
+  static String _trendUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Devi spiegare con prudenza l'andamento clinico recente del paziente.
+
+Rispondi usando questa struttura:
+1. Andamento generale osservato
+2. Pattern o cambiamenti nel tempo
+3. Elementi che meritano attenzione o monitoraggio
+4. Dati mancanti che limitano l'analisi
+5. Nota finale che ricorda che non si tratta di una diagnosi
+
+Non inventare cause. Se vedi solo associazioni deboli, dillo chiaramente.
+
+DATI:
+$serialized
+''';
+    }
     return '''
-  You must explain the patient's recent clinical trend cautiously.
+You must explain the patient's recent clinical trend in a careful way.
 
-  Respond using this structure:
-  1. Observed overall trend
-  2. Patterns or changes over time
-  3. Elements that deserve attention or monitoring
-  4. Any missing data that limits the analysis
-  5. Final note reminding that this is not a diagnosis
+Respond using this structure:
+1. Overall observed trend
+2. Patterns or changes over time
+3. Items that deserve attention or monitoring
+4. Any missing data that limit the analysis
+5. Final note reminding the reader that this is not a diagnosis
 
-  Do not invent causes. If you only see weak associations, say so clearly.
+Do not invent causes. If you only see weak associations, say so clearly.
 
-  DATA:
-  $serialized
-  ''';
+DATA:
+$serialized
+''';
   }
 
-  static String _preVisitUserPrompt(Map<String, Object?> payload) {
+  static String _preVisitUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Devi preparare una nota pre-visita da portare al medico.
+
+Rispondi usando questa struttura:
+1. Breve sintesi del periodo analizzato
+2. Sintomi, cambiamenti e tendenze piu importanti
+3. Esami, documenti e terapie rilevanti da portare alla visita
+4. 3-5 domande utili da fare al medico
+5. Segnali da monitorare prima della visita
+6. Nota finale che ricorda che il testo non sostituisce il medico
+
+Mantieni un tono pratico e ordinato.
+
+DATI:
+$serialized
+''';
+    }
     return '''
-  You must prepare a pre-visit brief to bring to the clinician.
+You must prepare a pre-visit brief to bring to the doctor.
 
-  Respond using this structure:
-  1. Quick summary of the analyzed period
-  2. Most important symptoms, trends, and changes
-  3. Relevant tests, documents, and medications to bring to the visit
-  4. 3-5 useful questions to ask the clinician
-  5. Signals to monitor before the visit
-  6. Final note reminding that the text does not replace the clinician
+Respond using this structure:
+1. Quick summary of the analyzed period
+2. Most important symptoms, trends and changes
+3. Relevant tests, documents and medications to bring to the visit
+4. 3-5 useful questions to ask the doctor
+5. Signs to monitor before the visit
+6. Final note reminding the reader that the text does not replace the doctor
 
-  Keep the tone practical and organized.
+Keep the tone practical and organized.
 
-  DATA:
-  $serialized
-  ''';
+DATA:
+$serialized
+''';
   }
 
-  static String _documentUserPrompt(Map<String, Object?> payload) {
+  static String _documentUserPrompt(
+    Map<String, Object?> payload,
+    String languageCode,
+  ) {
     final serialized = jsonEncode(payload);
+    if (isItalianLanguageCode(languageCode)) {
+      return '''
+Devi spiegare questo documento clinico con parole semplici.
+
+Rispondi usando questa struttura:
+1. Riassunto semplice del documento
+2. Punti chiave o valori rilevanti
+3. Cosa puo essere utile per il medico
+4. 2-3 domande da fare se qualcosa non e chiaro
+5. Nota finale che ricorda che non si tratta di una diagnosi
+
+Se il documento contiene solo dati parziali, dillo chiaramente.
+
+DATI:
+$serialized
+''';
+    }
     return '''
-  You must explain this clinical document in simple terms.
+You must explain this clinical document in simple terms.
 
-  Respond using this structure:
-  1. Simple summary of the document
-  2. Key points or relevant values
-  3. What is useful for the clinician
-  4. 2-3 questions to ask if something is unclear
-  5. Final note reminding that this is not a diagnosis
+Respond using this structure:
+1. Simple summary of the document
+2. Key points or relevant values
+3. What is useful for the doctor
+4. 2-3 questions to ask if something is unclear
+5. Final note reminding the reader that this is not a diagnosis
 
-  If the document contains only partial data, say so clearly.
+If the document contains only partial data, say so clearly.
 
-  DATA:
-  $serialized
-  ''';
+DATA:
+$serialized
+''';
   }
 }
 
@@ -854,7 +957,7 @@ List<String> _patientSnapshot(ProfileBundle? bundle, HealthDossier? dossier) {
     snapshot.add('usual activity: ${profile.exerciseHabits}');
   }
   if (profile.sleepPattern != null && profile.sleepPattern!.trim().isNotEmpty) {
-    snapshot.add('usual sleep: ${profile.sleepPattern}');
+    snapshot.add('usual sleep pattern: ${profile.sleepPattern}');
   }
   return snapshot;
 }
@@ -872,9 +975,9 @@ String _medicationLine(MedicationItem item) {
 
 String _medicationLogLine(MedicationLogItem item) {
   final takenLabel = switch (item.status) {
-    'taken' => 'assunta',
-    'missed' => 'mancata',
-    'skipped' => 'saltata',
+    'taken' => 'taken',
+    'missed' => 'missed',
+    'skipped' => 'skipped',
     _ => item.status,
   };
   return '${item.medicationName}: $takenLabel at ${item.scheduledAt.toLocal().toIso8601String().substring(11, 16)}';
@@ -887,17 +990,15 @@ List<String> _buildObservations(
 ) {
   final items = <String>[];
   if (entries.isEmpty) {
-    items.add(
-      'No complete local check-ups were saved for the selected day.',
-    );
+    items.add('No complete local check-ins are saved for the selected day.');
   } else {
     final symptomLabels = <String, int>{};
     for (final entry in entries) {
       if (entry.energyLevel != null) {
-        items.add('Reported energy ${entry.energyLevel}/10.');
+        items.add('Self-reported energy ${entry.energyLevel}/10.');
       }
       if (entry.stressLevel != null) {
-        items.add('Reported stress ${entry.stressLevel}/10.');
+        items.add('Self-reported stress ${entry.stressLevel}/10.');
       }
       if (entry.generalPain != null) {
         items.add('General pain ${entry.generalPain}/10.');
@@ -924,7 +1025,7 @@ List<String> _buildObservations(
       final top = symptomLabels.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       items.add(
-        'Most frequent symptoms: ${top.take(4).map((item) => '${item.key} (${item.value})').join(', ')}.',
+        'Most common symptoms: ${top.take(4).map((item) => '${item.key} (${item.value})').join(', ')}.',
       );
     }
   }
@@ -964,7 +1065,7 @@ List<String> _buildFollowUpReasons(
   );
   if (hasHighBurden) {
     reasons.add(
-      'The analyzed period includes intense self-reported symptoms or pain: if they persist or worsen, discuss them with the clinician.',
+      'The selected day shows intense self-reported symptoms or pain: if they persist or worsen, discuss them with the doctor.',
     );
   }
   final veryLowSleep = wearables.any(
@@ -972,17 +1073,17 @@ List<String> _buildFollowUpReasons(
   );
   if (veryLowSleep) {
     reasons.add(
-      'Wearable data show very low sleep over the period: if the pattern continues, it is useful to mention it to the clinician.',
+      'Wearable data show very short sleep on that day: if the pattern continues, it is useful to flag it to the doctor.',
     );
   }
   if (openAlerts.isNotEmpty) {
     reasons.add(
-      'There are open deterministic alerts: they should be reported to the clinician without automatic reinterpretation.',
+      'There are open deterministic alerts: they should be reported to the doctor without reinterpretation.',
     );
   }
   if (reasons.isEmpty) {
     reasons.add(
-      'If symptoms persist, worsen, or new relevant signs appear, bring the summary to the clinician.',
+      'If symptoms persist, worsen or new relevant signals appear, bring the summary to the doctor.',
     );
   }
   return reasons;
@@ -997,16 +1098,16 @@ List<String> _buildMissingData({
 }) {
   final missing = <String>[];
   if (profileBundle == null && dossier == null) {
-    missing.add('Clinical profile unavailable in the local cache.');
+    missing.add('Clinical profile not available in the local cache.');
   }
   if (entriesForDay.isEmpty) {
-    missing.add('No local check-up recorded for the selected day.');
+    missing.add('No local check-ins recorded for the selected day.');
   }
   if (relevantWearables.isEmpty) {
     missing.add('No local wearable data available for the selected day.');
   }
   if (relevantLogs.isEmpty) {
-    missing.add('No local treatment log available for the selected day.');
+    missing.add('No local medication log available for the selected day.');
   }
   return missing;
 }
@@ -1146,8 +1247,8 @@ List<String> _noteTags(String? text) {
   }
 
   const tagPatterns = <String, List<String>>{
-    'stress_lavoro': ['stress', 'lavor', 'uffic', 'turno', 'riunion', 'scaden'],
-    'umore_basso': [
+    'work_stress': ['stress', 'lavor', 'uffic', 'turno', 'riunion', 'scaden'],
+    'low_mood': [
       'giu di morale',
       'trist',
       'umore',
@@ -1155,14 +1256,14 @@ List<String> _noteTags(String? text) {
       'preoccup',
       'demoral',
     ],
-    'sonno_scarso': ['sonn', 'dorm', 'insonn', 'risvegli', 'riposo'],
-    'cefalea': ['cefale', 'mal di testa', 'headache'],
-    'tosse': ['toss', 'cough'],
-    'febbre': ['febbr', 'temperatur'],
+    'poor_sleep': ['sonn', 'dorm', 'insonn', 'risvegli', 'riposo'],
+    'headache': ['cefale', 'mal di testa', 'headache'],
+    'cough': ['toss', 'cough'],
+    'fever': ['febbr', 'temperatur'],
     'nausea': ['nause', 'vomit'],
-    'dolore': ['dolor', 'pain'],
-    'digestivo': ['addom', 'stomac', 'gastr', 'diarr', 'intestin'],
-    'respiratorio': ['respir', 'fiat', 'dispn', 'saturaz'],
+    'pain': ['dolor', 'pain'],
+    'digestive': ['addom', 'stomac', 'gastr', 'diarr', 'intestin'],
+    'respiratory': ['respir', 'fiat', 'dispn', 'saturaz'],
   };
 
   for (final entry in tagPatterns.entries) {
@@ -1255,7 +1356,7 @@ String _labPanelLine(DossierLabPanelItem item) {
     parts.add(item.keyResults.take(3).join(', '));
   }
   if (item.abnormalResultsCount > 0) {
-    parts.add('${item.abnormalResultsCount} risultati fuori range');
+    parts.add('${item.abnormalResultsCount} out-of-range results');
   }
   return parts.join(' - ');
 }
@@ -1310,8 +1411,11 @@ int _ageFromBirthDate(DateTime birthDate) {
   return age;
 }
 
-String _systemPrompt() {
-  return "Follow the user's instructions strictly. Use only the data present in the JSON payload without adding external information.";
+String _systemPrompt(String languageCode) {
+  if (isItalianLanguageCode(languageCode)) {
+    return 'Segui rigorosamente le istruzioni dell\'utente. Usa solo i dati presenti nel payload JSON e non aggiungere informazioni esterne.';
+  }
+  return "Follow the user's instructions strictly. Use only the data present in the JSON payload and do not add external information.";
 }
 
 List<String> _buildWindowObservations(
@@ -1321,17 +1425,15 @@ List<String> _buildWindowObservations(
 ) {
   final items = <String>[];
   if (entries.isEmpty) {
-    items.add(
-      'No complete local check-ups were saved for the analyzed period.',
-    );
+    items.add('No complete local check-ins are saved for the analyzed period.');
   } else {
     final symptomLabels = <String, int>{};
     for (final entry in entries) {
       if (entry.energyLevel != null) {
-        items.add('Energia riferita ${entry.energyLevel}/10.');
+        items.add('Self-reported energy ${entry.energyLevel}/10.');
       }
       if (entry.stressLevel != null) {
-        items.add('Stress riferito ${entry.stressLevel}/10.');
+        items.add('Self-reported stress ${entry.stressLevel}/10.');
       }
       if (entry.generalPain != null) {
         items.add('General pain ${entry.generalPain}/10.');
@@ -1358,7 +1460,7 @@ List<String> _buildWindowObservations(
       final top = symptomLabels.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       items.add(
-        'Most frequent symptoms: ${top.take(4).map((item) => '${item.key} (${item.value})').join(', ')}.',
+        'Most common symptoms: ${top.take(4).map((item) => '${item.key} (${item.value})').join(', ')}.',
       );
     }
   }
@@ -1398,7 +1500,7 @@ List<String> _buildWindowFollowUpReasons(
   );
   if (hasHighBurden) {
     reasons.add(
-      'The analyzed period includes intense self-reported symptoms or pain: if they persist or worsen, discuss them with the clinician.',
+      'The analyzed period includes intense self-reported symptoms or pain: if they persist or worsen, discuss them with the doctor.',
     );
   }
   final veryLowSleep = wearables.any(
@@ -1406,17 +1508,17 @@ List<String> _buildWindowFollowUpReasons(
   );
   if (veryLowSleep) {
     reasons.add(
-      'Wearable data show very low sleep over the period: if the pattern continues, it is useful to mention it to the clinician.',
+      'Wearable data show very short sleep during the period: if the pattern continues, it is useful to flag it to the doctor.',
     );
   }
   if (openAlerts.isNotEmpty) {
     reasons.add(
-      'There are open deterministic alerts: they should be reported to the clinician without automatic reinterpretation.',
+      'There are open deterministic alerts: they should be reported to the doctor without reinterpretation.',
     );
   }
   if (reasons.isEmpty) {
     reasons.add(
-      'If symptoms persist, worsen, or new relevant signs appear, bring the summary to the clinician.',
+      'If symptoms persist, worsen or new relevant signals appear, bring the summary to the doctor.',
     );
   }
   return reasons;
@@ -1431,20 +1533,16 @@ List<String> _buildWindowMissingData({
 }) {
   final missing = <String>[];
   if (profileBundle == null && dossier == null) {
-    missing.add('Clinical profile unavailable in the local cache.');
+    missing.add('Clinical profile not available in the local cache.');
   }
   if (entriesForPeriod.isEmpty) {
-    missing.add('No local check-up recorded in the analyzed period.');
+    missing.add('No local check-ins recorded in the analyzed period.');
   }
   if (relevantWearables.isEmpty) {
-    missing.add(
-      'No local wearable data available in the analyzed period.',
-    );
+    missing.add('No local wearable data available in the analyzed period.');
   }
   if (relevantLogs.isEmpty) {
-    missing.add(
-      'No local treatment log available in the analyzed period.',
-    );
+    missing.add('No local medication logs available in the analyzed period.');
   }
   return missing;
 }
@@ -1461,31 +1559,58 @@ class _ClinicalTextContext {
   final Map<String, Object?> payload;
 }
 
-String _userPrompt(Map<String, Object?> payload) {
+String _userPrompt(Map<String, Object?> payload, String languageCode) {
   final serialized = jsonEncode(payload);
-    return "Generate a cautious clinical summary using ONLY the data present in the JSON payload.\n\n"
+  if (isItalianLanguageCode(languageCode)) {
+    return "Genera un riepilogo clinico prudente usando SOLO i dati presenti nel payload JSON.\n\n"
+        "OBIETTIVO\n"
+        "Produrre un riepilogo chiaro, prudente e utile per il paziente e per il medico, evidenziando:\n"
+        "- l'andamento nel tempo di sintomi e misurazioni\n"
+        "- eventuali pattern o correlazioni osservabili nei dati\n"
+        "- esami o documenti recenti rilevanti\n"
+        "- situazioni in cui e opportuno parlarne con il medico\n\n"
+        "VINCOLI GENERALI\n"
+        "- Non inventare dati mancanti\n"
+        "- Non fare diagnosi\n"
+        "- Non prescrivere\n"
+        "- Non attribuire cause certe\n"
+        "- Non usare linguaggio allarmistico\n"
+        "- Se un dato manca o non e sufficiente, dichiaralo esplicitamente\n"
+        "- Se esistono alert aperti, riportali fedelmente senza reinterpretarli\n"
+        "- Le correlazioni devono essere descritte solo come osservazioni nei dati, non come causalita\n\n"
+        "STRUTTURA RICHIESTA\n"
+        "1. Periodo considerato e contesto del paziente\n"
+        "2. Andamento osservato nel diario e nei dati registrati\n"
+        "3. Eventi o documenti recenti rilevanti\n"
+        "4. Quando e perche parlarne con il medico\n"
+        "5. Nota finale che ricordi esplicitamente che non si tratta di una diagnosi o prescrizione\n\n"
+        "OUTPUT\n"
+        "Restituisci solo il riepilogo finale, in italiano, seguendo esattamente la struttura richiesta.\n\n"
+        "DATI STRUTTURATI:\n$serialized";
+  }
+  return "Generate a cautious clinical summary using ONLY the data present in the JSON payload.\n\n"
       "GOAL\n"
-      "Produce a clear, cautious, and useful summary for the patient and the clinician, highlighting:\n"
-      "- the time trend of symptoms and metrics\n"
-      "- any observable patterns or correlations in the data\n"
+      "Produce a clear, cautious and useful summary for the patient and the doctor, highlighting:\n"
+      "- the time trend of symptoms and measurements\n"
+      "- any patterns or correlations observable in the data\n"
       "- relevant recent tests or documents\n"
-      "- situations in which it is appropriate to speak with the clinician\n\n"
+      "- situations in which it is appropriate to speak with the doctor\n\n"
       "GENERAL CONSTRAINTS\n"
       "- Do not invent missing data\n"
-      "- Do not make diagnoses\n"
-      "- Do not make prescriptions\n"
-      "- Do not assign certain causes\n"
+      "- Do not diagnose\n"
+      "- Do not prescribe\n"
+      "- Do not attribute certain causes\n"
       "- Do not use alarming language\n"
-      "- If a datum is missing or insufficient, say so explicitly\n"
-      "- If there are open alerts, report them faithfully without reinterpreting them\n"
-      "- Correlations must be described only as observations in the data, not as causality\n\n"
-      "MANDATORY OUTPUT STRUCTURE\n"
+      "- If a data point is missing or insufficient, state it explicitly\n"
+      "- If open alerts exist, report them faithfully without reinterpretation\n"
+      "- Correlations must be described only as observations in the data, not as causation\n\n"
+      "REQUIRED RESULT STRUCTURE\n"
       "1. Considered period and patient context\n"
-      "2. Observed trend in the diary and recorded data\n"
+      "2. Trend observed in the diary and recorded data\n"
       "3. Relevant recent events or documents\n"
-      "4. When and why to speak with the clinician\n"
-      "5. Closing note that explicitly reminds the user this is not a diagnosis or prescription\n\n"
+      "4. When and why to speak with the doctor\n"
+      "5. Closing note that explicitly reminds the reader that this is not a diagnosis or prescription\n\n"
       "OUTPUT\n"
-      "Return only the final summary in English, following the mandatory structure exactly.\n\n"
+      "Return only the final summary, in English, following the required structure exactly.\n\n"
       "STRUCTURED DATA:\n$serialized";
 }

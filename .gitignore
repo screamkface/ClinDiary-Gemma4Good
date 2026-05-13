@@ -65,3 +65,15 @@ celerybeat-schedule-shm
 celerybeat-schedule-wal
 postgres_data/
 minio_data/
+
+# Mobile signing / credentials (never commit)
+**/key.properties
+**/*.jks
+**/*.keystore
+apps/mobile/android/app/google-services.json
+apps/mobile/ios/Runner/GoogleService-Info.plist
+
+# Temporary validation artifacts
+apps/mobile/test_output.txt
+apps/mobile/tests_expanded.txt
+apps/backend/test_results.txt

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LocalMedicationReminderService.buildSchedulePlan', () {
-    test('genera promemoria giornalieri futuri', () {
+    test('generates future daily reminders', () {
       final service = LocalMedicationReminderService();
 
       final plan = service.buildSchedulePlan(
@@ -34,7 +34,7 @@ void main() {
       expect(plan[1].scheduledAt, DateTime(2026, 3, 22, 21, 0));
     });
 
-    test('rispetta giorni selezionati, pause e cicli', () {
+    test('respects selected days, pauses, and cycles', () {
       final service = LocalMedicationReminderService();
 
       final plan = service.buildSchedulePlan(
@@ -70,7 +70,7 @@ void main() {
       expect(scheduledDates, ['2026-03-23', '2026-03-27']);
     });
 
-    test('non rigenera promemoria per una dose gia registrata oggi', () {
+    test('does not regenerate reminders for a dose already logged today', () {
       final service = LocalMedicationReminderService();
 
       final plan = service.buildSchedulePlan(
