@@ -45,7 +45,7 @@ class OnDeviceAiService {
       }
       final model = await FlutterGemma.getActiveModel(
         maxTokens: 2048,
-        preferredBackend: PreferredBackend.npu,
+        preferredBackend: PreferredBackend.gpu,
         enableSpeculativeDecoding: true,
       );
       _currentModel = model;
@@ -161,11 +161,24 @@ class OnDeviceAiService {
     await _ensureInitialized();
 
     String? installedPath;
-    await FlutterGemma.installModel(
-      modelType: ModelType.gemma4,
-    ).fromNetwork(_modelDownloadUrl).withProgress((progress) {
-      onProgress?.call(progress, 100);
-    }).install();
+
+    final preInstalledFile = File(
+      '/sdcard/Android/data/it.clindiary.clindiary/files/models/$_modelName',
+    );
+    if (await preInstalledFile.exists()) {
+      await FlutterGemma.installModel(
+        modelType: ModelType.gemma4,
+        fileType: ModelFileType.litertlm,
+      ).fromFile(preInstalledFile.path).install();
+      installedPath = preInstalledFile.path;
+    } else {
+      await FlutterGemma.installModel(
+        modelType: ModelType.gemma4,
+        fileType: ModelFileType.litertlm,
+      ).fromNetwork(_modelDownloadUrl).withProgress((progress) {
+        onProgress?.call(progress, 100);
+      }).install();
+    }
 
     await _resetRuntime();
     return installedPath ?? '';
@@ -272,7 +285,7 @@ class OnDeviceAiService {
     if (_currentModel != null) return _currentModel!;
     final model = await FlutterGemma.getActiveModel(
       maxTokens: 4096,
-      preferredBackend: PreferredBackend.npu,
+      preferredBackend: PreferredBackend.gpu,
       enableSpeculativeDecoding: true,
     );
     _currentModel = model;

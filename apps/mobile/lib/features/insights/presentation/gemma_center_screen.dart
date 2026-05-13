@@ -1167,12 +1167,10 @@ class _MarkdownBubbleText extends StatelessWidget {
         ).textTheme.bodyMedium?.copyWith(color: foreground, height: 1.42) ??
         const TextStyle();
 
-    return SelectionArea(
-      child: RichText(
-        text: TextSpan(
-          style: baseStyle,
-          children: _bubbleInlineSpans(text, baseStyle, colorScheme),
-        ),
+    return SelectableText.rich(
+      TextSpan(
+        style: baseStyle,
+        children: _bubbleInlineSpans(text, baseStyle, colorScheme),
       ),
     );
   }
