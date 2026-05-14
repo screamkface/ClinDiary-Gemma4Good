@@ -1,8 +1,10 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class ScreeningsScreen extends ConsumerStatefulWidget {
@@ -13,6 +15,7 @@ class ScreeningsScreen extends ConsumerStatefulWidget {
 }
 
 class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
+  static const String _preventionRefertoFolderName = 'Referti prevenzione';
   static final DateFormat _statusDateFormat = DateFormat(
     'dd MMM yyyy',
     'en_US',
@@ -100,6 +103,41 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
     }
   }
 
+  Future<void> _openPreventionRefertoUpload(
+    PatientScreeningStatusItem item,
+  ) async {
+    if (!mounted) return;
+    try {
+      final repository = ref.read(documentsRepositoryProvider);
+      final folders = await repository.fetchFolders();
+      final existingFolder = folders
+          .where((folder) => folder.name == _preventionRefertoFolderName)
+          .toList(growable: false);
+      final folder = existingFolder.isNotEmpty
+          ? existingFolder.first
+          : await repository.createFolder(name: _preventionRefertoFolderName);
+      final query = Uri(
+        path: '/app/documents/upload',
+        queryParameters: {
+          'folderId': folder.id,
+          'folderName': folder.name,
+          'title': _suggestRefertoTitle(item),
+          'documentType': _suggestRefertoDocumentType(item),
+          'source': 'Prevention screening: ${item.screeningName}',
+        },
+      ).toString();
+      if (!mounted) {
+        return;
+      }
+      context.push(query);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final myScreeningsAsync = ref.watch(myScreeningsProvider);
@@ -144,6 +182,7 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
                 compactChecklistDateFormat: _compactChecklistDateFormat,
                 busyScreeningId: _busyScreeningId,
                 onMarkDone: _markDone,
+                onUploadReport: _openPreventionRefertoUpload,
                 onToggleChecklist: _toggleCurrentYearChecklist,
               );
             },
@@ -278,6 +317,7 @@ class _MyScreeningsSection extends StatelessWidget {
     required this.compactChecklistDateFormat,
     required this.busyScreeningId,
     required this.onMarkDone,
+    required this.onUploadReport,
     required this.onToggleChecklist,
   });
 
@@ -286,6 +326,7 @@ class _MyScreeningsSection extends StatelessWidget {
   final DateFormat compactChecklistDateFormat;
   final String? busyScreeningId;
   final Future<void> Function(PatientScreeningStatusItem item) onMarkDone;
+  final Future<void> Function(PatientScreeningStatusItem item) onUploadReport;
   final Future<void> Function(PatientScreeningStatusItem item)
   onToggleChecklist;
 
@@ -341,6 +382,7 @@ class _MyScreeningsSection extends StatelessWidget {
                   dateFormat: dateFormat,
                   isSaving: busyScreeningId == item.id,
                   onMarkDone: () => onMarkDone(item),
+                  onUploadReport: () => onUploadReport(item),
                 ),
               ),
             ),
@@ -361,6 +403,7 @@ class _MyScreeningsSection extends StatelessWidget {
                 dateFormat: dateFormat,
                 isSaving: busyScreeningId == item.id,
                 onMarkDone: () => onMarkDone(item),
+                onUploadReport: () => onUploadReport(item),
               ),
             ),
           ),
@@ -381,6 +424,7 @@ class _MyScreeningsSection extends StatelessWidget {
                   dateFormat: dateFormat,
                   isSaving: busyScreeningId == item.id,
                   onMarkDone: item.isActionable ? () => onMarkDone(item) : null,
+                  onUploadReport: () => onUploadReport(item),
                 ),
               ),
             ),
@@ -400,6 +444,7 @@ class _MyScreeningsSection extends StatelessWidget {
                   dateFormat: dateFormat,
                   isSaving: busyScreeningId == item.id,
                   onMarkDone: item.isActionable ? () => onMarkDone(item) : null,
+                  onUploadReport: () => onUploadReport(item),
                 ),
               ),
             ),
@@ -506,12 +551,14 @@ class _StatusCard extends StatelessWidget {
     required this.dateFormat,
     required this.isSaving,
     required this.onMarkDone,
+    required this.onUploadReport,
   });
 
   final PatientScreeningStatusItem item;
   final DateFormat dateFormat;
   final bool isSaving;
   final VoidCallback? onMarkDone;
+  final VoidCallback? onUploadReport;
 
   @override
   Widget build(BuildContext context) {
@@ -579,6 +626,15 @@ class _StatusCard extends StatelessWidget {
                 onPressed: isSaving ? null : onMarkDone,
                 icon: const Icon(Icons.verified_outlined),
                 label: Text(isSaving ? 'Saving...' : 'Mark completed'),
+              ),
+            ],
+            if (onUploadReport != null &&
+                (item.isActionable || item.completedThisYear)) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: isSaving ? null : onUploadReport,
+                icon: const Icon(Icons.folder_upload_outlined),
+                label: const Text('Upload referto'),
               ),
             ],
           ],
@@ -832,4 +888,37 @@ String _carePathwaySectionSubtitle(String carePathway) {
     default:
       return 'Here you will find specific tests and checks to evaluate with the doctor based on the profile.';
   }
+}
+
+String _suggestRefertoTitle(PatientScreeningStatusItem item) {
+  final screeningName = item.screeningName.trim();
+  if (screeningName.isEmpty) {
+    return 'Referto prevenzione';
+  }
+  return 'Referto prevenzione - $screeningName';
+}
+
+String _suggestRefertoDocumentType(PatientScreeningStatusItem item) {
+  final normalized =
+      '${item.screeningCode} ${item.screeningName} ${item.screeningCategory}'
+          .toLowerCase();
+  if (normalized.contains('lab') ||
+      normalized.contains('blood') ||
+      normalized.contains('test') ||
+      normalized.contains('esame')) {
+    return 'lab_report';
+  }
+  if (normalized.contains('ultrasound') ||
+      normalized.contains('ecografia') ||
+      normalized.contains('eco') ||
+      normalized.contains('x-ray') ||
+      normalized.contains('rx') ||
+      normalized.contains('radiology') ||
+      normalized.contains('mammography') ||
+      normalized.contains('mri') ||
+      normalized.contains('ct') ||
+      normalized.contains('tomography')) {
+    return 'imaging_report';
+  }
+  return 'specialist_visit';
 }

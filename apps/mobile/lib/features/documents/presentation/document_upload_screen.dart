@@ -16,12 +16,18 @@ class DocumentUploadScreen extends ConsumerStatefulWidget {
     this.initialFolderId,
     this.initialFolderName,
     this.initialCaptureMode,
+    this.initialTitle,
+    this.initialDocumentType,
+    this.initialSource,
     super.key,
   });
 
   final String? initialFolderId;
   final String? initialFolderName;
   final String? initialCaptureMode;
+  final String? initialTitle;
+  final String? initialDocumentType;
+  final String? initialSource;
 
   @override
   ConsumerState<DocumentUploadScreen> createState() =>
@@ -42,6 +48,16 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialTitle != null && widget.initialTitle!.isNotEmpty) {
+      _titleController.text = widget.initialTitle!;
+    }
+    if (widget.initialDocumentType != null &&
+        widget.initialDocumentType!.isNotEmpty) {
+      _documentType = widget.initialDocumentType!;
+    }
+    if (widget.initialSource != null && widget.initialSource!.isNotEmpty) {
+      _sourceController.text = widget.initialSource!;
+    }
     if (_shouldOpenCameraOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {

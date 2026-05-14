@@ -47,6 +47,17 @@ void main() {
                 category: 'general_prevention',
                 kind: 'screening',
               ),
+              annualExams: const [
+                PreventionRecommendationItem(
+                  code: 'annual_cardiology_review',
+                  title: 'Cardiologist review',
+                  subtitle: 'ECG and cardiovascular prevention discussion',
+                  status: 'review',
+                  priority: 'high',
+                  category: 'cardiometabolic',
+                  kind: 'visit',
+                ),
+              ],
               visitsAndControls: const [
                 PreventionRecommendationItem(
                   code: 'blood_pressure_adults',
@@ -109,6 +120,9 @@ void main() {
 
     expect(find.text('Prevention center'), findsOneWidget);
     expect(find.text('Recommended annual visit'), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(find.text('Annual exams'), findsOneWidget);
     await tester.tap(find.text('Vaccines'));
     await tester.pumpAndSettle();
     expect(find.text('Recommended vaccines'), findsOneWidget);

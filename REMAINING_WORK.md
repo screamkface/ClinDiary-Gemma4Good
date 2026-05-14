@@ -3,6 +3,9 @@
 ## Current App Work
 
 ### Completed
+- Added a deterministic Prevention Center engine driven by age, sex, smoking history, pregnancy status, family history and active conditions, including yearly exam suggestions like cardiology, thyroid review and abdominal ultrasound.
+- Wired the Prevention Center screen to show a dedicated annual-exams section from the local engine output.
+- Fixed Android notification small icons so local reminders use a dedicated notification drawable instead of the launcher icon, which restores the app mark in the notification drawer.
 - **flutter_gemma migration**: Sostituito il bridge Kotlin LiteRT-LM con `flutter_gemma 0.15.0`. Rimosso `OnDeviceGemmaRuntime.kt`, `OnDeviceEmbeddingRuntime.kt`, `AndroidModelDownloader.kt`, method channel `clindiary/on_device_ai`. Aggiunto speculative decoding (MTP), NPU backend, streaming, function calling per voice check-in, Gecko 110M auto-install per embeddings, thinking mode support. Refactored GemmaCenterScreen con streaming reale, pulsante stop, e sezione ragionamento collassabile. Semplificato bootstrap e notifiche download. Rimosse dipendenze Gradle `litertlm-android` e `tasks-text`.
 - Fixed the vaccination add/edit flow crash when dismissing the form with back by moving it to a dedicated bottom sheet that owns its controllers safely.
 - Added a regression test for closing the vaccine form with back.
@@ -39,6 +42,30 @@
 - Added regression coverage for consuming empty symptom follow-up response storage and sorted pending response replay.
 - Changed app lock so PIN/biometric unlock is required only at app start for the current process session, not after every lifecycle pause/inactive event or immediately after enabling the setting.
 - Made biometrics the primary app-lock path by auto-starting the biometric prompt when available and keeping the 6-digit PIN as an on-screen fallback.
+- Expanded the deterministic Prevention Center engine with 40+ new rules covering cancer screening, bone health, AAA, lung LDCT, infectious disease, cardiovascular/metabolic checks, expanded vaccines (dTpa, pneumococcal, zoster, HPV), pregnancy planning, fall risk, hearing, and medication review.
+- Created `RegionalPreventionPolicy` class with Italy (IT) policy including extended mammography (45-49, 70-74), extended colorectal (70-74), and cervical HPV-DNA (30-64) / Pap (25-29) sub-ranges.
+- Created `PreventionRecord` model (standalone, not yet wired to ProfileBundle).
+- Refactored `PreventionCenterEngine.build()` into 9 private section builder methods and 6 sub-builders for maintainability.
+- Added deduplication logic across all recommendation sections.
+- Added BMI helper for diabetes screening (BMI >= 25 as trigger).
+- Added risk token lists for colon high-risk, breast high-risk, AAA, and bone-risk medications.
+- Documented the full ruleset in `docs/prevention_center_rules.md`.
+- Added 42 unit tests covering backward compatibility, cancer screenings, AAA, lung LDCT, STI risk, pregnancy, family history, edge cases (null birthDate, null sex, empty bundle), vaccines, cardiovascular/metabolic, bone health, fall risk, dedup, infectious disease, regional policy, breast high risk, and medication review.
+
+### Still Missing — Prevention Center
+
+- Wire `PreventionRecord` into `ProfileBundle` to enable `_hasRecentRecord()` and `_hasEverRecord()` helpers that suppress completed items.
+- Add structured fields for `lastMammogramDate`, `lastPapDate`, `lastColonoscopyDate` to enable "next due" calculations.
+- Add `hysterectomy` / `cervixPresent` flag to avoid cervical screening after hysterectomy.
+- Add `gestationalAge` / `dueDate` for pregnancy-specific timing rules.
+- Add structured `firstDegreeRelative` field to enable `_hasFirstDegreeFamilyHistory()`.
+- Add `steroidUse` / `immunosuppressed` boolean flags for more precise bone and vaccine rules.
+- Add known genetic mutation fields (BRCA, Lynch, FAP) for high-risk breast/colorectal rules.
+- Add personal history of polyps for colorectal risk.
+- Add `cvdRiskScore` (SCORE, Framingham) for cardiovascular risk stratification.
+- Create region-specific `RegionalPreventionPolicy` files (JSON or Dart) for non-IT regions.
+- Localize recommendation copy (currently all English) via Flutter l10n.
+- Add guideline version metadata so rules can be attributed to specific guidelines/sources.
 
 ### Still Missing
 - Review the remaining document review/manual-review screens for the same child-friendly visual language.

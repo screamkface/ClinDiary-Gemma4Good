@@ -239,9 +239,15 @@ final preventionCenterProvider = FutureProvider<PreventionCenterData>((
   if (session == null) {
     throw Exception('Sessione non disponibile');
   }
+  final bundle = await ref.watch(profileBundleProvider.future);
+  if (bundle == null) {
+    throw Exception('Profilo non disponibile');
+  }
   return _withDemoFallback(
     ref,
-    run: () => ref.watch(preventionCenterRepositoryProvider).fetchCenter(),
+    run: () => ref
+        .watch(preventionCenterRepositoryProvider)
+        .fetchCenter(bundle: bundle),
     demoValue: DemoSeedData.demoPreventionCenter,
   );
 });

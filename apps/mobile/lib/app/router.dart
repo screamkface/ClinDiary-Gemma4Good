@@ -292,6 +292,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       initialFolderName:
                           state.uri.queryParameters['folderName'],
                       initialCaptureMode: state.uri.queryParameters['capture'],
+                      initialTitle: state.uri.queryParameters['title'],
+                      initialDocumentType:
+                          state.uri.queryParameters['documentType'],
+                      initialSource: state.uri.queryParameters['source'],
                     ),
                   ),
                   GoRoute(

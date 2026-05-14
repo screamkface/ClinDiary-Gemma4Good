@@ -197,9 +197,7 @@ final localDocumentVaultServiceProvider = Provider<LocalDocumentVaultService>((
 });
 
 final preventionCenterRepositoryProvider = Provider<PreventionCenterRepository>(
-  (ref) => PreventionCenterRepository(
-    localDatabase: ref.watch(localDatabaseProvider),
-  ),
+  (ref) => const PreventionCenterRepository(),
 );
 
 final dossierRepositoryProvider = Provider<DossierRepository>(

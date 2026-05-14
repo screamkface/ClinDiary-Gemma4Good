@@ -87,6 +87,7 @@ class PreventionCenterData {
     this.regionName,
     required this.overview,
     this.annualVisit,
+    this.annualExams = const [],
     required this.visitsAndControls,
     required this.vaccines,
     this.vaccineRegistry = const [],
@@ -104,6 +105,7 @@ class PreventionCenterData {
   final String? regionName;
   final PreventionCenterOverview overview;
   final PreventionRecommendationItem? annualVisit;
+  final List<PreventionRecommendationItem> annualExams;
   final List<PreventionRecommendationItem> visitsAndControls;
   final List<PreventionRecommendationItem> vaccines;
   final List<PreventionRecommendationItem> vaccineRegistry;
@@ -113,6 +115,18 @@ class PreventionCenterData {
   final List<PreventionRecommendationItem> followUpReminders;
 
   factory PreventionCenterData.fromJson(Map<String, dynamic> json) {
+    final annualVisit = json['annual_visit'] == null
+        ? null
+        : PreventionRecommendationItem.fromJson(
+            json['annual_visit'] as Map<String, dynamic>,
+          );
+    final annualExams = (json['annual_exams'] as List<dynamic>? ?? const [])
+        .map(
+          (item) => PreventionRecommendationItem.fromJson(
+            item as Map<String, dynamic>,
+          ),
+        )
+        .toList();
     return PreventionCenterData(
       generatedAt: DateTime.parse(json['generated_at'].toString()),
       displayName: json['display_name']?.toString() ?? 'Clinical profile',
@@ -123,19 +137,18 @@ class PreventionCenterData {
       overview: PreventionCenterOverview.fromJson(
         json['overview'] as Map<String, dynamic>? ?? const {},
       ),
-      annualVisit: json['annual_visit'] == null
-          ? null
-          : PreventionRecommendationItem.fromJson(
-              json['annual_visit'] as Map<String, dynamic>,
+      annualVisit:
+          annualVisit ?? (annualExams.isNotEmpty ? annualExams.first : null),
+      annualExams: annualExams.isNotEmpty
+          ? annualExams
+          : (annualVisit == null ? const [] : [annualVisit]),
+      visitsAndControls: (json['visits_and_controls'] as List<dynamic>? ?? [])
+          .map(
+            (item) => PreventionRecommendationItem.fromJson(
+              item as Map<String, dynamic>,
             ),
-      visitsAndControls:
-          (json['visits_and_controls'] as List<dynamic>? ?? [])
-              .map(
-                (item) => PreventionRecommendationItem.fromJson(
-                  item as Map<String, dynamic>,
-                ),
-              )
-              .toList(),
+          )
+          .toList(),
       vaccines: (json['vaccines'] as List<dynamic>? ?? [])
           .map(
             (item) => PreventionRecommendationItem.fromJson(
@@ -172,14 +185,13 @@ class PreventionCenterData {
             ),
           )
           .toList(),
-      followUpReminders:
-          (json['follow_up_reminders'] as List<dynamic>? ?? [])
-              .map(
-                (item) => PreventionRecommendationItem.fromJson(
-                  item as Map<String, dynamic>,
-                ),
-              )
-              .toList(),
+      followUpReminders: (json['follow_up_reminders'] as List<dynamic>? ?? [])
+          .map(
+            (item) => PreventionRecommendationItem.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList(),
     );
   }
 }

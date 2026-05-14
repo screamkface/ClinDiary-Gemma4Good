@@ -1,3 +1,5 @@
+import 'package:clindiary/features/prevention_center/domain/prevention_record.dart';
+
 class PatientProfile {
   const PatientProfile({
     required this.id,
@@ -448,6 +450,7 @@ class ProfileBundle {
     this.managedProfiles = const <PatientProfile>[],
     this.vaccinations = const <VaccinationRecordItem>[],
     this.clinicalEpisodes = const <ClinicalEpisodeItem>[],
+    this.preventionRecords = const <PreventionRecord>[],
   });
 
   final PatientProfile profile;
@@ -459,6 +462,7 @@ class ProfileBundle {
   final List<PatientProfile> managedProfiles;
   final List<VaccinationRecordItem> vaccinations;
   final List<ClinicalEpisodeItem> clinicalEpisodes;
+  final List<PreventionRecord> preventionRecords;
 
   factory ProfileBundle.fromJson(Map<String, dynamic> json) {
     return ProfileBundle(
@@ -496,6 +500,11 @@ class ProfileBundle {
           .map(
             (item) =>
                 ClinicalEpisodeItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
+      preventionRecords: (json['prevention_records'] as List<dynamic>? ?? [])
+          .map(
+            (item) => PreventionRecord.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
     );

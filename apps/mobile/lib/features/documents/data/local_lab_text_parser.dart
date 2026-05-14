@@ -25,7 +25,14 @@ class LocalLabTextParser {
       'text': normalized,
     };
 
-    final raw = await Isolate.run(() => _parseLabInIsolate(payload));
+    final isImagingDocument =
+        _isImagingDocumentType(documentType) ||
+        _looksLikeImagingText(normalized);
+    final raw = await Isolate.run(
+      () => isImagingDocument
+          ? _parseImagingInIsolate(payload)
+          : _parseLabInIsolate(payload),
+    );
     return LocalStructuredParseResult.fromJson(raw);
   }
 }
@@ -62,7 +69,11 @@ class LocalStructuredParseResult {
       labPanels: (json['lab_panels'] as List<dynamic>? ?? const [])
           .map((item) => LabPanelItem.fromJson(item as Map<String, dynamic>))
           .toList(),
-      imagingReports: const [],
+      imagingReports: (json['imaging_reports'] as List<dynamic>? ?? const [])
+          .map(
+            (item) => ImagingReportItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList(),
     );
   }
 }
@@ -81,6 +92,14 @@ final RegExp _lettersPattern = RegExp(r'[A-Za-z]');
 final RegExp _unitPattern = RegExp(r'[A-Za-z%/]');
 final RegExp _labKeywordPattern = RegExp(
   r'\b(wbc|rbc|hgb|hct|plt|glucose|creatinine|cholesterol|triglycerides|ast|alt|tsh|ferritin|crp|pcr)\b',
+  caseSensitive: false,
+);
+final RegExp _imagingKeywordPattern = RegExp(
+  r'\b(ultrasound|ecografia|imaging|radiology|radiographic|x[- ]?ray|rx|ct|mri|rm|mammography|mammografia|tomography|scan|referto)\b',
+  caseSensitive: false,
+);
+final RegExp _impressionMarkerPattern = RegExp(
+  r'\b(impression|conclusion|conclusions|conclusioni|result|results|esito|diagnosis|verdict|final)\b',
   caseSensitive: false,
 );
 
@@ -148,6 +167,50 @@ Map<String, dynamic> _parseLabInIsolate(Map<String, String?> payload) {
     'processed_at': DateTime.now().toUtc().toIso8601String(),
     'lab_panels': <Map<String, dynamic>>[panel],
     'imaging_reports': <Map<String, dynamic>>[],
+  };
+}
+
+Map<String, dynamic> _parseImagingInIsolate(Map<String, String?> payload) {
+  final documentId = (payload['document_id'] ?? 'local-doc').trim();
+  final documentType = (payload['document_type'] ?? '').trim().toLowerCase();
+  final title = (payload['title'] ?? '').trim();
+  final examDateIso = payload['exam_date_iso'];
+  final text = (payload['text'] ?? '').trim();
+
+  if (text.isEmpty) {
+    return _emptyPayload();
+  }
+
+  if (!_isImagingDocumentType(documentType) && !_looksLikeImagingText(text)) {
+    return _emptyPayload();
+  }
+
+  final impression = _extractImpression(text);
+  final examType = _extractImagingExamType(title: title, text: text);
+  final bodyPart = _extractImagingBodyPart(title: title, text: text);
+  final confidence = _resolveImagingConfidence(
+    hasImpression: impression != null && impression.isNotEmpty,
+    hasExamType: examType != null && examType.isNotEmpty,
+    hasBodyPart: bodyPart != null && bodyPart.isNotEmpty,
+  );
+
+  final report = <String, dynamic>{
+    'id': 'local-imaging-report-$documentId-1',
+    'exam_type': examType,
+    'body_part': bodyPart,
+    'report_text': text,
+    'impression': impression,
+    'document_title': title.isEmpty ? 'Local imaging report' : title,
+    'exam_date': examDateIso,
+    'confidence_score': confidence,
+  };
+
+  return <String, dynamic>{
+    'parsed_status': 'parsed',
+    'parsing_confidence': confidence,
+    'processed_at': DateTime.now().toUtc().toIso8601String(),
+    'lab_panels': <Map<String, dynamic>>[],
+    'imaging_reports': <Map<String, dynamic>>[report],
   };
 }
 
@@ -430,6 +493,187 @@ bool _isLikelyMeasurementNumber(String line, RegExpMatch match) {
   }
 
   return true;
+}
+
+bool _isImagingDocumentType(String documentType) {
+  return documentType == 'imaging_report' ||
+      documentType == 'prevention_report' ||
+      documentType == 'specialist_visit';
+}
+
+bool _looksLikeImagingText(String text) {
+  final normalized = text.toLowerCase();
+  return _imagingKeywordPattern.hasMatch(normalized) ||
+      _impressionMarkerPattern.hasMatch(normalized);
+}
+
+String? _extractImagingExamType({required String title, required String text}) {
+  final fromTitle = _firstKeywordMatch(title, const [
+    'ultrasound',
+    'ecografia',
+    'radiology',
+    'rx',
+    'x-ray',
+    'mammography',
+    'mri',
+    'ct',
+    'rm',
+    'scan',
+    'tomography',
+  ]);
+  if (fromTitle != null) {
+    return fromTitle;
+  }
+
+  return _firstKeywordMatch(text, const [
+    'ultrasound',
+    'ecografia',
+    'radiology',
+    'radiographic',
+    'x-ray',
+    'rx',
+    'mammography',
+    'mammografia',
+    'mri',
+    'ct',
+    'rm',
+    'tomography',
+    'scan',
+  ]);
+}
+
+String? _extractImagingBodyPart({required String title, required String text}) {
+  final combined = '$title\n$text'.toLowerCase();
+  const candidates = <String>[
+    'abdomen',
+    'abdominal',
+    'addome',
+    'chest',
+    'thorax',
+    'torace',
+    'breast',
+    'mammary',
+    'mammella',
+    'thyroid',
+    'tiroide',
+    'pelvis',
+    'pelvi',
+    'hip',
+    'shoulder',
+    'knee',
+    'neck',
+    'collo',
+    'heart',
+    'cardiac',
+    'brain',
+    'cranial',
+  ];
+
+  for (final candidate in candidates) {
+    if (combined.contains(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+String? _extractImpression(String text) {
+  final lines = text.split(RegExp(r'[\r\n]+'));
+  final buffer = StringBuffer();
+  var collecting = false;
+  for (final rawLine in lines) {
+    final line = rawLine.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (line.isEmpty) {
+      continue;
+    }
+    final lowered = line.toLowerCase();
+    final marker = _impressionLineMarker(lowered);
+    if (marker != null) {
+      collecting = true;
+      final afterMarker = line
+          .substring(marker.length)
+          .replaceFirst(RegExp(r'^[\s:=-]+'), '');
+      if (afterMarker.isNotEmpty) {
+        buffer.writeln(afterMarker);
+      }
+      continue;
+    }
+    if (collecting) {
+      if (_looksLikeSectionBoundary(lowered)) {
+        break;
+      }
+      buffer.writeln(line);
+    }
+  }
+
+  final impression = buffer.toString().trim();
+  return impression.isEmpty ? null : impression;
+}
+
+String? _impressionLineMarker(String loweredLine) {
+  const markers = <String>[
+    'impression',
+    'conclusion',
+    'conclusions',
+    'conclusioni',
+    'esito',
+    'result',
+    'results',
+    'final',
+  ];
+  for (final marker in markers) {
+    if (loweredLine.startsWith(marker)) {
+      return marker;
+    }
+  }
+  return null;
+}
+
+bool _looksLikeSectionBoundary(String loweredLine) {
+  const boundaries = <String>[
+    'recommend',
+    'findings',
+    'description',
+    'diagnosis',
+    'therapy',
+    'follow-up',
+    'follow up',
+  ];
+  for (final boundary in boundaries) {
+    if (loweredLine.startsWith(boundary)) {
+      return true;
+    }
+  }
+  return _impressionMarkerPattern.hasMatch(loweredLine) &&
+      !_impressionLineMarker(loweredLine)!.isEmpty;
+}
+
+String? _firstKeywordMatch(String text, List<String> keywords) {
+  final lowered = text.toLowerCase();
+  for (final keyword in keywords) {
+    if (lowered.contains(keyword)) {
+      return keyword;
+    }
+  }
+  return null;
+}
+
+double _resolveImagingConfidence({
+  required bool hasImpression,
+  required bool hasExamType,
+  required bool hasBodyPart,
+}) {
+  var confidence = 0.68;
+  if (hasExamType) {
+    confidence += 0.12;
+  }
+  if (hasBodyPart) {
+    confidence += 0.1;
+  }
+  if (hasImpression) {
+    confidence += 0.1;
+  }
+  return confidence.clamp(0.0, 1.0).toDouble();
 }
 
 double? _toDouble(String? value) {

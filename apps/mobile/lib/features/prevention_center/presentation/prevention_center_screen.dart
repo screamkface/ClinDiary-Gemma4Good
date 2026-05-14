@@ -145,6 +145,14 @@ class PreventionCenterScreen extends ConsumerWidget {
                       items: [center.annualVisit!],
                     ),
                   ],
+                  if (center.annualExams.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _RecommendationSection(
+                      title: 'Annual exams',
+                      subtitle: 'Suggested yearly exams based on profile.',
+                      items: center.annualExams,
+                    ),
+                  ],
                 ],
               ),
               _TabList(

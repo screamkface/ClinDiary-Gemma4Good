@@ -26,6 +26,7 @@ const _symptomFollowUpReminderChannelId = 'clindiary_symptom_follow_up';
 const _symptomFollowUpReminderChannelName = 'Symptom follow-up';
 const _symptomFollowUpReminderChannelDescription =
     'Local reminders generated on the device to confirm recent symptoms.';
+const _androidNotificationIcon = '@drawable/ic_notification';
 const _dailyCheckInReminderSlots = <({int hour, int minute})>[
   (hour: 9, minute: 0),
   (hour: 13, minute: 0),
@@ -140,7 +141,7 @@ class LocalMedicationReminderService {
     await _configureTimezone();
 
     const initializationSettings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings(_androidNotificationIcon),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -651,6 +652,7 @@ class LocalMedicationReminderService {
         _medicationReminderChannelId,
         _medicationReminderChannelName,
         channelDescription: _medicationReminderChannelDescription,
+        icon: _androidNotificationIcon,
         importance: Importance.high,
         priority: Priority.high,
       ),
@@ -674,6 +676,7 @@ class LocalMedicationReminderService {
         _dailyCheckInReminderChannelId,
         _dailyCheckInReminderChannelName,
         channelDescription: _dailyCheckInReminderChannelDescription,
+        icon: _androidNotificationIcon,
         importance: Importance.high,
         priority: Priority.high,
       ),
@@ -697,6 +700,7 @@ class LocalMedicationReminderService {
         _symptomFollowUpReminderChannelId,
         _symptomFollowUpReminderChannelName,
         channelDescription: _symptomFollowUpReminderChannelDescription,
+        icon: _androidNotificationIcon,
         importance: Importance.high,
         priority: Priority.high,
         actions: <AndroidNotificationAction>[
