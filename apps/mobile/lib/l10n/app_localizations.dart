@@ -62,7 +62,8 @@ import 'app_localizations_it.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,17 +84,18 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('it')
+    Locale('it'),
   ];
 
   /// No description provided for @activeProfileLabel.
@@ -4335,7 +4338,8 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Progress notification for Gemma model downloads.'**
-  String get gemmaDownloadNotificationServiceProgressNotificationForGemmaModelDownloads;
+  String
+  get gemmaDownloadNotificationServiceProgressNotificationForGemmaModelDownloads;
 
   /// User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:45)
   ///
@@ -6075,19 +6079,22 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Enable device notifications first to generate reminders.'**
-  String get localMedicationReminderServiceEnableDeviceNotificationsFirstToGenerate;
+  String
+  get localMedicationReminderServiceEnableDeviceNotificationsFirstToGenerate;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:422)
   ///
   /// In en, this message translates to:
   /// **'Enable device notifications first to generate reminders.'**
-  String get localMedicationReminderServiceEnableDeviceNotificationsFirstToGenerate2;
+  String
+  get localMedicationReminderServiceEnableDeviceNotificationsFirstToGenerate2;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:515)
   ///
   /// In en, this message translates to:
   /// **'Enable device notifications first to generate reminders.'**
-  String get localMedicationReminderServiceEnableDeviceNotificationsFirstToGenerate3;
+  String
+  get localMedicationReminderServiceEnableDeviceNotificationsFirstToGenerate3;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:212)
   ///
@@ -6117,7 +6124,8 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Local reminders synchronized on the device.'**
-  String get localMedicationReminderServiceLocalRemindersSynchronizedOnTheDevice;
+  String
+  get localMedicationReminderServiceLocalRemindersSynchronizedOnTheDevice;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:18)
   ///
@@ -6129,7 +6137,8 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Medication reminders are disabled in preferences.'**
-  String get localMedicationReminderServiceMedicationRemindersAreDisabledInPreferences;
+  String
+  get localMedicationReminderServiceMedicationRemindersAreDisabledInPreferences;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:143)
   ///
@@ -6159,13 +6168,15 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Permesso notifiche negato dal dispositivo.'**
-  String get localMedicationReminderServicePermessoNotificheNegatoDalDispositivo;
+  String
+  get localMedicationReminderServicePermessoNotificheNegatoDalDispositivo;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:230)
   ///
   /// In en, this message translates to:
   /// **'Permesso notifiche non ancora concesso sul dispositivo.'**
-  String get localMedicationReminderServicePermessoNotificheNonAncoraConcessoSul;
+  String
+  get localMedicationReminderServicePermessoNotificheNonAncoraConcessoSul;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:680)
   ///
@@ -6213,7 +6224,8 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Symptom follow-up reminders synchronized on the device.'**
-  String get localMedicationReminderServiceSymptomFollowUpRemindersSynchronizedOn;
+  String
+  get localMedicationReminderServiceSymptomFollowUpRemindersSynchronizedOn;
 
   /// User-facing UI text (lib/app/core/notifications/local_medication_reminder_service.dart:705)
   ///
@@ -12051,13 +12063,22 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{channel}: {status} ({provider})'**
-  String notificationsChannelStatus(Object channel, Object status, Object provider);
+  String notificationsChannelStatus(
+    Object channel,
+    Object status,
+    Object provider,
+  );
 
   /// No description provided for @notificationsChannelStatusWithError.
   ///
   /// In en, this message translates to:
   /// **'{channel}: {status} ({provider}) - {error}'**
-  String notificationsChannelStatusWithError(Object channel, Object status, Object provider, Object error);
+  String notificationsChannelStatusWithError(
+    Object channel,
+    Object status,
+    Object provider,
+    Object error,
+  );
 
   /// No description provided for @notificationsError.
   ///
@@ -12264,7 +12285,8 @@ abstract class AppLocalizations {
   String get profileTheItemWillBeRemovedFromTheDossier;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -12273,25 +12295,26 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'it'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'it'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-
-
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en': return AppLocalizationsEn();
-    case 'it': return AppLocalizationsIt();
+    case 'en':
+      return AppLocalizationsEn();
+    case 'it':
+      return AppLocalizationsIt();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.'
+    'that was used.',
   );
 }

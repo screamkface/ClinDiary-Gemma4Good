@@ -48,14 +48,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final textFields = find.byType(TextFormField);
-    final passwordField = textFields.at(1);
-
-    expect(
-      tester.widget<TextFormField>(passwordField).controller?.text,
-      'ChangeMe123!',
-    );
-
     final emailField = textFields.at(0);
+    final passwordField = textFields.at(1);
 
     await tester.enterText(emailField, 'patient@example.com');
     await tester.enterText(passwordField, 'StrongPass123!');

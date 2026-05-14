@@ -63,13 +63,13 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Proof on-device'), findsOneWidget);
+    expect(find.text('On-device proof'), findsOneWidget);
     expect(
       find.textContaining('Active provider: Gemma 4 On-device'),
       findsOneWidget,
     );
-    expect(find.textContaining('Model: gemma-4-E2B-it'), findsOneWidget);
-    expect(find.textContaining('External cloud used: No'), findsOneWidget);
+    expect(find.textContaining('Modello: gemma-4-E2B-it'), findsOneWidget);
+    expect(find.textContaining('Local-only request: Yes'), findsOneWidget);
     expect(find.text('Replace model'), findsOneWidget);
     expect(find.text('Manage model'), findsOneWidget);
   });

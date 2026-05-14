@@ -17,6 +17,9 @@ void main() {
       when(
         () => database.readCache(activeProfileIdCacheKey),
       ).thenAnswer((_) async => 'profile-1');
+      when(
+        () => database.readCache('app_display_settings'),
+      ).thenAnswer((_) async => null);
       when(() => database.readCache('profile_bundle::profile-1')).thenAnswer(
         (_) async => jsonEncode({
           'profile': {
@@ -272,6 +275,9 @@ void main() {
         () => database.readCache(activeProfileIdCacheKey),
       ).thenAnswer((_) async => 'profile-1');
       when(
+        () => database.readCache('app_display_settings'),
+      ).thenAnswer((_) async => null);
+      when(
         () => database.readCache('profile_bundle::profile-1'),
       ).thenAnswer((_) async => null);
       when(
@@ -413,6 +419,9 @@ void main() {
       when(
         () => database.readCache(activeProfileIdCacheKey),
       ).thenAnswer((_) async => 'profile-1');
+      when(
+        () => database.readCache('app_display_settings'),
+      ).thenAnswer((_) async => null);
       when(() => database.readCache('profile_bundle::profile-1')).thenAnswer(
         (_) async => jsonEncode({
           'profile': {

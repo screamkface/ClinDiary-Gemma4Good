@@ -16,7 +16,10 @@ class _SessionGateTestAuthController extends AuthController {
   static int loginCalls = 0;
 
   @override
-  Future<AuthSession?> build() async => null;
+  Future<AuthSession?> build() async {
+    final cfg = ref.read(appConfigProvider);
+    return cfg.hackathonDemoMode ? fakeSession : null;
+  }
 
   @override
   Future<AuthSession> login({
@@ -107,9 +110,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appConfigProvider.overrideWith(
-            (ref) => const AppConfig(),
-          ),
+          appConfigProvider.overrideWith((ref) => const AppConfig()),
           authControllerProvider.overrideWith(
             _SessionGateTestAuthController.new,
           ),

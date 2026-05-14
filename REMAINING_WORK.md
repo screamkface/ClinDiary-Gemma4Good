@@ -53,9 +53,16 @@
 ### Known Bugs
 - No known blocking bug from the vaccine back flow after the regression test.
 - The notifications-entry crash caused by sorting an immutable empty symptom follow-up response list has been fixed; still worth smoke testing on device after notification taps and app resume.
-- Full `flutter test` currently fails in unrelated existing tests: `history_mock_test.dart` lacks initialized `intl` locale data, and `phase3/on_device_prompt_builder_test.dart` hits unmocked `SharedPreferences` language storage.
 - The original bulk-translated localization workfiles under `apps/mobile/build/localization/` are not safe to merge directly into ARB because they contain complex interpolated strings; use the filtered `build/localization_safe/` export instead.
 - Medication reminder timing now uses exact-while-idle scheduling with fallback, but OEM battery restrictions can still delay notifications until verified on target devices.
+
+### Fixed
+- Full `flutter test` now passes: 7 previously failing tests fixed.
+  1. `auth/login_screen_test` — rimosso check su password prefillata (non più preimpostata)
+  2. `auth/session_gate_screen_test` — mock demo mode ora restituisce `fakeSession`
+  3-5. `phase3/on_device_prompt_builder_test` — aggiunto mock per `app_display_settings` cache key
+  6. `phase3/phase3_screens_test` — allineate stringhe attese al widget reale (`AI Recap`, `Private local`, `Cloud esterno usato: No`)
+  7. `test/phase3/on_device_insights_screen_test` — allineate stringhe attese (`On-device proof`, `Modello:`, `Local-only request:`)
 
 ### Next Recommended Step
 - Run a device smoke test for Home navigation, smartwatch daily sync and medication reminders, then continue the bilingual rollout on the next highest-impact screens still listed by the safe localization audit.

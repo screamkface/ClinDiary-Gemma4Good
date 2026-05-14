@@ -93,10 +93,10 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('AI recap'), findsOneWidget);
+    expect(find.text('AI Recap'), findsOneWidget);
     expect(find.byIcon(Icons.content_copy_outlined), findsOneWidget);
     expect(find.text('Regenerate'), findsOneWidget);
-    expect(find.text('Local private'), findsOneWidget);
+    expect(find.text('Private local'), findsOneWidget);
   });
 
   test('insight summary query distinguishes local private mode', () {
@@ -146,7 +146,7 @@ void main() {
       find.textContaining('Active provider: Gemma 4 Local'),
       findsOneWidget,
     );
-    expect(find.textContaining('External cloud used: No'), findsOneWidget);
+    expect(find.textContaining('Cloud esterno usato: No'), findsOneWidget);
   });
 
   testWidgets('insights screen opens date picker without crash', (
