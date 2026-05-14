@@ -364,6 +364,22 @@ final pendingMedicationDosesProvider = FutureProvider<bool>((ref) async {
   );
 });
 
+final hasPreventionRecommendedProvider = FutureProvider<bool>((ref) async {
+  final center = await ref.watch(preventionCenterProvider.future);
+  final allItems = [
+    if (center.annualVisit != null) center.annualVisit!,
+    ...center.annualExams,
+    ...center.visitsAndControls,
+    ...center.vaccines,
+    ...center.vaccineRegistry,
+    ...center.pregnancyAndPreconception,
+    ...center.sharedDecisions,
+    ...center.seasonalChecks,
+    ...center.followUpReminders,
+  ];
+  return allItems.any((item) => item.status == 'recommended');
+});
+
 final wearableSyncStatusProvider = FutureProvider<WearableSyncStatus>((
   ref,
 ) async {

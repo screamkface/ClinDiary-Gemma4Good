@@ -1,5 +1,4 @@
 import 'package:clindiary/app/providers.dart';
-import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 import 'package:clindiary/shared/widgets/section_card.dart';
 import 'package:flutter/material.dart';
@@ -633,7 +632,7 @@ class _StatusCard extends StatelessWidget {
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: isSaving ? null : onUploadReport,
-                icon: const Icon(Icons.folder_upload_outlined),
+                icon: const Icon(Icons.upload_file_outlined),
                 label: const Text('Upload referto'),
               ),
             ],

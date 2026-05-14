@@ -7,6 +7,7 @@ void main() {
   final refDate = DateTime.utc(2026, 5, 14, 9);
   final engine = PreventionCenterEngine();
 
+  // ignore: no_leading_underscores_for_local_identifiers
   ProfileBundle _bundle({
     required String id,
     required String firstName,
@@ -75,6 +76,7 @@ void main() {
     );
   }
 
+  // ignore: no_leading_underscores_for_local_identifiers
   Set<String> _codes(List<dynamic> items) {
     return items.map((e) => (e as dynamic).code as String).toSet();
   }
@@ -701,7 +703,7 @@ void main() {
 
       expect(center.age, 60);
       expect(codes, contains('early_dexa_discussion'));
-      expect(codes, contains('annual_bone_density_review'));
+      expect(codes, isNot(contains('annual_bone_density_review')));
     });
 
     test('Male 70 smoker: male bone density discussion', () {
@@ -1117,7 +1119,7 @@ void main() {
   });
 
   group('Bone risk condition detection', () {
-    test('Osteoporosis condition triggers annual_bone_density_review', () {
+    test('Osteoporosis condition triggers early_dexa_discussion', () {
       final bundle = _bundle(
         id: 'bo1',
         firstName: 'Osso',
@@ -1131,31 +1133,36 @@ void main() {
       );
       final center = engine.build(bundle, generatedAt: refDate);
       final codes = _codes(center.annualExams);
-      expect(codes, contains('annual_bone_density_review'));
+      expect(codes, contains('early_dexa_discussion'));
+      expect(codes, isNot(contains('annual_bone_density_review')));
     });
 
-    test('Osteopenia family history triggers bone density review', () {
-      final bundle = _bundle(
-        id: 'bo2',
-        firstName: 'Famiglia',
-        lastName: 'Ossea',
-        birthDate: DateTime.utc(1970, 3, 10),
-        biologicalSex: 'female',
-        postmenopausal: true,
-        familyHistory: const [
-          FamilyHistoryItem(
-            id: 'fh-bo',
-            relation: 'Mother',
-            conditionName: 'Osteopenia',
-          ),
-        ],
-      );
-      final center = engine.build(bundle, generatedAt: refDate);
-      expect(
-        _codes(center.annualExams),
-        contains('annual_bone_density_review'),
-      );
-    });
+    test(
+      'Osteopenia family history triggers early bone density discussion',
+      () {
+        final bundle = _bundle(
+          id: 'bo2',
+          firstName: 'Famiglia',
+          lastName: 'Ossea',
+          birthDate: DateTime.utc(1970, 3, 10),
+          biologicalSex: 'female',
+          postmenopausal: true,
+          familyHistory: const [
+            FamilyHistoryItem(
+              id: 'fh-bo',
+              relation: 'Mother',
+              conditionName: 'Osteopenia',
+            ),
+          ],
+        );
+        final center = engine.build(bundle, generatedAt: refDate);
+        expect(_codes(center.annualExams), contains('early_dexa_discussion'));
+        expect(
+          _codes(center.annualExams),
+          isNot(contains('annual_bone_density_review')),
+        );
+      },
+    );
   });
 
   group('PreventionRecords in ProfileBundle', () {

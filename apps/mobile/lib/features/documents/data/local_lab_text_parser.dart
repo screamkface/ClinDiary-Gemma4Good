@@ -645,7 +645,7 @@ bool _looksLikeSectionBoundary(String loweredLine) {
     }
   }
   return _impressionMarkerPattern.hasMatch(loweredLine) &&
-      !_impressionLineMarker(loweredLine)!.isEmpty;
+      _impressionLineMarker(loweredLine)!.isNotEmpty;
 }
 
 String? _firstKeywordMatch(String text, List<String> keywords) {

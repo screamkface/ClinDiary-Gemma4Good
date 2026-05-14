@@ -6,6 +6,7 @@
 - Added a deterministic Prevention Center engine driven by age, sex, smoking history, pregnancy status, family history and active conditions, including yearly exam suggestions like cardiology, thyroid review and abdominal ultrasound.
 - Wired the Prevention Center screen to show a dedicated annual-exams section from the local engine output.
 - Fixed Android notification small icons so local reminders use a dedicated notification drawable instead of the launcher icon, which restores the app mark in the notification drawer.
+- Fixed a release build regression in the screenings screen by replacing the unsupported `Icons.folder_upload_outlined` with `Icons.upload_file_outlined` for the upload-referto action.
 - **flutter_gemma migration**: Sostituito il bridge Kotlin LiteRT-LM con `flutter_gemma 0.15.0`. Rimosso `OnDeviceGemmaRuntime.kt`, `OnDeviceEmbeddingRuntime.kt`, `AndroidModelDownloader.kt`, method channel `clindiary/on_device_ai`. Aggiunto speculative decoding (MTP), NPU backend, streaming, function calling per voice check-in, Gecko 110M auto-install per embeddings, thinking mode support. Refactored GemmaCenterScreen con streaming reale, pulsante stop, e sezione ragionamento collassabile. Semplificato bootstrap e notifiche download. Rimosse dipendenze Gradle `litertlm-android` e `tasks-text`.
 - Fixed the vaccination add/edit flow crash when dismissing the form with back by moving it to a dedicated bottom sheet that owns its controllers safely.
 - Added a regression test for closing the vaccine form with back.
@@ -51,10 +52,14 @@
 - Added risk token lists for colon high-risk, breast high-risk, AAA, and bone-risk medications.
 - Documented the full ruleset in `docs/prevention_center_rules.md`.
 - Added 42 unit tests covering backward compatibility, cancer screenings, AAA, lung LDCT, STI risk, pregnancy, family history, edge cases (null birthDate, null sex, empty bundle), vaccines, cardiovascular/metabolic, bone health, fall risk, dedup, infectious disease, regional policy, breast high risk, and medication review.
+- Imported the conservative LLM Prevention Center patch from `clindiary_patch_files/` into the current engine without downgrading the richer regional policy already in the app.
+- Tightened prevention safety rules: dTpa is adult-only, pneumococcal review now covers chronic-risk adults, LDCT requires complete age/pack-year/current-or-recent-smoking eligibility, incomplete smoking exposure only creates a data-review item, AAA/high-risk cancer family-history logic now uses first-degree relatives, and folic-acid copy avoids dosage/prescription language.
+- Removed duplicate early bone-density output by preferring `early_dexa_discussion` over the legacy annual bone-density item when postmenopause and fragility risk are both present.
+- Re-verified the imported Prevention Center patch with `flutter test test/prevention_center/prevention_center_engine_test.dart`, `flutter test test/home/prevention_dossier_screens_test.dart` and `flutter analyze`.
 
 ### Still Missing — Prevention Center
 
-- Wire `PreventionRecord` into `ProfileBundle` to enable `_hasRecentRecord()` and `_hasEverRecord()` helpers that suppress completed items.
+- Continue wiring real UI/storage flows for `PreventionRecord` completion history beyond the current model-level suppression support.
 - Add structured fields for `lastMammogramDate`, `lastPapDate`, `lastColonoscopyDate` to enable "next due" calculations.
 - Add `hysterectomy` / `cervixPresent` flag to avoid cervical screening after hysterectomy.
 - Add `gestationalAge` / `dueDate` for pregnancy-specific timing rules.

@@ -851,7 +851,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                               children: [
                                 Radio<PreferredBackend>(
                                   value: backend,
+                                  // ignore: deprecated_member_use
                                   groupValue: selectedBackend,
+                                  // ignore: deprecated_member_use
                                   onChanged: (value) {
                                     if (value == null) return;
                                     setSheetState(

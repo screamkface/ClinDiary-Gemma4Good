@@ -18,6 +18,9 @@ class HomeScreen extends ConsumerWidget {
     final alertsAsync = ref.watch(alertsProvider);
     final unreadNotificationsAsync = ref.watch(unreadNotificationsProvider);
     final pendingMedicationsAsync = ref.watch(pendingMedicationDosesProvider);
+    final preventionRecommendedAsync = ref.watch(
+      hasPreventionRecommendedProvider,
+    );
     final profileAsync = ref.watch(profileBundleProvider);
     final activeProfileIdAsync = ref.watch(activeProfileIdProvider);
     final l10n = AppLocalizations.of(context);
@@ -27,6 +30,8 @@ class HomeScreen extends ConsumerWidget {
         unreadNotificationsAsync.asData?.value ?? false;
     final hasPendingMedications =
         pendingMedicationsAsync.asData?.value ?? false;
+    final hasPreventionRecommended =
+        preventionRecommendedAsync.asData?.value ?? false;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -199,6 +204,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _FriendlyShortcutSection(
             hasPendingMedications: hasPendingMedications,
+            hasPreventionRecommended: hasPreventionRecommended,
           ),
         ],
       ),
@@ -353,9 +359,13 @@ class _HomeProfileChooser extends StatelessWidget {
 }
 
 class _FriendlyShortcutSection extends StatelessWidget {
-  const _FriendlyShortcutSection({required this.hasPendingMedications});
+  const _FriendlyShortcutSection({
+    required this.hasPendingMedications,
+    required this.hasPreventionRecommended,
+  });
 
   final bool hasPendingMedications;
+  final bool hasPreventionRecommended;
 
   @override
   Widget build(BuildContext context) {
@@ -382,6 +392,8 @@ class _FriendlyShortcutSection extends StatelessWidget {
         icon: Icons.health_and_safety_rounded,
         color: const Color(0xFFF4A62A),
         route: '/app/home/prevention-center',
+        showBadge: hasPreventionRecommended,
+        badgeKey: const ValueKey('home-prevention-badge'),
       ),
       _FriendlyShortcut(
         title: 'History',

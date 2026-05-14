@@ -1,0 +1,289 @@
+--- prevention_center_engine.dart
++++ prevention_center_engine_reviewed.dart
+@@ -743,8 +743,8 @@
+       );
+     }
+ 
+-    // dTpa booster — check vaccination dates if available
+-    {
++    // dTpa booster — adult review; keep as review unless an old record is known.
++    if (age != null && age >= 18) {
+       final dtpaStatus = _dtpaStatus(bundle, referenceDate);
+       add(
+         _item(
+@@ -769,8 +769,8 @@
+       );
+     }
+ 
+-    // Pneumococcal — age 65+ or chronic risk conditions
+-    if (age != null && age >= 65) {
++    // Pneumococcal — age 65+ or chronic risk conditions.
++    if (age != null && age >= 18) {
+       final hasChronicRisk =
+           _containsAnyCondition(bundle, const [
+             'diabetes',
+@@ -787,24 +787,26 @@
+             'sickle cell',
+           ]) ||
+           _hasCardiometabolicRisk(bundle);
+-      add(
+-        _item(
+-          code: 'pneumococcal_vaccine_review',
+-          title: 'Pneumococcal vaccine review',
+-          subtitle: null,
+-          reason: hasChronicRisk
+-              ? 'Age 65+ with chronic conditions increases pneumococcal risk'
+-              : 'Age 65+ is a common pneumococcal vaccination threshold',
+-          actionHint: 'Discuss the appropriate schedule with your clinician',
+-          cadenceLabel: 'According to schedule',
+-          status: 'review',
+-          priority: hasChronicRisk ? 'high' : 'normal',
+-          category: 'vaccines',
+-          kind: 'vaccine',
+-          sourceType: 'profile',
+-          sourceId: bundle.profile.id,
+-        ),
+-      );
++      if (age >= 65 || hasChronicRisk) {
++        add(
++          _item(
++            code: 'pneumococcal_vaccine_review',
++            title: 'Pneumococcal vaccine review',
++            subtitle: null,
++            reason: hasChronicRisk
++                ? 'Chronic conditions can support a pneumococcal vaccine review'
++                : 'Age 65+ is a common pneumococcal vaccination threshold',
++            actionHint: 'Discuss the appropriate schedule with your clinician',
++            cadenceLabel: 'According to schedule',
++            status: 'review',
++            priority: hasChronicRisk ? 'high' : 'normal',
++            category: 'vaccines',
++            kind: 'vaccine',
++            sourceType: 'profile',
++            sourceId: bundle.profile.id,
++          ),
++        );
++      }
+     }
+ 
+     // Herpes Zoster
+@@ -922,19 +924,19 @@
+     add(
+       _item(
+         code: 'preconception_folic_acid',
+-        title: 'Folic acid supplementation',
++        title: 'Folic acid prevention discussion',
+         subtitle: null,
+         reason: bundle.profile.takingFolicAcid
+-            ? 'Folic acid already recorded in the profile'
+-            : 'Folic acid is commonly recommended before and during early pregnancy',
++            ? 'Folic acid is already recorded in the profile'
++            : 'Folic acid is commonly reviewed before and during early pregnancy',
+         actionHint: bundle.profile.takingFolicAcid
+-            ? 'Confirm the current dosage is appropriate'
+-            : 'Discuss folic acid timing and dosage with your clinician',
+-        cadenceLabel: 'Daily during recommended period',
+-        status: 'recommended',
+-        priority: 'high',
++            ? 'Confirm the plan with your clinician'
++            : 'Discuss timing with your clinician',
++        cadenceLabel: 'At pregnancy/preconception review',
++        status: 'review',
++        priority: 'normal',
+         category: 'maternal_health',
+-        kind: 'supplement',
++        kind: 'shared_decision',
+         sourceType: 'profile',
+         sourceId: bundle.profile.id,
+       ),
+@@ -1320,57 +1322,59 @@
+ 
+     final profile = bundle.profile;
+     final items = <PreventionRecommendationItem>[];
+-
+-    if (age >= policy.lungLdctStartAge && age <= policy.lungLdctEndAge) {
+-      final isCurrentSmoker = profile.smoker;
+-      final isFormerSmoker = profile.formerSmoker;
+-      final hasPackYearRisk = _hasSmokingPackYearRisk(bundle);
+-      final quitWithinWindow = _quitSmokingWithinYears(
+-        bundle,
+-        15,
+-        referenceDate,
+-      );
+-
+-      if (hasPackYearRisk &&
+-          (isCurrentSmoker || (isFormerSmoker && quitWithinWindow))) {
+-        items.add(
+-          _item(
+-            code: 'lung_ldct_screening',
+-            title: 'Low-dose CT lung screening discussion',
+-            subtitle: null,
+-            reason:
+-                'Smoking history and age meet common LDCT screening eligibility criteria',
+-            actionHint:
+-                'Discuss benefits and harms of annual LDCT screening with your clinician',
+-            cadenceLabel: 'Yearly',
+-            status: 'recommended',
+-            priority: 'high',
+-            category: 'cancer_screening',
+-            kind: 'screening',
+-            sourceType: 'profile',
+-            sourceId: bundle.profile.id,
+-          ),
+-        );
+-      } else if (isCurrentSmoker || isFormerSmoker) {
+-        items.add(
+-          _item(
+-            code: 'lung_risk_data_review',
+-            title: 'Lung cancer risk — data review',
+-            subtitle: null,
+-            reason:
+-                'Smoking history is recorded but pack-year data is incomplete for precise risk assessment',
+-            actionHint:
+-                'Ask your clinician whether a full smoking history and pack-year calculation should be recorded',
+-            cadenceLabel: 'At next visit',
+-            status: 'review',
+-            priority: 'normal',
+-            category: 'cancer_screening',
+-            kind: 'screening',
+-            sourceType: 'profile',
+-            sourceId: bundle.profile.id,
+-          ),
+-        );
+-      }
++    final inAgeRange =
++        age >= policy.lungLdctStartAge && age <= policy.lungLdctEndAge;
++    if (!inAgeRange || (!profile.smoker && !profile.formerSmoker)) {
++      return items;
++    }
++
++    final hasPackYearRisk = _hasSmokingPackYearRisk(bundle);
++    final hasPackYearData = profile.smokingPackYears != null;
++    final hasQuitData = !profile.formerSmoker || profile.yearsSinceQuitting != null;
++    final quitWithinWindow = _quitSmokingWithinYears(
++      bundle,
++      15,
++      referenceDate,
++    );
++
++    if (hasPackYearRisk && (profile.smoker || quitWithinWindow)) {
++      items.add(
++        _item(
++          code: 'lung_ldct_screening',
++          title: 'Low-dose CT lung screening discussion',
++          subtitle: null,
++          reason:
++              'Smoking history and age match common LDCT screening eligibility criteria',
++          actionHint:
++              'Discuss benefits and harms of annual LDCT screening with your clinician',
++          cadenceLabel: 'Yearly',
++          status: 'recommended',
++          priority: 'high',
++          category: 'cancer_screening',
++          kind: 'screening',
++          sourceType: 'profile',
++          sourceId: bundle.profile.id,
++        ),
++      );
++    } else if (!hasPackYearData || !hasQuitData) {
++      items.add(
++        _item(
++          code: 'lung_risk_data_review',
++          title: 'Lung cancer risk — data review',
++          subtitle: null,
++          reason:
++              'Smoking history is recorded but exposure details are incomplete for precise risk assessment',
++          actionHint:
++              'Ask your clinician whether pack-years and quit date should be recorded',
++          cadenceLabel: 'At next visit',
++          status: 'review',
++          priority: 'normal',
++          category: 'cancer_screening',
++          kind: 'screening',
++          sourceType: 'profile',
++          sourceId: bundle.profile.id,
++        ),
++      );
+     }
+ 
+     return items;
+@@ -1414,7 +1418,7 @@
+     } else if (isMale &&
+         age >= policy.aaaStartAge &&
+         age <= policy.aaaEndAge &&
+-        _containsAnyFamilyHistory(bundle.familyHistory, _aaaRiskTokens)) {
++        _hasFirstDegreeFamilyHistory(bundle, _aaaRiskTokens)) {
+       items.add(
+         _item(
+           code: 'aaa_family_history_discussion',
+@@ -1450,7 +1454,8 @@
+     if (isFemale &&
+         age != null &&
+         age < 65 &&
+-        (bundle.profile.postmenopausal || _hasFragilityRisk(bundle))) {
++        (bundle.profile.postmenopausal || _hasFragilityRisk(bundle)) &&
++        !(bundle.profile.postmenopausal && _hasFragilityRisk(bundle))) {
+       items.add(
+         _item(
+           code: 'annual_bone_density_review',
+@@ -1753,8 +1758,7 @@
+           'vascular',
+           'myocardial',
+           'coronary',
+-        ]) ||
+-        _containsAnyCondition(bundle, _pulmonaryRiskTokens);
++        ]);
+   }
+ 
+   bool _hasThyroidRisk(ProfileBundle bundle) {
+@@ -1823,16 +1827,16 @@
+ 
+   bool _hasColorectalHighRisk(ProfileBundle bundle) {
+     return _containsAnyCondition(bundle, _colonHighRiskTokens) ||
+-        _containsAnyFamilyHistory(bundle.familyHistory, _colonHighRiskTokens);
++        _hasFirstDegreeFamilyHistory(bundle, _colonHighRiskTokens);
+   }
+ 
+   bool _hasBreastHighRisk(ProfileBundle bundle) {
+     return _containsAnyCondition(bundle, _breastHighRiskTokens) ||
+-        _containsAnyFamilyHistory(bundle.familyHistory, _breastHighRiskTokens);
++        _hasFirstDegreeFamilyHistory(bundle, _breastHighRiskTokens);
+   }
+ 
+   bool _hasFamilyHistoryProstateRisk(ProfileBundle bundle) {
+-    return _containsAnyFamilyHistory(bundle.familyHistory, const [
++    return _hasFirstDegreeFamilyHistory(bundle, const [
+       'prostate',
+       'prostate cancer',
+     ]);
+@@ -1936,6 +1940,16 @@
+       'diabetes_hba1c_screening': 1,
+       'annual_sti_screening_discussion': 1,
+       'sti_screening_discussion': 1,
++      'lung_risk_data_review': 1,
++      'aaa_family_history_discussion': 100,
++      'male_bone_density_discussion': 2,
++      'diabetes_risk_discussion': 1,
++      'young_woman_sti_screening': 1,
++      'breast_high_risk_screening_discussion': 1,
++      'skin_check_discussion': 1,
++      'preconception_folic_acid': 1,
++      'pregnancy_medication_review': 1,
++      'pregnancy_vaccine_planning': 1,
+     };
+     final years = cadences[code];
+     if (years == null) return const Duration(days: 365 * 100);
+@@ -1953,6 +1967,13 @@
+       'child',
+       'son',
+       'daughter',
++      'padre',
++      'madre',
++      'genitore',
++      'fratello',
++      'sorella',
++      'figlio',
++      'figlia',
+     ];
+     for (final item in bundle.familyHistory) {
+       final relation = item.relation.toLowerCase().trim();

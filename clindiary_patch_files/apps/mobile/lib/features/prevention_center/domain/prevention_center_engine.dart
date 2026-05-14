@@ -1322,7 +1322,6 @@ class PreventionCenterEngine {
 
     final profile = bundle.profile;
     final items = <PreventionRecommendationItem>[];
-
     final inAgeRange =
         age >= policy.lungLdctStartAge && age <= policy.lungLdctEndAge;
     if (!inAgeRange || (!profile.smoker && !profile.formerSmoker)) {
@@ -1331,9 +1330,12 @@ class PreventionCenterEngine {
 
     final hasPackYearRisk = _hasSmokingPackYearRisk(bundle);
     final hasPackYearData = profile.smokingPackYears != null;
-    final hasQuitData =
-        !profile.formerSmoker || profile.yearsSinceQuitting != null;
-    final quitWithinWindow = _quitSmokingWithinYears(bundle, 15, referenceDate);
+    final hasQuitData = !profile.formerSmoker || profile.yearsSinceQuitting != null;
+    final quitWithinWindow = _quitSmokingWithinYears(
+      bundle,
+      15,
+      referenceDate,
+    );
 
     if (hasPackYearRisk && (profile.smoker || quitWithinWindow)) {
       items.add(
@@ -1883,6 +1885,10 @@ class PreventionCenterEngine {
     return false;
   }
 
+  bool _hasEverRecord(ProfileBundle bundle, List<String> codes) {
+    return bundle.preventionRecords.any((r) => codes.any((c) => r.code == c));
+  }
+
   bool _isSuppressedByRecord(
     ProfileBundle bundle,
     String code,
@@ -2284,6 +2290,14 @@ class PreventionCenterEngine {
     'aortic',
     'abdominal aortic aneurysm',
     'aaa',
+  ];
+
+  static const _pulmonaryRiskTokens = [
+    'copd',
+    'emphysema',
+    'chronic bronchitis',
+    'pulmonary',
+    'lung disease',
   ];
 }
 
