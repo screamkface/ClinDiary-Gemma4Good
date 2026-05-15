@@ -189,6 +189,10 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
     context.push(uri.toString());
   }
 
+  void _openManualReview() {
+    context.push('/app/documents/${widget.documentId}/review');
+  }
+
   Future<void> _moveDocument(ClinicalDocumentDetail detail) async {
     final l10n = AppLocalizations.of(context);
     final folders = await ref.read(documentFoldersProvider.future);
@@ -431,6 +435,8 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
               detail.isCloud && hasCloudStorageAccess;
           final isReadOnlyCloudDocument =
               detail.isCloud && !hasCloudStorageAccess;
+          final canEditStructuredResults =
+              !isReadOnlyCloudDocument && detail.canOpenManualReview;
           final canAskGemmaAboutDocument =
               detail.ocrText != null && detail.ocrText!.trim().isNotEmpty ||
               detail.labPanels.isNotEmpty ||
@@ -660,9 +666,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                                 !canManageCloudDocument ||
                                     !detail.canOpenManualReview
                                 ? null
-                                : () => context.push(
-                                    '/app/documents/${widget.documentId}/review',
-                                  ),
+                                : _openManualReview,
                             icon: const Icon(Icons.edit_note_outlined),
                             label: Text(l10n.documentsManualReview),
                           ),
@@ -699,9 +703,7 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           OutlinedButton.icon(
                             onPressed: !detail.canOpenManualReview
                                 ? null
-                                : () => context.push(
-                                    '/app/documents/${widget.documentId}/review',
-                                  ),
+                                : _openManualReview,
                             icon: const Icon(Icons.edit_note_outlined),
                             label: Text(l10n.documentsManualReview),
                           ),
@@ -738,6 +740,45 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (detail.labPanels.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SectionCard(
+                  title: l10n.documentsLabResults,
+                  action: canEditStructuredResults
+                      ? TextButton.icon(
+                          onPressed: _openManualReview,
+                          icon: const Icon(Icons.edit_note_outlined),
+                          label: Text(l10n.documentsEditResults),
+                        )
+                      : null,
+                  child: Column(
+                    children: detail.labPanels
+                        .map(
+                          (panel) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _LabPanelView(panel: panel),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+              if (detail.imagingReports.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SectionCard(
+                  title: l10n.documentsImagingReport,
+                  child: Column(
+                    children: detail.imagingReports
+                        .map(
+                          (report) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _ImagingReportView(report: report),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
               if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
                 SectionCard(
                   title: l10n.documentsExtractedText,
@@ -775,38 +816,6 @@ class _DocumentDetailScreenState extends ConsumerState<DocumentDetailScreen> {
                           l10n.documentsTheExtractedTextStaysHiddenUntilView,
                         ),
                 ),
-              if (detail.labPanels.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                SectionCard(
-                  title: l10n.documentsLabResults,
-                  child: Column(
-                    children: detail.labPanels
-                        .map(
-                          (panel) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _LabPanelView(panel: panel),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ],
-              if (detail.imagingReports.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                SectionCard(
-                  title: l10n.documentsImagingReport,
-                  child: Column(
-                    children: detail.imagingReports
-                        .map(
-                          (report) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _ImagingReportView(report: report),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ],
             ],
           );
         },

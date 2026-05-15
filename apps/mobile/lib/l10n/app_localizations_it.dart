@@ -1398,6 +1398,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get documentsLabResults2 => 'Lab results';
 
   @override
+  String get documentsEditResults => 'Modifica risultati';
+
+  @override
   String get documentsMainArchive => 'Main archive';
 
   @override

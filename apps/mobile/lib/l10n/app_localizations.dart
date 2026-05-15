@@ -2708,6 +2708,12 @@ abstract class AppLocalizations {
   /// **'Lab results'**
   String get documentsLabResults2;
 
+  /// User-facing UI text (lib/features/documents/presentation/document_detail_screen.dart:782)
+  ///
+  /// In en, this message translates to:
+  /// **'Edit results'**
+  String get documentsEditResults;
+
   /// Title text (lib/features/documents/presentation/document_detail_screen.dart:219)
   ///
   /// In en, this message translates to:

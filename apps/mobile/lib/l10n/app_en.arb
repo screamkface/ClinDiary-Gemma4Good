@@ -1689,6 +1689,10 @@
   "@documentsLabResults2": {
     "description": "Title text (lib/features/documents/presentation/document_review_screen.dart:314)"
   },
+  "documentsEditResults": "Edit results",
+  "@documentsEditResults": {
+    "description": "User-facing UI text (lib/features/documents/presentation/document_detail_screen.dart:782)"
+  },
   "documentsMainArchive": "Main archive",
   "@documentsMainArchive": {
     "description": "Title text (lib/features/documents/presentation/document_detail_screen.dart:219)"

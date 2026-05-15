@@ -39,6 +39,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
   String _documentType = 'generic_document';
   bool _hydrated = false;
   bool _seededFromParsedText = false;
+  bool _showOcrEditor = false;
   bool _saving = false;
 
   @override
@@ -69,7 +70,16 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
         ? ''
         : detail.examDate!.toIso8601String().split('T').first;
     _ocrTextController.text = detail.ocrText ?? '';
-    _documentType = detail.documentType;
+    _showOcrEditor = _ocrTextController.text.trim().isEmpty;
+    _documentType = detail.labPanels.isNotEmpty
+        ? 'lab_report'
+        : detail.imagingReports.isNotEmpty
+        ? 'imaging_report'
+        : _localLabTextParser.inferDocumentType(
+            documentType: detail.documentType,
+            title: detail.title,
+            text: detail.ocrText,
+          );
 
     if (detail.labPanels.isNotEmpty) {
       final panel = detail.labPanels.first;
@@ -105,10 +115,9 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
       return;
     }
     final needsLabSeed =
-        detail.documentType == 'lab_report' && detail.labPanels.isEmpty;
+        _documentType == 'lab_report' && detail.labPanels.isEmpty;
     final needsImagingSeed =
-        detail.documentType == 'imaging_report' &&
-        detail.imagingReports.isEmpty;
+        _documentType == 'imaging_report' && detail.imagingReports.isEmpty;
     if (!needsLabSeed && !needsImagingSeed) {
       return;
     }
@@ -117,7 +126,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final parsed = await _localLabTextParser.parse(
         documentId: detail.id,
-        documentType: detail.documentType,
+        documentType: _documentType,
         title: detail.title,
         examDateIso: detail.examDate?.toIso8601String(),
         text: detail.ocrText!,
@@ -126,8 +135,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
         return;
       }
       setState(() {
-        if (detail.documentType == 'lab_report' &&
-            parsed.labPanels.isNotEmpty) {
+        if (_documentType == 'lab_report' && parsed.labPanels.isNotEmpty) {
           final panel = parsed.labPanels.first;
           if (_panelNameController.text.trim().isEmpty) {
             _panelNameController.text = panel.panelName;
@@ -148,7 +156,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
           }
         }
 
-        if (detail.documentType == 'imaging_report' &&
+        if (_documentType == 'imaging_report' &&
             parsed.imagingReports.isNotEmpty) {
           final report = parsed.imagingReports.first;
           if (_imagingExamTypeController.text.trim().isEmpty) {
@@ -357,22 +365,16 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
                           labelText: l10n.documentsSource,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _ocrTextController,
-                        minLines: 6,
-                        maxLines: 12,
-                        decoration: InputDecoration(
-                          labelText: l10n.documentsCorrectedOrAddedText,
-                          alignLabelWithHint: true,
-                        ),
-                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 if (_documentType == 'lab_report') _buildLabReviewSection(),
                 if (_documentType == 'imaging_report') _buildImagingSection(),
+                if (_documentType == 'lab_report' ||
+                    _documentType == 'imaging_report')
+                  const SizedBox(height: 16),
+                _buildExtractedTextSection(),
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: _saving ? null : _submit,
@@ -390,6 +392,38 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text(error.toString())),
       ),
+    );
+  }
+
+  Widget _buildExtractedTextSection() {
+    final l10n = _documentsL10nOf(context);
+    return SectionCard(
+      title: l10n.documentsExtractedText,
+      subtitle: _showOcrEditor
+          ? l10n.documentsOcrTextForTheDocument
+          : l10n.documentsAvailableOnDemand,
+      action: TextButton.icon(
+        onPressed: () => setState(() => _showOcrEditor = !_showOcrEditor),
+        icon: Icon(
+          _showOcrEditor
+              ? Icons.visibility_off_outlined
+              : Icons.visibility_outlined,
+        ),
+        label: Text(
+          _showOcrEditor ? l10n.documentsHideText : l10n.documentsShowText,
+        ),
+      ),
+      child: _showOcrEditor
+          ? TextFormField(
+              controller: _ocrTextController,
+              minLines: 6,
+              maxLines: 12,
+              decoration: InputDecoration(
+                labelText: l10n.documentsCorrectedOrAddedText,
+                alignLabelWithHint: true,
+              ),
+            )
+          : Text(l10n.documentsTheExtractedTextStaysHiddenUntilView),
     );
   }
 

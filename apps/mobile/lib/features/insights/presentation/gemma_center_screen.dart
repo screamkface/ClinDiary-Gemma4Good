@@ -54,6 +54,9 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
   String _preVisitStreamBuffer = '';
   bool _chatAutoSnapEnabled = true;
 
+  static const _emptyGemmaResponseError =
+      'The on-device model returned an empty response. Open AI Settings and try CPU/GPU again.';
+
   @override
   void initState() {
     super.initState();
@@ -208,12 +211,10 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     _questionStreamSub = stream.listen(
       (token) {
         if (!mounted) return;
-        if (token.startsWith('[thinking]')) {
-          thinkingContent += token.replaceFirst('[thinking]', '');
-          return;
-        }
-        if (token.endsWith('[/thinking]')) {
-          thinkingContent += token.replaceFirst('[/thinking]', '');
+        if (token.contains('[thinking]') || token.contains('[/thinking]')) {
+          thinkingContent += token
+              .replaceAll('[thinking]', '')
+              .replaceAll('[/thinking]', '');
           return;
         }
         fullAnswer += token;
@@ -225,11 +226,30 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       },
       onDone: () async {
         if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        final trimmedAnswer = fullAnswer.trim();
+        if (trimmedAnswer.isEmpty) {
+          setState(() {
+            _questionError = _emptyGemmaResponseError;
+            _replaceLastAssistantMessage(
+              l10n.insightsCouldNotAnswerThisTime(_questionError!),
+              isStreaming: false,
+              thinking: thinkingContent.trim().isEmpty
+                  ? null
+                  : thinkingContent.trim(),
+            );
+            _isAskingQuestion = false;
+            _questionGenerationStartedAt = null;
+          });
+          _scrollChatToBottom();
+          return;
+        }
         setState(() {
           _replaceLastAssistantMessage(
-            fullAnswer,
+            trimmedAnswer,
             isStreaming: false,
-            thinking: thinkingContent.isEmpty ? null : thinkingContent,
+            thinking: thinkingContent.trim().isEmpty
+                ? null
+                : thinkingContent.trim(),
           );
           _isAskingQuestion = false;
           _questionGenerationStartedAt = null;
@@ -237,7 +257,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         await _recordHistoryEntry(
           GemmaCenterHistoryEntry.question(
             question: question,
-            response: fullAnswer,
+            response: trimmedAnswer,
             referenceDate: _referenceDate,
             languageCode: languageCode,
             documentId: widget.documentId,
@@ -256,8 +276,32 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
           _isAskingQuestion = false;
           _questionGenerationStartedAt = null;
         });
+        _scrollChatToBottom();
       },
     );
+  }
+
+  void _cancelQuestionGeneration() {
+    _questionStreamSub?.cancel();
+    _questionStreamSub = null;
+    setState(() {
+      final messages = [..._chatMessages];
+      final lastAssistantIndex = messages.lastIndexWhere(
+        (message) => !message.isUser,
+      );
+      if (lastAssistantIndex != -1 &&
+          messages[lastAssistantIndex].text.trim().isEmpty) {
+        messages.removeAt(lastAssistantIndex);
+        _chatMessages = messages;
+      } else if (lastAssistantIndex != -1) {
+        _replaceLastAssistantMessage(
+          messages[lastAssistantIndex].text,
+          isStreaming: false,
+        );
+      }
+      _isAskingQuestion = false;
+      _questionGenerationStartedAt = null;
+    });
   }
 
   void _replaceLastAssistantMessage(
@@ -329,14 +373,23 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       },
       onDone: () async {
         if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        final trendResult = _trendStreamBuffer.trim();
+        if (trendResult.isEmpty) {
+          setState(() {
+            _trendError = _emptyGemmaResponseError;
+            _isGeneratingTrend = false;
+            _trendGenerationStartedAt = null;
+          });
+          return;
+        }
         setState(() {
-          _trendResult = _trendStreamBuffer;
+          _trendResult = trendResult;
           _isGeneratingTrend = false;
           _trendGenerationStartedAt = null;
         });
         await _recordHistoryEntry(
           GemmaCenterHistoryEntry.trend(
-            response: _trendStreamBuffer,
+            response: trendResult,
             referenceDate: _referenceDate,
             languageCode: languageCode,
           ),
@@ -380,14 +433,23 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       },
       onDone: () async {
         if (!mounted || profileScopeAtStart != _observedActiveProfileId) return;
+        final preVisitResult = _preVisitStreamBuffer.trim();
+        if (preVisitResult.isEmpty) {
+          setState(() {
+            _preVisitError = _emptyGemmaResponseError;
+            _isGeneratingPreVisit = false;
+            _preVisitGenerationStartedAt = null;
+          });
+          return;
+        }
         setState(() {
-          _preVisitResult = _preVisitStreamBuffer;
+          _preVisitResult = preVisitResult;
           _isGeneratingPreVisit = false;
           _preVisitGenerationStartedAt = null;
         });
         await _recordHistoryEntry(
           GemmaCenterHistoryEntry.preVisit(
-            response: _preVisitStreamBuffer,
+            response: preVisitResult,
             referenceDate: _referenceDate,
             languageCode: languageCode,
           ),
@@ -416,6 +478,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
     final chatHeight = _snappedChatHeight(context);
+    final showSuggestions = _chatMessages.isEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -497,27 +560,29 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                     ),
             ),
           ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: questionSuggestions
-                  .map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ActionChip(
-                        label: Text(item),
-                        onPressed: _isAskingQuestion
-                            ? null
-                            : () => setState(
-                                () => _questionController.text = item,
-                              ),
+          if (showSuggestions) ...[
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: questionSuggestions
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ActionChip(
+                          label: Text(item),
+                          onPressed: _isAskingQuestion
+                              ? null
+                              : () => setState(
+                                  () => _questionController.text = item,
+                                ),
+                        ),
                       ),
-                    ),
-                  )
-                  .toList(),
+                    )
+                    .toList(),
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -537,18 +602,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
               const SizedBox(width: 10),
               FilledButton(
                 onPressed: _isAskingQuestion
-                    ? () {
-                        _questionStreamSub?.cancel();
-                        _questionStreamSub = null;
-                        setState(() {
-                          _replaceLastAssistantMessage(
-                            _chatMessages.lastWhere((m) => !m.isUser).text,
-                            isStreaming: false,
-                          );
-                          _isAskingQuestion = false;
-                          _questionGenerationStartedAt = null;
-                        });
-                      }
+                    ? _cancelQuestionGeneration
                     : _askQuestion,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.all(16),
@@ -585,9 +639,12 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         kToolbarHeight -
         40 -
         32;
+    final compactHeight = media.size.height < 760;
     final compactWidth = media.size.width < 380;
-    final fixedChrome = compactWidth ? 280.0 : 252.0;
-    return (pageHeight - fixedChrome).clamp(170.0, 360.0);
+    final heightFactor = compactHeight ? 0.28 : 0.36;
+    final minHeight = compactHeight ? 150.0 : 180.0;
+    final maxHeight = compactWidth ? 240.0 : 320.0;
+    return (pageHeight * heightFactor).clamp(minHeight, maxHeight);
   }
 
   Widget _buildTrendSection() {
@@ -780,6 +837,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     var selectedBackend = service.preferredBackend;
     var speculativeEnabled = service.enableSpeculativeDecoding;
+    var isCheckingNpu = false;
 
     await showModalBottomSheet(
       context: context,
@@ -904,44 +962,95 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                       horizontal: 8,
                       vertical: 4,
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          service.npuAvailable == true
-                              ? Icons.check_circle
-                              : Icons.hourglass_empty,
-                          size: 20,
-                          color: service.npuAvailable == true
-                              ? Colors.green
-                              : colorScheme.onSurfaceVariant,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(
+                                isCheckingNpu
+                                    ? Icons.hourglass_top_rounded
+                                    : service.npuAvailable == true
+                                    ? Icons.check_circle
+                                    : Icons.info_outline_rounded,
+                                size: 20,
+                                color: isCheckingNpu
+                                    ? colorScheme.primary
+                                    : service.npuAvailable == true
+                                    ? Colors.green
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _npuStatusTitle(
+                                      npuAvailable: service.npuAvailable,
+                                      isChecking: isCheckingNpu,
+                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _npuStatusSubtitle(
+                                      npuAvailable: service.npuAvailable,
+                                      isChecking: isCheckingNpu,
+                                    ),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: isCheckingNpu
+                                  ? null
+                                  : () async {
+                                      setSheetState(() => isCheckingNpu = true);
+                                      final available = await service
+                                          .checkNpuAvailability();
+                                      if (!ctx.mounted) {
+                                        return;
+                                      }
+                                      setSheetState(
+                                        () => isCheckingNpu = false,
+                                      );
+                                      if (available) {
+                                        ScaffoldMessenger.of(ctx).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Gemma can use the NPU backend on this device.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                              child: Text(
+                                isCheckingNpu ? 'Checking...' : 'Test NPU',
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            service.npuAvailable == true
-                                ? 'NPU disponibile'
-                                : service.npuAvailable == false
-                                ? 'NPU non disponibile'
-                                : 'NPU — verifica disponibilità',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                        if (service.lastNpuCheckError?.trim().isNotEmpty ==
+                                true &&
+                            service.npuAvailable == false) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            service.lastNpuCheckError!,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colorScheme.error),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            setSheetState(() {});
-                            final available = await service
-                                .checkNpuAvailability();
-                            setSheetState(() {});
-                            if (available && ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(
-                                  content: Text('NPU disponibile!'),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Text('Test NPU'),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -986,6 +1095,38 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       PreferredBackend.gpu => 'GPU',
       PreferredBackend.npu => 'NPU',
     };
+  }
+
+  String _npuStatusTitle({
+    required bool? npuAvailable,
+    required bool isChecking,
+  }) {
+    if (isChecking) {
+      return 'Checking whether Gemma can open the NPU backend';
+    }
+    if (npuAvailable == true) {
+      return 'Gemma can use the NPU backend on this device';
+    }
+    if (npuAvailable == false) {
+      return 'Gemma cannot open the NPU backend on this device';
+    }
+    return 'NPU support has not been tested yet';
+  }
+
+  String _npuStatusSubtitle({
+    required bool? npuAvailable,
+    required bool isChecking,
+  }) {
+    if (isChecking) {
+      return 'This is a runtime compatibility test for Gemma (.litertlm), not just a hardware-chip check.';
+    }
+    if (npuAvailable == true) {
+      return 'This confirms the LiteRT-LM NPU backend opened successfully for the installed Gemma model.';
+    }
+    if (npuAvailable == false) {
+      return 'Your phone may still include an NPU. This test fails when the Gemma runtime cannot use the required Qualcomm / Tensor / MediaTek dispatch path.';
+    }
+    return 'Run this test to verify whether the installed Gemma model can use the LiteRT-LM NPU backend.';
   }
 
   Widget _buildHistorySection(
@@ -1191,39 +1332,48 @@ class _GemmaWelcomePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = _l10nOf(context);
     final colorScheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
         padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Icon(
-                Icons.chat_bubble_outline_rounded,
-                color: colorScheme.primary,
-              ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: constraints.maxHeight > 44
+                ? constraints.maxHeight - 44
+                : 0,
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.insightsAskOneQuestionAtATime,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.insightsGemmaWelcome,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              l10n.insightsAskOneQuestionAtATime,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l10n.insightsGemmaWelcome,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+          ),
         ),
       ),
     );

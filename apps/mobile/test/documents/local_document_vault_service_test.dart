@@ -2,10 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clindiary/app/core/storage/active_profile_store.dart';
+import 'package:clindiary/app/core/storage/local_database.dart';
+import 'package:clindiary/features/documents/data/documents_repository.dart';
 import 'package:clindiary/features/documents/data/local_lab_text_parser.dart';
 import 'package:clindiary/features/documents/data/local_document_vault_service.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_manual_review.dart';
+import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -515,6 +520,120 @@ void main() {
       expect(crp.abnormalFlag, isTrue);
     },
   );
+
+  test(
+    'local vault auto-promotes generic blood result uploads to structured labs',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'clindiary-local-vault-auto-lab-test',
+      );
+      addTearDown(() async {
+        if (await root.exists()) {
+          await root.delete(recursive: true);
+        }
+      });
+
+      const reportText =
+          'Esame Risultato Unita Valori di riferimento '
+          'Glicemia 109 mg/dL 70 - 100 '
+          'Colesterolo LDL 138 mg/dL < 115';
+
+      final vault = LocalDocumentVaultService(rootDirectory: root);
+      const userScopeId = 'user-auto-lab';
+      const profileScopeId = 'profile-auto-lab';
+
+      final uploaded = await vault.uploadDocumentForScope(
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+        file: SelectedUploadDocument(
+          name: 'blood-results.txt',
+          bytes: utf8.encode(reportText),
+          mimeType: 'text/plain',
+        ),
+        fields: const {'title': 'Uploaded blood results'},
+      );
+
+      final detail = await vault.fetchDocumentDetailForScope(
+        uploaded.id,
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+      );
+
+      expect(detail.documentType, 'lab_report');
+      expect(detail.parsedStatus, 'parsed');
+      expect(detail.labPanels, hasLength(1));
+      final ldl = detail.labPanels.single.results.firstWhere(
+        (item) => item.analyteName == 'Colesterolo LDL',
+      );
+      expect(ldl.abnormalFlag, isTrue);
+    },
+  );
+
+  test('document query streaming falls back when Gemma times out', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'clindiary-document-query-fallback-test',
+    );
+    addTearDown(() async {
+      if (await root.exists()) {
+        await root.delete(recursive: true);
+      }
+    });
+
+    final database = LocalDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    const userScopeId = 'user-query-fallback';
+    const profileScopeId = 'profile-query-fallback';
+    await database.putCache(key: activeUserIdCacheKey, payload: userScopeId);
+    await database.putCache(
+      key: activeProfileIdCacheKey,
+      payload: profileScopeId,
+    );
+
+    final vault = LocalDocumentVaultService(rootDirectory: root);
+    await vault.uploadDocumentForScope(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+      file: SelectedUploadDocument(
+        name: 'ldl-results.txt',
+        bytes: utf8.encode('Colesterolo LDL 138 mg/dL < 115'),
+        mimeType: 'text/plain',
+      ),
+      fields: const {'title': 'LDL follow-up', 'document_type': 'lab_report'},
+    );
+
+    final repository = DocumentsRepository(
+      localDatabase: database,
+      localVaultService: vault,
+      onDeviceAiService: _TimingOutAiService(),
+    );
+
+    final streamResult = await repository.queryDocumentsStream(
+      question: 'Which LDL values are out of range?',
+    );
+
+    final streamedAnswer = (await streamResult.answerStream.toList()).join();
+    final result = await streamResult.result;
+
+    expect(streamedAnswer, contains('LDL follow-up'));
+    expect(result.usedFallback, isTrue);
+    expect(result.citations, hasLength(1));
+    expect(result.answer, streamedAnswer);
+  });
+}
+
+class _TimingOutAiService extends OnDeviceAiService {
+  @override
+  Future<List<double>> generateEmbedding({required String text}) async {
+    return const [];
+  }
+
+  @override
+  Stream<String> generateTextStream({
+    required String systemPrompt,
+    required String userPrompt,
+  }) async* {
+    throw Exception('timed out');
+  }
 }
 
 class _SpyLabTextParser extends LocalLabTextParser {

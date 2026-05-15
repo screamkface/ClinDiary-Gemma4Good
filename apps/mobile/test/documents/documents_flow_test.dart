@@ -302,22 +302,13 @@ void main() {
       await tester.tap(find.text('Show technical details'));
       await tester.pumpAndSettle();
       expect(find.text('Sync pending'), findsOneWidget);
-      await tester.drag(find.byType(ListView), const Offset(0, -420));
-      await tester.pumpAndSettle();
-      expect(find.text('Extracted text'), findsOneWidget);
-      expect(find.text('Show text'), findsOneWidget);
-      expect(find.textContaining('Glucose 110 mg/dL 70-99'), findsNothing);
-      final showTextFinder = find.text('Show text').first;
-      await tester.ensureVisible(showTextFinder);
-      await tester.pumpAndSettle();
-      await tester.tap(showTextFinder, warnIfMissed: false);
-      await tester.pumpAndSettle();
-      expect(find.text('Hide text'), findsOneWidget);
-      await tester.drag(find.byType(ListView), const Offset(0, -420));
+      await tester.scrollUntilVisible(
+        find.text('Lab results'),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       expect(find.textContaining('Glucose'), findsWidgets);
-      await tester.drag(find.byType(ListView), const Offset(0, -240));
-      await tester.pumpAndSettle();
       final abnormalValueText = tester.widget<Text>(find.text('110 mg/dL'));
       final context = tester.element(find.text('110 mg/dL'));
       expect(find.text('Out of range'), findsOneWidget);
@@ -325,6 +316,19 @@ void main() {
         abnormalValueText.style?.color,
         equals(Theme.of(context).colorScheme.error),
       );
+      expect(find.text('Extracted text'), findsOneWidget);
+      expect(find.text('Show text'), findsOneWidget);
+      expect(find.textContaining('Glucose 110 mg/dL 70-99'), findsNothing);
+      final showTextFinder = find.text('Show text').first;
+      await tester.scrollUntilVisible(
+        showTextFinder,
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(showTextFinder, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Hide text'), findsOneWidget);
       expect(find.text('Old'), findsWidgets);
       expect(find.textContaining('not included in AI recaps'), findsOneWidget);
       expect(find.textContaining('changes waiting to sync'), findsOneWidget);
@@ -441,6 +445,80 @@ void main() {
   });
 
   testWidgets(
+    'document review screen prioritizes structured lab results over OCR text',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            documentDetailProvider.overrideWith(
+              (ref, documentId) async => ClinicalDocumentDetail(
+                id: documentId,
+                title: 'April lab report',
+                documentType: 'lab_report',
+                uploadDate: DateTime.utc(2026, 4, 2, 9),
+                examDate: DateTime.utc(2026, 4, 1),
+                source: 'Local lab',
+                originalFilename: 'lab-april.pdf',
+                mimeType: 'application/pdf',
+                fileSizeBytes: 64000,
+                parsedStatus: 'parsed',
+                contextStatus: 'active',
+                classificationConfidence: 0.91,
+                parsingConfidence: 0.84,
+                processingError: null,
+                pendingSync: false,
+                fileUrl: 'patients/demo/lab-april.pdf',
+                viewerUrl: '/api/v1/documents/doc-1/content?token=abc',
+                ocrText: 'Glucose 110 mg/dL 70-99',
+                processedAt: DateTime.utc(2026, 4, 2, 9, 5),
+                labPanels: const [
+                  LabPanelItem(
+                    id: 'panel-1',
+                    panelName: 'Blood tests',
+                    results: [
+                      LabResultItem(
+                        id: 'result-1',
+                        analyteName: 'Glucose',
+                        value: '110',
+                        unit: 'mg/dL',
+                        refMin: 70,
+                        refMax: 99,
+                        abnormalFlag: true,
+                      ),
+                    ],
+                  ),
+                ],
+                imagingReports: const [],
+              ),
+            ),
+          ],
+          child: _testApp(
+            home: const DocumentReviewScreen(documentId: 'doc-1'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lab results'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Show text'),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Show text'), findsOneWidget);
+      expect(find.text('Corrected or added text'), findsNothing);
+      expect(find.text('Glucose'), findsOneWidget);
+
+      await tester.tap(find.text('Show text'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hide text'), findsOneWidget);
+      expect(find.text('Corrected or added text'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'document upload screen selects file, uploads, and navigates to detail',
     (tester) async {
       final repository = MockDocumentsRepository();
@@ -462,7 +540,7 @@ void main() {
         (_) async => ClinicalDocumentSummary(
           id: 'doc-42',
           title: 'New report',
-          documentType: 'generic_document',
+          documentType: 'medical_certificate',
           uploadDate: DateTime.utc(2026, 3, 20, 10),
           originalFilename: 'new-report.pdf',
           mimeType: 'application/pdf',
@@ -670,7 +748,7 @@ void main() {
           processingError: null,
           fileUrl: 'patients/demo/scan.png',
           viewerUrl: '/api/v1/documents/doc-9/content?token=abc',
-          ocrText: 'Glucose 102 mg/dL 70-99',
+          ocrText: 'Clinical note text without structured lab values',
           processedAt: DateTime.utc(2026, 3, 20, 10, 10),
           labPanels: const [],
           imagingReports: const [],
@@ -685,7 +763,7 @@ void main() {
               (ref, documentId) async => ClinicalDocumentDetail(
                 id: documentId,
                 title: 'Scan to correct',
-                documentType: 'generic_document',
+                documentType: 'medical_certificate',
                 uploadDate: DateTime.utc(2026, 3, 20, 8),
                 examDate: DateTime.utc(2026, 3, 19),
                 source: 'Local lab',
@@ -698,7 +776,7 @@ void main() {
                 processingError: 'Manual corrections required',
                 fileUrl: 'patients/demo/scan.png',
                 viewerUrl: '/api/v1/documents/doc-9/content?token=abc',
-                ocrText: 'Glucose 102 mg/dL 70-99',
+                ocrText: 'Clinical note text without structured lab values',
                 processedAt: DateTime.utc(2026, 3, 20, 8, 30),
                 labPanels: const [],
                 imagingReports: const [],
@@ -721,13 +799,8 @@ void main() {
       final saveLabel = find.text('Save manual review');
       expect(saveLabel, findsOneWidget);
       await tester.ensureVisible(saveLabel);
-      final saveButton = find.ancestor(
-        of: saveLabel,
-        matching: find.byWidgetPredicate(
-          (widget) => widget is ButtonStyleButton,
-        ),
-      );
-      await tester.tap(saveButton, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      await tester.tap(saveLabel);
       await tester.pumpAndSettle();
 
       verify(() => repository.submitManualReview('doc-9', any())).called(1);

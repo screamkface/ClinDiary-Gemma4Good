@@ -290,12 +290,22 @@ class LocalDocumentVaultService {
     final examDate = _tryParseDate(fields['exam_date']);
     final explicitOcrText = _normalizeText(fields['ocr_text']);
     final inferredOcrText = await _inferTextPreview(file);
+    final requestedDocumentType =
+        _normalizeText(fields['document_type']) ?? 'generic_document';
+    final documentType = _labTextParser.inferDocumentType(
+      documentType: requestedDocumentType,
+      title: title,
+      text: [
+        file.name,
+        source,
+        explicitOcrText ?? inferredOcrText,
+      ].whereType<String>().join('\n'),
+    );
     final document = _StoredDocument(
       id: documentId,
       folderId: normalizedFolderId,
       title: title,
-      documentType:
-          _normalizeText(fields['document_type']) ?? 'generic_document',
+      documentType: documentType,
       uploadDateIso: DateTime.now().toUtc().toIso8601String(),
       examDateIso: examDate?.toIso8601String(),
       source: source,

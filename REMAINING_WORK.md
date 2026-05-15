@@ -3,6 +3,18 @@
 ## Current App Work
 
 ### Completed
+- Fixed the Gemma Center no-answer state shown as an empty assistant bubble: Gemma 4 chat inference now uses the plugin's intended thinking/topK/topP/temperature settings, serializes on-device generations, closes each chat session after use, stops/resets the runtime on timeout or cancellation, and unwraps `TextResponse` content instead of using debug `toString()` output.
+- Hardened Gemma Center UI streaming so empty model completions become a visible failure message, empty placeholders are not saved to history, and stopping before the first token removes the placeholder instead of leaving a blank bubble.
+- Added widget regression coverage for empty streamed Gemma answers and re-verified the shared Gemma/voice prompt paths.
+- Verified the Gemma inference fix with `flutter analyze`, `flutter analyze lib/features/insights/data/on_device_ai_service.dart lib/features/insights/presentation/gemma_center_screen.dart test/insights/gemma_center_screen_test.dart`, `flutter test test/insights/gemma_center_screen_test.dart test/insights/gemma_coach_service_test.dart`, `flutter test test/insights/gemma_center_screen_test.dart test/insights/gemma_coach_service_test.dart test/daily_journal/voice_check_in_assistant_test.dart test/phase3/on_device_prompt_builder_test.dart`, and `flutter build apk --debug`.
+- Clarified Gemma Center NPU detection: the app now reports whether the Gemma LiteRT-LM NPU backend is actually usable on the device/runtime, not whether the phone merely contains NPU hardware, and it surfaces the last backend probe error in AI settings.
+- Hardened Gemma Center local inference startup: on-device generation now re-arms the active `flutter_gemma` model before opening it after app restarts, and stalled chat generations surface a timeout error instead of hanging forever on an empty typing bubble.
+- Fixed Gemma Center compact chat layout by shrinking the snapped chat height on smaller viewports, hiding prompt suggestions once a conversation starts, and making the welcome panel scroll safely instead of overflowing.
+- Added widget regression coverage for the compact Gemma Center chat flow and re-verified the existing Gemma coach / on-device insights tests.
+- Tightened the local lab parser so demographic/document metadata rows like date of birth, patient ID, address and report date are no longer promoted into parsed lab results, while real measurements still keep range-based abnormal detection.
+- Reordered the document detail flow so structured lab/imaging output is shown before raw OCR text, and added a direct structured-results edit entrypoint from the lab results section.
+- Reworked manual review to prioritize structured lab editing first and keep OCR text behind an explicit show/hide toggle instead of leading with raw text.
+- Added regression coverage for metadata filtering in the local lab parser plus widget coverage for the structured-first document detail/review flow.
 - Fixed `Ask about this file` so Gemma can answer even when the selected document is the only available local context; document-focused questions no longer fail just because profile/journal/dossier caches are empty.
 - Fixed Documents manual review so saved structured lab/imaging data is persisted in the local vault and reloaded on subsequent reads instead of being lost after the form submission.
 - Fixed Documents manual review hydration so lab/imaging drafts can be seeded again from the extracted OCR text when the review opens before structured rows are already attached.
@@ -62,6 +74,11 @@
 - Tightened prevention safety rules: dTpa is adult-only, pneumococcal review now covers chronic-risk adults, LDCT requires complete age/pack-year/current-or-recent-smoking eligibility, incomplete smoking exposure only creates a data-review item, AAA/high-risk cancer family-history logic now uses first-degree relatives, and folic-acid copy avoids dosage/prescription language.
 - Removed duplicate early bone-density output by preferring `early_dexa_discussion` over the legacy annual bone-density item when postmenopause and fragility risk are both present.
 - Re-verified the imported Prevention Center patch with `flutter test test/prevention_center/prevention_center_engine_test.dart`, `flutter test test/home/prevention_dossier_screens_test.dart` and `flutter analyze`.
+- Fixed Gemma streaming hangs by adding first-visible-token and full-generation deadlines, resetting the runtime when a stream stalls, and re-arming already-installed models without starting a network install from the prompt path.
+- Added a deterministic Ask Files streaming fallback so document questions return cited local evidence if Gemma times out or errors instead of leaving the chat waiting indefinitely.
+- Improved local lab parsing for uploaded blood-result PDFs/text by auto-promoting generic blood-result uploads to `lab_report`, recognizing more Italian/English lab terms, splitting dense one-line PDF table extraction into rows, and preserving OK/out-of-range chips in document details and manual review.
+- Added regression coverage for dense lab table parsing, generic blood-result upload auto-promotion, and Ask Files timeout fallback.
+- Verified the inference/document fixes with `flutter test test/documents/documents_flow_test.dart test/documents/local_lab_text_parser_test.dart test/documents/local_document_vault_service_test.dart test/insights/gemma_center_screen_test.dart test/insights/gemma_coach_service_test.dart` and `flutter analyze`.
 
 ### Still Missing — Prevention Center
 
@@ -79,6 +96,9 @@
 - Add guideline version metadata so rules can be attributed to specific guidelines/sources.
 
 ### Still Missing
+- If you want a separate "hardware NPU present" indicator, add an Android-native hardware capability probe; the current app now intentionally reports runtime/backend usability for Gemma rather than chipset existence.
+- Run a real Android smoke test of Gemma Center after a cold app restart with an already-installed `.litertlm` model, to confirm the new no-network activation and stream-deadline path fixes the no-response state on device hardware.
+- Smoke test the restored structured lab parsing/editing flow on a real Android device with real PDF/photo referti, especially OCR edge cases and the new edit-results entrypoint from document details.
 - Smoke test the updated Documents flows on a real Android device with real lab/imaging files to validate OCR timing, manual review prefill, Ask Files retrieval quality and document-focused Gemma answers end-to-end.
 - Review the remaining document review/manual-review screens for the same child-friendly visual language.
 - Decide whether Ask Files history should also become a full chat transcript rather than expandable cards.
@@ -90,6 +110,9 @@
 - Smoke test app lock on a physical Android device after a cold start, background/resume and settings toggle to confirm the biometric prompt only appears at startup.
 
 ### Known Bugs
+- Gemma Center's NPU status is now accurate for Gemma runtime usability, but it is still not a pure hardware inventory check; a device can contain an NPU and still fail the Gemma backend probe if the required dispatch/runtime path is unavailable.
+- Gemma Center now has stream deadlines and runtime reset for stalled generations, but the fix still needs a real-device cold-start validation because `flutter_gemma` model activation and LiteRT-LM backend behavior are device/plugin-managed.
+- No known blocking regression from the structured lab-results restore; still worth validating with real-world OCR outputs because the parser is intentionally heuristic.
 - No known blocking bug from the vaccine back flow after the regression test.
 - The notifications-entry crash caused by sorting an immutable empty symptom follow-up response list has been fixed; still worth smoke testing on device after notification taps and app resume.
 - The original bulk-translated localization workfiles under `apps/mobile/build/localization/` are not safe to merge directly into ARB because they contain complex interpolated strings; use the filtered `build/localization_safe/` export instead.
@@ -104,7 +127,7 @@
   7. `test/phase3/on_device_insights_screen_test` — allineate stringhe attese (`On-device proof`, `Modello:`, `Local-only request:`)
 
 ### Next Recommended Step
-- Run a device smoke test for Home navigation, smartwatch daily sync and medication reminders, then continue the bilingual rollout on the next highest-impact screens still listed by the safe localization audit.
+- Run a real-device Gemma Center smoke test after a cold app restart with the installed model already on disk, specifically checking first response, timeout recovery, stop/retry, CPU/GPU switch, then validate the restored structured lab-results flow with real PDF/photo referti and continue the broader bilingual rollout.
 
 ## OpenCode Agent Skills Integration (May 9)
 

@@ -5,6 +5,29 @@ import 'package:clindiary/features/documents/domain/clinical_document.dart';
 class LocalLabTextParser {
   const LocalLabTextParser();
 
+  String inferDocumentType({
+    required String documentType,
+    required String title,
+    String? text,
+  }) {
+    final normalizedType = documentType.trim().toLowerCase();
+    if (normalizedType.isNotEmpty && normalizedType != 'generic_document') {
+      return normalizedType;
+    }
+
+    final haystack = '$title\n${text ?? ''}'.trim();
+    if (haystack.isEmpty) {
+      return normalizedType.isEmpty ? 'generic_document' : normalizedType;
+    }
+    if (_looksLikeLabText(haystack)) {
+      return 'lab_report';
+    }
+    if (_looksLikeImagingText(haystack)) {
+      return 'imaging_report';
+    }
+    return normalizedType.isEmpty ? 'generic_document' : normalizedType;
+  }
+
   Future<LocalStructuredParseResult> parse({
     required String documentId,
     required String documentType,
@@ -85,23 +108,175 @@ final RegExp _rangePattern = RegExp(
 );
 final RegExp _thresholdPattern = RegExp(r'(<=|>=|<|>)\s*(-?\d+(?:[.,]\d+)?)');
 final RegExp _flagPattern = RegExp(
-  r'\b(HIGH|LOW|NORMAL|H|L|N)\b',
+  r'\b(OUT\s+OF\s+RANGE|FUORI\s+RANGE|ABNORMAL|HIGH|LOW|NORMAL|ALTO|BASSO|OK|H|L|N)\b',
   caseSensitive: false,
 );
 final RegExp _lettersPattern = RegExp(r'[A-Za-z]');
 final RegExp _unitPattern = RegExp(r'[A-Za-z%/]');
 final RegExp _labKeywordPattern = RegExp(
-  r'\b(wbc|rbc|hgb|hct|plt|glucose|creatinine|cholesterol|triglycerides|ast|alt|tsh|ferritin|crp|pcr)\b',
+  r'\b(lab results?|laboratory|blood tests?|blood results?|blood work|complete blood count|cbc|esami del sangue|analisi del sangue|emocromo|wbc|white blood cells?|leukocytes?|leucocytes?|leucociti|globuli bianchi|rbc|red blood cells?|erythrocytes?|eritrociti|globuli rossi|hgb|hemoglobin|haemoglobin|emoglobina|hct|hematocrit|haematocrit|ematocrito|plt|platelets?|piastrine|glucose|glycemia|glycaemia|glicemia|creatinine|creatinina|cholesterol|colesterolo|triglycerides|trigliceridi|ast|got|alt|gpt|transaminasi|gamma\s?gt|tsh|ferritin|ferritina|crp|pcr|ves|sodium|sodio|potassium|potassio|chloride|cloro|cloruro|calcium|calcio|magnesium|magnesio|bilirubin|bilirubina|albumin|albumina|protein|proteins|proteine|urea|azotemia|bun)\b',
   caseSensitive: false,
 );
 final RegExp _imagingKeywordPattern = RegExp(
   r'\b(ultrasound|ecografia|imaging|radiology|radiographic|x[- ]?ray|rx|ct|mri|rm|mammography|mammografia|tomography|scan|referto)\b',
   caseSensitive: false,
 );
+final RegExp _plainWordUnitPattern = RegExp(r'^[A-Za-z]+$');
 final RegExp _impressionMarkerPattern = RegExp(
   r'\b(impression|conclusion|conclusions|conclusioni|result|results|esito|diagnosis|verdict|final)\b',
   caseSensitive: false,
 );
+
+const Set<String> _acceptedPlainWordUnits = {
+  'g',
+  'mg',
+  'kg',
+  'ug',
+  'mcg',
+  'ng',
+  'pg',
+  'fg',
+  'dl',
+  'cl',
+  'ml',
+  'ul',
+  'l',
+  'fl',
+  'pl',
+  'nl',
+  'iu',
+  'ui',
+  'au',
+  'mmol',
+  'mol',
+  'meq',
+  'ratio',
+  'index',
+  'score',
+  'copies',
+  'cells',
+};
+
+const List<String> _knownAnalyteRowStarters = [
+  'White blood cells',
+  'Red blood cells',
+  'Complete blood count',
+  'Globuli bianchi',
+  'Globuli rossi',
+  'LDL cholesterol',
+  'HDL cholesterol',
+  'Total cholesterol',
+  'HbA1c',
+  'Hemoglobin',
+  'Haemoglobin',
+  'Emoglobina',
+  'Hematocrit',
+  'Haematocrit',
+  'Ematocrito',
+  'Leukocytes',
+  'Leucocytes',
+  'Leucociti',
+  'Erythrocytes',
+  'Eritrociti',
+  'Platelets',
+  'Piastrine',
+  'Neutrophils',
+  'Neutrofili',
+  'Lymphocytes',
+  'Linfociti',
+  'Monocytes',
+  'Monociti',
+  'Eosinophils',
+  'Eosinofili',
+  'Basophils',
+  'Basofili',
+  'Glucose',
+  'Glicemia',
+  'Creatinine',
+  'Creatinina',
+  'eGFR',
+  'Cholesterol',
+  'Colesterolo',
+  'Triglycerides',
+  'Trigliceridi',
+  'Ferritin',
+  'Ferritina',
+  'Sodium',
+  'Sodio',
+  'Potassium',
+  'Potassio',
+  'Chloride',
+  'Cloro',
+  'Cloruro',
+  'Calcium',
+  'Calcio',
+  'Magnesium',
+  'Magnesio',
+  'Bilirubin',
+  'Bilirubina',
+  'Albumin',
+  'Albumina',
+  'Proteins',
+  'Proteine',
+  'Urea',
+  'Azotemia',
+  'TSH',
+  'CRP',
+  'PCR',
+  'VES',
+  'AST',
+  'ALT',
+  'GOT',
+  'GPT',
+  'WBC',
+  'RBC',
+  'HGB',
+  'HCT',
+  'PLT',
+];
+
+final RegExp _knownAnalyteStartPattern = RegExp(
+  '(?=\\b(?:${_knownAnalyteRowStarters.map(RegExp.escape).join('|')})\\b)',
+  caseSensitive: false,
+);
+
+const List<String> _labMetadataPrefixes = [
+  'date of birth',
+  'birth date',
+  'dob',
+  'patient id',
+  'patient name',
+  'patient',
+  'name',
+  'address',
+  'report date',
+  'report id',
+  'sample id',
+  'specimen',
+  'collection date',
+  'collected',
+  'accession',
+  'medical record',
+  'mrn',
+  'gender',
+  'sex',
+  'age',
+  'doctor',
+  'physician',
+  'provider',
+  'phone',
+  'email',
+  'fax',
+  'indirizzo',
+  'data di nascita',
+  'data referto',
+  'data del referto',
+  'id paziente',
+  'paziente',
+  'nome',
+  'cognome',
+  'codice fiscale',
+];
 
 Map<String, dynamic> _parseLabInIsolate(Map<String, String?> payload) {
   final documentId = (payload['document_id'] ?? 'local-doc').trim();
@@ -119,7 +294,7 @@ Map<String, dynamic> _parseLabInIsolate(Map<String, String?> payload) {
     return _emptyPayload();
   }
 
-  final lines = text.split(RegExp(r'[\r\n]+'));
+  final lines = _candidateLabLines(text);
   final results = <Map<String, dynamic>>[];
   final seenRows = <String>{};
 
@@ -249,6 +424,61 @@ bool _looksLikeLabText(String text) {
   return false;
 }
 
+List<String> _candidateLabLines(String text) {
+  final rows = <String>[];
+  for (final rawLine in text.split(RegExp(r'[\r\n]+'))) {
+    final normalized = rawLine
+        .replaceAll('\t', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    rows.addAll(_splitKnownAnalyteRows(normalized));
+  }
+  return rows;
+}
+
+List<String> _splitKnownAnalyteRows(String line) {
+  final starts = <int>[];
+  var protectedEnd = -1;
+  for (final match in _knownAnalyteStartPattern.allMatches(line)) {
+    if (match.start < protectedEnd) {
+      continue;
+    }
+    final starter = _knownAnalyteAt(line, match.start);
+    if (starter == null) {
+      continue;
+    }
+    starts.add(match.start);
+    protectedEnd = match.start + starter.length;
+  }
+  if (starts.length <= 1) {
+    return [line];
+  }
+
+  final rows = <String>[];
+  for (var index = 0; index < starts.length; index++) {
+    final start = starts[index];
+    final end = index + 1 < starts.length ? starts[index + 1] : line.length;
+    final chunk = line.substring(start, end).trim();
+    if (chunk.isNotEmpty) {
+      rows.add(chunk);
+    }
+  }
+  return rows.isEmpty ? [line] : rows;
+}
+
+String? _knownAnalyteAt(String line, int start) {
+  final suffix = line.substring(start).toLowerCase();
+  for (final starter in _knownAnalyteRowStarters) {
+    if (suffix.startsWith(starter.toLowerCase())) {
+      return starter;
+    }
+  }
+  return null;
+}
+
 String? _normalizeLine(String rawLine) {
   var line = rawLine.replaceAll('\t', ' ');
   line = line.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -261,6 +491,9 @@ String? _normalizeLine(String rawLine) {
 
   final lowered = line.toLowerCase();
   if (lowered.startsWith('range') || lowered.startsWith('reference')) {
+    return null;
+  }
+  if (_startsWithLabMetadata(lowered)) {
     return null;
   }
   return line;
@@ -324,20 +557,31 @@ Map<String, dynamic>? _parseLabLine(String line) {
   final valueText = valueMatch.group(0)!;
   final numericValue = _toDouble(valueText);
   final flagToken = _extractFlagToken(line);
+  final unit = _extractUnit(
+    line,
+    valueEnd: valueMatch.end,
+    referenceStart: referenceStart,
+  );
+  final hasReference = refMin != null || refMax != null;
+  final hasFlag = flagToken != null;
+  final hasUnit = unit != null;
+  if (!_shouldAcceptLabLine(
+    analyte: analyte,
+    hasReference: hasReference,
+    hasFlag: hasFlag,
+    hasUnit: hasUnit,
+  )) {
+    return null;
+  }
   final abnormalFlag = _resolveAbnormalFlag(
     flagToken: flagToken,
     numericValue: numericValue,
     refMin: refMin,
     refMax: refMax,
   );
-  final unit = _extractUnit(
-    line,
-    valueEnd: valueMatch.end,
-    referenceStart: referenceStart,
-  );
   final confidence = _resolveConfidence(
-    hasReference: refMin != null || refMax != null,
-    hasFlag: flagToken != null,
+    hasReference: hasReference,
+    hasFlag: hasFlag,
   );
 
   return <String, dynamic>{
@@ -369,7 +613,8 @@ String? _normalizeAnalyte(String raw) {
   if (lowered == 'analyte' ||
       lowered.startsWith('value') ||
       lowered.startsWith('range') ||
-      lowered.startsWith('reference')) {
+      lowered.startsWith('reference') ||
+      _startsWithLabMetadata(lowered)) {
     return null;
   }
 
@@ -411,7 +656,34 @@ String? _extractUnit(
   if (candidate.length > 24 || !_unitPattern.hasMatch(candidate)) {
     return null;
   }
+  if (_plainWordUnitPattern.hasMatch(candidate)) {
+    final loweredCandidate = candidate.toLowerCase();
+    if (loweredCandidate.length > 4 &&
+        !_acceptedPlainWordUnits.contains(loweredCandidate)) {
+      return null;
+    }
+  }
   return candidate;
+}
+
+bool _shouldAcceptLabLine({
+  required String analyte,
+  required bool hasReference,
+  required bool hasFlag,
+  required bool hasUnit,
+}) {
+  final loweredAnalyte = analyte.toLowerCase();
+  if (_startsWithLabMetadata(loweredAnalyte)) {
+    return false;
+  }
+
+  final knownAnalyte = _labKeywordPattern.hasMatch(loweredAnalyte);
+  return hasReference || hasFlag || hasUnit || knownAnalyte;
+}
+
+bool _startsWithLabMetadata(String value) {
+  final normalized = value.trim().toLowerCase();
+  return _labMetadataPrefixes.any(normalized.startsWith);
 }
 
 String? _extractFlagToken(String line) {
@@ -426,13 +698,19 @@ bool? _resolveAbnormalFlag({
   required double? refMax,
 }) {
   if (flagToken != null) {
+    final normalizedFlag = flagToken.replaceAll(RegExp(r'\s+'), ' ');
     if (flagToken == 'H' ||
         flagToken == 'L' ||
         flagToken == 'HIGH' ||
-        flagToken == 'LOW') {
+        flagToken == 'LOW' ||
+        flagToken == 'ABNORMAL' ||
+        flagToken == 'ALTO' ||
+        flagToken == 'BASSO' ||
+        normalizedFlag == 'OUT OF RANGE' ||
+        normalizedFlag == 'FUORI RANGE') {
       return true;
     }
-    if (flagToken == 'N' || flagToken == 'NORMAL') {
+    if (flagToken == 'N' || flagToken == 'NORMAL' || flagToken == 'OK') {
       return false;
     }
   }

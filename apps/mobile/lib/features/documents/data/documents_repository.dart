@@ -529,9 +529,7 @@ class DocumentsRepository {
       );
     } catch (_) {
       final top = candidates.first;
-      return isItalian
-          ? 'In base ai documenti locali, il file piu rilevante e "${top.summary.title}". Evidenza principale: ${top.excerpt}. Controlla i passaggi citati per il contesto completo prima di prendere decisioni cliniche.'
-          : 'Based on local documents, the most relevant file is "${top.summary.title}". Key extracted evidence: ${top.excerpt}. Review the cited snippets for full context before making clinical decisions.';
+      return _fallbackLocalQueryAnswer(isItalian: isItalian, top: top);
     }
   }
 
@@ -609,6 +607,8 @@ class DocumentsRepository {
     final answerController = StreamController<String>();
     final resultCompleter = Completer<DocumentQueryResult>();
     final answerBuffer = StringBuffer();
+    final limited = candidates.take(3).toList();
+    final citations = _citationsForCandidates(limited);
 
     _onDeviceAiService
         .generateTextStream(systemPrompt: systemPrompt, userPrompt: userPrompt)
@@ -618,25 +618,12 @@ class DocumentsRepository {
             answerController.add(token);
           },
           onDone: () async {
-            answerController.close();
-            // Build result and build citations
-            final limited = candidates.take(3).toList();
-            final citations = limited
-                .map(
-                  (c) => DocumentQueryCitation(
-                    documentId: c.summary.id,
-                    documentTitle: c.summary.title,
-                    documentType: c.summary.documentType,
-                    folderName: c.summary.folderName,
-                    examDate: c.summary.examDate,
-                    chunkKind: c.chunkKind,
-                    chunkLabel: c.chunkLabel,
-                    excerpt: c.excerpt,
-                    score: c.score,
-                    viewerUrl: c.detail.viewerUrl,
-                  ),
-                )
-                .toList();
+            if (!answerController.isClosed) {
+              answerController.close();
+            }
+            if (resultCompleter.isCompleted) {
+              return;
+            }
             resultCompleter.complete(
               DocumentQueryResult(
                 answer: answerBuffer.toString().trim(),
@@ -661,8 +648,44 @@ class DocumentsRepository {
             );
           },
           onError: (error) {
-            answerController.addError(error);
-            resultCompleter.completeError(error);
+            final fallbackAnswer = _fallbackLocalQueryAnswer(
+              isItalian: isItalian,
+              top: limited.first,
+            );
+            if (answerBuffer.length == 0 && !answerController.isClosed) {
+              answerController.add(fallbackAnswer);
+            }
+            if (!answerController.isClosed) {
+              answerController.close();
+            }
+            if (!resultCompleter.isCompleted) {
+              resultCompleter.complete(
+                DocumentQueryResult(
+                  answer: answerBuffer.length == 0
+                      ? fallbackAnswer
+                      : answerBuffer.toString().trim(),
+                  citations: citations,
+                  providerName: 'local_fallback',
+                  modelName: 'deterministic-local',
+                  embeddingModelName: 'gecko-110m-en',
+                  rerankerModelName: 'local-semantic-ranker',
+                  retrievedChunks: limited.length,
+                  retrievedDocuments: limited
+                      .map((item) => item.summary.id)
+                      .toSet()
+                      .length,
+                  searchScopeLabel: folderId == null
+                      ? (isItalian ? 'Tutto l\'archivio' : 'Entire archive')
+                      : (isItalian
+                            ? 'Cartella selezionata'
+                            : 'Selected folder'),
+                  coverageNote: isItalian
+                      ? 'Gemma non ha completato in tempo: risposta locale costruita dagli estratti citati.'
+                      : 'Gemma did not finish in time: local fallback built from cited snippets.',
+                  usedFallback: true,
+                ),
+              );
+            }
           },
         );
 
@@ -670,6 +693,36 @@ class DocumentsRepository {
       answerStream: answerController.stream,
       result: resultCompleter.future,
     );
+  }
+
+  List<DocumentQueryCitation> _citationsForCandidates(
+    List<_LocalQueryCandidate> candidates,
+  ) {
+    return candidates
+        .map(
+          (c) => DocumentQueryCitation(
+            documentId: c.summary.id,
+            documentTitle: c.summary.title,
+            documentType: c.summary.documentType,
+            folderName: c.summary.folderName,
+            examDate: c.summary.examDate,
+            chunkKind: c.chunkKind,
+            chunkLabel: c.chunkLabel,
+            excerpt: c.excerpt,
+            score: c.score,
+            viewerUrl: c.detail.viewerUrl,
+          ),
+        )
+        .toList();
+  }
+
+  String _fallbackLocalQueryAnswer({
+    required bool isItalian,
+    required _LocalQueryCandidate top,
+  }) {
+    return isItalian
+        ? 'In base ai documenti locali, il file piu rilevante e "${top.summary.title}". Evidenza principale: ${top.excerpt}. Controlla i passaggi citati per il contesto completo prima di prendere decisioni cliniche.'
+        : 'Based on local documents, the most relevant file is "${top.summary.title}". Key extracted evidence: ${top.excerpt}. Review the cited snippets for full context before making clinical decisions.';
   }
 
   /// Embedding + ranking phase (shared between streaming and non-streaming paths).
