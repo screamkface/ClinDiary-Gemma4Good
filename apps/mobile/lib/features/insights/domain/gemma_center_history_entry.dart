@@ -31,6 +31,8 @@ class GemmaCenterHistoryEntry {
     required DateTime referenceDate,
     String languageCode = 'en',
     DateTime? createdAt,
+    String? documentId,
+    String? documentTitle,
   }) {
     final normalizedQuestion = question.trim();
     return GemmaCenterHistoryEntry(
@@ -46,6 +48,12 @@ class GemmaCenterHistoryEntry {
       languageCode: languageCode,
       prompt: normalizedQuestion,
       referenceDate: referenceDate.toUtc(),
+      documentId: documentId?.trim().isEmpty == true
+          ? null
+          : documentId?.trim(),
+      documentTitle: documentTitle?.trim().isEmpty == true
+          ? null
+          : documentTitle?.trim(),
     );
   }
 

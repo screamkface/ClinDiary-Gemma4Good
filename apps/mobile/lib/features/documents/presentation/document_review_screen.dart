@@ -1,4 +1,5 @@
 import 'package:clindiary/app/providers.dart';
+import 'package:clindiary/features/documents/data/local_lab_text_parser.dart';
 import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/documents/domain/document_manual_review.dart';
 import 'package:clindiary/l10n/app_localizations.dart';
@@ -22,6 +23,7 @@ class DocumentReviewScreen extends ConsumerStatefulWidget {
 }
 
 class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
+  final _localLabTextParser = const LocalLabTextParser();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _sourceController = TextEditingController();
@@ -36,6 +38,7 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
 
   String _documentType = 'generic_document';
   bool _hydrated = false;
+  bool _seededFromParsedText = false;
   bool _saving = false;
 
   @override
@@ -91,6 +94,78 @@ class _DocumentReviewScreenState extends ConsumerState<DocumentReviewScreen> {
     if (_panelNameController.text.isEmpty) {
       _panelNameController.text = detail.title;
     }
+
+    _seedStructuredDraftsFromOcr(detail);
+  }
+
+  void _seedStructuredDraftsFromOcr(ClinicalDocumentDetail detail) {
+    if (_seededFromParsedText ||
+        detail.ocrText == null ||
+        detail.ocrText!.trim().isEmpty) {
+      return;
+    }
+    final needsLabSeed =
+        detail.documentType == 'lab_report' && detail.labPanels.isEmpty;
+    final needsImagingSeed =
+        detail.documentType == 'imaging_report' &&
+        detail.imagingReports.isEmpty;
+    if (!needsLabSeed && !needsImagingSeed) {
+      return;
+    }
+
+    _seededFromParsedText = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final parsed = await _localLabTextParser.parse(
+        documentId: detail.id,
+        documentType: detail.documentType,
+        title: detail.title,
+        examDateIso: detail.examDate?.toIso8601String(),
+        text: detail.ocrText!,
+      );
+      if (!mounted || parsed.parsedStatus != 'parsed') {
+        return;
+      }
+      setState(() {
+        if (detail.documentType == 'lab_report' &&
+            parsed.labPanels.isNotEmpty) {
+          final panel = parsed.labPanels.first;
+          if (_panelNameController.text.trim().isEmpty) {
+            _panelNameController.text = panel.panelName;
+          }
+          final hasOnlyEmptyDraft =
+              _labResults.length == 1 &&
+              _labResults.first.analyteController.text.trim().isEmpty &&
+              _labResults.first.valueController.text.trim().isEmpty &&
+              _labResults.first.unitController.text.trim().isEmpty &&
+              _labResults.first.refMinController.text.trim().isEmpty &&
+              _labResults.first.refMaxController.text.trim().isEmpty;
+          if (hasOnlyEmptyDraft) {
+            final emptyDraft = _labResults.removeLast();
+            emptyDraft.dispose();
+          }
+          if (_labResults.isEmpty) {
+            _labResults.addAll(panel.results.map(_LabResultDraft.fromExisting));
+          }
+        }
+
+        if (detail.documentType == 'imaging_report' &&
+            parsed.imagingReports.isNotEmpty) {
+          final report = parsed.imagingReports.first;
+          if (_imagingExamTypeController.text.trim().isEmpty) {
+            _imagingExamTypeController.text = report.examType ?? '';
+          }
+          if (_imagingBodyPartController.text.trim().isEmpty) {
+            _imagingBodyPartController.text = report.bodyPart ?? '';
+          }
+          if (_imagingReportTextController.text.trim().isEmpty) {
+            _imagingReportTextController.text = report.reportText;
+          }
+          if (_imagingImpressionController.text.trim().isEmpty) {
+            _imagingImpressionController.text = report.impression ?? '';
+          }
+        }
+      });
+    });
   }
 
   Future<void> _submit() async {

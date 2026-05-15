@@ -3,6 +3,11 @@
 ## Current App Work
 
 ### Completed
+- Fixed Documents manual review so saved structured lab/imaging data is persisted in the local vault and reloaded on subsequent reads instead of being lost after the form submission.
+- Fixed Documents manual review hydration so lab/imaging drafts can be seeded again from the extracted OCR text when the review opens before structured rows are already attached.
+- Fixed Ask Files streaming fallback copy so it no longer says that no documents were uploaded when documents exist but none match the current question.
+- Fixed "Ask about this file" / Gemma focus so the selected document is now fetched and injected into the clinical-question prompt payload, including OCR text and parsed lab/imaging data.
+- Verified the Documents fixes with `flutter analyze lib/features/documents lib/features/insights test/documents/local_document_vault_service_test.dart test/insights/gemma_coach_service_test.dart`, `flutter test test/documents/local_document_vault_service_test.dart test/insights/gemma_coach_service_test.dart` and `flutter test test/documents/documents_flow_test.dart`.
 - Added a deterministic Prevention Center engine driven by age, sex, smoking history, pregnancy status, family history and active conditions, including yearly exam suggestions like cardiology, thyroid review and abdominal ultrasound.
 - Wired the Prevention Center screen to show a dedicated annual-exams section from the local engine output.
 - Fixed Android notification small icons so local reminders use a dedicated notification drawable instead of the launcher icon, which restores the app mark in the notification drawer.
@@ -73,6 +78,7 @@
 - Add guideline version metadata so rules can be attributed to specific guidelines/sources.
 
 ### Still Missing
+- Smoke test the updated Documents flows on a real Android device with real lab/imaging files to validate OCR timing, manual review prefill, Ask Files retrieval quality and document-focused Gemma answers end-to-end.
 - Review the remaining document review/manual-review screens for the same child-friendly visual language.
 - Decide whether Ask Files history should also become a full chat transcript rather than expandable cards.
 - Continue replacing hardcoded UI strings and hardcoded `en_US` / `it_IT` display formats across the rest of the app using the safe localization audit outputs.
@@ -163,3 +169,25 @@
 
 ## Next Recommended Step
 - Set `CONTEXT7_API_KEY`, re-run `opencode mcp list`, and optionally enable GitHub MCP only when needed.
+
+## Video Submission Work (May 15)
+
+### Completed
+- Created `docs/video/FEATURE_INVENTORY.md` with source-backed demoable features, unsafe claims to avoid, required screen recordings, real-life footage and safe AI B-roll guidance.
+- Created `docs/video/CAPCUT_SCRIPT_GEMMA4GOOD.md` with an English 180-second CapCut script, short Italian grounding note, early demo opening, shot ratio target and safety copy.
+- Created `docs/video/REMOTION_OUTLINE_GEMMA4GOOD.md` with a matching 30 FPS / 5400-frame Remotion structure and QA checklist.
+- Revised the video package to foreground the implemented Gemma 4 voice check-in flow: speech transcript review, Send to Gemma, filled daily metrics and recognized symptom drafts with severity, duration and body location.
+- Created `docs/video/CAPCUT_CAPTIONS_GEMMA4GOOD.srt` with upload-ready CapCut captions for the revised voiceover, using the earlier short-caption `.srt` pacing as the reference.
+
+### Still Missing
+- Record the actual app clips listed in the feature inventory using seeded or fictional demo data.
+- Capture the voice check-in flow carefully: speak in English, review/edit transcript, send to Gemma, verify generated fields/symptom chips, then save.
+- Capture safe real-life footage with all labels, names and notifications blurred or unreadable.
+- Decide whether optional Wearables and Dossier clips should replace another app scene or remain outside the final 180-second edit.
+- Tighten the `.srt` timing after recording the final voiceover, because current timings are a paced draft aligned to the script rather than waveform-synced captions.
+
+### Known Bugs
+- No known documentation blockers. The video still needs real device/app capture verification before submission.
+
+### Next Recommended Step
+- Record the required app screen clips in the order defined by `docs/video/CAPCUT_SCRIPT_GEMMA4GOOD.md`, then assemble a first CapCut rough cut under 180 seconds.

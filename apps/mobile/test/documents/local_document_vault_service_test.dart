@@ -317,7 +317,7 @@ void main() {
   });
 
   test(
-    'local vault updates OCR from manual review and pre-warms parsing',
+    'local vault persists manual review OCR and structured results',
     () async {
       final root = await Directory.systemTemp.createTemp(
         'clindiary-local-vault-review-prewarm-test',
@@ -362,10 +362,21 @@ void main() {
           title: 'Updated report',
           documentType: 'lab_report',
           ocrText: 'Glucose 120 mg/dL 70 - 99',
+          labPanel: ManualLabPanelDraft(
+            panelName: 'Manual blood panel',
+            results: [
+              ManualLabResultDraft(
+                analyteName: 'Glucose',
+                value: '120',
+                unit: 'mg/dL',
+                refMin: 70,
+                refMax: 99,
+                abnormalFlag: true,
+              ),
+            ],
+          ),
         ),
       );
-
-      await parser.waitForCallCount(1);
 
       final detail = await vault.fetchDocumentDetailForScope(
         uploaded.id,
@@ -376,7 +387,20 @@ void main() {
       expect(detail.title, 'Updated report');
       expect(detail.documentType, 'lab_report');
       expect(detail.ocrText, 'Glucose 120 mg/dL 70 - 99');
-      expect(parser.callCount, 1);
+      expect(detail.labPanels, hasLength(1));
+      expect(detail.labPanels.single.panelName, 'Manual blood panel');
+      expect(detail.labPanels.single.results, hasLength(1));
+      expect(detail.labPanels.single.results.single.analyteName, 'Glucose');
+      expect(detail.labPanels.single.results.single.abnormalFlag, isTrue);
+      expect(parser.callCount, 0);
+
+      final secondRead = await vault.fetchDocumentDetailForScope(
+        uploaded.id,
+        userScopeId: userScopeId,
+        profileScopeId: profileScopeId,
+      );
+      expect(secondRead.labPanels, hasLength(1));
+      expect(secondRead.labPanels.single.panelName, 'Manual blood panel');
     },
   );
 

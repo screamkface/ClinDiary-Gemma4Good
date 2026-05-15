@@ -2,6 +2,7 @@ import 'package:clindiary/features/alerts/data/alerts_repository.dart';
 import 'package:clindiary/features/daily_journal/data/daily_journal_repository.dart';
 import 'package:clindiary/features/dossier/data/dossier_repository.dart';
 import 'package:clindiary/features/documents/data/documents_repository.dart';
+import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/insights/data/gemma_coach_service.dart';
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
 import 'package:clindiary/features/insights/data/on_device_prompt_builder.dart';
@@ -76,6 +77,7 @@ void main() {
         () => promptBuilder.buildClinicalQuestionPrompt(
           question: question,
           referenceDate: referenceDate,
+          focusedDocument: any(named: 'focusedDocument'),
         ),
       ).thenAnswer((_) async {
         promptBuildCalls += 1;
@@ -178,6 +180,7 @@ void main() {
       () => promptBuilder.buildClinicalQuestionPrompt(
         question: question,
         referenceDate: referenceDate,
+        focusedDocument: any(named: 'focusedDocument'),
       ),
     ).thenAnswer((_) async => prompt);
 
@@ -214,6 +217,102 @@ void main() {
       ),
     ).called(1);
   });
+
+  test(
+    'answerQuestionStream injects the focused document when available',
+    () async {
+      final aiService = MockOnDeviceAiService();
+      final promptBuilder = MockOnDevicePromptBuilder();
+      final documentsRepository = MockDocumentsRepository();
+      final profileRepository = MockProfileRepository();
+      final dailyJournalRepository = MockDailyJournalRepository();
+      final alertsRepository = MockAlertsRepository();
+      final medicationsRepository = MockMedicationsRepository();
+      final timelineRepository = MockTimelineRepository();
+      final wearablesRepository = MockWearablesRepository();
+      final dossierRepository = MockDossierRepository();
+
+      const question = 'Explain this document simply';
+      const documentId = 'doc-77';
+      final referenceDate = DateTime.utc(2026, 4, 5);
+      final detail = ClinicalDocumentDetail(
+        id: documentId,
+        title: 'April labs',
+        documentType: 'lab_report',
+        uploadDate: referenceDate,
+        examDate: referenceDate,
+        originalFilename: 'april-labs.pdf',
+        mimeType: 'application/pdf',
+        fileSizeBytes: 1024,
+        parsedStatus: 'reviewed',
+        fileUrl: '/tmp/april-labs.pdf',
+        ocrText: 'Glucose 120 mg/dL',
+        labPanels: const [],
+        imagingReports: const [],
+        storageLocation: 'local',
+      );
+      final prompt = OnDeviceTextPrompt(
+        contextType: 'clinical_question',
+        periodStart: referenceDate,
+        periodEnd: referenceDate,
+        systemPrompt: 'system',
+        userPrompt: 'user',
+        providerName: 'on_device_litertlm',
+        suggestedModelFamily: 'Gemma 4',
+        isCloudBypassedForThisRequest: true,
+      );
+
+      when(
+        () => documentsRepository.fetchDocumentDetail(documentId),
+      ).thenAnswer((_) async => detail);
+      when(
+        () => promptBuilder.buildClinicalQuestionPrompt(
+          question: question,
+          referenceDate: referenceDate,
+          focusedDocument: detail,
+        ),
+      ).thenAnswer((_) async => prompt);
+      when(
+        () => aiService.generateTextStream(
+          systemPrompt: any(named: 'systemPrompt'),
+          userPrompt: any(named: 'userPrompt'),
+        ),
+      ).thenAnswer((_) => Stream.fromIterable(const ['ok']));
+
+      final service = GemmaCoachService(
+        onDeviceAiService: aiService,
+        onDevicePromptBuilder: promptBuilder,
+        documentsRepository: documentsRepository,
+        profileRepository: profileRepository,
+        dailyJournalRepository: dailyJournalRepository,
+        alertsRepository: alertsRepository,
+        medicationsRepository: medicationsRepository,
+        timelineRepository: timelineRepository,
+        wearablesRepository: wearablesRepository,
+        dossierRepository: dossierRepository,
+      );
+
+      final collected = await service
+          .answerQuestionStream(
+            question: question,
+            referenceDate: referenceDate,
+            documentId: documentId,
+          )
+          .toList();
+
+      expect(collected, ['ok']);
+      verify(
+        () => documentsRepository.fetchDocumentDetail(documentId),
+      ).called(1);
+      verify(
+        () => promptBuilder.buildClinicalQuestionPrompt(
+          question: question,
+          referenceDate: referenceDate,
+          focusedDocument: detail,
+        ),
+      ).called(1);
+    },
+  );
 
   test('explainTrendStream yields tokens when prompt is available', () async {
     final aiService = MockOnDeviceAiService();

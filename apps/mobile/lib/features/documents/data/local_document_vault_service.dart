@@ -250,16 +250,14 @@ class LocalDocumentVaultService {
       profileScopeId: profileScopeId,
     );
     if (state.documents.length >= maxDocumentCount) {
-      throw Exception(
-        'You have reached the local limit of 80 documents.');
+      throw Exception('You have reached the local limit of 80 documents.');
     }
     final totalBytes = state.documents.fold<int>(
       0,
       (sum, item) => sum + item.fileSizeBytes,
     );
     if (totalBytes + file.bytes.length > maxTotalBytes) {
-      throw Exception(
-        'You have reached the local storage limit of 200 MB.');
+      throw Exception('You have reached the local storage limit of 200 MB.');
     }
 
     final normalizedFolderId = _normalizeText(fields['folder_id']);
@@ -358,8 +356,7 @@ class LocalDocumentVaultService {
           folder.name.toLowerCase() == normalizedName.toLowerCase(),
     );
     if (siblingExists) {
-      throw Exception(
-        'A folder with this name already exists in this path.');
+      throw Exception('A folder with this name already exists in this path.');
     }
 
     final folder = _StoredFolder(
@@ -778,6 +775,11 @@ class LocalDocumentVaultService {
   Future<_LocalStructuredData> _resolveStructuredData(
     _StoredDocument document,
   ) async {
+    final manualStructuredData = _manualStructuredData(document);
+    if (manualStructuredData != null) {
+      return manualStructuredData;
+    }
+
     final text = document.ocrText?.trim();
     if (text == null || text.isEmpty) {
       if (_requiresStructuredData(document.documentType)) {
@@ -854,6 +856,11 @@ class LocalDocumentVaultService {
   Future<_LocalStructuredData> _resolveStructuredDataForView(
     _StoredDocument document,
   ) async {
+    final manualStructuredData = _manualStructuredData(document);
+    if (manualStructuredData != null) {
+      return manualStructuredData;
+    }
+
     final text = document.ocrText?.trim();
     if (text == null || text.isEmpty) {
       if (_requiresStructuredData(document.documentType)) {
@@ -966,6 +973,26 @@ class LocalDocumentVaultService {
     });
     _parseQueueTail = run.catchError((_) {});
     return completer.future;
+  }
+
+  _LocalStructuredData? _manualStructuredData(_StoredDocument document) {
+    if (document.manualLabPanels.isNotEmpty) {
+      return _LocalStructuredData(
+        parsedStatus: 'reviewed',
+        parsingConfidence: 1,
+        processedAt: DateTime.now().toUtc(),
+        labPanels: document.manualLabPanels,
+      );
+    }
+    if (document.manualImagingReports.isNotEmpty) {
+      return _LocalStructuredData(
+        parsedStatus: 'reviewed',
+        parsingConfidence: 1,
+        processedAt: DateTime.now().toUtc(),
+        imagingReports: document.manualImagingReports,
+      );
+    }
+    return null;
   }
 
   String _sanitizeSegment(String value) {
@@ -1083,6 +1110,28 @@ class LocalDocumentVaultService {
     _StoredDocument document,
     DocumentManualReviewInput input,
   ) {
+    final normalizedDocumentType =
+        _normalizeText(input.documentType) ?? document.documentType;
+    final manualLabPanels = input.labPanel == null
+        ? (normalizedDocumentType == 'lab_report'
+              ? document.manualLabPanels
+              : const <LabPanelItem>[])
+        : <LabPanelItem>[
+            _manualLabPanelToItem(
+              documentId: document.id,
+              panel: input.labPanel!,
+            ),
+          ];
+    final manualImagingReports = input.imagingReport == null
+        ? (normalizedDocumentType == 'imaging_report'
+              ? document.manualImagingReports
+              : const <ImagingReportItem>[])
+        : <ImagingReportItem>[
+            _manualImagingReportToItem(
+              documentId: document.id,
+              report: input.imagingReport!,
+            ),
+          ];
     final updatedExamDateIso = _resolveManualReviewExamDateIso(
       requestedExamDate: input.examDate,
       existingExamDateIso: document.examDateIso,
@@ -1092,7 +1141,7 @@ class LocalDocumentVaultService {
       id: document.id,
       folderId: document.folderId,
       title: _normalizeText(input.title) ?? document.title,
-      documentType: _normalizeText(input.documentType) ?? document.documentType,
+      documentType: normalizedDocumentType,
       uploadDateIso: document.uploadDateIso,
       examDateIso: updatedExamDateIso,
       source: input.source == null
@@ -1107,6 +1156,50 @@ class LocalDocumentVaultService {
       ocrText: input.ocrText == null
           ? document.ocrText
           : _normalizeText(input.ocrText),
+      manualLabPanels: manualLabPanels,
+      manualImagingReports: manualImagingReports,
+    );
+  }
+
+  LabPanelItem _manualLabPanelToItem({
+    required String documentId,
+    required ManualLabPanelDraft panel,
+  }) {
+    return LabPanelItem(
+      id: 'manual-lab-panel-$documentId-1',
+      panelName: panel.panelName,
+      panelDate: _tryParseDate(panel.panelDate),
+      confidenceScore: 1,
+      results: panel.results
+          .asMap()
+          .entries
+          .map(
+            (entry) => LabResultItem(
+              id: 'manual-lab-result-$documentId-${entry.key + 1}',
+              analyteName: entry.value.analyteName,
+              value: entry.value.value,
+              unit: entry.value.unit,
+              refMin: entry.value.refMin,
+              refMax: entry.value.refMax,
+              abnormalFlag: entry.value.abnormalFlag,
+              confidenceScore: 1,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  ImagingReportItem _manualImagingReportToItem({
+    required String documentId,
+    required ManualImagingReportDraft report,
+  }) {
+    return ImagingReportItem(
+      id: 'manual-imaging-report-$documentId-1',
+      examType: _normalizeText(report.examType),
+      bodyPart: _normalizeText(report.bodyPart),
+      reportText: report.reportText,
+      impression: _normalizeText(report.impression),
+      confidenceScore: 1,
     );
   }
 
@@ -1125,8 +1218,7 @@ class LocalDocumentVaultService {
 
     final parsed = DateTime.tryParse(trimmed);
     if (parsed == null) {
-      throw Exception(
-        'Exam date is invalid. Use ISO format YYYY-MM-DD.');
+      throw Exception('Exam date is invalid. Use ISO format YYYY-MM-DD.');
     }
     return parsed.toIso8601String();
   }
@@ -1316,6 +1408,8 @@ class _StoredDocument {
     required this.contextStatus,
     required this.localFilePath,
     this.ocrText,
+    this.manualLabPanels = const [],
+    this.manualImagingReports = const [],
   });
 
   final String id;
@@ -1332,6 +1426,8 @@ class _StoredDocument {
   final String contextStatus;
   final String localFilePath;
   final String? ocrText;
+  final List<LabPanelItem> manualLabPanels;
+  final List<ImagingReportItem> manualImagingReports;
 
   _StoredDocument copyWith({
     String? folderId,
@@ -1353,6 +1449,8 @@ class _StoredDocument {
       contextStatus: contextStatus ?? this.contextStatus,
       localFilePath: localFilePath,
       ocrText: ocrText ?? this.ocrText,
+      manualLabPanels: manualLabPanels,
+      manualImagingReports: manualImagingReports,
     );
   }
 
@@ -1437,6 +1535,12 @@ class _StoredDocument {
       'context_status': contextStatus,
       'local_file_path': localFilePath,
       'ocr_text': ocrText,
+      'manual_lab_panels': manualLabPanels
+          .map(_labPanelItemToJson)
+          .toList(growable: false),
+      'manual_imaging_reports': manualImagingReports
+          .map(_imagingReportItemToJson)
+          .toList(growable: false),
     };
   }
 
@@ -1458,8 +1562,52 @@ class _StoredDocument {
       contextStatus: json['context_status']?.toString() ?? 'active',
       localFilePath: json['local_file_path']?.toString() ?? '',
       ocrText: json['ocr_text'] as String?,
+      manualLabPanels: (json['manual_lab_panels'] as List<dynamic>? ?? const [])
+          .map((item) => LabPanelItem.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      manualImagingReports:
+          (json['manual_imaging_reports'] as List<dynamic>? ?? const [])
+              .map(
+                (item) =>
+                    ImagingReportItem.fromJson(item as Map<String, dynamic>),
+              )
+              .toList(growable: false),
     );
   }
+}
+
+Map<String, dynamic> _labResultItemToJson(LabResultItem item) {
+  return {
+    'id': item.id,
+    'analyte_name': item.analyteName,
+    'value': item.value,
+    if (item.unit != null) 'unit': item.unit,
+    if (item.refMin != null) 'ref_min': item.refMin,
+    if (item.refMax != null) 'ref_max': item.refMax,
+    if (item.abnormalFlag != null) 'abnormal_flag': item.abnormalFlag,
+    if (item.confidenceScore != null) 'confidence_score': item.confidenceScore,
+  };
+}
+
+Map<String, dynamic> _labPanelItemToJson(LabPanelItem item) {
+  return {
+    'id': item.id,
+    'panel_name': item.panelName,
+    if (item.panelDate != null) 'panel_date': item.panelDate!.toIso8601String(),
+    if (item.confidenceScore != null) 'confidence_score': item.confidenceScore,
+    'results': item.results.map(_labResultItemToJson).toList(growable: false),
+  };
+}
+
+Map<String, dynamic> _imagingReportItemToJson(ImagingReportItem item) {
+  return {
+    'id': item.id,
+    if (item.examType != null) 'exam_type': item.examType,
+    if (item.bodyPart != null) 'body_part': item.bodyPart,
+    'report_text': item.reportText,
+    if (item.impression != null) 'impression': item.impression,
+    if (item.confidenceScore != null) 'confidence_score': item.confidenceScore,
+  };
 }
 
 class _LocalStructuredData {

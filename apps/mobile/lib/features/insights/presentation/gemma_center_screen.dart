@@ -202,6 +202,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
         .answerQuestionStream(
           question: question,
           referenceDate: _referenceDate,
+          documentId: widget.documentId,
         );
 
     _questionStreamSub = stream.listen(
@@ -239,6 +240,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
             response: fullAnswer,
             referenceDate: _referenceDate,
             languageCode: languageCode,
+            documentId: widget.documentId,
           ),
           profileScopeAtStart,
         );

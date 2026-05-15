@@ -242,6 +242,7 @@ class OnDevicePromptBuilder {
   Future<OnDeviceTextPrompt?> buildClinicalQuestionPrompt({
     required String question,
     required DateTime referenceDate,
+    ClinicalDocumentDetail? focusedDocument,
   }) async {
     final languageCode = await readStoredAppLanguageCode(_localDatabase);
     final context = await _buildClinicalTextContext(
@@ -257,6 +258,9 @@ class OnDevicePromptBuilder {
       ...context.payload,
       'task': 'clinical_question',
       'question': question.trim(),
+      if (focusedDocument != null)
+        'document': _documentPayload(focusedDocument),
+      if (focusedDocument != null) 'document_focus': focusedDocument.title,
     };
 
     return _buildTextPrompt(

@@ -48,16 +48,19 @@ class GemmaCoachService {
   Future<String> answerQuestion({
     required String question,
     DateTime? referenceDate,
+    String? documentId,
   }) async {
     final normalizedQuestion = question.trim();
     if (normalizedQuestion.isEmpty) {
       throw Exception('Write a more specific question.');
     }
+    final focusedDocument = await _resolveFocusedDocument(documentId);
 
     return _generateWithWarmup(
       promptBuilder: () => _onDevicePromptBuilder.buildClinicalQuestionPrompt(
         question: normalizedQuestion,
         referenceDate: referenceDate ?? DateTime.now(),
+        focusedDocument: focusedDocument,
       ),
       warmUp: _warmUpClinicalContext,
     );
@@ -66,15 +69,18 @@ class GemmaCoachService {
   Stream<String> answerQuestionStream({
     required String question,
     DateTime? referenceDate,
+    String? documentId,
   }) async* {
     final normalizedQuestion = question.trim();
     if (normalizedQuestion.isEmpty) {
       throw Exception('Write a more specific question.');
     }
+    final focusedDocument = await _resolveFocusedDocument(documentId);
 
     final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
       question: normalizedQuestion,
       referenceDate: referenceDate ?? DateTime.now(),
+      focusedDocument: focusedDocument,
     );
     if (prompt != null) {
       yield* _onDeviceAiService.generateTextStream(
@@ -89,6 +95,7 @@ class GemmaCoachService {
         .buildClinicalQuestionPrompt(
           question: normalizedQuestion,
           referenceDate: referenceDate ?? DateTime.now(),
+          focusedDocument: focusedDocument,
         );
     if (refreshedPrompt == null) {
       throw Exception(
@@ -207,5 +214,21 @@ class GemmaCoachService {
       _timelineRepository.fetchEvents().then((_) {}, onError: (_) {}),
       _wearablesRepository.fetchDailySummaries().then((_) {}, onError: (_) {}),
     ]);
+  }
+
+  Future<ClinicalDocumentDetail?> _resolveFocusedDocument(
+    String? documentId,
+  ) async {
+    final normalizedDocumentId = documentId?.trim();
+    if (normalizedDocumentId == null || normalizedDocumentId.isEmpty) {
+      return null;
+    }
+    try {
+      return await _documentsRepository.fetchDocumentDetail(
+        normalizedDocumentId,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }

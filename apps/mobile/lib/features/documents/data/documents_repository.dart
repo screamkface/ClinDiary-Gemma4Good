@@ -535,6 +535,14 @@ class DocumentsRepository {
   }) async {
     final normalizedQuestion = question.trim();
     final languageCode = await readStoredAppLanguageCode(_localDatabase);
+    final scope = await _resolveLocalScope();
+    final archive = await _localVaultService.fetchArchiveForScope(
+      userScopeId: scope.userId,
+      profileScopeId: scope.profileId,
+      folderId: folderId,
+      query: null,
+    );
+    final hasLocalDocuments = archive.documents.any((item) => item.isLocal);
 
     // Phase 1: embedding, ranking, prompt building (no streaming)
     final candidates = await _rankLocalDocuments(
@@ -545,10 +553,15 @@ class DocumentsRepository {
 
     if (candidates.isEmpty) {
       return QueryDocumentsStreamResult.identity(
-        answer: languageCode == 'it'
-            ? 'Non ci sono ancora documenti disponibili.'
-            : 'No local documents are available yet.',
+        answer: !hasLocalDocuments
+            ? (languageCode == 'it'
+                  ? 'Non ci sono ancora documenti disponibili.'
+                  : 'No local documents are available yet.')
+            : (languageCode == 'it'
+                  ? 'Non ho trovato informazioni rilevanti nei documenti per questa domanda. Prova ad aggiungere parole chiave come esame, data, valore o sintomo.'
+                  : 'I could not find relevant information in local documents for this question. Try adding key terms like exam, date, value, or symptom.'),
         languageCode: languageCode,
+        hasMatchingDocuments: hasLocalDocuments,
       );
     }
 
@@ -769,6 +782,7 @@ class QueryDocumentsStreamResult {
   factory QueryDocumentsStreamResult.identity({
     required String answer,
     required String languageCode,
+    bool hasMatchingDocuments = false,
   }) {
     final controller = StreamController<String>();
     controller.add(answer);
@@ -788,9 +802,13 @@ class QueryDocumentsStreamResult {
           searchScopeLabel: languageCode == 'it'
               ? 'Tutto l\'archivio'
               : 'Entire archive',
-          coverageNote: languageCode == 'it'
-              ? 'Nessun documento utile trovato.'
-              : 'No matching local documents found.',
+          coverageNote: hasMatchingDocuments
+              ? (languageCode == 'it'
+                    ? 'Nessun estratto rilevante trovato nei documenti.'
+                    : 'No relevant excerpts were found in local documents.')
+              : (languageCode == 'it'
+                    ? 'Nessun documento utile trovato.'
+                    : 'No matching local documents found.'),
           usedFallback: true,
         ),
       ),
