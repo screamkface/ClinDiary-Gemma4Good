@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 
 class DossierRepository {
-  DossierRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  DossierRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'health_dossier';
   static const _shareLinksCacheKey = 'dossier_share_links';
@@ -26,6 +25,10 @@ class DossierRepository {
 
   Future<List<int>> exportDossier() async {
     final dossier = await _loadCachedDossierOrThrow();
+    return exportDossierFromSnapshot(dossier);
+  }
+
+  List<int> exportDossierFromSnapshot(HealthDossier dossier) {
     final lines = <String>[
       'ClinDiary Health Dossier',
       'Generated at: ${dossier.generatedAt.toIso8601String()}',
@@ -54,8 +57,16 @@ class DossierRepository {
     return utf8.encode(cached);
   }
 
+  List<int> exportDossierJsonFromSnapshot(HealthDossier dossier) {
+    return utf8.encode(jsonEncode(_snapshotJson(dossier)));
+  }
+
   Future<List<int>> exportEmergencyDossier() async {
     final dossier = await _loadCachedDossierOrThrow();
+    return exportEmergencyDossierFromSnapshot(dossier);
+  }
+
+  List<int> exportEmergencyDossierFromSnapshot(HealthDossier dossier) {
     final summary = dossier.emergencySummary;
     final lines = <String>[
       'ClinDiary Emergency Card',
@@ -72,6 +83,49 @@ class DossierRepository {
       ...summary.conditions.map((item) => '- $item'),
     ];
     return _buildSimplePdf(lines);
+  }
+
+  Map<String, dynamic> _snapshotJson(HealthDossier dossier) {
+    final summary = dossier.emergencySummary;
+    return <String, dynamic>{
+      'generated_at': dossier.generatedAt.toIso8601String(),
+      'display_name': dossier.displayName,
+      'age': dossier.age,
+      'biological_sex': dossier.biologicalSex,
+      'profile_facts': dossier.profileFacts
+          .map((item) => {'label': item.label, 'value': item.value})
+          .toList(),
+      'provenance_facts': dossier.provenanceFacts
+          .map((item) => {'label': item.label, 'value': item.value})
+          .toList(),
+      'emergency_summary': <String, dynamic>{
+        'generated_at': summary.generatedAt.toIso8601String(),
+        'headline': summary.headline,
+        'key_points': summary.keyPoints,
+        'active_problems': summary.activeProblems,
+        'active_medications': summary.activeMedications,
+        'allergies': summary.allergies,
+        'conditions': summary.conditions,
+        'open_alerts': summary.openAlerts,
+        'latest_wearable_summary': summary.latestWearableSummary,
+        'latest_report_summary': summary.latestReportSummary,
+      },
+      'allergies': const <Map<String, dynamic>>[],
+      'medical_conditions': const <Map<String, dynamic>>[],
+      'medications': const <Map<String, dynamic>>[],
+      'family_history': const <Map<String, dynamic>>[],
+      'vaccinations': const <Map<String, dynamic>>[],
+      'clinical_episodes': const <Map<String, dynamic>>[],
+      'recent_daily_entries': const <Map<String, dynamic>>[],
+      'recent_documents': const <Map<String, dynamic>>[],
+      'recent_lab_panels': const <Map<String, dynamic>>[],
+      'recent_imaging_reports': const <Map<String, dynamic>>[],
+      'device_measurement_summaries': const <Map<String, dynamic>>[],
+      'recent_insights': const <Map<String, dynamic>>[],
+      'recent_reports': const <Map<String, dynamic>>[],
+      'alerts': const <Map<String, dynamic>>[],
+      'wearable_summaries': const <Map<String, dynamic>>[],
+    };
   }
 
   Future<HealthDossier> importDossier({
@@ -99,8 +153,7 @@ class DossierRepository {
     final decoded = jsonDecode(cached) as List<dynamic>;
     return decoded
         .map(
-          (item) =>
-              DossierShareLinkItem.fromJson(item as Map<String, dynamic>),
+          (item) => DossierShareLinkItem.fromJson(item as Map<String, dynamic>),
         )
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -128,16 +181,14 @@ class DossierRepository {
       'created_at': now.toIso8601String(),
     };
 
-    final links =
-        await _readCachedShareLinksJson() ?? <Map<String, dynamic>>[];
+    final links = await _readCachedShareLinksJson() ?? <Map<String, dynamic>>[];
     links.insert(0, item);
     await _writeCachedShareLinksJson(links);
     return DossierShareLinkItem.fromJson(item);
   }
 
   Future<void> revokeShareLink(String shareLinkId) async {
-    final links =
-        await _readCachedShareLinksJson() ?? <Map<String, dynamic>>[];
+    final links = await _readCachedShareLinksJson() ?? <Map<String, dynamic>>[];
     var changed = false;
     for (final link in links) {
       if (link['id']?.toString() == shareLinkId) {

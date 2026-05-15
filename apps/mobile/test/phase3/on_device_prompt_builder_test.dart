@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:clindiary/app/core/storage/active_profile_store.dart';
 import 'package:clindiary/app/core/storage/local_database.dart';
+import 'package:clindiary/features/documents/domain/clinical_document.dart';
 import 'package:clindiary/features/insights/data/on_device_prompt_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -505,6 +506,94 @@ void main() {
       );
 
       expect(prompt, isNull);
+    },
+  );
+
+  test(
+    'on-device prompt builder accepts a focused document even without other cached context',
+    () async {
+      final database = MockLocalDatabase();
+
+      when(
+        () => database.readCache(activeProfileIdCacheKey),
+      ).thenAnswer((_) async => 'profile-1');
+      when(
+        () => database.readCache('app_display_settings'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('profile_bundle::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('daily_entries::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('medication_logs::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('wearables_recent_30::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('wearables_recent_14::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('wearables_recent_7::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('timeline_events::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('alerts_list::profile-1'),
+      ).thenAnswer((_) async => null);
+      when(
+        () => database.readCache('health_dossier::profile-1'),
+      ).thenAnswer((_) async => null);
+
+      final builder = OnDevicePromptBuilder(localDatabase: database);
+      final prompt = await builder.buildClinicalQuestionPrompt(
+        question: 'Explain this lab report simply',
+        referenceDate: DateTime(2026, 4, 5),
+        focusedDocument: ClinicalDocumentDetail(
+          id: 'doc-1',
+          title: 'April labs',
+          documentType: 'lab_report',
+          uploadDate: DateTime(2026, 4, 5),
+          examDate: DateTime(2026, 4, 4),
+          originalFilename: 'image.png',
+          mimeType: 'image/png',
+          fileSizeBytes: 2048,
+          parsedStatus: 'reviewed',
+          fileUrl: '/tmp/image.png',
+          ocrText: 'Hemoglobin 14.5 g/dL 13.5 - 17.5',
+          labPanels: const [
+            LabPanelItem(
+              id: 'panel-1',
+              panelName: 'Complete blood count',
+              results: [
+                LabResultItem(
+                  id: 'result-1',
+                  analyteName: 'Hemoglobin',
+                  value: '14.5',
+                  unit: 'g/dL',
+                  refMin: 13.5,
+                  refMax: 17.5,
+                ),
+              ],
+            ),
+          ],
+          imagingReports: const [],
+          storageLocation: 'local',
+        ),
+      );
+
+      expect(prompt, isNotNull);
+      expect(prompt!.contextType, 'clinical_question');
+      expect(prompt.periodStart, DateTime(2026, 4, 4));
+      expect(prompt.periodEnd, DateTime(2026, 4, 4));
+      expect(prompt.userPrompt, contains('Explain this lab report simply'));
+      expect(prompt.userPrompt, contains('April labs'));
+      expect(prompt.userPrompt, contains('Hemoglobin'));
+      expect(prompt.userPrompt, contains('14.5'));
+      expect(prompt.userPrompt, isNot(contains('/tmp/image.png')));
     },
   );
 }

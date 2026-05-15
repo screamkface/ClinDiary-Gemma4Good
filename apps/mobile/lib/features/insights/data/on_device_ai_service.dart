@@ -103,14 +103,17 @@ class OnDeviceAiService {
     await _ensureInitialized();
     try {
       final isInstalled = await FlutterGemma.isModelInstalled(_modelName);
+      final knownModelFile = await _knownModelFile();
       if (!isInstalled) {
-        return const OnDeviceAiStatus(
+        return OnDeviceAiStatus(
           isSupported: true,
           isReady: false,
           runtime: 'flutter_gemma (LiteRT-LM)',
           provider: 'on_device_litertlm',
           activeProviderLabel: 'On-device non configurato',
           backendPreference: 'GPU',
+          modelName: _modelName,
+          defaultModelDirectory: _defaultModelDirectory,
           isCloudBypassedForThisRequest: true,
         );
       }
@@ -132,7 +135,16 @@ class OnDeviceAiService {
         provider: 'on_device_litertlm',
         activeProviderLabel: 'Gemma 4 On-device',
         backendPreference: _preferredBackend.name.toUpperCase(),
+        backendResolved: _preferredBackend.name.toUpperCase(),
         modelName: _modelName,
+        modelPath: knownModelFile?.path,
+        modelFileSizeBytes: knownModelFile == null
+            ? null
+            : await knownModelFile.length(),
+        modelLastModifiedAt: knownModelFile == null
+            ? null
+            : await knownModelFile.lastModified(),
+        defaultModelDirectory: _defaultModelDirectory,
         isCloudBypassedForThisRequest: true,
       );
     } catch (e) {
@@ -147,6 +159,17 @@ class OnDeviceAiService {
         isCloudBypassedForThisRequest: true,
       );
     }
+  }
+
+  static const _defaultModelDirectory =
+      '/sdcard/Android/data/it.clindiary.clindiary/files/models';
+
+  Future<File?> _knownModelFile() async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+    final file = File('$_defaultModelDirectory/$_modelName');
+    return file.exists().then((exists) => exists ? file : null);
   }
 
   Future<InsightSummary> generateDailyRecap({
@@ -236,15 +259,13 @@ class OnDeviceAiService {
   }
 
   Future<String> downloadGemma4Model({
-    void Function(int receivedBytes, int? totalBytes)? onProgress,
+    void Function(int progressPercent)? onProgress,
   }) async {
     await _ensureInitialized();
 
     String? installedPath;
 
-    final preInstalledFile = File(
-      '/sdcard/Android/data/it.clindiary.clindiary/files/models/$_modelName',
-    );
+    final preInstalledFile = File('$_defaultModelDirectory/$_modelName');
     if (await preInstalledFile.exists()) {
       await FlutterGemma.installModel(
         modelType: ModelType.gemma4,
@@ -256,7 +277,7 @@ class OnDeviceAiService {
         modelType: ModelType.gemma4,
         fileType: ModelFileType.litertlm,
       ).fromNetwork(_modelDownloadUrl).withProgress((progress) {
-        onProgress?.call(progress, 100);
+        onProgress?.call(progress);
       }).install();
     }
 
@@ -422,9 +443,7 @@ class OnDeviceAiService {
   Future<void> _removeModelFiles() async {
     await _resetRuntime();
     try {
-      final dir = Directory(
-        '/sdcard/Android/data/it.clindiary.clindiary/files/models',
-      );
+      final dir = Directory(_defaultModelDirectory);
       if (await dir.exists()) {
         await for (final entity in dir.list()) {
           if (entity is File && entity.path.endsWith('.litertlm')) {

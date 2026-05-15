@@ -3,6 +3,7 @@
 ## Current App Work
 
 ### Completed
+- Fixed `Ask about this file` so Gemma can answer even when the selected document is the only available local context; document-focused questions no longer fail just because profile/journal/dossier caches are empty.
 - Fixed Documents manual review so saved structured lab/imaging data is persisted in the local vault and reloaded on subsequent reads instead of being lost after the form submission.
 - Fixed Documents manual review hydration so lab/imaging drafts can be seeded again from the extracted OCR text when the review opens before structured rows are already attached.
 - Fixed Ask Files streaming fallback copy so it no longer says that no documents were uploaded when documents exist but none match the current question.
@@ -178,6 +179,8 @@
 - Created `docs/video/REMOTION_OUTLINE_GEMMA4GOOD.md` with a matching 30 FPS / 5400-frame Remotion structure and QA checklist.
 - Revised the video package to foreground the implemented Gemma 4 voice check-in flow: speech transcript review, Send to Gemma, filled daily metrics and recognized symptom drafts with severity, duration and body location.
 - Created `docs/video/CAPCUT_CAPTIONS_GEMMA4GOOD.srt` with upload-ready CapCut captions for the revised voiceover, using the earlier short-caption `.srt` pacing as the reference.
+- Performed a targeted code review of the video-critical flows and patched safe demo risks: clamped Gemma voice scores to 0-10, removed ambiguous fever duration metadata, made Ask Files combine semantic and keyword ranking, preserved streamed Ask Files answers in result objects, added dossier export fallback from the visible demo snapshot, improved on-device model status proof metadata, and removed the forced Italian medication pause date picker.
+- Verified the video-critical changes with `flutter analyze`, `flutter test test/daily_journal/voice_check_in_draft_test.dart test/daily_journal/voice_check_in_assistant_test.dart test/documents/documents_flow_test.dart test/home/prevention_dossier_screens_test.dart test/phase3/on_device_prompt_builder_test.dart test/phase3/on_device_insights_screen_test.dart test/notifications/local_medication_reminder_service_test.dart`, plus a separate medication reminder test run.
 
 ### Still Missing
 - Record the actual app clips listed in the feature inventory using seeded or fictional demo data.
@@ -185,9 +188,11 @@
 - Capture safe real-life footage with all labels, names and notifications blurred or unreadable.
 - Decide whether optional Wearables and Dossier clips should replace another app scene or remain outside the final 180-second edit.
 - Tighten the `.srt` timing after recording the final voiceover, because current timings are a paced draft aligned to the script rather than waveform-synced captions.
+- Smoke test on a physical Android device with the Gemma `.litertlm` model installed before recording, especially voice capture, model proof, Ask Files streaming and Share sheet export.
 
 ### Known Bugs
 - No known documentation blockers. The video still needs real device/app capture verification before submission.
+- No blocking code issue found in static analysis or targeted widget/unit tests. Device-specific behavior still depends on microphone permission, model availability, Android share sheet and local file permissions.
 
 ### Next Recommended Step
 - Record the required app screen clips in the order defined by `docs/video/CAPCUT_SCRIPT_GEMMA4GOOD.md`, then assemble a first CapCut rough cut under 180 seconds.

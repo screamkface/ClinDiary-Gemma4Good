@@ -63,8 +63,7 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
       message: state.message,
       modelDirectory: state.modelDirectory,
       modelPath: state.modelPath,
-      downloadedBytes: state.downloadedBytes,
-      totalBytes: state.totalBytes,
+      downloadProgressPercent: state.downloadProgressPercent,
       lastError: state.lastError,
     );
   }
@@ -100,12 +99,11 @@ class GemmaModelBootstrapController extends Notifier<GemmaModelBootstrapState> {
       );
 
       await service.downloadGemma4Model(
-        onProgress: (receivedBytes, totalBytes) {
+        onProgress: (progress) {
           state = GemmaModelBootstrapState.downloading(
             message: 'Downloading Gemma 4 E2B...',
             modelDirectory: status.defaultModelDirectory,
-            downloadedBytes: receivedBytes,
-            totalBytes: totalBytes,
+            downloadProgressPercent: progress,
           );
         },
       );
@@ -150,8 +148,7 @@ class GemmaModelBootstrapState {
     this.message = '',
     this.modelDirectory,
     this.modelPath,
-    this.downloadedBytes,
-    this.totalBytes,
+    this.downloadProgressPercent,
     this.lastError,
   });
 
@@ -161,15 +158,13 @@ class GemmaModelBootstrapState {
     this.modelPath,
   }) : phase = GemmaModelBootstrapPhase.checking,
        allowAppAccess = false,
-       downloadedBytes = null,
-       totalBytes = null,
+       downloadProgressPercent = null,
        lastError = null;
 
   const GemmaModelBootstrapState.downloading({
     this.message = '',
     this.modelDirectory,
-    this.downloadedBytes,
-    this.totalBytes,
+    this.downloadProgressPercent,
   }) : phase = GemmaModelBootstrapPhase.downloading,
        allowAppAccess = false,
        modelPath = null,
@@ -181,8 +176,7 @@ class GemmaModelBootstrapState {
     this.modelPath,
   }) : phase = GemmaModelBootstrapPhase.ready,
        allowAppAccess = true,
-       downloadedBytes = null,
-       totalBytes = null,
+       downloadProgressPercent = null,
        lastError = null;
 
   const GemmaModelBootstrapState.error({
@@ -192,16 +186,14 @@ class GemmaModelBootstrapState {
     this.modelDirectory,
     this.modelPath,
   }) : phase = GemmaModelBootstrapPhase.error,
-       downloadedBytes = null,
-       totalBytes = null;
+       downloadProgressPercent = null;
 
   final GemmaModelBootstrapPhase phase;
   final bool allowAppAccess;
   final String message;
   final String? modelDirectory;
   final String? modelPath;
-  final int? downloadedBytes;
-  final int? totalBytes;
+  final int? downloadProgressPercent;
   final String? lastError;
 }
 
@@ -235,17 +227,15 @@ class _GemmaModelBootstrapView extends StatelessWidget {
               ),
               if (state.phase == GemmaModelBootstrapPhase.downloading) ...[
                 const SizedBox(height: 24),
-                if (state.downloadedBytes != null && state.totalBytes != null)
+                if (state.downloadProgressPercent != null)
                   Column(
                     children: [
                       LinearProgressIndicator(
-                        value: state.totalBytes! > 0
-                            ? state.downloadedBytes! / state.totalBytes!
-                            : null,
+                        value: state.downloadProgressPercent! / 100,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${state.downloadedBytes}%',
+                        '${state.downloadProgressPercent}%',
                         style: theme.textTheme.bodySmall,
                       ),
                     ],

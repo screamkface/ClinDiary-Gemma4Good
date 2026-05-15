@@ -72,13 +72,13 @@ class VoiceCheckInDraft {
     return VoiceCheckInDraft(
       entryDate: _parseDate(json['entry_date']),
       sleepHours: _parseDouble(json['sleep_hours']),
-      sleepQuality: _parseInt(json['sleep_quality']),
-      energyLevel: _parseInt(json['energy_level']),
-      moodLevel: _parseInt(json['mood_level']),
-      stressLevel: _parseInt(json['stress_level']),
-      appetiteLevel: _parseInt(json['appetite_level']),
-      hydrationLevel: _parseInt(json['hydration_level']),
-      generalPain: _parseInt(json['general_pain']),
+      sleepQuality: _parseScore(json['sleep_quality']),
+      energyLevel: _parseScore(json['energy_level']),
+      moodLevel: _parseScore(json['mood_level']),
+      stressLevel: _parseScore(json['stress_level']),
+      appetiteLevel: _parseScore(json['appetite_level']),
+      hydrationLevel: _parseScore(json['hydration_level']),
+      generalPain: _parseScore(json['general_pain']),
       generalNotes: _parseString(json['general_notes']),
       followUpQuestions: _parseStringList(json['follow_up_questions']),
       symptoms: _parseSymptoms(json['symptoms']),
@@ -170,6 +170,11 @@ class VoiceCheckInDraft {
     return parsedDouble?.round();
   }
 
+  static int? _parseScore(dynamic value) {
+    final parsed = _parseInt(value);
+    return parsed?.clamp(0, 10).toInt();
+  }
+
   static String? _parseString(dynamic value) {
     if (value == null) {
       return null;
@@ -255,7 +260,7 @@ class VoiceCheckInSymptomDraft {
   factory VoiceCheckInSymptomDraft.fromJson(Map<String, dynamic> json) {
     return VoiceCheckInSymptomDraft(
       symptomCode: _cleanCode(json['symptom_code']) ?? 'custom_symptom',
-      severity: VoiceCheckInDraft._parseInt(json['severity']),
+      severity: VoiceCheckInDraft._parseScore(json['severity']),
       durationMinutes: VoiceCheckInDraft._parseInt(json['duration_minutes']),
       bodyLocation: VoiceCheckInDraft._parseString(json['body_location']),
       metadataJson: _parseMetadataJson(json['metadata_json']),

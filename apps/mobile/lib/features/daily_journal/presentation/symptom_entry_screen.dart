@@ -69,7 +69,6 @@ class _SymptomEntryScreenState extends ConsumerState<SymptomEntryScreen> {
         'fever' => {
           'entry_mode': 'suggested',
           'temperature_c': double.tryParse(_temperatureController.text.trim()),
-          'duration_days': int.tryParse(_durationController.text.trim()),
         },
         'nausea' => {
           'entry_mode': 'suggested',

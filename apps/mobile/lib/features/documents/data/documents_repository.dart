@@ -400,7 +400,7 @@ class DocumentsRepository {
   /// 1. PRIMARY: Semantic search using Gecko 110M
   ///    - Generate embeddings for both question and document
   ///    - Compute cosine similarity (0.0 to 1.0)
-  /// 2. FALLBACK: If embeddings fail, use keyword matching
+  /// 2. FALLBACK/BOOST: Always include keyword matching for exact demo queries
   /// 3. HEURISTICS: Boost scores for lab/imaging relevance
   ///
   /// Result score determines ranking in final answer.
@@ -417,45 +417,9 @@ class DocumentsRepository {
     if (questionEmbedding.isNotEmpty) {
       final documentEmbedding = await _getDocumentEmbedding(detail);
       score = _cosineSimilarity(questionEmbedding, documentEmbedding);
-    } else {
-      // Fallback: Keyword search
-      final fragments = <String>[
-        summary.title,
-        summary.documentType,
-        if (summary.source != null) summary.source!,
-        if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
-          detail.ocrText!,
-        for (final panel in detail.labPanels)
-          '${panel.panelName} ${panel.results.map((item) => '${item.analyteName} ${item.value}${item.unit == null ? '' : ' ${item.unit}'}').join(' ')}',
-        for (final report in detail.imagingReports)
-          '${report.examType ?? 'imaging'} ${report.bodyPart ?? ''} ${report.impression ?? report.reportText}',
-      ];
-
-      final corpus = fragments.join(' ').toLowerCase();
-      final tokens = question
-          .toLowerCase()
-          .split(RegExp(r'[^a-z0-9]+'))
-          .where((item) => item.trim().length >= 3)
-          .toSet();
-
-      for (final token in tokens) {
-        if (corpus.contains(token)) {
-          score += 1.0;
-        }
-      }
-
-      if (summary.title.toLowerCase().contains(question.toLowerCase())) {
-        score += 2.0;
-      }
-      if (detail.labPanels.isNotEmpty &&
-          question.toLowerCase().contains('lab')) {
-        score += 0.8;
-      }
-      if (detail.imagingReports.isNotEmpty &&
-          question.toLowerCase().contains('imaging')) {
-        score += 0.8;
-      }
     }
+
+    score += _keywordScore(summary, detail, question);
 
     final excerpt = _buildExcerpt(detail);
     return _LocalQueryCandidate(
@@ -474,6 +438,50 @@ class DocumentsRepository {
           ? detail.imagingReports.first.examType
           : 'Extracted text',
     );
+  }
+
+  double _keywordScore(
+    ClinicalDocumentSummary summary,
+    ClinicalDocumentDetail detail,
+    String question,
+  ) {
+    var score = 0.0;
+    final fragments = <String>[
+      summary.title,
+      summary.documentType,
+      if (summary.source != null) summary.source!,
+      if (detail.ocrText != null && detail.ocrText!.trim().isNotEmpty)
+        detail.ocrText!,
+      for (final panel in detail.labPanels)
+        '${panel.panelName} ${panel.results.map((item) => '${item.analyteName} ${item.value}${item.unit == null ? '' : ' ${item.unit}'}').join(' ')}',
+      for (final report in detail.imagingReports)
+        '${report.examType ?? 'imaging'} ${report.bodyPart ?? ''} ${report.impression ?? report.reportText}',
+    ];
+
+    final corpus = fragments.join(' ').toLowerCase();
+    final normalizedQuestion = question.toLowerCase();
+    final tokens = normalizedQuestion
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((item) => item.trim().length >= 3)
+        .toSet();
+
+    for (final token in tokens) {
+      if (corpus.contains(token)) {
+        score += 1.0;
+      }
+    }
+
+    if (summary.title.toLowerCase().contains(normalizedQuestion)) {
+      score += 2.0;
+    }
+    if (detail.labPanels.isNotEmpty && normalizedQuestion.contains('lab')) {
+      score += 0.8;
+    }
+    if (detail.imagingReports.isNotEmpty &&
+        normalizedQuestion.contains('imaging')) {
+      score += 0.8;
+    }
+    return score;
   }
 
   Future<String> _generateLocalQueryAnswer({
@@ -600,11 +608,15 @@ class DocumentsRepository {
     // Phase 2: stream answer from the LLM
     final answerController = StreamController<String>();
     final resultCompleter = Completer<DocumentQueryResult>();
+    final answerBuffer = StringBuffer();
 
     _onDeviceAiService
         .generateTextStream(systemPrompt: systemPrompt, userPrompt: userPrompt)
         .listen(
-          (token) => answerController.add(token),
+          (token) {
+            answerBuffer.write(token);
+            answerController.add(token);
+          },
           onDone: () async {
             answerController.close();
             // Build result and build citations
@@ -627,7 +639,7 @@ class DocumentsRepository {
                 .toList();
             resultCompleter.complete(
               DocumentQueryResult(
-                answer: '',
+                answer: answerBuffer.toString().trim(),
                 citations: citations,
                 providerName: 'on_device_litertlm',
                 modelName: 'gemma-4-E2B-it.litertlm',

@@ -56,4 +56,25 @@ void main() {
     );
     expect(draft.toDailyEntryPayload('2026-04-07')['entry_date'], '2026-04-08');
   });
+
+  test('voice check-in draft clamps score fields to 0-10', () {
+    const response = '''
+{
+  "sleep_quality": 12,
+  "energy_level": -2,
+  "symptoms": [
+    {
+      "symptom_code": "headache",
+      "severity": 14
+    }
+  ]
+}
+''';
+
+    final draft = VoiceCheckInDraft.fromAiResponse(response);
+
+    expect(draft.sleepQuality, 10);
+    expect(draft.energyLevel, 0);
+    expect(draft.symptoms.first.severity, 10);
+  });
 }

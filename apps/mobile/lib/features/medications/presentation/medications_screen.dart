@@ -127,7 +127,6 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       initialDate: schedule.pausedUntil ?? now,
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 365)),
-      locale: const Locale('it', 'IT'),
     );
     if (picked == null) {
       return;

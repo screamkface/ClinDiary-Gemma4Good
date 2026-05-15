@@ -32,9 +32,18 @@ class HealthDossierScreen extends ConsumerWidget {
     final dateFormat = DateFormat('dd MMM yyyy', 'en_US');
     final dateTimeFormat = DateFormat('dd MMM yyyy, HH:mm', 'en_US');
 
+    HealthDossier? visibleDossierSnapshot() => dossierAsync.valueOrNull;
+
     Future<void> sharePdfDossier() async {
       try {
-        final bytes = await ref.read(dossierRepositoryProvider).exportDossier();
+        final repository = ref.read(dossierRepositoryProvider);
+        final bytes = await repository.exportDossier().catchError((_) {
+          final dossier = visibleDossierSnapshot();
+          if (dossier == null) {
+            throw Exception('No local dossier snapshot is available yet.');
+          }
+          return repository.exportDossierFromSnapshot(dossier);
+        });
         final directory = await getTemporaryDirectory();
         final filename =
             'clindiary-dossier-${DateTime.now().millisecondsSinceEpoch}.pdf';
@@ -57,9 +66,14 @@ class HealthDossierScreen extends ConsumerWidget {
 
     Future<void> shareJsonBackup() async {
       try {
-        final bytes = await ref
-            .read(dossierRepositoryProvider)
-            .exportDossierJson();
+        final repository = ref.read(dossierRepositoryProvider);
+        final bytes = await repository.exportDossierJson().catchError((_) {
+          final dossier = visibleDossierSnapshot();
+          if (dossier == null) {
+            throw Exception('No local dossier snapshot is available yet.');
+          }
+          return repository.exportDossierJsonFromSnapshot(dossier);
+        });
         final directory = await getTemporaryDirectory();
         final filename =
             'clindiary-dossier-backup-${DateTime.now().millisecondsSinceEpoch}.json';
@@ -82,9 +96,14 @@ class HealthDossierScreen extends ConsumerWidget {
 
     Future<void> shareEmergencyPdf() async {
       try {
-        final bytes = await ref
-            .read(dossierRepositoryProvider)
-            .exportEmergencyDossier();
+        final repository = ref.read(dossierRepositoryProvider);
+        final bytes = await repository.exportEmergencyDossier().catchError((_) {
+          final dossier = visibleDossierSnapshot();
+          if (dossier == null) {
+            throw Exception('No local dossier snapshot is available yet.');
+          }
+          return repository.exportEmergencyDossierFromSnapshot(dossier);
+        });
         final directory = await getTemporaryDirectory();
         final filename =
             'clindiary-emergency-card-${DateTime.now().millisecondsSinceEpoch}.pdf';

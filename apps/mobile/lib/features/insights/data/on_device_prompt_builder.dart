@@ -250,12 +250,12 @@ class OnDevicePromptBuilder {
       lookbackDays: 30,
       languageCode: languageCode,
     );
-    if (context == null) {
+    if (context == null && focusedDocument == null) {
       return null;
     }
 
     final payload = <String, Object?>{
-      ...context.payload,
+      if (context != null) ...context.payload,
       'task': 'clinical_question',
       'question': question.trim(),
       if (focusedDocument != null)
@@ -263,10 +263,15 @@ class OnDevicePromptBuilder {
       if (focusedDocument != null) 'document_focus': focusedDocument.title,
     };
 
+    final promptReferenceDate =
+        focusedDocument?.examDate ??
+        focusedDocument?.uploadDate ??
+        referenceDate;
+
     return _buildTextPrompt(
       contextType: 'clinical_question',
-      periodStart: context.periodStart,
-      periodEnd: context.periodEnd,
+      periodStart: context?.periodStart ?? promptReferenceDate,
+      periodEnd: context?.periodEnd ?? promptReferenceDate,
       systemPrompt: _assistantSystemPrompt(languageCode),
       userPrompt: _questionUserPrompt(payload, languageCode),
     );
