@@ -57,8 +57,7 @@ class DeviceProviderItem {
             json['requires_vendor_contract'] as bool? ?? false,
         providerConfigured: json['provider_configured'] as bool? ?? false,
         supportsLiveSync: json['supports_live_sync'] as bool? ?? false,
-        supportsManualIngest:
-            json['supports_manual_ingest'] as bool? ?? false,
+        supportsManualIngest: json['supports_manual_ingest'] as bool? ?? false,
         priority: json['priority'] as int? ?? 0,
       );
 }
@@ -237,7 +236,9 @@ class DeviceOverview {
 
   factory DeviceOverview.fromJson(Map<String, dynamic> json) => DeviceOverview(
     providers: (json['providers'] as List<dynamic>? ?? const [])
-        .map((item) => DeviceProviderItem.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) => DeviceProviderItem.fromJson(item as Map<String, dynamic>),
+        )
         .toList(),
     connections: (json['connections'] as List<dynamic>? ?? const [])
         .map(
@@ -252,7 +253,9 @@ class DeviceOverview {
             )
             .toList(),
     recentJobs: (json['recent_jobs'] as List<dynamic>? ?? const [])
-        .map((item) => DeviceImportJobItem.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) => DeviceImportJobItem.fromJson(item as Map<String, dynamic>),
+        )
         .toList(),
   );
 }

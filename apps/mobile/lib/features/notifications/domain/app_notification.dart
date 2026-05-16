@@ -112,13 +112,13 @@ class NotificationPreferences {
   final String? emailAddress;
 
   factory NotificationPreferences.fromJson(Map<String, dynamic> json) {
-      return NotificationPreferences(
-        inAppEnabled: json['in_app_enabled'] as bool? ?? true,
-        dailyCheckinEnabled: json['daily_checkin_enabled'] as bool? ?? true,
-        symptomFollowUpEnabled:
-            json['symptom_follow_up_enabled'] as bool? ?? true,
-        medicationRemindersEnabled:
-            json['medication_reminders_enabled'] as bool? ?? true,
+    return NotificationPreferences(
+      inAppEnabled: json['in_app_enabled'] as bool? ?? true,
+      dailyCheckinEnabled: json['daily_checkin_enabled'] as bool? ?? true,
+      symptomFollowUpEnabled:
+          json['symptom_follow_up_enabled'] as bool? ?? true,
+      medicationRemindersEnabled:
+          json['medication_reminders_enabled'] as bool? ?? true,
       screeningRemindersEnabled:
           json['screening_reminders_enabled'] as bool? ?? true,
       documentFollowUpEnabled:

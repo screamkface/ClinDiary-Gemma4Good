@@ -6,9 +6,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 
 class MedicationsRepository {
-  MedicationsRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  MedicationsRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _logsCacheKey = 'medication_logs';
   static const _profileBundleCacheKey = 'profile_bundle';
@@ -287,6 +286,4 @@ class MedicationsRepository {
   Future<String> _scopedLogsCacheKey() {
     return profileScopedCacheKey(_localDatabase, _logsCacheKey);
   }
-
-
 }

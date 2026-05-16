@@ -83,6 +83,4 @@ class BillingRepository {
       'active_subscription': null,
     };
   }
-
-
 }

@@ -22,15 +22,12 @@ class SessionGateScreen extends ConsumerWidget {
             const SizedBox(height: 18),
             Text(
               l10n.appTitle,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text(message, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 18),
             const CircularProgressIndicator(),
           ],

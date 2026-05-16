@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/wearables/domain/wearable_day_summary.dart';
 
 class WearablesRepository {
-  WearablesRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  WearablesRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   final LocalDatabase _localDatabase;
 

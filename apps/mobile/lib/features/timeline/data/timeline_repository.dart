@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/timeline/domain/timeline_event.dart';
 
 class TimelineRepository {
-  TimelineRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  TimelineRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _cacheKey = 'timeline_events';
 

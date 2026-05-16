@@ -14,4 +14,3 @@ Future<void> main() async {
   Intl.defaultLocale = 'en_US';
   runApp(const ProviderScope(child: ClinDiaryApp()));
 }
-

@@ -1,8 +1,8 @@
 # ClinDiary — Local-first Health Diary powered by Gemma 4
 
-ClinDiary is a mobile health diary prototype built for the **Gemma 4 Good Hackathon**.
+ClinDiary is a local-first Android health diary prototype built for the **Gemma 4 Good Hackathon**.
 
-The app helps people organize daily health context — symptoms, notes, medication context, trends, and clinical documents — and uses **Gemma 4 running on-device** to turn that information into careful, readable summaries.
+The app helps people organize daily health context — symptoms, notes, medication context, wellness trends, and clinical documents — and uses **Gemma 4 running on-device** to turn that information into careful, readable summaries.
 
 ClinDiary is **not an AI doctor**. It does not diagnose, prescribe medication, change dosages, or triage emergencies. Its purpose is to help users remember their own health story more clearly and prepare better conversations with clinicians.
 
@@ -10,15 +10,15 @@ ClinDiary is **not an AI doctor**. It does not diagnose, prescribe medication, c
 
 ## Vision
 
-Before a medical appointment, the difficult part is often not one symptom. It is remembering the whole story:
+Before a medical appointment, the difficult part is often not one single symptom. It is remembering the whole story:
 
 - what happened over the last days or weeks;
 - which symptoms changed;
-- whether medications were taken consistently;
+- whether medication context was consistent;
 - what a clinical report said;
 - which questions should be discussed with a doctor.
 
-ClinDiary explores a privacy-first approach: keep personal health context on the device and use local AI to explain it in plain language.
+ClinDiary explores a privacy-first approach: keep personal health context local and use on-device AI to explain it in plain language.
 
 ```text
 Daily health context
@@ -30,24 +30,11 @@ Gemma 4 on-device
 Private recap / document explanation
 ```
 
----
-
-## Core idea
-
-ClinDiary uses Gemma 4 as a **local explanation layer**.
-
-Gemma is not used to make clinical decisions. Instead, it helps transform user-owned context into clearer language:
-
-- daily summaries;
-- pre-visit summaries;
-- document explanations;
-- cautious answers over local app context.
-
-The app keeps deterministic health logic separate from generative AI.
+Gemma is used as a local explanation layer, not as a diagnostic engine.
 
 ---
 
-## Main demo flows
+## Core demo flows
 
 ### 1. Local Daily Recap
 
@@ -61,7 +48,7 @@ The recap is designed to be:
 - based only on available local context;
 - useful before a medical appointment.
 
-Example user intent:
+Example intent:
 
 ```text
 Summarize what happened today in a way I can explain to my doctor.
@@ -81,7 +68,7 @@ What should I mention at my next appointment?
 Summarize my recent symptoms in simple terms.
 ```
 
-The assistant is instructed to avoid diagnosis, prescriptions, dosage changes, or emergency triage.
+The assistant is instructed to avoid diagnosis, prescriptions, dosage changes, and emergency triage.
 
 ---
 
@@ -116,14 +103,15 @@ Gemma must answer only from the selected document context. If the document text 
 
 ## Why on-device Gemma matters
 
-Health context is personal. A user may not want symptoms, medication notes, clinical documents, and appointment preparation data sent to a remote model.
+Health context is personal. A user may not want symptoms, medication notes, clinical documents, and appointment preparation data sent away from the device.
 
 ClinDiary demonstrates how a local Gemma 4 runtime can support:
 
 - privacy-preserving summarization;
 - reduced dependency on connectivity;
 - safer handling of sensitive health context;
-- transparent proof that AI processing can happen on the device.
+- transparent local AI processing;
+- selected-document explanations grounded in local context.
 
 The local model path is part of the product concept, not just an implementation detail.
 
@@ -196,7 +184,7 @@ Gemma is used for:
 
 ## Technical stack
 
-### Mobile
+### Mobile app
 
 - Flutter
 - Riverpod
@@ -241,7 +229,7 @@ To understand the project quickly:
 
 1. Open the app and view the local demo health diary.
 2. Review daily check-ins and trend context.
-3. Open the local Gemma/AI status screen.
+3. Open the local Gemma status screen.
 4. Verify that Gemma is running locally.
 5. Generate a daily recap.
 6. Open a clinical document.
@@ -256,7 +244,7 @@ To understand the project quickly:
 
 ClinDiary demonstrates:
 
-- a local-first mobile health diary;
+- a local-first Android health diary;
 - on-device Gemma 4 inference;
 - privacy-preserving daily recap generation;
 - selected-document question answering;
@@ -273,7 +261,6 @@ The larger vision is not to replace clinicians. The goal is to help people arriv
 ```text
 apps/
   mobile/      Flutter Android app
-  backend/     Backend prototype code for the broader ClinDiary project
 
 docs/          Hackathon and technical documentation
 infra/         Local infrastructure files
@@ -290,4 +277,14 @@ ClinDiary is designed around a simple principle:
 
 In the hackathon demo path, Gemma inference runs locally on the Android device and uses synthetic local data for reproducibility.
 
-**ClinDiary uses local AI to help users understand their own health context without turning every personal detail into a cloud request.**
+**ClinDiary uses local AI to help users understand their own health context without turning every personal detail into a remote AI request.**
+
+---
+
+## License
+
+This project is submitted to the Gemma 4 Good Hackathon.
+
+Unless otherwise noted, the original ClinDiary submission materials, documentation, synthetic demo data, and source code created specifically for this hackathon submission are licensed under the Creative Commons Attribution 4.0 International License (CC-BY 4.0).
+
+Third-party dependencies, SDKs, pretrained models, tools, and frameworks remain under their respective licenses.

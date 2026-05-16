@@ -76,7 +76,8 @@ class ScreeningCatalogItem {
       publicCoverageFlag: json['public_coverage_flag'] as bool? ?? false,
       category: json['category'].toString(),
       carePathway: json['care_pathway']?.toString() ?? 'discuss_with_doctor',
-      recommendationLevel: json['recommendation_level']?.toString() ?? 'routine',
+      recommendationLevel:
+          json['recommendation_level']?.toString() ?? 'routine',
       cadenceLabel: json['cadence_label'] as String?,
       catalogOnly: json['catalog_only'] as bool? ?? false,
       explanation: json['explanation'] as String?,
@@ -155,8 +156,7 @@ class PatientScreeningStatusItem {
           ? null
           : DateTime.parse(json['next_due_date'].toString()),
       completedThisYear: json['completed_this_year'] as bool? ?? false,
-      currentYearLastCompletedOn:
-          json['current_year_last_completed_on'] == null
+      currentYearLastCompletedOn: json['current_year_last_completed_on'] == null
           ? null
           : DateTime.parse(json['current_year_last_completed_on'].toString()),
       status: json['status'].toString(),

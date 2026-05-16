@@ -28,9 +28,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     return session.requireValue;
   }
 
-  Future<AuthSession> loginWithGoogle({
-    required String idToken,
-  }) async {
+  Future<AuthSession> loginWithGoogle({required String idToken}) async {
     state = const AsyncLoading();
     final session = await AsyncValue.guard<AuthSession>(
       () => ref.read(authRepositoryProvider).loginWithGoogle(idToken: idToken),

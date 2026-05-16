@@ -79,10 +79,8 @@ class ScreeningsRepository {
 
     final statusJson = recommendationItems
         .map<Map<String, dynamic>>(
-          (item) => _statusJsonFromRecommendation(
-            item,
-            existingById[item.code],
-          ),
+          (item) =>
+              _statusJsonFromRecommendation(item, existingById[item.code]),
         )
         .toList(growable: false);
 
@@ -116,7 +114,8 @@ class ScreeningsRepository {
     PreventionRecommendationItem item,
     Map<String, dynamic>? existing,
   ) {
-    final completedThisYear = existing?['completed_this_year'] as bool? ?? false;
+    final completedThisYear =
+        existing?['completed_this_year'] as bool? ?? false;
     final currentYearLastCompletedOn =
         existing?['current_year_last_completed_on'];
     final lastDoneDate = existing?['last_done_date'];
@@ -185,10 +184,7 @@ class ScreeningsRepository {
       _statusCacheKeyForRegion(regionCode),
     );
 
-    await _localDatabase.putCache(
-      key: scopedKey,
-      payload: jsonEncode(items),
-    );
+    await _localDatabase.putCache(key: scopedKey, payload: jsonEncode(items));
   }
 
   Future<Map<String, dynamic>> _markDoneInCache(

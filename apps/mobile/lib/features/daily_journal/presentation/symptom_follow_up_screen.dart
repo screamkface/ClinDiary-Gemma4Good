@@ -70,14 +70,16 @@ class _SymptomFollowUpScreenState extends ConsumerState<SymptomFollowUpScreen> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(dailyJournalRepositoryProvider).recordSymptomFollowUp(
-        sourceEntryId: source.entry.id,
-        sourceEntryDate: source.entry.entryDate,
-        sourceSymptom: source.symptom,
-        stillPresent: stillPresent,
-        severity: stillPresent ? _severity.round() : 0,
-        notes: _notesController.text,
-      );
+      await ref
+          .read(dailyJournalRepositoryProvider)
+          .recordSymptomFollowUp(
+            sourceEntryId: source.entry.id,
+            sourceEntryDate: source.entry.entryDate,
+            sourceSymptom: source.symptom,
+            stillPresent: stillPresent,
+            severity: stillPresent ? _severity.round() : 0,
+            notes: _notesController.text,
+          );
       ref.invalidate(dailyEntriesProvider);
       ref.invalidate(timelineEventsProvider);
       if (!mounted) {
@@ -152,15 +154,17 @@ class _SymptomFollowUpScreenState extends ConsumerState<SymptomFollowUpScreen> {
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed:
-                          _saving ? null : () => _submit(stillPresent: true),
+                      onPressed: _saving
+                          ? null
+                          : () => _submit(stillPresent: true),
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text('Yes, still present'),
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
-                      onPressed:
-                          _saving ? null : () => _submit(stillPresent: false),
+                      onPressed: _saving
+                          ? null
+                          : () => _submit(stillPresent: false),
                       icon: const Icon(Icons.task_alt_outlined),
                       label: const Text('No, resolved'),
                     ),

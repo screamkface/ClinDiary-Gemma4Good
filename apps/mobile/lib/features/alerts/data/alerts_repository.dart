@@ -5,9 +5,8 @@ import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 
 class AlertsRepository {
-  AlertsRepository({
-    required LocalDatabase localDatabase,
-  }) : _localDatabase = localDatabase;
+  AlertsRepository({required LocalDatabase localDatabase})
+    : _localDatabase = localDatabase;
 
   static const _alertsCacheKey = 'alerts_list';
 
@@ -105,6 +104,4 @@ class AlertsRepository {
     await _writeCachedAlertsJson(alerts);
     return fallback;
   }
-
-
 }

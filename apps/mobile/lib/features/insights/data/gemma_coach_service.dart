@@ -66,68 +66,69 @@ class GemmaCoachService {
     );
   }
 
-Stream<String> answerQuestionStream({
-  required String question,
-  DateTime? referenceDate,
-  String? documentId,
-}) async* {
-  final normalizedQuestion = question.trim();
+  Stream<String> answerQuestionStream({
+    required String question,
+    DateTime? referenceDate,
+    String? documentId,
+  }) async* {
+    final normalizedQuestion = question.trim();
 
-  if (normalizedQuestion.isEmpty) {
-    throw Exception('Write a more specific question.');
-  }
+    if (normalizedQuestion.isEmpty) {
+      throw Exception('Write a more specific question.');
+    }
 
-  final focusedDocument = await _resolveFocusedDocument(documentId);
+    final focusedDocument = await _resolveFocusedDocument(documentId);
 
-  // Important: if the user came from "Ask about this file",
-  // answer directly from the selected document instead of requiring
-  // the full clinical diary prompt to be available.
-  if (focusedDocument != null) {
-    final prompt = _buildFocusedDocumentQuestionPrompt(
+    // Important: if the user came from "Ask about this file",
+    // answer directly from the selected document instead of requiring
+    // the full clinical diary prompt to be available.
+    if (focusedDocument != null) {
+      final prompt = _buildFocusedDocumentQuestionPrompt(
+        question: normalizedQuestion,
+        detail: focusedDocument,
+      );
+
+      yield* _onDeviceAiService.generateTextStream(
+        systemPrompt: prompt.systemPrompt,
+        userPrompt: prompt.userPrompt,
+      );
+      return;
+    }
+
+    final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
       question: normalizedQuestion,
-      detail: focusedDocument,
+      referenceDate: referenceDate ?? DateTime.now(),
+      focusedDocument: null,
     );
+
+    if (prompt != null) {
+      yield* _onDeviceAiService.generateTextStream(
+        systemPrompt: prompt.systemPrompt,
+        userPrompt: prompt.userPrompt,
+      );
+      return;
+    }
+
+    await _warmUpClinicalContext();
+
+    final refreshedPrompt = await _onDevicePromptBuilder
+        .buildClinicalQuestionPrompt(
+          question: normalizedQuestion,
+          referenceDate: referenceDate ?? DateTime.now(),
+          focusedDocument: null,
+        );
+
+    if (refreshedPrompt == null) {
+      throw Exception(
+        'I do not have enough local data to generate a useful answer.',
+      );
+    }
 
     yield* _onDeviceAiService.generateTextStream(
-      systemPrompt: prompt.systemPrompt,
-      userPrompt: prompt.userPrompt,
-    );
-    return;
-  }
-
-  final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
-    question: normalizedQuestion,
-    referenceDate: referenceDate ?? DateTime.now(),
-    focusedDocument: null,
-  );
-
-  if (prompt != null) {
-    yield* _onDeviceAiService.generateTextStream(
-      systemPrompt: prompt.systemPrompt,
-      userPrompt: prompt.userPrompt,
-    );
-    return;
-  }
-
-  await _warmUpClinicalContext();
-
-  final refreshedPrompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
-    question: normalizedQuestion,
-    referenceDate: referenceDate ?? DateTime.now(),
-    focusedDocument: null,
-  );
-
-  if (refreshedPrompt == null) {
-    throw Exception(
-      'I do not have enough local data to generate a useful answer.',
+      systemPrompt: refreshedPrompt.systemPrompt,
+      userPrompt: refreshedPrompt.userPrompt,
     );
   }
-
-  yield* _onDeviceAiService.generateTextStream(
-    systemPrompt: refreshedPrompt.systemPrompt,
-    userPrompt: refreshedPrompt.userPrompt,
-  );
-}
 
   Future<String> explainTrend({DateTime? referenceDate}) async {
     return _generateWithWarmup(
@@ -253,15 +254,14 @@ Stream<String> answerQuestionStream({
     }
   }
 
+  OnDeviceTextPrompt _buildFocusedDocumentQuestionPrompt({
+    required String question,
+    required ClinicalDocumentDetail detail,
+  }) {
+    final context = _focusedDocumentContext(detail);
+    final documentDate = detail.examDate ?? DateTime.now();
 
-OnDeviceTextPrompt _buildFocusedDocumentQuestionPrompt({
-  required String question,
-  required ClinicalDocumentDetail detail,
-}) {
-  final context = _focusedDocumentContext(detail);
-  final documentDate = detail.examDate ?? DateTime.now();
-
-  final systemPrompt = '''
+    final systemPrompt = '''
 You are a careful clinical document assistant.
 
 Use only the selected document context provided by the app.
@@ -274,7 +274,8 @@ If the user asks for a summary, explain the document in simple terms.
 If the user asks about abnormal lab values, mention only values present in the document.
 ''';
 
-  final userPrompt = '''
+    final userPrompt =
+        '''
 User question:
 $question
 
@@ -294,51 +295,53 @@ Key points:
 Caution:
 ''';
 
-
-
-  return OnDeviceTextPrompt(
-    contextType: 'focused_document',
-    periodStart: documentDate,
-    periodEnd: documentDate,
-    systemPrompt: systemPrompt,
-    userPrompt: userPrompt,
-    providerName: 'on_device_litertlm',
-    suggestedModelFamily: 'Gemma 4',
-    isCloudBypassedForThisRequest: true,
-  );
-}
-
-String _focusedDocumentContext(ClinicalDocumentDetail detail) {
-  final parts = <String>[];
-
-  final ocr = detail.ocrText?.trim();
-  if (ocr != null && ocr.isNotEmpty) {
-    final clippedOcr = ocr.length > 6000 ? '${ocr.substring(0, 6000)}...' : ocr;
-    parts.add('Extracted document text:\n$clippedOcr');
+    return OnDeviceTextPrompt(
+      contextType: 'focused_document',
+      periodStart: documentDate,
+      periodEnd: documentDate,
+      systemPrompt: systemPrompt,
+      userPrompt: userPrompt,
+      providerName: 'on_device_litertlm',
+      suggestedModelFamily: 'Gemma 4',
+      isCloudBypassedForThisRequest: true,
+    );
   }
 
-  for (final panel in detail.labPanels) {
-    final rows = panel.results.map((item) {
-      final unit = item.unit == null || item.unit!.trim().isEmpty
-          ? ''
-          : ' ${item.unit}';
+  String _focusedDocumentContext(ClinicalDocumentDetail detail) {
+    final parts = <String>[];
 
-      final range = item.refMin != null && item.refMax != null
-          ? ' (ref: ${item.refMin}-${item.refMax})'
-          : '';
-
-      final abnormal = item.abnormalFlag == true ? ' [ABNORMAL]' : '';
-
-      return '- ${item.analyteName}: ${item.value}$unit$range$abnormal';
-    }).join('\n');
-
-    if (rows.trim().isNotEmpty) {
-      parts.add('Lab panel: ${panel.panelName}\n$rows');
+    final ocr = detail.ocrText?.trim();
+    if (ocr != null && ocr.isNotEmpty) {
+      final clippedOcr = ocr.length > 6000
+          ? '${ocr.substring(0, 6000)}...'
+          : ocr;
+      parts.add('Extracted document text:\n$clippedOcr');
     }
-  }
 
-  for (final report in detail.imagingReports) {
-    parts.add('''
+    for (final panel in detail.labPanels) {
+      final rows = panel.results
+          .map((item) {
+            final unit = item.unit == null || item.unit!.trim().isEmpty
+                ? ''
+                : ' ${item.unit}';
+
+            final range = item.refMin != null && item.refMax != null
+                ? ' (ref: ${item.refMin}-${item.refMax})'
+                : '';
+
+            final abnormal = item.abnormalFlag == true ? ' [ABNORMAL]' : '';
+
+            return '- ${item.analyteName}: ${item.value}$unit$range$abnormal';
+          })
+          .join('\n');
+
+      if (rows.trim().isNotEmpty) {
+        parts.add('Lab panel: ${panel.panelName}\n$rows');
+      }
+    }
+
+    for (final report in detail.imagingReports) {
+      parts.add('''
 Imaging report:
 Exam type: ${report.examType ?? 'unknown'}
 Body part: ${report.bodyPart ?? 'unknown'}
@@ -346,10 +349,10 @@ Impression: ${report.impression ?? 'not provided'}
 Report text:
 ${report.reportText}
 ''');
-  }
+    }
 
-  if (parts.isEmpty) {
-    return '''
+    if (parts.isEmpty) {
+      return '''
 No extracted text, lab values, or imaging report text is available for this document.
 
 Document metadata:
@@ -358,8 +361,8 @@ Type: ${detail.documentType}
 Parsed status: ${detail.parsedStatus}
 Processing error: ${detail.processingError ?? 'none'}
 ''';
-  }
+    }
 
-  return parts.join('\n\n---\n\n');
-}
+    return parts.join('\n\n---\n\n');
+  }
 }
