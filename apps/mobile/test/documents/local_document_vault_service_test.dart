@@ -619,6 +619,59 @@ void main() {
     expect(result.citations, hasLength(1));
     expect(result.answer, streamedAnswer);
   });
+
+  test('document query streaming falls back when Gemma ends empty', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'clindiary-document-query-empty-stream-test',
+    );
+    addTearDown(() async {
+      if (await root.exists()) {
+        await root.delete(recursive: true);
+      }
+    });
+
+    final database = LocalDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    const userScopeId = 'user-query-empty';
+    const profileScopeId = 'profile-query-empty';
+    await database.putCache(key: activeUserIdCacheKey, payload: userScopeId);
+    await database.putCache(
+      key: activeProfileIdCacheKey,
+      payload: profileScopeId,
+    );
+
+    final vault = LocalDocumentVaultService(rootDirectory: root);
+    await vault.uploadDocumentForScope(
+      userScopeId: userScopeId,
+      profileScopeId: profileScopeId,
+      file: SelectedUploadDocument(
+        name: 'creatinine-results.txt',
+        bytes: utf8.encode('Creatinine 1.4 mg/dL 0.7 - 1.2'),
+        mimeType: 'text/plain',
+      ),
+      fields: const {
+        'title': 'Creatinine follow-up',
+        'document_type': 'lab_report',
+      },
+    );
+
+    final repository = DocumentsRepository(
+      localDatabase: database,
+      localVaultService: vault,
+      onDeviceAiService: _EmptyStreamAiService(),
+    );
+
+    final streamResult = await repository.queryDocumentsStream(
+      question: 'Explain the creatinine result',
+    );
+
+    final streamedAnswer = (await streamResult.answerStream.toList()).join();
+    final result = await streamResult.result;
+
+    expect(streamedAnswer, contains('Creatinine follow-up'));
+    expect(result.usedFallback, isTrue);
+    expect(result.answer, streamedAnswer);
+  });
 }
 
 class _TimingOutAiService extends OnDeviceAiService {
@@ -634,6 +687,19 @@ class _TimingOutAiService extends OnDeviceAiService {
   }) async* {
     throw Exception('timed out');
   }
+}
+
+class _EmptyStreamAiService extends OnDeviceAiService {
+  @override
+  Future<List<double>> generateEmbedding({required String text}) async {
+    return const [];
+  }
+
+  @override
+  Stream<String> generateTextStream({
+    required String systemPrompt,
+    required String userPrompt,
+  }) async* {}
 }
 
 class _SpyLabTextParser extends LocalLabTextParser {
