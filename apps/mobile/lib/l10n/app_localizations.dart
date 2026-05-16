@@ -4350,7 +4350,7 @@ abstract class AppLocalizations {
   /// User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:45)
   ///
   /// In en, this message translates to:
-  /// **'Checking whether Gemma 4 E2B is already installed...'**
+  /// **'Checking the app-owned Gemma 4 E2B artifact...'**
   String get gemmaModelBootstrapCheckingWhetherGemma4E2bIs;
 
   /// User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:373)
@@ -4446,7 +4446,7 @@ abstract class AppLocalizations {
   /// User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:160)
   ///
   /// In en, this message translates to:
-  /// **'Models are installed, but LiteRT-LM could not load them. You can retry the download or continue to the app.'**
+  /// **'The app-owned model artifact is present, but LiteRT-LM could not verify it. You can retry setup or continue without AI.'**
   String get gemmaModelBootstrapModelsAreInstalledButLitertLm;
 
   /// User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:117)

@@ -98,7 +98,7 @@ The app supports on-device AI via the `flutter_gemma` package (Dart API over Lit
 - Preferred model filename: `gemma-4-E2B-it.litertlm`
 - The Gemma `.litertlm` model is not committed as a bundled repository asset by default
 - The app can import a `.litertlm` model, download it from the supported Hugging Face source, or use a manually provisioned device model
-- The expected Android model directory is `/sdcard/Android/data/it.clindiary.clindiary/files/models/`
+- The expected Android model artifact is app-owned by `flutter_gemma` under the app documents directory, typically `/data/data/it.clindiary.clindiary/app_flutter/gemma-4-E2B-it.litertlm` on Android; do not make startup depend on arbitrary `/sdcard` scans or manual model placement
 - The bundled embedding asset is `apps/mobile/assets/models/embeddinggemma-300m.tflite` (note: the actual model used at runtime is Gecko-110m-en downloaded from Hugging Face; the older `embeddinggemma-300m` asset path is historical and the directory is currently empty)
 - Local embeddings support document retrieval/Q&A flows; do not describe the current public repo as Regolo/PostgreSQL/reranker-backed
 
@@ -153,7 +153,7 @@ C:\Users\Nicola\AppData\Local\Android\Sdk\platform-tools\adb.exe
 
 ## Model Setup Commands
 
-Manual Android provisioning:
+Manual Android provisioning is no longer the default bootstrap path; prefer in-app download/import so the artifact is copied into app-owned storage:
 
 ```bash
 bash scripts/push_android_litert_model.sh /path/to/gemma-4-E2B-it.litertlm
@@ -162,7 +162,7 @@ bash scripts/push_android_litert_model.sh /path/to/gemma-4-E2B-it.litertlm
 Device verification:
 
 ```bash
-adb shell ls -lh /sdcard/Android/data/it.clindiary.clindiary/files/models
+adb shell run-as it.clindiary.clindiary ls -lh app_flutter
 ```
 
 Offline demos should pre-provision or import the `.litertlm` model. In-app model download requires network access.

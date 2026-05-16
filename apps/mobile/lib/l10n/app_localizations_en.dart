@@ -2277,7 +2277,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gemmaModelBootstrapCheckingWhetherGemma4E2bIs =>
-      'Checking whether Gemma 4 E2B is already installed...';
+      'Checking the app-owned Gemma 4 E2B artifact...';
 
   @override
   String get gemmaModelBootstrapClindiaryIsSettingUpTheOn =>
@@ -2337,7 +2337,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gemmaModelBootstrapModelsAreInstalledButLitertLm =>
-      'Models are installed, but LiteRT-LM could not load them. You can retry the download or continue to the app.';
+      'The app-owned model artifact is present, but LiteRT-LM could not verify it. You can retry setup or continue without AI.';
 
   @override
   String get gemmaModelBootstrapOnDeviceAiIsNotAvailable =>

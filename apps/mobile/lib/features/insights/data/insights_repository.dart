@@ -97,8 +97,10 @@ class InsightsRepository {
       summaryType: query.summaryType,
       periodStart: referenceDate.subtract(const Duration(days: 1)),
       periodEnd: referenceDate,
-      systemPrompt: 'You are a helpful AI assistant running locally.',
-      userPrompt: 'Please summarize the clinical diary for $dateStr.',
+      systemPrompt:
+          "You are ClinDiary's private diary summarizer. You summarize user-provided health diary context conservatively. You are not a doctor. Do not diagnose, prescribe, change medication, or provide emergency triage. Highlight patterns, uncertainties, and questions the user may discuss with a qualified clinician. Keep the tone clear, calm, and non-alarming.",
+      userPrompt:
+          'Please summarize the local clinical diary for $dateStr. Use cautious wording and include a final note that this is not a diagnosis or prescription.',
       providerName: 'on_device_gemma',
       suggestedModelFamily: 'Gemma 4',
       isCloudBypassedForThisRequest: true,

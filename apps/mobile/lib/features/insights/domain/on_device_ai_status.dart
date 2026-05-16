@@ -13,6 +13,8 @@ class OnDeviceAiStatus {
     this.modelLastModifiedAt,
     this.defaultModelDirectory,
     this.lastError,
+    this.lastInferenceLatencyMillis,
+    this.lastVerifiedAt,
     required this.isCloudBypassedForThisRequest,
   });
 
@@ -29,6 +31,8 @@ class OnDeviceAiStatus {
   final DateTime? modelLastModifiedAt;
   final String? defaultModelDirectory;
   final String? lastError;
+  final int? lastInferenceLatencyMillis;
+  final DateTime? lastVerifiedAt;
   final bool isCloudBypassedForThisRequest;
 
   factory OnDeviceAiStatus.fromJson(Map<String, dynamic> json) {
@@ -49,6 +53,11 @@ class OnDeviceAiStatus {
           : DateTime.tryParse(json['modelLastModifiedAt'].toString()),
       defaultModelDirectory: json['defaultModelDirectory']?.toString(),
       lastError: json['lastError']?.toString(),
+      lastInferenceLatencyMillis: (json['lastInferenceLatencyMillis'] as num?)
+          ?.toInt(),
+      lastVerifiedAt: json['lastVerifiedAt'] == null
+          ? null
+          : DateTime.tryParse(json['lastVerifiedAt'].toString()),
       isCloudBypassedForThisRequest:
           json['isCloudBypassedForThisRequest'] as bool? ?? true,
     );

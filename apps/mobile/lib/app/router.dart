@@ -164,7 +164,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'insights',
-                    builder: (context, state) => const InsightsScreen(),
+                    builder: (context, state) =>
+                        const GemmaModelBootstrap(child: InsightsScreen()),
                   ),
                   GoRoute(
                     path: 'history',

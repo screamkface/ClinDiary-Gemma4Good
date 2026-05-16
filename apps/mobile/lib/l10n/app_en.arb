@@ -2760,7 +2760,7 @@
   "@gemmaDownloadNotificationServiceProgressNotificationForGemmaModelDownloads": {
     "description": "User-facing UI text (lib/app/core/notifications/gemma_download_notification_service.dart:8)"
   },
-  "gemmaModelBootstrapCheckingWhetherGemma4E2bIs": "Checking whether Gemma 4 E2B is already installed...",
+  "gemmaModelBootstrapCheckingWhetherGemma4E2bIs": "Checking the app-owned Gemma 4 E2B artifact...",
   "@gemmaModelBootstrapCheckingWhetherGemma4E2bIs": {
     "description": "User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:45)"
   },
@@ -2824,7 +2824,7 @@
   "@gemmaModelBootstrapModelsAreAlreadyPresentVerifyingThe": {
     "description": "User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:138)"
   },
-  "gemmaModelBootstrapModelsAreInstalledButLitertLm": "Models are installed, but LiteRT-LM could not load them. You can retry the download or continue to the app.",
+  "gemmaModelBootstrapModelsAreInstalledButLitertLm": "The app-owned model artifact is present, but LiteRT-LM could not verify it. You can retry setup or continue without AI.",
   "@gemmaModelBootstrapModelsAreInstalledButLitertLm": {
     "description": "User-facing UI text (lib/app/bootstrap/gemma_model_bootstrap.dart:160)"
   },

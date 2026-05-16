@@ -1121,12 +1121,12 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
       return 'This is a runtime compatibility test for Gemma (.litertlm), not just a hardware-chip check.';
     }
     if (npuAvailable == true) {
-      return 'This confirms the LiteRT-LM NPU backend opened successfully for the installed Gemma model.';
+      return 'This confirms the LiteRT-LM NPU backend opened successfully for the app-owned Gemma model.';
     }
     if (npuAvailable == false) {
       return 'Your phone may still include an NPU. This test fails when the Gemma runtime cannot use the required Qualcomm / Tensor / MediaTek dispatch path.';
     }
-    return 'Run this test to verify whether the installed Gemma model can use the LiteRT-LM NPU backend.';
+    return 'Run this test to verify whether the app-owned Gemma model can use the LiteRT-LM NPU backend.';
   }
 
   Widget _buildHistorySection(

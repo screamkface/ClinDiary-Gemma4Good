@@ -115,9 +115,9 @@ ChangeMe123!
 
 4. dalla Home apri `Scenari demo`, cambia profilo e tocca `Apri Recap AI`
 5. nella schermata `Recap AI`, scegli `Giorno` e `Sul dispositivo`
-6. se non c'e ancora un modello, usa il pulsante `Importa modello .litertlm`
-7. scegli il file dal telefono; ClinDiary lo copia nella propria cartella modelli Android
-8. se vuoi controllare path, dimensione file o rimuovere il modello, usa `Gestisci modello`
+6. se non c'e ancora un modello, lascia completare `Preparing local Gemma model` oppure apri `Gestisci modello`
+7. usa `Prepare/download Gemma` per il download app-owned, oppure importa un `.litertlm` che ClinDiary copiera nel proprio path
+8. se vuoi controllare path, dimensione file, prompt di test o rimuovere il modello, usa `Gestisci modello`
 9. verifica:
    - badge provider on-device
    - proof card con provider/runtime/modello/backend
@@ -126,10 +126,12 @@ ChangeMe123!
 Verifica tecnica equivalente:
 
 ```bash
-bash scripts/push_android_litert_model.sh /percorso/al/tuo/gemma-4-E2B-it.litertlm
-adb shell ls -lh /sdcard/Android/data/it.clindiary.clindiary/files/models
-bash scripts/check_xiaomi_on_device_demo.sh
+cd apps/mobile
+flutter build apk --release
+adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
+
+La vecchia copia manuale in `/sdcard/Android/data/.../files/models` non e piu il path di bootstrap dell'app. Il modello deve essere scaricato/importato dal flusso app-owned e poi verificato con `Run test prompt`.
 
 Se vuoi mostrare anche il percorso locale lato host come confronto tecnico:
 

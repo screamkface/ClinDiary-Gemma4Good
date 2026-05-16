@@ -103,9 +103,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
     setState(() => _isInstallingOnDeviceModel = true);
     try {
-      final installedPath = await ref
+      final bootstrapStatus = await ref
           .read(onDeviceAiServiceProvider)
-          .importModelFromPicker();
+          .ensureModelReady(forceInstall: true);
+      if (!bootstrapStatus.isReady) {
+        throw Exception(bootstrapStatus.lastError ?? bootstrapStatus.message);
+      }
       ref.invalidate(onDeviceAiStatusProvider);
       if (_isOnDeviceMode) {
         final query = InsightSummaryQuery(
@@ -121,9 +124,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            installedPath == null
-                ? 'Model import canceled.'
-                : 'Model copied to $installedPath',
+            'Local Gemma model ready at ${bootstrapStatus.modelPath ?? 'the app-owned model path'}',
           ),
         ),
       );
@@ -133,7 +134,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Model import failed: $error')));
+      ).showSnackBar(SnackBar(content: Text('Model setup failed: $error')));
     } finally {
       if (mounted) {
         setState(() => _isInstallingOnDeviceModel = false);
@@ -942,7 +943,7 @@ class OnDeviceProofCard extends StatelessWidget {
           if (status.modelPath != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Detected model: ${status.modelPath}',
+              'App-owned model: ${status.modelPath}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -972,10 +973,10 @@ class OnDeviceProofCard extends StatelessWidget {
                   ),
             label: Text(
               isInstallingModel
-                  ? 'Importing model...'
+                  ? 'Preparing model...'
                   : status.isReady
-                  ? 'Replace model'
-                  : 'Import model .litertlm',
+                  ? 'Verify/reinstall model'
+                  : 'Prepare model',
             ),
           ),
           const SizedBox(height: 10),

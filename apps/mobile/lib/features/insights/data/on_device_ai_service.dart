@@ -2,14 +2,20 @@ import 'dart:async';
 import 'dart:developer' as dev;
 import 'dart:io';
 
+import 'package:clindiary/features/insights/domain/ai_bootstrap_status.dart';
 import 'package:clindiary/features/insights/domain/insight_summary.dart';
 import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/insights/domain/on_device_recap_prompt.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class OnDeviceAiService {
   static const _modelName = 'gemma-4-E2B-it.litertlm';
+  static const _provider = 'on_device_litertlm';
+  static const _providerLabel = 'Gemma local';
+  static const _runtime = 'flutter_gemma (LiteRT-LM)';
   static const _modelDownloadUrl =
       'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm?download=true';
   static const _geckoModelUrl =
@@ -28,6 +34,7 @@ class OnDeviceAiService {
   static const _gemma4TopK = 64;
   static const _gemma4TopP = 0.95;
   static const _gemma4TokenBuffer = 256;
+  static const _minimumModelSizeBytes = 100 * 1024 * 1024;
 
   static bool _initialized = false;
 
@@ -37,7 +44,16 @@ class OnDeviceAiService {
   bool _enableSpeculativeDecoding = true;
   bool? _npuAvailable;
   String? _lastNpuCheckError;
+  String? _lastBootstrapError;
+  DateTime? _lastVerifiedAt;
+  Duration? _lastInferenceLatency;
   Future<void> _generationTail = Future.value();
+  Future<AiBootstrapStatus>? _bootstrapInFlight;
+
+  static const expectedModelName = _modelName;
+  static const expectedRuntime = _runtime;
+  static const expectedProvider = _provider;
+  static const minimumModelSizeBytes = _minimumModelSizeBytes;
 
   PreferredBackend get preferredBackend => _preferredBackend;
   bool get enableSpeculativeDecoding => _enableSpeculativeDecoding;
@@ -119,74 +135,274 @@ class OnDeviceAiService {
   }
 
   Future<OnDeviceAiStatus> fetchStatus() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return OnDeviceAiStatus(
+        isSupported: false,
+        isReady: false,
+        runtime: _runtime,
+        provider: _provider,
+        activeProviderLabel: 'Gemma local unavailable',
+        backendPreference: _preferredBackend.name.toUpperCase(),
+        modelName: _modelName,
+        lastError: 'Local Gemma is available only in Android/iOS builds.',
+        isCloudBypassedForThisRequest: true,
+      );
+    }
+
     await _ensureInitialized();
     try {
-      final isInstalled = await FlutterGemma.isModelInstalled(_modelName);
-      final knownModelFile = await _knownModelFile();
-      if (!isInstalled) {
+      final expectedFile = await _expectedModelFile();
+      final validation = await _validateExpectedModelFile(expectedFile);
+      if (!validation.isValid) {
         return OnDeviceAiStatus(
           isSupported: true,
           isReady: false,
-          runtime: 'flutter_gemma (LiteRT-LM)',
-          provider: 'on_device_litertlm',
-          activeProviderLabel: 'On-device non configurato',
-          backendPreference: 'GPU',
+          runtime: _runtime,
+          provider: _provider,
+          activeProviderLabel: 'Gemma local unavailable',
+          backendPreference: _preferredBackend.name.toUpperCase(),
           modelName: _modelName,
-          defaultModelDirectory: _defaultModelDirectory,
+          defaultModelDirectory: expectedFile.parent.path,
+          lastError: validation.message ?? _lastBootstrapError,
           isCloudBypassedForThisRequest: true,
         );
       }
 
-      await _ensureActiveModelReady();
+      await _activateExpectedModelFromFile(expectedFile.path);
 
       return OnDeviceAiStatus(
         isSupported: true,
         isReady: true,
-        runtime: 'flutter_gemma (LiteRT-LM)',
-        provider: 'on_device_litertlm',
-        activeProviderLabel: 'Gemma 4 On-device',
+        runtime: _runtime,
+        provider: _provider,
+        activeProviderLabel: _providerLabel,
         backendPreference: _preferredBackend.name.toUpperCase(),
         backendResolved: _preferredBackend.name.toUpperCase(),
         modelName: _modelName,
-        modelPath: knownModelFile?.path,
-        modelFileSizeBytes: knownModelFile == null
-            ? null
-            : await knownModelFile.length(),
-        modelLastModifiedAt: knownModelFile == null
-            ? null
-            : await knownModelFile.lastModified(),
-        defaultModelDirectory: _defaultModelDirectory,
+        modelPath: expectedFile.path,
+        modelFileSizeBytes: await expectedFile.length(),
+        modelLastModifiedAt: await expectedFile.lastModified(),
+        defaultModelDirectory: expectedFile.parent.path,
+        lastVerifiedAt: _lastVerifiedAt,
+        lastInferenceLatencyMillis: _lastInferenceLatency?.inMilliseconds,
         isCloudBypassedForThisRequest: true,
       );
     } catch (e) {
+      _lastBootstrapError = e.toString();
+      final expectedFile = await _expectedModelFileOrNull();
       return OnDeviceAiStatus(
         isSupported: true,
         isReady: false,
-        runtime: 'flutter_gemma (LiteRT-LM)',
-        provider: 'on_device_litertlm',
-        activeProviderLabel: 'On-device non pronto',
-        backendPreference: 'GPU',
+        runtime: _runtime,
+        provider: _provider,
+        activeProviderLabel: 'Gemma local unavailable',
+        backendPreference: _preferredBackend.name.toUpperCase(),
+        modelName: _modelName,
+        modelPath: expectedFile?.path,
+        defaultModelDirectory: expectedFile?.parent.path,
         lastError: e.toString(),
+        lastInferenceLatencyMillis: _lastInferenceLatency?.inMilliseconds,
         isCloudBypassedForThisRequest: true,
       );
     }
   }
 
-  static const _defaultModelDirectory =
-      '/sdcard/Android/data/it.clindiary.clindiary/files/models';
+  Future<File> _expectedModelFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final directoryPath = Platform.isAndroid
+        ? directory.path.replaceFirst('/data/user/0/', '/data/data/')
+        : directory.path;
+    return File(p.join(directoryPath, _modelName));
+  }
 
-  Future<File?> _knownModelFile() async {
-    if (!Platform.isAndroid) {
+  Future<File?> _expectedModelFileOrNull() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
       return null;
     }
-    final file = File('$_defaultModelDirectory/$_modelName');
-    return file.exists().then((exists) => exists ? file : null);
+    try {
+      return await _expectedModelFile();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<_ModelFileValidation> _validateExpectedModelFile(File file) async {
+    try {
+      if (!await file.exists()) {
+        return const _ModelFileValidation(
+          isValid: false,
+          exists: false,
+          message: 'Expected app-owned Gemma model file is missing.',
+        );
+      }
+
+      final size = await file.length();
+      if (size < _minimumModelSizeBytes) {
+        return _ModelFileValidation(
+          isValid: false,
+          exists: true,
+          message:
+              'Expected Gemma model file is too small ($size bytes). It will be reinstalled.',
+        );
+      }
+
+      return const _ModelFileValidation(isValid: true, exists: true);
+    } catch (error) {
+      return _ModelFileValidation(
+        isValid: false,
+        exists: false,
+        message: 'Could not validate the app-owned Gemma model file: $error',
+      );
+    }
+  }
+
+  Future<AiBootstrapStatus> ensureModelReady({
+    bool forceInstall = false,
+    void Function(AiBootstrapStatus status)? onStatus,
+  }) {
+    final inFlight = _bootstrapInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final future = _ensureModelReadyInternal(
+      forceInstall: forceInstall,
+      onStatus: onStatus,
+    );
+    _bootstrapInFlight = future;
+    return future.whenComplete(() {
+      if (identical(_bootstrapInFlight, future)) {
+        _bootstrapInFlight = null;
+      }
+    });
+  }
+
+  Future<AiBootstrapStatus> _ensureModelReadyInternal({
+    required bool forceInstall,
+    void Function(AiBootstrapStatus status)? onStatus,
+  }) async {
+    final initial = AiBootstrapStatus(
+      phase: AiBootstrapPhase.checkingAppOwnedModelState,
+      modelName: _modelName,
+      runtime: _runtime,
+      provider: _provider,
+      mode: 'local',
+      message: 'Checking the app-owned Gemma model artifact...',
+    );
+    onStatus?.call(initial);
+
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      final failed = initial.copyWith(
+        phase: AiBootstrapPhase.failed,
+        mode: 'unavailable',
+        message: 'Local Gemma is unavailable on this platform.',
+        lastError: 'Build and run the Android APK to install Gemma locally.',
+      );
+      onStatus?.call(failed);
+      return failed;
+    }
+
+    try {
+      await _ensureInitialized();
+      var expectedFile = await _expectedModelFile();
+      var validation = await _validateExpectedModelFile(expectedFile);
+
+      if (forceInstall || !validation.isValid) {
+        await _resetRuntime();
+        await _clearStaleModelState(deleteInvalidFile: validation.exists);
+        onStatus?.call(
+          initial.copyWith(
+            phase: AiBootstrapPhase.installingOrDownloading,
+            modelPath: expectedFile.path,
+            modelDirectory: expectedFile.parent.path,
+            message: 'Downloading Gemma 4 E2B to ClinDiary storage...',
+          ),
+        );
+
+        await FlutterGemma.installModel(
+          modelType: ModelType.gemma4,
+          fileType: ModelFileType.litertlm,
+        ).fromNetwork(_modelDownloadUrl, foreground: true).withProgress((
+          progress,
+        ) {
+          onStatus?.call(
+            initial.copyWith(
+              phase: AiBootstrapPhase.installingOrDownloading,
+              modelPath: expectedFile.path,
+              modelDirectory: expectedFile.parent.path,
+              progressPercent: progress,
+              message: 'Downloading Gemma 4 E2B to ClinDiary storage...',
+            ),
+          );
+        }).install();
+
+        expectedFile = await _expectedModelFile();
+        validation = await _validateExpectedModelFile(expectedFile);
+      }
+
+      onStatus?.call(
+        initial.copyWith(
+          phase: AiBootstrapPhase.verifying,
+          modelPath: expectedFile.path,
+          modelDirectory: expectedFile.parent.path,
+          message: 'Verifying the local Gemma runtime...',
+        ),
+      );
+
+      if (!validation.isValid) {
+        await _clearStaleModelState(deleteInvalidFile: validation.exists);
+        throw Exception(validation.message ?? 'Gemma model validation failed.');
+      }
+
+      await _activateExpectedModelFromFile(expectedFile.path);
+      await _verifyRuntimeCanOpen();
+      _lastBootstrapError = null;
+      _lastVerifiedAt = DateTime.now().toUtc();
+
+      final ready = AiBootstrapStatus(
+        phase: AiBootstrapPhase.ready,
+        modelName: _modelName,
+        runtime: _runtime,
+        provider: _provider,
+        mode: 'local',
+        modelPath: expectedFile.path,
+        modelDirectory: expectedFile.parent.path,
+        message: 'Local Gemma model is ready.',
+        allowAppAccess: true,
+        lastInferenceLatencyMillis: _lastInferenceLatency?.inMilliseconds,
+        lastVerifiedAt: _lastVerifiedAt,
+      );
+      onStatus?.call(ready);
+      unawaited(installGeckoEmbedding());
+      return ready;
+    } catch (error) {
+      await _resetRuntime();
+      _lastBootstrapError = error.toString();
+      final expectedFile = await _expectedModelFileOrNull();
+      final failed = AiBootstrapStatus(
+        phase: AiBootstrapPhase.failed,
+        modelName: _modelName,
+        runtime: _runtime,
+        provider: _provider,
+        mode: 'unavailable',
+        modelPath: expectedFile?.path,
+        modelDirectory: expectedFile?.parent.path,
+        message:
+            'Local Gemma setup failed. You can retry or continue without AI.',
+        lastError: error.toString(),
+        lastInferenceLatencyMillis: _lastInferenceLatency?.inMilliseconds,
+        lastVerifiedAt: _lastVerifiedAt,
+      );
+      onStatus?.call(failed);
+      return failed;
+    }
   }
 
   Future<InsightSummary> generateDailyRecap({
     required OnDeviceRecapPrompt prompt,
   }) async {
     await _ensureInitialized();
+    final stopwatch = Stopwatch()..start();
     try {
       final content = await _runExclusive(
         () => _generateText(
@@ -194,13 +410,14 @@ class OnDeviceAiService {
           userPrompt: prompt.userPrompt,
         ),
       );
+      _lastInferenceLatency = stopwatch.elapsed;
       return InsightSummary(
         id: 'on-device-${DateTime.now().millisecondsSinceEpoch}',
         summaryType: prompt.summaryType,
         periodStart: prompt.periodStart,
         periodEnd: prompt.periodEnd,
         content: content,
-        providerName: 'on_device_litertlm',
+        providerName: _provider,
         modelName: _modelName,
         generatedAt: DateTime.now().toUtc(),
       );
@@ -215,10 +432,13 @@ class OnDeviceAiService {
     String? modelPath,
   }) async {
     await _ensureInitialized();
+    final stopwatch = Stopwatch()..start();
     try {
-      return await _runExclusive(
+      final content = await _runExclusive(
         () => _generateText(systemPrompt: systemPrompt, userPrompt: userPrompt),
       );
+      _lastInferenceLatency = stopwatch.elapsed;
+      return content;
     } catch (e) {
       throw Exception('On-device generation failed: $e');
     }
@@ -247,6 +467,7 @@ class OnDeviceAiService {
     if (!Platform.isAndroid && !Platform.isIOS) {
       throw Exception('Model import is available on mobile only.');
     }
+    await _ensureInitialized();
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -263,41 +484,33 @@ class OnDeviceAiService {
       throw Exception('Selected file has no valid path.');
     }
 
-    await FlutterGemma.installModel(
-      modelType: ModelType.gemma4,
-      fileType: ModelFileType.litertlm,
-    ).fromFile(path).install();
-
-    final installedPath = path;
+    final expectedFile = await _copyModelIntoAppStorage(File(path));
+    final validation = await _validateExpectedModelFile(expectedFile);
+    if (!validation.isValid) {
+      await _clearStaleModelState(deleteInvalidFile: validation.exists);
+      throw Exception(
+        validation.message ?? 'Imported model validation failed.',
+      );
+    }
+    await _activateExpectedModelFromFile(expectedFile.path);
     await _resetRuntime();
-    return installedPath;
+    return expectedFile.path;
   }
 
   Future<String> downloadGemma4Model({
     void Function(int progressPercent)? onProgress,
   }) async {
-    await _ensureInitialized();
-
-    String? installedPath;
-
-    final preInstalledFile = File('$_defaultModelDirectory/$_modelName');
-    if (await preInstalledFile.exists()) {
-      await FlutterGemma.installModel(
-        modelType: ModelType.gemma4,
-        fileType: ModelFileType.litertlm,
-      ).fromFile(preInstalledFile.path).install();
-      installedPath = preInstalledFile.path;
-    } else {
-      await FlutterGemma.installModel(
-        modelType: ModelType.gemma4,
-        fileType: ModelFileType.litertlm,
-      ).fromNetwork(_modelDownloadUrl).withProgress((progress) {
-        onProgress?.call(progress);
-      }).install();
+    final status = await ensureModelReady(
+      forceInstall: true,
+      onStatus: (status) {
+        final progress = status.progressPercent;
+        if (progress != null) onProgress?.call(progress);
+      },
+    );
+    if (!status.isReady) {
+      throw Exception(status.lastError ?? status.message);
     }
-
-    await _resetRuntime();
-    return installedPath ?? '';
+    return status.modelPath ?? '';
   }
 
   Future<Map<String, dynamic>> callFunction({
@@ -568,48 +781,127 @@ class OnDeviceAiService {
 
   Future<void> _ensureActiveModelReady() async {
     await _ensureInitialized();
-    if (FlutterGemma.hasActiveModel()) {
-      return;
+    final expectedFile = await _expectedModelFile();
+    final validation = await _validateExpectedModelFile(expectedFile);
+    if (!validation.isValid) {
+      await _clearStaleModelState(deleteInvalidFile: validation.exists);
+      throw Exception(validation.message ?? 'The Gemma model is not ready.');
     }
 
-    final knownModelFile = await _knownModelFile();
-    if (knownModelFile != null) {
-      await FlutterGemma.installModel(
-            modelType: ModelType.gemma4,
-            fileType: ModelFileType.litertlm,
-          )
-          .fromFile(knownModelFile.path)
-          .install()
-          .timeout(
-            _modelActivationTimeout,
-            onTimeout: () => throw Exception(
-              'The Gemma model could not be activated from local storage in time. Open AI Settings and retry model setup.',
-            ),
-          );
-    } else {
-      final isInstalled = await FlutterGemma.isModelInstalled(_modelName);
-      if (!isInstalled) {
-        throw Exception('The Gemma on-device model is not installed yet.');
-      }
-
-      // Some flutter_gemma state is in-memory only after app restarts. If the
-      // repository already has the file, re-arm the active spec without
-      // starting a network installation from the prompt path.
-      FlutterGemmaPlugin.instance.modelManager.setActiveModel(
-        InferenceModelSpec.fromLegacyUrl(
-          name: _modelName,
-          modelUrl: _modelDownloadUrl,
-          modelType: ModelType.gemma4,
-          fileType: ModelFileType.litertlm,
-          replacePolicy: ModelReplacePolicy.keep,
-        ),
-      );
-    }
+    await _activateExpectedModelFromFile(expectedFile.path);
 
     if (!FlutterGemma.hasActiveModel()) {
       throw Exception(
-        'The Gemma on-device model is installed but not active. Reopen Manage model and reinstall it.',
+        'The app-owned Gemma model is valid but not active. Retry model setup.',
       );
+    }
+  }
+
+  Future<File> _copyModelIntoAppStorage(File sourceFile) async {
+    if (!await sourceFile.exists()) {
+      throw Exception('Selected model file does not exist.');
+    }
+
+    final expectedFile = await _expectedModelFile();
+    await expectedFile.parent.create(recursive: true);
+
+    final sourcePath = p.normalize(sourceFile.path);
+    final expectedPath = p.normalize(expectedFile.path);
+    await _resetRuntime();
+    await _clearStaleModelState(deleteInvalidFile: sourcePath != expectedPath);
+    if (sourcePath == expectedPath) {
+      return expectedFile;
+    }
+
+    final tempFile = File('${expectedFile.path}.import');
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+    await sourceFile.copy(tempFile.path);
+    if (await expectedFile.exists()) {
+      await expectedFile.delete();
+    }
+    await tempFile.rename(expectedFile.path);
+    return expectedFile;
+  }
+
+  Future<void> _activateExpectedModelFromFile(String modelPath) async {
+    await FlutterGemma.installModel(
+          modelType: ModelType.gemma4,
+          fileType: ModelFileType.litertlm,
+        )
+        .fromFile(modelPath)
+        .install()
+        .timeout(
+          _modelActivationTimeout,
+          onTimeout: () => throw Exception(
+            'The Gemma model could not be activated from ClinDiary storage in time. Retry model setup.',
+          ),
+        );
+  }
+
+  Future<void> _verifyRuntimeCanOpen() async {
+    try {
+      await _openAndCloseModelForBackend(_preferredBackend);
+    } catch (primaryError) {
+      if (_preferredBackend == PreferredBackend.cpu) {
+        rethrow;
+      }
+      final originalBackend = _preferredBackend;
+      _preferredBackend = PreferredBackend.cpu;
+      try {
+        await _openAndCloseModelForBackend(PreferredBackend.cpu);
+      } catch (fallbackError) {
+        _preferredBackend = originalBackend;
+        throw Exception(
+          'Gemma runtime verification failed. ${originalBackend.name.toUpperCase()} error: $primaryError. CPU fallback error: $fallbackError',
+        );
+      }
+    }
+  }
+
+  Future<void> _openAndCloseModelForBackend(PreferredBackend backend) async {
+    await _closePluginCachedModel();
+    _currentModel = null;
+    final model =
+        await FlutterGemma.getActiveModel(
+          maxTokens: 1,
+          preferredBackend: backend,
+          enableSpeculativeDecoding: _enableSpeculativeDecoding,
+        ).timeout(
+          _modelOpenTimeout,
+          onTimeout: () => throw Exception(
+            'The local Gemma runtime did not open with ${backend.name.toUpperCase()} in time.',
+          ),
+        );
+    await model.close().timeout(const Duration(seconds: 5));
+    await _closePluginCachedModel();
+  }
+
+  Future<void> _clearStaleModelState({required bool deleteInvalidFile}) async {
+    try {
+      await FlutterGemma.uninstallModel(_modelName);
+    } catch (_) {}
+
+    if (!deleteInvalidFile) {
+      return;
+    }
+
+    final expectedFile = await _expectedModelFileOrNull();
+    if (expectedFile == null) {
+      return;
+    }
+
+    for (final file in [
+      expectedFile,
+      File('${expectedFile.path}.download'),
+      File('${expectedFile.path}.import'),
+    ]) {
+      try {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
     }
   }
 
@@ -660,15 +952,18 @@ class OnDeviceAiService {
 
   Future<void> _removeModelFiles() async {
     await _resetRuntime();
-    try {
-      final dir = Directory(_defaultModelDirectory);
-      if (await dir.exists()) {
-        await for (final entity in dir.list()) {
-          if (entity is File && entity.path.endsWith('.litertlm')) {
-            await entity.delete();
-          }
-        }
-      }
-    } catch (_) {}
+    await _clearStaleModelState(deleteInvalidFile: true);
   }
+}
+
+class _ModelFileValidation {
+  const _ModelFileValidation({
+    required this.isValid,
+    required this.exists,
+    this.message,
+  });
+
+  final bool isValid;
+  final bool exists;
+  final String? message;
 }

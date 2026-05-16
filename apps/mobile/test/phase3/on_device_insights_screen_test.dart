@@ -41,11 +41,11 @@ void main() {
               backendResolved: 'GPU',
               modelName: 'gemma-4-E2B-it',
               modelPath:
-                  '/sdcard/Android/data/it.clindiary.clindiary/files/models/gemma-4-E2B-it.litertlm',
+                  '/data/data/it.clindiary.clindiary/app_flutter/gemma-4-E2B-it.litertlm',
               modelFileSizeBytes: 2684354560,
               modelLastModifiedAt: null,
               defaultModelDirectory:
-                  '/sdcard/Android/data/it.clindiary.clindiary/files/models',
+                  '/data/data/it.clindiary.clindiary/app_flutter',
               isCloudBypassedForThisRequest: true,
             ),
             onInstallModel: _noop,
@@ -70,7 +70,7 @@ void main() {
     );
     expect(find.textContaining('Modello: gemma-4-E2B-it'), findsOneWidget);
     expect(find.textContaining('Local-only request: Yes'), findsOneWidget);
-    expect(find.text('Replace model'), findsOneWidget);
+    expect(find.text('Verify/reinstall model'), findsOneWidget);
     expect(find.text('Manage model'), findsOneWidget);
   });
 
@@ -103,11 +103,11 @@ void main() {
               backendResolved: 'GPU',
               modelName: 'gemma-4-E2B-it',
               modelPath:
-                  '/sdcard/Android/data/it.clindiary.clindiary/files/models/gemma-4-E2B-it.litertlm',
+                  '/data/data/it.clindiary.clindiary/app_flutter/gemma-4-E2B-it.litertlm',
               modelFileSizeBytes: 2684354560,
               modelLastModifiedAt: null,
               defaultModelDirectory:
-                  '/sdcard/Android/data/it.clindiary.clindiary/files/models',
+                  '/data/data/it.clindiary.clindiary/app_flutter',
               isCloudBypassedForThisRequest: true,
             ),
           ),
