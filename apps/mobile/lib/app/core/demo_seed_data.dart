@@ -1825,10 +1825,13 @@ class DemoSeedData {
 
   static Map<String, dynamic> _documentDetailJson(String documentId) {
     final docs = _documentsJson();
-    final selected = docs.firstWhere(
-      (item) => item['id'].toString() == documentId,
-      orElse: () => docs.first,
-    );
+    var selected = docs.first;
+    for (final item in docs) {
+      if (item['id'].toString() == documentId) {
+        selected = item;
+        break;
+      }
+    }
 
     final detail =
         _documentDetailTemplates()[selected['id'].toString()] ??
@@ -2687,10 +2690,14 @@ class DemoSeedData {
       }
     }
 
-    final wearableSummary = _wearableSummariesJson().firstWhere(
-      (item) => item['summary_date'].toString() == dayString,
-      orElse: () => _wearableSummariesJson().first,
-    );
+    final wearables = _wearableSummariesJson();
+    var wearableSummary = wearables.first;
+    for (final item in wearables) {
+      if (item['summary_date'].toString() == dayString) {
+        wearableSummary = item;
+        break;
+      }
+    }
     final timelineEvents = _timelineJson()
         .where(
           (item) =>
@@ -3779,10 +3786,13 @@ class DemoSeedData {
     }
     final details = _cloneMap(_documentDetailJson(documentId));
     final docs = _documentsJsonForProfile(profileId);
-    final selected = docs.firstWhere(
-      (item) => item['id']?.toString() == documentId,
-      orElse: () => docs.first,
-    );
+    var selected = docs.first;
+    for (final item in docs) {
+      if (item['id']?.toString() == documentId) {
+        selected = item;
+        break;
+      }
+    }
     details.addAll(selected);
     details['file_url'] =
         'https://demo.clindiary.app/files/$profileId/${selected['id']}.pdf';
@@ -4023,10 +4033,16 @@ class DemoSeedData {
               referenceDate: target,
             )
           : null,
-      'wearable_summary': wearables.firstWhere(
-        (item) => item['summary_date'].toString() == dayString,
-        orElse: () => wearables.first,
-      ),
+      'wearable_summary': () {
+        var selectedWearable = wearables.first;
+        for (final item in wearables) {
+          if (item['summary_date'].toString() == dayString) {
+            selectedWearable = item;
+            break;
+          }
+        }
+        return selectedWearable;
+      }(),
       'documents': documents,
       'timeline_events': timeline,
     };
