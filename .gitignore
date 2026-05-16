@@ -106,6 +106,9 @@ models/
 apps/mobile/models/
 apps/backend/models/
 
+# Local infra (Docker, etc.)
+infra/
+
 # Agent/editor local artifacts
 .agents/
 .opencode/
