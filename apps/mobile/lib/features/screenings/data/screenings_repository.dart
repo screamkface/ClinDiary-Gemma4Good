@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:clindiary/app/core/storage/local_database.dart';
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
+import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
+import 'package:clindiary/features/prevention_center/domain/prevention_center_engine.dart';
+import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 
 class ScreeningsRepository {
@@ -34,14 +37,73 @@ class ScreeningsRepository {
   }
 
   Future<List<PatientScreeningStatusItem>> recompute({
+    required ProfileBundle bundle,
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    final cached = await _readStatusCacheJson(resolvedRegionCode);
-    if (cached == null) {
-      return const <PatientScreeningStatusItem>[];
-    }
-    return _decodeStatusItems(cached);
+
+    final existingItems =
+        await _readStatusCacheJson(resolvedRegionCode) ?? <Map<String, dynamic>>[];
+    final existingById = <String, Map<String, dynamic>>{
+      for (final item in existingItems)
+        if (item['id'] != null) item['id'].toString(): item,
+    };
+
+    final center = const PreventionCenterEngine().build(
+      bundle,
+      regionCode: resolvedRegionCode,
+    );
+
+    final recommendationItems = <PreventionRecommendationItem>[
+      if (center.annualVisit != null) center.annualVisit!,
+      ...center.annualExams,
+      ...center.visitsAndControls,
+      ...center.vaccines,
+      ...center.vaccineRegistry,
+      ...center.pregnancyAndPreconception,
+      ...center.sharedDecisions,
+      ...center.seasonalChecks,
+      ...center.followUpReminders,
+    ];
+
+    final statusJson = recommendationItems.map<Map<String, dynamic>>((item) {
+      final existing = existingById[item.code];
+
+      final completedThisYear =
+          existing?['completed_this_year'] as bool? ?? false;
+      final currentYearLastCompletedOn =
+          existing?['current_year_last_completed_on'];
+      final lastDoneDate = existing?['last_done_date'];
+
+      final computedStatus = item.status == 'recommended'
+          ? 'recommended'
+          : item.status == 'seasonal'
+          ? 'scheduled'
+          : 'never_done';
+
+      return <String, dynamic>{
+        'id': item.code,
+        'screening_program_id': item.code,
+        'screening_code': item.code,
+        'screening_name': item.title,
+        'screening_category': item.category,
+        'care_pathway': _carePathwayFromItem(item),
+        'recommendation_level': _recommendationLevelFromItem(item),
+        'public_coverage_flag': false,
+        'completed_this_year': completedThisYear,
+        'current_year_last_completed_on': currentYearLastCompletedOn,
+        'last_done_date': lastDoneDate,
+        'status': completedThisYear ? 'completed' : computedStatus,
+        'regional_availability': const <Map<String, dynamic>>[],
+        'cadence_label': item.cadenceLabel,
+        'recommendation_reason': item.reason,
+        'explanation': item.actionHint,
+      };
+    }).toList(growable: false);
+
+    await _writeStatusCacheJson(resolvedRegionCode, statusJson);
+
+    return _decodeStatusItems(statusJson);
   }
 
   Future<PatientScreeningStatusItem> markDone(
@@ -159,9 +221,31 @@ class ScreeningsRepository {
       'public_coverage_flag': false,
       'completed_this_year': false,
       'current_year_last_completed_on': null,
+      'last_done_date': null,
       'status': 'recommended',
       'regional_availability': const <Map<String, dynamic>>[],
     };
+  }
+
+  String _carePathwayFromItem(PreventionRecommendationItem item) {
+    switch (item.kind) {
+      case 'visit':
+        return 'annual_visit';
+      case 'shared_decision':
+        return 'shared_decision';
+      default:
+        return 'discuss_with_doctor';
+    }
+  }
+
+  String _recommendationLevelFromItem(PreventionRecommendationItem item) {
+    if (item.status == 'recommended' || item.priority == 'high') {
+      return 'risk_based';
+    }
+    if (item.priority == 'low') {
+      return 'not_routine';
+    }
+    return 'routine';
   }
 
   String _normalizedRegionCode(String? regionCode) {

@@ -2,6 +2,12 @@
 
 ## Completed In This Stabilization Pass
 
+- Built and wired a fixed May 2026 local-only hackathon demo dataset through `DemoSeedData`, profile-scoped caches, the dossier/report caches, and the local document vault.
+- Bumped the demo seed version to `2026-05-hackathon-v1` so existing demo installs reseed automatically.
+- Seeded 31 daily entries, 31 wearable summaries, monthly medication logs, timeline events, notifications, prevention records, Gemma/document history samples, and five synthetic May 2026 local documents for Marco Rossi.
+- Added `DemoSeedData.resetAndReseed(...)` as a developer reseed helper and documented the May 2026 seed in `docs/hackathon/MAY_2026_DEMO_SEED.md`.
+- Fixed stale compile/test issues encountered during verification in `screenings_repository.dart` and `gemma_coach_service_test.dart`.
+- Verified `flutter analyze`, `flutter test`, and `flutter build apk --release --dart-define=HACKATHON_DEMO_MODE=true --dart-define=LOCAL_ONLY_MODE=true`.
 - Replaced startup/model readiness logic with an app-owned Gemma bootstrap path that validates the exact expected artifact before reporting ready.
 - Removed app-code checks for arbitrary local models, `/sdcard` model paths, `modelInstalled` flags, and `FlutterGemma.isModelInstalled()` readiness decisions.
 - Added the bootstrap state machine: `notStarted`, `checkingAppOwnedModelState`, `installingOrDownloading`, `verifying`, `ready`, `failed`.
@@ -17,6 +23,7 @@
 
 ## Must Fix Before Submission
 
+- Install the fresh release APK and run a manual May 2026 demo smoke test on the target Android device: history/calendar, documents, `Ask about this file`, local recap, and Gemma proof card.
 - Install the release APK on the target Android device. Current attempt on `2506BPN68G` failed with `INSTALL_FAILED_USER_RESTRICTED`, so enable/approve USB installs on the device or use a clean emulator/device that permits `adb install`.
 - Run first-launch model setup on the target device with network available, or import a valid `gemma-4-E2B-it.litertlm` through the app model screen.
 - Run the model screen `Run test prompt` action and confirm a non-empty Gemma response plus provider/model/runtime status.
@@ -26,6 +33,8 @@
 
 ## Known Bugs Or Limitations
 
+- The May 2026 demo dataset is verified through analyze/tests/build, but the final judge-path smoke test on a real Android device has not been completed in this pass.
+- The seeded local documents are synthetic text-based reports/notes for deterministic local parsing and Q&A, not scanned PDF assets.
 - Real Android install and real Gemma inference were not completed in this pass because the connected device blocked APK installation with `INSTALL_FAILED_USER_RESTRICTED`.
 - First model setup requires network access for the Hugging Face download unless the user imports a valid `.litertlm` model through the app-owned import flow.
 - The Gemma `.litertlm` model is not bundled in the APK; the release APK is about 308.7 MB without the large model artifact.
@@ -42,4 +51,4 @@
 
 ## Next Recommended Step
 
-- Enable USB install on the Android target, run `adb install -r apps/mobile/build/app/outputs/flutter-apk/app-release.apk`, then complete the model bootstrap and `Run test prompt` smoke test before recording the final video.
+- Enable USB install on the Android target, run `adb install -r apps/mobile/build/app/outputs/flutter-apk/app-release.apk`, then complete the May 2026 demo smoke test plus Gemma local inference smoke test before recording the final video.

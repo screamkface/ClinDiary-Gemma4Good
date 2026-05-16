@@ -18,6 +18,7 @@ import 'package:clindiary/features/insights/domain/on_device_ai_status.dart';
 import 'package:clindiary/features/medications/domain/medication_adherence.dart';
 import 'package:clindiary/features/notifications/domain/app_notification.dart';
 import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
+import 'package:clindiary/features/prevention_center/domain/prevention_record.dart';
 import 'package:clindiary/features/profile/domain/profile_bundle.dart';
 import 'package:clindiary/features/screenings/domain/screening.dart';
 import 'package:clindiary/features/timeline/domain/timeline_event.dart';
@@ -37,7 +38,7 @@ class DemoSeedData {
   ];
 
   static const String _seedVersionKey = 'demo_seed_version';
-  static const String _seedVersion = '2026-04-18-v4';
+  static const String _seedVersion = '2026-05-hackathon-v1';
 
   static AuthSession createDemoSession() {
     final now = DateTime.now().toUtc();
@@ -97,6 +98,17 @@ class DemoSeedData {
     await database.putCache(key: _seedVersionKey, payload: _seedVersion);
   }
 
+  static Future<void> resetAndReseed(
+    LocalDatabase database, {
+    LocalDocumentVaultService? localDocumentVaultService,
+  }) async {
+    await database.removeCache(_seedVersionKey);
+    await ensureSeeded(
+      database,
+      localDocumentVaultService: localDocumentVaultService,
+    );
+  }
+
   static Future<void> _seedLocalRagReports(
     LocalDocumentVaultService localDocumentVaultService,
   ) async {
@@ -137,36 +149,44 @@ class DemoSeedData {
       case primaryProfileId:
         return const [
           {
-            'title': 'Comprehensive metabolic panel - Apr 2026',
+            'title': 'May 2026 metabolic panel',
             'document_type': 'lab_report',
             'source': 'Milan Community Clinic',
-            'exam_date': '2026-04-10',
+            'exam_date': '2026-05-16',
             'content':
-                'Patient: Marco Rossi\nCreatinine: 1.31 mg/dL (reference 0.67-1.17) [OUT OF RANGE - high]\neGFR: 68 mL/min/1.73m2 (reference > 90) [OUT OF RANGE - low]\nPotassium: 5.2 mmol/L (reference 3.5-5.1) [OUT OF RANGE - high]\nComment: Renal trend slightly worse than Jan 2026 (creatinine 1.22). Reinforce hydration and repeat in 6-8 weeks.',
+                'Patient: Marco Rossi\nMay 2026 metabolic panel\nCreatinine: 1.29 mg/dL (reference 0.67-1.17) [ABNORMAL]\neGFR: 71 mL/min/1.73m2 (reference > 90) [ABNORMAL]\nPotassium: 5.1 mmol/L (reference 3.5-5.0) [ABNORMAL]\nSodium: 139 mmol/L (reference 136-145)\nAST: 24 U/L (reference 0-40)\nALT: 27 U/L (reference 0-41)\nComment: Mild kidney marker variation compared with prior local report. Hydration and clinician discussion recommended.',
           },
           {
-            'title': 'Lipid and glucose follow-up - Mar 2026',
+            'title': 'May 2026 lipid and glucose follow-up',
             'document_type': 'lab_report',
             'source': 'Milan Community Clinic',
-            'exam_date': '2026-03-22',
+            'exam_date': '2026-05-19',
             'content':
-                'Patient: Marco Rossi\nLDL cholesterol: 138 mg/dL (target < 115) [OUT OF RANGE - high]\nTriglycerides: 176 mg/dL (reference < 150) [OUT OF RANGE - high]\nHbA1c: 5.8% (reference 4.0-5.6) [OUT OF RANGE - high]\nComment: Family history of diabetes and hypercholesterolemia noted. Continue Mediterranean diet and increase aerobic exercise frequency.',
+                'Patient: Marco Rossi\nMay 2026 lipid and glucose follow-up\nLDL cholesterol: 142 mg/dL (reference < 115) [ABNORMAL]\nHDL cholesterol: 47 mg/dL (reference > 40)\nTriglycerides: 168 mg/dL (reference < 150) [ABNORMAL]\nHbA1c: 5.8 % (reference 4.0-5.6) [ABNORMAL]\nFasting glucose: 103 mg/dL (reference 70-99) [ABNORMAL]\nComment: Borderline metabolic values. Review lifestyle measures and discuss follow-up timing with clinician.',
           },
           {
-            'title': 'CBC and inflammation panel - Jan 2026',
-            'document_type': 'lab_report',
-            'source': 'Poliambulatorio San Marco',
-            'exam_date': '2026-01-14',
+            'title': 'May 2026 blood pressure diary note',
+            'document_type': 'clinical_note',
+            'source': 'ClinDiary local note',
+            'exam_date': '2026-05-10',
             'content':
-                'Patient: Marco Rossi\nhs-CRP: 4.2 mg/L (reference < 3.0) [OUT OF RANGE - high]\nCreatinine: 1.22 mg/dL (reference 0.67-1.17) [OUT OF RANGE - high]\nHemoglobin: 14.6 g/dL (reference 13.5-17.5)\nComment: Low-grade inflammatory signal with persistent mild renal marker elevation; monitor trend quarterly.',
+                'May 2026 blood pressure diary note\nHome readings from May 6 to May 10: 134/86, 136/88, 135/84, 132/83, 131/82.\nContext: early month stress, poor sleep, and irregular hydration.\nPatient note: walked more on May 8 and May 9 and felt calmer afterwards.\nPlan for discussion: ask whether the home pattern is worth repeating or reviewing at the next visit.',
           },
           {
-            'title': 'Renal baseline comparison - Nov 2025',
+            'title': 'May 2026 allergy / inflammation check',
             'document_type': 'lab_report',
             'source': 'Poliambulatorio San Marco',
-            'exam_date': '2025-11-07',
+            'exam_date': '2026-05-22',
             'content':
-                'Patient: Marco Rossi\nCreatinine: 1.18 mg/dL (reference 0.67-1.17) [OUT OF RANGE - high]\neGFR: 75 mL/min/1.73m2 (reference > 90) [OUT OF RANGE - low]\nUrea: 43 mg/dL (reference 17-43)\nComment: Earliest available value in this local history. Useful baseline for renal trend questions.',
+                'Patient: Marco Rossi\nMay 2026 allergy / inflammation check\nEosinophils: 6.8 % (reference 0.0-6.0) [ABNORMAL]\nhs-CRP: 3.6 mg/L (reference < 3.0) [ABNORMAL]\nHemoglobin: 14.5 g/dL (reference 13.5-17.5)\nComment: Mild seasonal allergy and inflammation signal. Review together with symptoms, not as a diagnosis.',
+          },
+          {
+            'title': 'May 2026 pre-visit summary note',
+            'document_type': 'clinical_note',
+            'source': 'ClinDiary local note',
+            'exam_date': '2026-05-29',
+            'content':
+                'May 2026 pre-visit summary note\nTopics to discuss with clinician:\n1. Are creatinine and eGFR changes worth repeating soon?\n2. How should LDL, triglycerides, HbA1c, and fasting glucose be reviewed in context?\n3. Do the higher home blood pressure readings from May 6 to May 10 change the monitoring plan?\n4. Which values should be watched again before the next follow-up?\nPatient goal: leave the visit with a clear monitoring plan, not a diagnosis.',
           },
         ];
       case childManagedProfileId:
@@ -294,6 +314,14 @@ class DemoSeedData {
       key: _scopedFor('wearables_recent_30', profileId),
       payload: jsonEncode(wearables),
     );
+    await database.putCache(
+      key: _scopedFor('wearables_recent_14', profileId),
+      payload: jsonEncode(wearables.take(14).toList(growable: false)),
+    );
+    await database.putCache(
+      key: _scopedFor('wearables_recent_7', profileId),
+      payload: jsonEncode(wearables.take(7).toList(growable: false)),
+    );
 
     final docs = _documentsJsonForProfile(profileId);
     await database.putCache(
@@ -310,12 +338,8 @@ class DemoSeedData {
       );
     }
 
-    final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
-    final nextMonth = now.month == 12
-        ? DateTime(now.year + 1, 1, 1)
-        : DateTime(now.year, now.month + 1, 1);
-    final monthEnd = nextMonth.subtract(const Duration(days: 1));
+    final monthStart = _demoMonthStartUtc();
+    final monthEnd = _demoMonthEndUtc();
 
     await database.putCache(
       key: _scopedFor(
@@ -401,8 +425,18 @@ class DemoSeedData {
     );
 
     await database.putCache(
+      key: _scopedFor('dossier_share_links', profileId),
+      payload: jsonEncode(_dossierShareLinksJsonForProfile(profileId)),
+    );
+
+    await database.putCache(
       key: _scopedFor('gemma_center_history', profileId),
       payload: jsonEncode(_gemmaCenterHistoryJsonForProfile(profileId)),
+    );
+
+    await database.putCache(
+      key: _scopedFor('document_query_history', profileId),
+      payload: jsonEncode(_documentQueryHistoryJsonForProfile(profileId)),
     );
   }
 
@@ -415,6 +449,8 @@ class DemoSeedData {
         .map((item) => DailyEntry.fromJson(item))
         .toList(growable: false);
   }
+
+  static List<DailyEntry> demoDailyEntriesForMay2026() => demoDailyEntries();
 
   static BillingStatus demoBillingStatus() {
     return BillingStatus.fromJson(_billingStatusJson());
@@ -495,11 +531,17 @@ class DemoSeedData {
         .toList(growable: false);
   }
 
+  static List<MedicationLogItem> demoMedicationLogsForMay2026() =>
+      demoMedicationLogs();
+
   static List<AppNotificationItem> demoNotifications() {
     return _notificationsJson()
         .map((item) => AppNotificationItem.fromJson(item))
         .toList(growable: false);
   }
+
+  static List<AppNotificationItem> demoNotificationsForMay2026() =>
+      demoNotifications();
 
   static NotificationPreferences demoNotificationPreferences() {
     return NotificationPreferences.fromJson(_notificationPreferencesJson());
@@ -526,17 +568,26 @@ class DemoSeedData {
         .toList(growable: false);
   }
 
+  static List<WearableDaySummary> demoWearableSummariesForMay2026() =>
+      demoWearableSummaries();
+
   static List<TimelineEventItem> demoTimelineEvents() {
     return _timelineJson()
         .map((item) => TimelineEventItem.fromJson(item))
         .toList(growable: false);
   }
 
+  static List<TimelineEventItem> demoTimelineEventsForMay2026() =>
+      demoTimelineEvents();
+
   static List<ClinicalDocumentSummary> demoDocuments() {
     return _documentsJson()
         .map((item) => ClinicalDocumentSummary.fromJson(item))
         .toList(growable: false);
   }
+
+  static List<ClinicalDocumentSummary> demoDocumentsForMay2026() =>
+      demoDocuments();
 
   static DocumentArchiveView demoDocumentArchive({
     String? folderId,
@@ -575,7 +626,7 @@ class DemoSeedData {
       'legacy_cloud_documents': <Map<String, dynamic>>[],
       'query': query,
       'is_search': normalizedQuery != null && normalizedQuery.isNotEmpty,
-      'storage_location': 'cloud',
+      'storage_location': 'local',
     };
 
     return DocumentArchiveView.fromJson(archiveMap);
@@ -591,23 +642,543 @@ class DemoSeedData {
     return ClinicalDocumentDetail.fromJson(_documentDetailJson(documentId));
   }
 
+  static ClinicalDocumentDetail demoDocumentDetailForMay2026(
+    String documentId,
+  ) {
+    return demoDocumentDetail(documentId);
+  }
+
+  static List<PreventionRecord> demoPreventionRecordsForMay2026() {
+    return _preventionRecordsJson()
+        .map((item) => PreventionRecord.fromJson(item))
+        .toList(growable: false);
+  }
+
   static String _scopedFor(String baseKey, String profileId) {
     return scopedCacheKey(baseKey, profileId);
   }
 
   static String _date(DateTime date) => date.toIso8601String().split('T').first;
 
-  static DateTime _todayUtc() {
-    final now = DateTime.now().toUtc();
-    return DateTime.utc(now.year, now.month, now.day);
+  static DateTime _demoMonthStartUtc() => DateTime.utc(2026, 5, 1);
+
+  static DateTime _demoMonthEndUtc() => DateTime.utc(2026, 5, 31);
+
+  static DateTime _demoDateUtc(int day, [int hour = 0, int minute = 0]) {
+    return DateTime.utc(2026, 5, day, hour, minute);
+  }
+
+  static DateTime _demoGeneratedAtUtc() => _demoDateUtc(31, 18);
+
+  static String _isoDay(int day) => _date(_demoDateUtc(day));
+
+  static String _isoAt(int day, int hour, int minute) =>
+      _demoDateUtc(day, hour, minute).toIso8601String();
+
+  static List<Map<String, dynamic>> _preventionRecordsJson() {
+    return [
+      {
+        'code': 'blood_pressure_review',
+        'performed_at': _isoAt(10, 18, 0),
+        'result_summary':
+            'Home blood pressure diary reviewed before follow-up discussion.',
+        'source_id': 'doc-bp-note-may-2026',
+      },
+      {
+        'code': 'metabolic_panel_follow_up',
+        'performed_at': _isoAt(16, 11, 30),
+        'result_summary': 'Metabolic panel added locally for clinician review.',
+        'source_id': 'doc-metabolic-may-2026',
+      },
+      {
+        'code': 'pre_visit_preparation',
+        'performed_at': _isoAt(29, 20, 15),
+        'result_summary': 'Questions prepared for upcoming clinician visit.',
+        'source_id': 'doc-previsit-may-2026',
+      },
+    ];
   }
 
   static List<Map<String, dynamic>> _dailyEntriesJson() {
-    final today = _todayUtc();
-    return [
+    final rows = [
       {
-        'id': 'de-001',
-        'entry_date': _date(today),
+        'day': 1,
+        'sleep_hours': 6.1,
+        'sleep_quality': 5,
+        'energy_level': 4,
+        'mood_level': 5,
+        'stress_level': 7,
+        'appetite_level': 6,
+        'hydration_level': 5,
+        'general_pain': 2,
+        'general_notes':
+            'Started the month feeling tired after poor sleep. Mild headache by late afternoon.',
+        'symptoms': [
+          _symptomSeed('fatigue', 4, 360, 'general', {'context': 'poor_sleep'}),
+          _symptomSeed('headache', 2, 75, 'head', {'time': 'afternoon'}),
+        ],
+        'bp': '126/82',
+        'hr': '74',
+      },
+      {
+        'day': 2,
+        'sleep_hours': 5.9,
+        'sleep_quality': 4,
+        'energy_level': 4,
+        'mood_level': 5,
+        'stress_level': 7,
+        'appetite_level': 6,
+        'hydration_level': 5,
+        'general_pain': 2,
+        'general_notes':
+            'Stress remained high. Needed extra water reminders and felt mentally tired in the evening.',
+        'symptoms': [
+          _symptomSeed('fatigue', 4, 300, 'general', {
+            'context': 'work_stress',
+          }),
+        ],
+        'bp': '128/83',
+        'hr': '75',
+      },
+      {
+        'day': 3,
+        'sleep_hours': 5.8,
+        'sleep_quality': 4,
+        'energy_level': 3,
+        'mood_level': 4,
+        'stress_level': 8,
+        'appetite_level': 5,
+        'hydration_level': 5,
+        'general_pain': 3,
+        'general_notes':
+            'Felt tired after poor sleep. Mild headache in the afternoon and skipped the usual walk.',
+        'symptoms': [
+          _symptomSeed('fatigue', 5, 420, 'general', {
+            'context': 'sleep_deprivation',
+          }),
+          _symptomSeed('headache', 3, 90, 'head', {'time': 'afternoon'}),
+        ],
+        'bp': '127/81',
+        'hr': '76',
+      },
+      {
+        'day': 4,
+        'sleep_hours': 6.2,
+        'sleep_quality': 5,
+        'energy_level': 4,
+        'mood_level': 5,
+        'stress_level': 7,
+        'appetite_level': 6,
+        'hydration_level': 6,
+        'general_pain': 2,
+        'general_notes':
+            'Still fatigued but a short evening walk helped a little. Keeping notes for the week.',
+        'symptoms': [
+          _symptomSeed('fatigue', 4, 240, 'general', {'context': 'recovering'}),
+        ],
+        'bp': '125/80',
+        'hr': '73',
+      },
+      {
+        'day': 5,
+        'sleep_hours': 6.4,
+        'sleep_quality': 6,
+        'energy_level': 5,
+        'mood_level': 5,
+        'stress_level': 6,
+        'appetite_level': 6,
+        'hydration_level': 6,
+        'general_pain': 2,
+        'general_notes':
+            'Sleep slightly better. Less headache, but still felt drained after work.',
+        'symptoms': [
+          _symptomSeed('fatigue', 3, 180, 'general', {'context': 'improving'}),
+        ],
+        'bp': '124/79',
+        'hr': '72',
+      },
+      {
+        'day': 6,
+        'sleep_hours': 6.1,
+        'sleep_quality': 5,
+        'energy_level': 5,
+        'mood_level': 5,
+        'stress_level': 6,
+        'appetite_level': 6,
+        'hydration_level': 6,
+        'general_pain': 2,
+        'general_notes':
+            'Checked home blood pressure after work and it was a bit higher than usual. Wants to keep monitoring.',
+        'symptoms': [
+          _symptomSeed('fatigue', 3, 120, 'general', {'context': 'after_work'}),
+        ],
+        'bp': '134/86',
+        'hr': '74',
+      },
+      {
+        'day': 7,
+        'sleep_hours': 6.0,
+        'sleep_quality': 5,
+        'energy_level': 5,
+        'mood_level': 5,
+        'stress_level': 6,
+        'appetite_level': 6,
+        'hydration_level': 6,
+        'general_pain': 2,
+        'general_notes':
+            'Missed the morning medication reminder and took it late. Blood pressure still slightly elevated at home.',
+        'symptoms': [
+          _symptomSeed('headache', 2, 45, 'head', {'context': 'bp_check_day'}),
+        ],
+        'bp': '136/88',
+        'hr': '75',
+      },
+      {
+        'day': 8,
+        'sleep_hours': 6.3,
+        'sleep_quality': 5,
+        'energy_level': 5,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 6,
+        'hydration_level': 6,
+        'general_pain': 1,
+        'general_notes':
+            'Home BP slightly higher than usual. Walked 25 minutes and felt calmer after dinner.',
+        'symptoms': [],
+        'bp': '135/84',
+        'hr': '73',
+      },
+      {
+        'day': 9,
+        'sleep_hours': 6.4,
+        'sleep_quality': 6,
+        'energy_level': 5,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 6,
+        'hydration_level': 6,
+        'general_pain': 1,
+        'general_notes':
+            'Repeated the home BP reading in the evening. Slightly better after hydration and a lighter day.',
+        'symptoms': [],
+        'bp': '132/83',
+        'hr': '72',
+      },
+      {
+        'day': 10,
+        'sleep_hours': 6.6,
+        'sleep_quality': 6,
+        'energy_level': 5,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 1,
+        'general_notes':
+            'Added a local blood pressure diary note summarizing the first 10 days of home measurements.',
+        'symptoms': [],
+        'bp': '131/82',
+        'hr': '71',
+      },
+      {
+        'day': 11,
+        'sleep_hours': 6.8,
+        'sleep_quality': 6,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 1,
+        'general_notes':
+            'Started walking more regularly. Energy a little better and fewer afternoon symptoms.',
+        'symptoms': [
+          _symptomSeed('fatigue', 2, 90, 'general', {'context': 'improving'}),
+        ],
+        'bp': '129/81',
+        'hr': '70',
+      },
+      {
+        'day': 12,
+        'sleep_hours': 6.9,
+        'sleep_quality': 6,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 1,
+        'general_notes':
+            'Hydration reminders helped. Walked after work and felt less heavy than last week.',
+        'symptoms': [],
+        'bp': '128/80',
+        'hr': '69',
+      },
+      {
+        'day': 13,
+        'sleep_hours': 7.1,
+        'sleep_quality': 7,
+        'energy_level': 6,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 1,
+        'general_notes':
+            'No headache today. Longer walk and noticeably lower stress by bedtime.',
+        'symptoms': [],
+        'bp': '127/79',
+        'hr': '68',
+      },
+      {
+        'day': 14,
+        'sleep_hours': 7.0,
+        'sleep_quality': 7,
+        'energy_level': 6,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Kept the walking routine. Fatigue still present in the late evening but milder than early May.',
+        'symptoms': [
+          _symptomSeed('fatigue', 2, 60, 'general', {'time': 'evening'}),
+        ],
+        'bp': '126/78',
+        'hr': '68',
+      },
+      {
+        'day': 15,
+        'sleep_hours': 7.2,
+        'sleep_quality': 7,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Best day so far this month. More walking and steadier routine seem to be helping.',
+        'symptoms': [],
+        'bp': '124/78',
+        'hr': '67',
+      },
+      {
+        'day': 16,
+        'sleep_hours': 7.0,
+        'sleep_quality': 7,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Added metabolic panel document. Wants to ask the clinician about kidney markers and hydration.',
+        'symptoms': [],
+        'bp': '126/80',
+        'hr': '69',
+      },
+      {
+        'day': 17,
+        'sleep_hours': 6.9,
+        'sleep_quality': 6,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Reviewed the new report locally. Mild concern about creatinine trend but no acute symptoms.',
+        'symptoms': [],
+        'bp': '127/80',
+        'hr': '69',
+      },
+      {
+        'day': 18,
+        'sleep_hours': 6.8,
+        'sleep_quality': 6,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 1,
+        'general_notes':
+            'Forgot the morning medication dose today. Plans to keep reminders more visible after reading the report.',
+        'symptoms': [],
+        'bp': '129/82',
+        'hr': '70',
+      },
+      {
+        'day': 19,
+        'sleep_hours': 6.9,
+        'sleep_quality': 6,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 1,
+        'general_notes':
+            'Added lipid and glucose follow-up document. Wants a simple explanation of LDL and HbA1c values.',
+        'symptoms': [],
+        'bp': '128/81',
+        'hr': '69',
+      },
+      {
+        'day': 20,
+        'sleep_hours': 7.0,
+        'sleep_quality': 7,
+        'energy_level': 6,
+        'mood_level': 6,
+        'stress_level': 5,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Mild worry after reviewing labs, but the plan is to discuss them rather than self-interpret.',
+        'symptoms': [
+          _symptomSeed('fatigue', 2, 45, 'general', {'context': 'mild'}),
+        ],
+        'bp': '127/80',
+        'hr': '68',
+      },
+      {
+        'day': 21,
+        'sleep_hours': 7.3,
+        'sleep_quality': 7,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Sleep improved again. Medication back on time and energy more stable.',
+        'symptoms': [],
+        'bp': '125/79',
+        'hr': '67',
+      },
+      {
+        'day': 22,
+        'sleep_hours': 7.1,
+        'sleep_quality': 7,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 1,
+        'general_notes':
+            'Added allergy and inflammation check. Mild nasal symptoms but overall feeling more settled.',
+        'symptoms': [
+          _symptomSeed('nasal_congestion', 2, 50, 'nose', {'seasonal': true}),
+        ],
+        'bp': '124/78',
+        'hr': '67',
+      },
+      {
+        'day': 23,
+        'sleep_hours': 7.4,
+        'sleep_quality': 8,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 3,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 0,
+        'general_notes':
+            'More rested. Morning walk felt easier and there were no significant symptoms today.',
+        'symptoms': [],
+        'bp': '123/77',
+        'hr': '66',
+      },
+      {
+        'day': 24,
+        'sleep_hours': 7.5,
+        'sleep_quality': 8,
+        'energy_level': 7,
+        'mood_level': 8,
+        'stress_level': 3,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 0,
+        'general_notes':
+            'Better sleep and lower stress after regular walks. This felt like a much steadier day.',
+        'symptoms': [],
+        'bp': '122/76',
+        'hr': '65',
+      },
+      {
+        'day': 25,
+        'sleep_hours': 7.2,
+        'sleep_quality': 7,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 3,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 0,
+        'general_notes':
+            'Mostly consistent routine this week. No missed medication doses since the lab follow-up.',
+        'symptoms': [],
+        'bp': '123/77',
+        'hr': '65',
+      },
+      {
+        'day': 26,
+        'sleep_hours': 7.1,
+        'sleep_quality': 7,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 0,
+        'general_notes':
+            'Started drafting questions for the clinician visit, especially around blood pressure and lab follow-up.',
+        'symptoms': [],
+        'bp': '124/78',
+        'hr': '66',
+      },
+      {
+        'day': 27,
+        'sleep_hours': 7.0,
+        'sleep_quality': 7,
+        'energy_level': 6,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 7,
+        'general_pain': 0,
+        'general_notes':
+            'Missed the morning dose while commuting, but otherwise felt stable and kept walking in the evening.',
+        'symptoms': [],
+        'bp': '125/78',
+        'hr': '66',
+      },
+      {
+        'day': 28,
+        'sleep_hours': 7.2,
+        'sleep_quality': 7,
+        'energy_level': 7,
+        'mood_level': 7,
+        'stress_level': 4,
+        'appetite_level': 7,
+        'hydration_level': 8,
+        'general_pain': 0,
+        'general_notes':
+            'Reviewed home measurements and medication notes before the upcoming visit preparation.',
+        'symptoms': [],
+        'bp': '124/77',
+        'hr': '65',
+      },
+      {
+        'day': 29,
         'sleep_hours': 7.4,
         'sleep_quality': 8,
         'energy_level': 7,
@@ -615,184 +1186,93 @@ class DemoSeedData {
         'stress_level': 3,
         'appetite_level': 7,
         'hydration_level': 8,
-        'general_pain': 1,
+        'general_pain': 0,
         'general_notes':
-            'Good day overall. Light neck stiffness after long desk work.',
-        'symptoms': [
-          {
-            'id': 'sym-001',
-            'symptom_code': 'neck_stiffness',
-            'severity': 2,
-            'duration_minutes': 90,
-            'body_location': 'neck',
-            'metadata_json': {'trigger': 'desk work'},
-          },
-        ],
-        'vitals': [
-          {
-            'id': 'vit-001',
-            'type': 'blood_pressure',
-            'value': '118/76',
-            'unit': 'mmHg',
-            'measured_at': today
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-          {
-            'id': 'vit-002',
-            'type': 'heart_rate',
-            'value': '63',
-            'unit': 'bpm',
-            'measured_at': today
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-        ],
+            'Added pre-visit summary note with questions about LDL, HbA1c, creatinine, and home blood pressure readings.',
+        'symptoms': [],
+        'bp': '123/76',
+        'hr': '64',
       },
       {
-        'id': 'de-002',
-        'entry_date': _date(today.subtract(const Duration(days: 1))),
-        'sleep_hours': 6.8,
-        'sleep_quality': 6,
-        'energy_level': 6,
-        'mood_level': 7,
-        'stress_level': 5,
-        'appetite_level': 6,
-        'hydration_level': 7,
-        'general_pain': 2,
-        'general_notes': 'Busy workday, mild reflux after dinner.',
-        'symptoms': [
-          {
-            'id': 'sym-002',
-            'symptom_code': 'acid_reflux',
-            'severity': 3,
-            'duration_minutes': 40,
-            'body_location': 'abdomen',
-            'metadata_json': {'after_meal': true},
-          },
-        ],
-        'vitals': [
-          {
-            'id': 'vit-003',
-            'type': 'blood_pressure',
-            'value': '124/79',
-            'unit': 'mmHg',
-            'measured_at': today
-                .subtract(const Duration(days: 1))
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-          {
-            'id': 'vit-004',
-            'type': 'heart_rate',
-            'value': '69',
-            'unit': 'bpm',
-            'measured_at': today
-                .subtract(const Duration(days: 1))
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-        ],
-      },
-      {
-        'id': 'de-003',
-        'entry_date': _date(today.subtract(const Duration(days: 2))),
-        'sleep_hours': 8.1,
-        'sleep_quality': 9,
-        'energy_level': 8,
+        'day': 30,
+        'sleep_hours': 7.6,
+        'sleep_quality': 8,
+        'energy_level': 7,
         'mood_level': 8,
-        'stress_level': 2,
-        'appetite_level': 8,
+        'stress_level': 3,
+        'appetite_level': 7,
         'hydration_level': 8,
         'general_pain': 0,
         'general_notes':
-            'Preventive checkup done. Doctor confirmed stable clinical trend.',
+            'Looked over the month and noticed clearer improvement in sleep, stress, and walking consistency.',
         'symptoms': [],
-        'vitals': [
-          {
-            'id': 'vit-005',
-            'type': 'blood_pressure',
-            'value': '116/74',
-            'unit': 'mmHg',
-            'measured_at': today
-                .subtract(const Duration(days: 2))
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-          {
-            'id': 'vit-006',
-            'type': 'heart_rate',
-            'value': '61',
-            'unit': 'bpm',
-            'measured_at': today
-                .subtract(const Duration(days: 2))
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-        ],
+        'bp': '122/76',
+        'hr': '64',
       },
       {
-        'id': 'de-004',
-        'entry_date': _date(today.subtract(const Duration(days: 3))),
-        'sleep_hours': 7.0,
-        'sleep_quality': 7,
-        'energy_level': 7,
-        'mood_level': 7,
-        'stress_level': 4,
+        'day': 31,
+        'sleep_hours': 7.8,
+        'sleep_quality': 8,
+        'energy_level': 8,
+        'mood_level': 8,
+        'stress_level': 3,
         'appetite_level': 7,
-        'hydration_level': 7,
-        'general_pain': 1,
-        'general_notes': 'Moderate activity, no relevant symptoms.',
+        'hydration_level': 8,
+        'general_pain': 0,
+        'general_notes':
+            'Preparing questions for clinician visit. Ended the month feeling more informed and less stressed than at the start.',
         'symptoms': [],
-        'vitals': [
-          {
-            'id': 'vit-007',
-            'type': 'blood_pressure',
-            'value': '120/77',
-            'unit': 'mmHg',
-            'measured_at': today
-                .subtract(const Duration(days: 3))
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-        ],
-      },
-      {
-        'id': 'de-005',
-        'entry_date': _date(today.subtract(const Duration(days: 5))),
-        'sleep_hours': 6.9,
-        'sleep_quality': 6,
-        'energy_level': 6,
-        'mood_level': 6,
-        'stress_level': 5,
-        'appetite_level': 6,
-        'hydration_level': 6,
-        'general_pain': 2,
-        'general_notes': 'Late shift. Slight headache at evening.',
-        'symptoms': [
-          {
-            'id': 'sym-003',
-            'symptom_code': 'headache',
-            'severity': 3,
-            'duration_minutes': 60,
-            'body_location': 'head',
-            'metadata_json': {'possible_trigger': 'sleep_deprivation'},
-          },
-        ],
-        'vitals': [
-          {
-            'id': 'vit-008',
-            'type': 'heart_rate',
-            'value': '71',
-            'unit': 'bpm',
-            'measured_at': today
-                .subtract(const Duration(days: 5))
-                .add(const Duration(hours: 8))
-                .toIso8601String(),
-          },
-        ],
+        'bp': '121/75',
+        'hr': '63',
       },
     ];
+
+    return rows
+        .map((row) {
+          final day = row['day'] as int;
+          final vitals = <Map<String, dynamic>>[
+            {
+              'id': 'de-$day-bp',
+              'type': 'blood_pressure',
+              'value': row['bp'],
+              'unit': 'mmHg',
+              'measured_at': _isoAt(day, 8, 15),
+            },
+            {
+              'id': 'de-$day-hr',
+              'type': 'heart_rate',
+              'value': row['hr'],
+              'unit': 'bpm',
+              'measured_at': _isoAt(day, 8, 15),
+            },
+          ];
+          return {
+            'id': 'de-may-2026-${day.toString().padLeft(2, '0')}',
+            'entry_date': _isoDay(day),
+            'sleep_hours': row['sleep_hours'],
+            'sleep_quality': row['sleep_quality'],
+            'energy_level': row['energy_level'],
+            'mood_level': row['mood_level'],
+            'stress_level': row['stress_level'],
+            'appetite_level': row['appetite_level'],
+            'hydration_level': row['hydration_level'],
+            'general_pain': row['general_pain'],
+            'general_notes': row['general_notes'],
+            'symptoms': (row['symptoms'] as List<dynamic>)
+                .asMap()
+                .entries
+                .map((entry) {
+                  final symptom = Map<String, dynamic>.from(
+                    entry.value as Map<String, dynamic>,
+                  );
+                  symptom['id'] = 'de-$day-sym-${entry.key + 1}';
+                  return symptom;
+                })
+                .toList(growable: false),
+            'vitals': vitals,
+          };
+        })
+        .toList(growable: false);
   }
 
   static Map<String, dynamic> _profileBundleJson() {
@@ -1048,38 +1528,54 @@ class DemoSeedData {
           'notes': 'Responding to physiotherapy exercises.',
         },
       ],
+      'prevention_records': _preventionRecordsJson(),
     };
   }
 
   static List<Map<String, dynamic>> _alertsJson() {
-    final now = DateTime.now().toUtc();
     return [
       {
-        'id': 'alert-1',
+        'id': 'alert-may-1',
         'severity': 'medium',
         'alert_type': 'screening_due',
         'rule_code': 'bp_followup',
         'title': 'Blood pressure follow-up due',
         'description':
-            'Your preventive blood pressure check should be repeated this month.',
+            'Early May home blood pressure readings were sometimes elevated. Keep them ready for discussion.',
         'status': 'open',
         'source_type': 'screening',
         'source_id': 'scr-1',
-        'triggered_at': now.subtract(const Duration(days: 1)).toIso8601String(),
+        'triggered_at': _isoAt(24, 8, 0),
         'resolved_at': null,
         'resolution_notes': null,
       },
       {
-        'id': 'alert-2',
+        'id': 'alert-may-2',
         'severity': 'low',
         'alert_type': 'medication_missed',
         'rule_code': 'med_adherence',
         'title': 'Medication adherence warning',
-        'description': 'One evening dose was skipped in the last 7 days.',
+        'description':
+            'Medication adherence was mostly consistent, with two missed doses and one late entry this month.',
         'status': 'open',
         'source_type': 'medication',
         'source_id': 'med-1',
-        'triggered_at': now.subtract(const Duration(days: 2)).toIso8601String(),
+        'triggered_at': _isoAt(27, 9, 0),
+        'resolved_at': null,
+        'resolution_notes': null,
+      },
+      {
+        'id': 'alert-may-3',
+        'severity': 'low',
+        'alert_type': 'document_follow_up',
+        'rule_code': 'lab_review',
+        'title': 'Review May lab questions',
+        'description':
+            'Local reports added questions about creatinine, eGFR, LDL, and HbA1c for clinician discussion.',
+        'status': 'open',
+        'source_type': 'document',
+        'source_id': 'doc-previsit-may-2026',
+        'triggered_at': _isoAt(29, 20, 20),
         'resolved_at': null,
         'resolution_notes': null,
       },
@@ -1087,32 +1583,103 @@ class DemoSeedData {
   }
 
   static List<Map<String, dynamic>> _timelineJson() {
-    final now = DateTime.now().toUtc();
     return [
       {
-        'id': 'tl-1',
+        'id': 'tl-may-01',
         'event_type': 'daily_entry',
-        'title': 'Daily check-in completed',
-        'description': 'Today check-in logged with vitals and symptoms.',
-        'event_date': now.subtract(const Duration(hours: 6)).toIso8601String(),
-        'severity': null,
-      },
-      {
-        'id': 'tl-2',
-        'event_type': 'document_uploaded',
-        'title': 'Lab report uploaded',
-        'description': 'Blood panel document added to clinical archive.',
-        'event_date': now.subtract(const Duration(days: 3)).toIso8601String(),
-        'severity': null,
-      },
-      {
-        'id': 'tl-3',
-        'event_type': 'alert',
-        'title': 'Preventive check suggested',
+        'title': 'Early-month fatigue logged',
         'description':
-            'Blood pressure annual control suggested by prevention rules.',
-        'event_date': now.subtract(const Duration(days: 1)).toIso8601String(),
+            'Daily check-in captured poor sleep, fatigue, and mild headache.',
+        'event_date': _isoAt(3, 18, 30),
+        'severity': null,
+      },
+      {
+        'id': 'tl-may-02',
+        'event_type': 'vitals_review',
+        'title': 'Higher home BP noted',
+        'description':
+            'Home blood pressure was slightly above usual values between May 6 and May 10.',
+        'event_date': _isoAt(8, 20, 10),
+        'severity': null,
+      },
+      {
+        'id': 'tl-may-03',
+        'event_type': 'document_uploaded',
+        'title': 'Blood pressure diary note added',
+        'description': 'Local home-monitoring note saved for later discussion.',
+        'event_date': _isoAt(10, 21, 5),
+        'severity': null,
+      },
+      {
+        'id': 'tl-may-04',
+        'event_type': 'wellbeing',
+        'title': 'Walking routine improved',
+        'description':
+            'More walking and hydration were associated with lower stress and better energy.',
+        'event_date': _isoAt(15, 19, 0),
+        'severity': null,
+      },
+      {
+        'id': 'tl-may-05',
+        'event_type': 'document_uploaded',
+        'title': 'Metabolic panel uploaded',
+        'description': 'May 2026 metabolic panel added to the local archive.',
+        'event_date': _isoAt(16, 12, 5),
         'severity': 'medium',
+      },
+      {
+        'id': 'tl-may-06',
+        'event_type': 'document_uploaded',
+        'title': 'Lipid and glucose follow-up uploaded',
+        'description':
+            'Borderline lipid and glucose values were added for review.',
+        'event_date': _isoAt(19, 18, 20),
+        'severity': 'medium',
+      },
+      {
+        'id': 'tl-may-07',
+        'event_type': 'medication',
+        'title': 'Medication adherence note',
+        'description':
+            'A missed dose was logged and reminders were kept active.',
+        'event_date': _isoAt(18, 18, 10),
+        'severity': 'low',
+      },
+      {
+        'id': 'tl-may-08',
+        'event_type': 'document_uploaded',
+        'title': 'Allergy and inflammation check added',
+        'description':
+            'Seasonal symptom context was added to the local archive.',
+        'event_date': _isoAt(22, 17, 40),
+        'severity': null,
+      },
+      {
+        'id': 'tl-may-09',
+        'event_type': 'alert',
+        'title': 'Preventive review suggested',
+        'description':
+            'Prevention center highlighted blood pressure and lab follow-up discussion points.',
+        'event_date': _isoAt(24, 8, 15),
+        'severity': 'medium',
+      },
+      {
+        'id': 'tl-may-10',
+        'event_type': 'document_uploaded',
+        'title': 'Pre-visit summary note added',
+        'description':
+            'Questions for the clinician visit were collected in one local note.',
+        'event_date': _isoAt(29, 20, 20),
+        'severity': null,
+      },
+      {
+        'id': 'tl-may-11',
+        'event_type': 'daily_entry',
+        'title': 'Month-end recap prepared',
+        'description':
+            'Final May check-in captured better sleep, lower stress, and visit preparation.',
+        'event_date': _isoAt(31, 20, 10),
+        'severity': null,
       },
     ];
   }
@@ -1120,18 +1687,26 @@ class DemoSeedData {
   static List<Map<String, dynamic>> _documentFoldersJson() {
     return [
       {
-        'id': 'folder-1',
-        'name': 'Lab Results',
+        'id': 'folder-labs',
+        'name': 'May Lab Reports',
         'parent_folder_id': null,
-        'path_label': 'Lab Results',
+        'path_label': 'May Lab Reports',
+        'child_folder_count': 0,
+        'document_count': 3,
+      },
+      {
+        'id': 'folder-home',
+        'name': 'Home Monitoring',
+        'parent_folder_id': null,
+        'path_label': 'Home Monitoring',
         'child_folder_count': 0,
         'document_count': 1,
       },
       {
-        'id': 'folder-2',
-        'name': 'Cardiology',
+        'id': 'folder-visit',
+        'name': 'Visit Prep',
         'parent_folder_id': null,
-        'path_label': 'Cardiology',
+        'path_label': 'Visit Prep',
         'child_folder_count': 0,
         'document_count': 1,
       },
@@ -1139,48 +1714,110 @@ class DemoSeedData {
   }
 
   static List<Map<String, dynamic>> _documentsJson() {
-    final now = DateTime.now().toUtc();
     return [
       {
-        'id': 'doc-1',
-        'folder_id': 'folder-1',
-        'folder_name': 'Lab Results',
-        'title': 'Blood panel March 2026',
-        'document_type': 'laboratory_report',
-        'upload_date': now.subtract(const Duration(days: 20)).toIso8601String(),
-        'exam_date': now.subtract(const Duration(days: 22)).toIso8601String(),
+        'id': 'doc-metabolic-may-2026',
+        'folder_id': 'folder-labs',
+        'folder_name': 'May Lab Reports',
+        'title': 'May 2026 metabolic panel',
+        'document_type': 'lab_report',
+        'upload_date': _isoAt(16, 12, 5),
+        'exam_date': _isoAt(16, 9, 0),
         'source': 'Milan Community Clinic',
-        'original_filename': 'blood_panel_2026_03.pdf',
-        'mime_type': 'application/pdf',
-        'file_size_bytes': 245000,
-        'parsed_status': 'completed',
+        'original_filename': 'may_2026_metabolic_panel.txt',
+        'mime_type': 'text/plain',
+        'file_size_bytes': 4820,
+        'parsed_status': 'parsed',
         'context_status': 'active',
-        'classification_confidence': 0.96,
-        'parsing_confidence': 0.93,
+        'classification_confidence': 0.98,
+        'parsing_confidence': 0.95,
         'processing_error': null,
         'pending_sync': false,
-        'storage_location': 'cloud',
+        'storage_location': 'local',
         'local_file_path': null,
       },
       {
-        'id': 'doc-2',
-        'folder_id': 'folder-2',
-        'folder_name': 'Cardiology',
-        'title': 'ECG follow-up February 2026',
-        'document_type': 'cardiology_report',
-        'upload_date': now.subtract(const Duration(days: 48)).toIso8601String(),
-        'exam_date': now.subtract(const Duration(days: 50)).toIso8601String(),
-        'source': 'Poliambulatorio San Marco',
-        'original_filename': 'ecg_followup_2026_02.pdf',
-        'mime_type': 'application/pdf',
-        'file_size_bytes': 168000,
-        'parsed_status': 'completed',
+        'id': 'doc-lipids-glucose-may-2026',
+        'folder_id': 'folder-labs',
+        'folder_name': 'May Lab Reports',
+        'title': 'May 2026 lipid and glucose follow-up',
+        'document_type': 'lab_report',
+        'upload_date': _isoAt(19, 18, 20),
+        'exam_date': _isoAt(19, 8, 45),
+        'source': 'Milan Community Clinic',
+        'original_filename': 'may_2026_lipid_glucose_followup.txt',
+        'mime_type': 'text/plain',
+        'file_size_bytes': 4330,
+        'parsed_status': 'parsed',
         'context_status': 'active',
-        'classification_confidence': 0.94,
-        'parsing_confidence': 0.91,
+        'classification_confidence': 0.98,
+        'parsing_confidence': 0.95,
         'processing_error': null,
         'pending_sync': false,
-        'storage_location': 'cloud',
+        'storage_location': 'local',
+        'local_file_path': null,
+      },
+      {
+        'id': 'doc-bp-note-may-2026',
+        'folder_id': 'folder-home',
+        'folder_name': 'Home Monitoring',
+        'title': 'May 2026 blood pressure diary note',
+        'document_type': 'clinical_note',
+        'upload_date': _isoAt(10, 21, 5),
+        'exam_date': _isoAt(10, 20, 30),
+        'source': 'ClinDiary local note',
+        'original_filename': 'may_2026_bp_diary_note.txt',
+        'mime_type': 'text/plain',
+        'file_size_bytes': 3180,
+        'parsed_status': 'local_only',
+        'context_status': 'active',
+        'classification_confidence': 0.96,
+        'parsing_confidence': 0.82,
+        'processing_error': null,
+        'pending_sync': false,
+        'storage_location': 'local',
+        'local_file_path': null,
+      },
+      {
+        'id': 'doc-allergy-may-2026',
+        'folder_id': 'folder-labs',
+        'folder_name': 'May Lab Reports',
+        'title': 'May 2026 allergy / inflammation check',
+        'document_type': 'lab_report',
+        'upload_date': _isoAt(22, 17, 40),
+        'exam_date': _isoAt(22, 10, 15),
+        'source': 'Poliambulatorio San Marco',
+        'original_filename': 'may_2026_allergy_inflammation_check.txt',
+        'mime_type': 'text/plain',
+        'file_size_bytes': 4010,
+        'parsed_status': 'parsed',
+        'context_status': 'active',
+        'classification_confidence': 0.97,
+        'parsing_confidence': 0.94,
+        'processing_error': null,
+        'pending_sync': false,
+        'storage_location': 'local',
+        'local_file_path': null,
+      },
+      {
+        'id': 'doc-previsit-may-2026',
+        'folder_id': 'folder-visit',
+        'folder_name': 'Visit Prep',
+        'title': 'May 2026 pre-visit summary note',
+        'document_type': 'clinical_note',
+        'upload_date': _isoAt(29, 20, 20),
+        'exam_date': _isoAt(29, 20, 10),
+        'source': 'ClinDiary local note',
+        'original_filename': 'may_2026_previsit_summary_note.txt',
+        'mime_type': 'text/plain',
+        'file_size_bytes': 2890,
+        'parsed_status': 'local_only',
+        'context_status': 'active',
+        'classification_confidence': 0.95,
+        'parsing_confidence': 0.8,
+        'processing_error': null,
+        'pending_sync': false,
+        'storage_location': 'local',
         'local_file_path': null,
       },
     ];
@@ -1193,95 +1830,103 @@ class DemoSeedData {
       orElse: () => docs.first,
     );
 
-    final isLab = selected['document_type'] == 'laboratory_report';
+    final detail =
+        _documentDetailTemplates()[selected['id'].toString()] ??
+        _documentDetailTemplates().values.first;
     return {
       ...selected,
       'file_url': 'https://demo.clindiary.app/files/${selected['id']}.pdf',
-      'ocr_text': isLab
-          ? 'CBC and lipid panel: values mostly within normal range. LDL slightly elevated.'
-          : 'ECG report: sinus rhythm, no acute ischemic changes.',
       'viewer_url': 'https://demo.clindiary.app/viewer/${selected['id']}',
-      'processed_at': DateTime.now()
-          .toUtc()
-          .subtract(const Duration(days: 10))
-          .toIso8601String(),
-      'lab_panels': isLab
-          ? [
-              {
-                'id': 'panel-1',
-                'panel_name': 'Complete Blood Count',
-                'panel_date': selected['exam_date'],
-                'confidence_score': 0.95,
-                'results': [
-                  {
-                    'id': 'res-1',
-                    'analyte_name': 'Hemoglobin',
-                    'value': '14.2',
-                    'unit': 'g/dL',
-                    'ref_min': 13.5,
-                    'ref_max': 17.5,
-                    'abnormal_flag': false,
-                    'confidence_score': 0.97,
-                  },
-                  {
-                    'id': 'res-2',
-                    'analyte_name': 'LDL Cholesterol',
-                    'value': '132',
-                    'unit': 'mg/dL',
-                    'ref_min': 0,
-                    'ref_max': 129,
-                    'abnormal_flag': true,
-                    'confidence_score': 0.92,
-                  },
-                ],
-              },
-            ]
-          : <Map<String, dynamic>>[],
-      'imaging_reports': isLab
-          ? <Map<String, dynamic>>[]
-          : [
-              {
-                'id': 'img-1',
-                'exam_type': 'ECG',
-                'body_part': 'Heart',
-                'report_text': 'Regular sinus rhythm. No acute abnormalities.',
-                'impression': 'Stable compared with previous tracing.',
-                'confidence_score': 0.94,
-              },
-            ],
+      'ocr_text': detail['ocr_text'],
+      'processed_at': detail['processed_at'],
+      'lab_panels': detail['lab_panels'],
+      'imaging_reports': detail['imaging_reports'],
     };
   }
 
   static List<Map<String, dynamic>> _notificationsJson() {
-    final now = DateTime.now().toUtc();
     return [
       {
-        'id': 'notif-1',
+        'id': 'notif-may-01',
         'patient_id': primaryProfileId,
         'notification_type': 'daily_checkin',
         'title': 'Daily check-in reminder',
-        'body': 'Remember to complete your daily check-in before 21:00.',
+        'body': 'Remember to complete your May daily check-in before 21:00.',
         'priority': 'normal',
         'read_status': false,
         'read_at': null,
         'source_type': 'daily_entry',
-        'source_id': 'de-001',
-        'created_at': now.subtract(const Duration(hours: 2)).toIso8601String(),
+        'source_id': 'de-may-2026-31',
+        'created_at': _isoAt(31, 19, 0),
       },
       {
-        'id': 'notif-2',
+        'id': 'notif-may-02',
+        'patient_id': primaryProfileId,
+        'notification_type': 'medication',
+        'title': 'Medication timing reminder',
+        'body':
+            'Medication adherence has been mostly consistent, with one late entry this week.',
+        'priority': 'high',
+        'read_status': true,
+        'read_at': _isoAt(21, 8, 30),
+        'source_type': 'medication',
+        'source_id': 'med-1',
+        'created_at': _isoAt(21, 7, 45),
+      },
+      {
+        'id': 'notif-may-03',
+        'patient_id': primaryProfileId,
+        'notification_type': 'document',
+        'title': 'Metabolic panel added',
+        'body': 'New local document ready to review: May 2026 metabolic panel.',
+        'priority': 'high',
+        'read_status': true,
+        'read_at': _isoAt(16, 19, 10),
+        'source_type': 'document',
+        'source_id': 'doc-metabolic-may-2026',
+        'created_at': _isoAt(16, 12, 10),
+      },
+      {
+        'id': 'notif-may-04',
+        'patient_id': primaryProfileId,
+        'notification_type': 'document',
+        'title': 'Lipid and glucose follow-up ready',
+        'body':
+            'Use Ask about this file for a simple explanation of the values in the new report.',
+        'priority': 'high',
+        'read_status': false,
+        'read_at': null,
+        'source_type': 'document',
+        'source_id': 'doc-lipids-glucose-may-2026',
+        'created_at': _isoAt(19, 18, 25),
+      },
+      {
+        'id': 'notif-may-05',
         'patient_id': primaryProfileId,
         'notification_type': 'screening',
         'title': 'Blood pressure follow-up',
-        'body': 'Your annual blood pressure follow-up is due this month.',
+        'body':
+            'Home measurements from early May are ready to discuss with a clinician.',
         'priority': 'high',
         'read_status': true,
-        'read_at': now.subtract(const Duration(days: 1)).toIso8601String(),
+        'read_at': _isoAt(24, 9, 0),
         'source_type': 'screening',
         'source_id': 'scr-1',
-        'created_at': now
-            .subtract(const Duration(days: 1, hours: 4))
-            .toIso8601String(),
+        'created_at': _isoAt(24, 8, 15),
+      },
+      {
+        'id': 'notif-may-06',
+        'patient_id': primaryProfileId,
+        'notification_type': 'prevention',
+        'title': 'Prepare visit questions',
+        'body':
+            'Your pre-visit summary note is ready. Review questions about LDL, HbA1c, creatinine, and BP trend.',
+        'priority': 'normal',
+        'read_status': false,
+        'read_at': null,
+        'source_type': 'document',
+        'source_id': 'doc-previsit-may-2026',
+        'created_at': _isoAt(29, 20, 30),
       },
     ];
   }
@@ -1304,90 +1949,392 @@ class DemoSeedData {
   }
 
   static List<Map<String, dynamic>> _medicationLogsJson() {
-    final now = DateTime.now().toUtc();
-    return [
-      {
-        'id': 'ml-1',
+    final logs = <Map<String, dynamic>>[];
+    const lateDays = {7};
+    const missedDays = {18, 27};
+    const pantoprazoleDays = {3, 8, 17};
+
+    for (var day = 1; day <= 31; day++) {
+      final status = missedDays.contains(day)
+          ? 'missed'
+          : lateDays.contains(day)
+          ? 'late'
+          : 'taken';
+      logs.add({
+        'id': 'ml-may-$day',
         'medication_id': 'med-1',
         'medication_name': 'Lisinopril',
         'medication_dosage': '10 mg',
-        'scheduled_at': now
-            .subtract(const Duration(hours: 10))
-            .toIso8601String(),
-        'taken_at': now
-            .subtract(const Duration(hours: 9, minutes: 45))
-            .toIso8601String(),
-        'status': 'taken',
-        'notes': 'On time',
+        'scheduled_at': _isoAt(day, 8, 0),
+        'taken_at': status == 'missed'
+            ? null
+            : status == 'late'
+            ? _isoAt(day, 10, 20)
+            : _isoAt(day, 8, 10),
+        'status': status,
+        'notes': status == 'missed'
+            ? 'Missed morning dose.'
+            : status == 'late'
+            ? 'Taken late after reminder.'
+            : 'Taken as scheduled.',
         'pending_sync': false,
-      },
-      {
-        'id': 'ml-2',
-        'medication_id': 'med-2',
-        'medication_name': 'Pantoprazole',
-        'medication_dosage': '20 mg',
-        'scheduled_at': now
-            .subtract(const Duration(days: 2, hours: 6))
-            .toIso8601String(),
-        'taken_at': null,
-        'status': 'missed',
-        'notes': 'Forgot at work',
-        'pending_sync': false,
-      },
-    ];
+      });
+      if (pantoprazoleDays.contains(day)) {
+        logs.add({
+          'id': 'ml-pantoprazole-may-$day',
+          'medication_id': 'med-2',
+          'medication_name': 'Pantoprazole',
+          'medication_dosage': '20 mg',
+          'scheduled_at': _isoAt(day, 13, 0),
+          'taken_at': _isoAt(day, 12, 50),
+          'status': 'taken',
+          'notes': 'Used before lunch for reflux prevention.',
+          'pending_sync': false,
+        });
+      }
+    }
+
+    return logs.reversed.toList(growable: false);
   }
 
   static List<Map<String, dynamic>> _wearableSummariesJson() {
-    final today = _todayUtc();
-    return [
-      {
-        'id': 'wear-1',
-        'summary_date': _date(today),
-        'source_platform': 'health_connect',
-        'source_name': 'Xiaomi Fitness',
-        'source_device_model': 'Xiaomi Smart Band 8',
-        'steps_count': 8560,
-        'active_energy_kcal': 472.5,
-        'exercise_minutes': 54,
-        'distance_meters': 6120,
-        'sleep_minutes': 430,
-        'sleep_deep_minutes': 95,
-        'sleep_rem_minutes': 88,
-        'heart_rate_avg_bpm': 66,
-        'heart_rate_min_bpm': 51,
-        'heart_rate_max_bpm': 132,
-        'resting_heart_rate_bpm': 58,
-        'blood_oxygen_avg_pct': 97,
-        'hrv_sdnn_ms': 39,
-        'record_count': 124,
-        'synced_at': DateTime.now().toUtc().toIso8601String(),
-      },
-      {
-        'id': 'wear-2',
-        'summary_date': _date(today.subtract(const Duration(days: 1))),
-        'source_platform': 'health_connect',
-        'source_name': 'Xiaomi Fitness',
-        'source_device_model': 'Xiaomi Smart Band 8',
-        'steps_count': 7210,
-        'active_energy_kcal': 390.2,
-        'exercise_minutes': 41,
-        'distance_meters': 5050,
-        'sleep_minutes': 402,
-        'sleep_deep_minutes': 80,
-        'sleep_rem_minutes': 74,
-        'heart_rate_avg_bpm': 68,
-        'heart_rate_min_bpm': 53,
-        'heart_rate_max_bpm': 128,
-        'resting_heart_rate_bpm': 59,
-        'blood_oxygen_avg_pct': 97,
-        'hrv_sdnn_ms': 35,
-        'record_count': 117,
-        'synced_at': DateTime.now()
-            .toUtc()
-            .subtract(const Duration(days: 1))
-            .toIso8601String(),
-      },
+    const steps = [
+      4100,
+      3900,
+      3500,
+      4300,
+      4600,
+      4800,
+      5000,
+      5300,
+      5600,
+      5900,
+      6700,
+      7100,
+      7600,
+      7900,
+      8200,
+      7800,
+      7500,
+      7000,
+      7200,
+      7400,
+      8000,
+      8300,
+      8700,
+      9100,
+      8800,
+      8400,
+      8100,
+      8600,
+      9000,
+      9300,
+      9500,
     ];
+    const sleepMinutes = [
+      366,
+      354,
+      348,
+      372,
+      384,
+      366,
+      360,
+      378,
+      384,
+      396,
+      408,
+      414,
+      426,
+      420,
+      432,
+      420,
+      414,
+      408,
+      414,
+      420,
+      438,
+      426,
+      444,
+      450,
+      432,
+      426,
+      420,
+      432,
+      444,
+      456,
+      468,
+    ];
+    const restingHr = [
+      78,
+      77,
+      76,
+      75,
+      74,
+      74,
+      74,
+      73,
+      72,
+      72,
+      71,
+      70,
+      69,
+      68,
+      67,
+      68,
+      68,
+      69,
+      68,
+      67,
+      66,
+      65,
+      64,
+      63,
+      63,
+      64,
+      64,
+      63,
+      62,
+      61,
+      61,
+    ];
+    const activeMinutes = [
+      12,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      25,
+      28,
+      30,
+      34,
+      36,
+      40,
+      42,
+      45,
+      38,
+      35,
+      32,
+      34,
+      36,
+      42,
+      45,
+      48,
+      52,
+      49,
+      46,
+      44,
+      47,
+      50,
+      53,
+      55,
+    ];
+
+    return List.generate(31, (index) {
+      final day = index + 1;
+      final sleep = sleepMinutes[index];
+      final active = activeMinutes[index].toDouble();
+      final stepCount = steps[index];
+      final rest = restingHr[index].toDouble();
+      final avgHr = rest + 7;
+      return {
+        'id': 'wear-may-2026-${day.toString().padLeft(2, '0')}',
+        'summary_date': _isoDay(day),
+        'source_platform': 'health_connect',
+        'source_name': 'Xiaomi Fitness',
+        'source_device_model': 'Xiaomi Smart Band 8',
+        'steps_count': stepCount,
+        'active_energy_kcal': 180 + (stepCount / 23),
+        'exercise_minutes': active,
+        'distance_meters': stepCount * 0.73,
+        'sleep_minutes': sleep.toDouble(),
+        'sleep_deep_minutes': (sleep * 0.22).roundToDouble(),
+        'sleep_rem_minutes': (sleep * 0.2).roundToDouble(),
+        'heart_rate_avg_bpm': avgHr,
+        'heart_rate_min_bpm': rest - 10,
+        'heart_rate_max_bpm': avgHr + 55,
+        'resting_heart_rate_bpm': rest,
+        'blood_oxygen_avg_pct': 97,
+        'hrv_sdnn_ms': 28 + (index % 8) * 2,
+        'record_count': 118 + (index % 7),
+        'synced_at': _isoAt(day, 22, 15),
+      };
+    }).reversed.toList(growable: false);
+  }
+
+  static Map<String, Map<String, dynamic>> _documentDetailTemplates() {
+    return {
+      'doc-metabolic-may-2026': {
+        'processed_at': _isoAt(16, 12, 10),
+        'ocr_text':
+            'Patient: Marco Rossi\nMay 2026 metabolic panel\nCreatinine: 1.29 mg/dL (reference 0.67-1.17) [ABNORMAL]\neGFR: 71 mL/min/1.73m2 (reference > 90) [ABNORMAL]\nPotassium: 5.1 mmol/L (reference 3.5-5.0) [ABNORMAL]\nSodium: 139 mmol/L (reference 136-145)\nAST: 24 U/L (reference 0-40)\nALT: 27 U/L (reference 0-41)\nComment: Mild kidney marker variation compared with prior local report. Hydration and clinician discussion recommended.',
+        'lab_panels': [
+          {
+            'id': 'panel-metabolic-may-2026',
+            'panel_name': 'Metabolic panel',
+            'panel_date': _isoAt(16, 9, 0),
+            'confidence_score': 0.96,
+            'results': [
+              {
+                'id': 'res-met-1',
+                'analyte_name': 'Creatinine',
+                'value': '1.29',
+                'unit': 'mg/dL',
+                'ref_min': 0.67,
+                'ref_max': 1.17,
+                'abnormal_flag': true,
+                'confidence_score': 0.98,
+              },
+              {
+                'id': 'res-met-2',
+                'analyte_name': 'eGFR',
+                'value': '71',
+                'unit': 'mL/min/1.73m2',
+                'ref_min': 90,
+                'ref_max': 130,
+                'abnormal_flag': true,
+                'confidence_score': 0.95,
+              },
+              {
+                'id': 'res-met-3',
+                'analyte_name': 'Potassium',
+                'value': '5.1',
+                'unit': 'mmol/L',
+                'ref_min': 3.5,
+                'ref_max': 5.0,
+                'abnormal_flag': true,
+                'confidence_score': 0.94,
+              },
+            ],
+          },
+        ],
+        'imaging_reports': <Map<String, dynamic>>[],
+      },
+      'doc-lipids-glucose-may-2026': {
+        'processed_at': _isoAt(19, 18, 25),
+        'ocr_text':
+            'Patient: Marco Rossi\nMay 2026 lipid and glucose follow-up\nLDL cholesterol: 142 mg/dL (reference < 115) [ABNORMAL]\nHDL cholesterol: 47 mg/dL (reference > 40)\nTriglycerides: 168 mg/dL (reference < 150) [ABNORMAL]\nHbA1c: 5.8 % (reference 4.0-5.6) [ABNORMAL]\nFasting glucose: 103 mg/dL (reference 70-99) [ABNORMAL]\nComment: Borderline metabolic values. Review lifestyle measures and discuss follow-up timing with clinician.',
+        'lab_panels': [
+          {
+            'id': 'panel-lipid-may-2026',
+            'panel_name': 'Lipid and glucose follow-up',
+            'panel_date': _isoAt(19, 8, 45),
+            'confidence_score': 0.96,
+            'results': [
+              {
+                'id': 'res-lipid-1',
+                'analyte_name': 'LDL cholesterol',
+                'value': '142',
+                'unit': 'mg/dL',
+                'ref_min': 0,
+                'ref_max': 115,
+                'abnormal_flag': true,
+                'confidence_score': 0.97,
+              },
+              {
+                'id': 'res-lipid-2',
+                'analyte_name': 'Triglycerides',
+                'value': '168',
+                'unit': 'mg/dL',
+                'ref_min': 0,
+                'ref_max': 150,
+                'abnormal_flag': true,
+                'confidence_score': 0.95,
+              },
+              {
+                'id': 'res-lipid-3',
+                'analyte_name': 'HbA1c',
+                'value': '5.8',
+                'unit': '%',
+                'ref_min': 4.0,
+                'ref_max': 5.6,
+                'abnormal_flag': true,
+                'confidence_score': 0.95,
+              },
+              {
+                'id': 'res-lipid-4',
+                'analyte_name': 'Fasting glucose',
+                'value': '103',
+                'unit': 'mg/dL',
+                'ref_min': 70,
+                'ref_max': 99,
+                'abnormal_flag': true,
+                'confidence_score': 0.93,
+              },
+            ],
+          },
+        ],
+        'imaging_reports': <Map<String, dynamic>>[],
+      },
+      'doc-bp-note-may-2026': {
+        'processed_at': _isoAt(10, 21, 5),
+        'ocr_text':
+            'May 2026 blood pressure diary note\nHome readings from May 6 to May 10: 134/86, 136/88, 135/84, 132/83, 131/82.\nContext: early month stress, poor sleep, and irregular hydration.\nPatient note: walked more on May 8 and May 9 and felt calmer afterwards.\nPlan for discussion: ask whether the home pattern is worth repeating or reviewing at the next visit.',
+        'lab_panels': <Map<String, dynamic>>[],
+        'imaging_reports': <Map<String, dynamic>>[],
+      },
+      'doc-allergy-may-2026': {
+        'processed_at': _isoAt(22, 17, 45),
+        'ocr_text':
+            'Patient: Marco Rossi\nMay 2026 allergy / inflammation check\nEosinophils: 6.8 % (reference 0.0-6.0) [ABNORMAL]\nhs-CRP: 3.6 mg/L (reference < 3.0) [ABNORMAL]\nHemoglobin: 14.5 g/dL (reference 13.5-17.5)\nComment: Mild seasonal allergy and inflammation signal. Review together with symptoms, not as a diagnosis.',
+        'lab_panels': [
+          {
+            'id': 'panel-allergy-may-2026',
+            'panel_name': 'Allergy and inflammation check',
+            'panel_date': _isoAt(22, 10, 15),
+            'confidence_score': 0.94,
+            'results': [
+              {
+                'id': 'res-allergy-1',
+                'analyte_name': 'Eosinophils',
+                'value': '6.8',
+                'unit': '%',
+                'ref_min': 0.0,
+                'ref_max': 6.0,
+                'abnormal_flag': true,
+                'confidence_score': 0.94,
+              },
+              {
+                'id': 'res-allergy-2',
+                'analyte_name': 'hs-CRP',
+                'value': '3.6',
+                'unit': 'mg/L',
+                'ref_min': 0,
+                'ref_max': 3.0,
+                'abnormal_flag': true,
+                'confidence_score': 0.93,
+              },
+            ],
+          },
+        ],
+        'imaging_reports': <Map<String, dynamic>>[],
+      },
+      'doc-previsit-may-2026': {
+        'processed_at': _isoAt(29, 20, 25),
+        'ocr_text':
+            'May 2026 pre-visit summary note\nTopics to discuss with clinician:\n1. Are creatinine and eGFR changes worth repeating soon?\n2. How should LDL, triglycerides, HbA1c, and fasting glucose be reviewed in context?\n3. Do the higher home blood pressure readings from May 6 to May 10 change the monitoring plan?\n4. Which values should be watched again before the next follow-up?\nPatient goal: leave the visit with a clear monitoring plan, not a diagnosis.',
+        'lab_panels': <Map<String, dynamic>>[],
+        'imaging_reports': <Map<String, dynamic>>[],
+      },
+    };
+  }
+
+  static Map<String, dynamic> _symptomSeed(
+    String code,
+    int severity,
+    int durationMinutes,
+    String bodyLocation,
+    Map<String, dynamic> metadata,
+  ) {
+    return {
+      'id': '',
+      'symptom_code': code,
+      'severity': severity,
+      'duration_minutes': durationMinutes,
+      'body_location': bodyLocation,
+      'metadata_json': metadata,
+    };
   }
 
   static List<Map<String, dynamic>> _screeningCatalogJson() {
@@ -1513,7 +2460,7 @@ class DemoSeedData {
   }
 
   static Map<String, dynamic> _preventionCenterJson() {
-    final now = DateTime.now().toUtc();
+    final now = _demoGeneratedAtUtc();
     return {
       'generated_at': now.toIso8601String(),
       'display_name': 'Marco Rossi',
@@ -1521,19 +2468,19 @@ class DemoSeedData {
       'biological_sex': 'male',
       'region_name': 'Lombardia',
       'overview': {
-        'actionable_screenings': 1,
+        'actionable_screenings': 2,
         'vaccine_reviews': 1,
         'vaccine_registry_items': 1,
         'pregnancy_items': 0,
         'shared_decision_items': 1,
         'seasonal_checks': 1,
-        'follow_up_items': 2,
+        'follow_up_items': 3,
       },
       'annual_visit': {
         'code': 'annual_visit',
         'title': 'Annual GP visit',
-        'subtitle': 'Review blood pressure and medications',
-        'reason': 'Mild hypertension follow-up',
+        'subtitle': 'Review May blood pressure trend and lab questions',
+        'reason': 'May 2026 local follow-up preparation',
         'action_hint': 'Book through your GP office',
         'cadence_label': 'Every 12 months',
         'status': 'recommended',
@@ -1548,8 +2495,8 @@ class DemoSeedData {
           'code': 'bp_control',
           'title': 'Blood pressure control',
           'subtitle': 'Home + clinic check',
-          'reason': 'Trend near threshold',
-          'action_hint': 'Measure at least 3 times/week',
+          'reason': 'Early May home readings were sometimes elevated',
+          'action_hint': 'Bring the May home diary note to the visit',
           'cadence_label': 'Monthly',
           'status': 'recommended',
           'priority': 'high',
@@ -1557,6 +2504,20 @@ class DemoSeedData {
           'kind': 'screening',
           'source_type': 'screening',
           'source_id': 'scr-1',
+        },
+        {
+          'code': 'metabolic_followup',
+          'title': 'Discuss metabolic panel follow-up',
+          'subtitle': 'Creatinine, eGFR, LDL, HbA1c',
+          'reason': 'Mid-May reports raised questions worth clinician review',
+          'action_hint': 'Use the pre-visit note to organize questions',
+          'cadence_label': 'At next visit',
+          'status': 'recommended',
+          'priority': 'normal',
+          'category': 'metabolic',
+          'kind': 'follow_up',
+          'source_type': 'document',
+          'source_id': 'doc-metabolic-may-2026',
         },
       ],
       'vaccines': [
@@ -1596,8 +2557,8 @@ class DemoSeedData {
         {
           'code': 'lipid_strategy',
           'title': 'Discuss lipid management strategy',
-          'subtitle': 'Lifestyle vs pharmacological step-up',
-          'reason': 'LDL slightly above reference',
+          'subtitle': 'Lifestyle review and follow-up timing',
+          'reason': 'LDL, triglycerides, and HbA1c were borderline in May',
           'action_hint': 'Review with GP at next visit',
           'cadence_label': 'At next visit',
           'status': 'review',
@@ -1605,7 +2566,7 @@ class DemoSeedData {
           'category': 'metabolic',
           'kind': 'shared_decision',
           'source_type': 'document',
-          'source_id': 'doc-1',
+          'source_id': 'doc-lipids-glucose-may-2026',
         },
       ],
       'seasonal_checks': [
@@ -1613,7 +2574,8 @@ class DemoSeedData {
           'code': 'allergy_season',
           'title': 'Allergy symptom monitoring',
           'subtitle': 'Spring period',
-          'reason': 'History of dust-related rhinitis',
+          'reason':
+              'Seasonal symptoms and mild inflammation markers were logged',
           'action_hint': 'Track symptoms weekly',
           'cadence_label': 'Seasonal',
           'status': 'recommended',
@@ -1628,8 +2590,8 @@ class DemoSeedData {
         {
           'code': 'med_adherence_followup',
           'title': 'Medication adherence follow-up',
-          'subtitle': 'One missed dose last week',
-          'reason': 'Improve consistency for BP control',
+          'subtitle': 'Two missed doses and one late entry this month',
+          'reason': 'Keep the monthly BP context interpretable',
           'action_hint': 'Enable stronger reminder notifications',
           'cadence_label': 'Weekly',
           'status': 'recommended',
@@ -1638,6 +2600,21 @@ class DemoSeedData {
           'kind': 'follow_up',
           'source_type': 'medication',
           'source_id': 'med-1',
+        },
+        {
+          'code': 'previsit_questions',
+          'title': 'Review pre-visit questions',
+          'subtitle': 'Use the note created on May 29',
+          'reason': 'The month included several local reports worth discussing',
+          'action_hint':
+              'Open the pre-visit summary note before the appointment',
+          'cadence_label': 'Before visit',
+          'status': 'recommended',
+          'priority': 'normal',
+          'category': 'visit_prep',
+          'kind': 'follow_up',
+          'source_type': 'document',
+          'source_id': 'doc-previsit-may-2026',
         },
       ],
     };
@@ -1648,7 +2625,7 @@ class DemoSeedData {
     DateTime? referenceDate,
     String provider = 'local_gemma4',
   }) {
-    final now = DateTime.now().toUtc();
+    final now = _demoGeneratedAtUtc();
     final baseDate = referenceDate?.toUtc() ?? now;
     DateTime start;
     DateTime end;
@@ -1659,7 +2636,7 @@ class DemoSeedData {
         end = DateTime.utc(baseDate.year, baseDate.month, baseDate.day);
         start = end.subtract(const Duration(days: 6));
         content =
-            'Weekly trend: blood pressure stable, adherence good, one missed medication event. Continue hydration and regular exercise.';
+            'Weekly trend: sleep and stress improved, walking remained regular, and medication adherence was mostly consistent despite a few missed or late entries earlier in the month.';
         break;
       case 'monthly':
         start = DateTime.utc(baseDate.year, baseDate.month, 1);
@@ -1668,13 +2645,13 @@ class DemoSeedData {
             : DateTime.utc(baseDate.year, baseDate.month + 1, 1);
         end = nextMonth.subtract(const Duration(days: 1));
         content =
-            'Monthly recap: overall positive trend. Cardiovascular indicators remain acceptable. Recommended next step: repeat blood pressure screening.';
+            'Monthly recap: early May fatigue, poor sleep, and stress gradually improved with more walking and hydration. Home blood pressure was sometimes elevated in the first third of the month, while mid-May reports added questions about kidney markers, LDL, triglycerides, and HbA1c for clinician review.';
         break;
       default:
         start = DateTime.utc(baseDate.year, baseDate.month, baseDate.day);
         end = start;
         content =
-            'Daily recap: stable vitals, mild stress-related symptoms, no acute concerns. Suggested action: short evening walk and hydration.';
+            'Daily recap: local diary, medication, wearable, and document context suggest a stable day with no acute alarm signals. Keep the discussion focused on tracking trends and follow-up questions for the clinician.';
     }
 
     return {
@@ -1710,6 +2687,24 @@ class DemoSeedData {
       }
     }
 
+    final wearableSummary = _wearableSummariesJson().firstWhere(
+      (item) => item['summary_date'].toString() == dayString,
+      orElse: () => _wearableSummariesJson().first,
+    );
+    final timelineEvents = _timelineJson()
+        .where(
+          (item) =>
+              _date(DateTime.parse(item['event_date'].toString())) == dayString,
+        )
+        .toList(growable: false);
+    final documents = _documentsJson()
+        .where((item) {
+          final examDate = item['exam_date']?.toString();
+          return examDate != null &&
+              _date(DateTime.parse(examDate)) == dayString;
+        })
+        .toList(growable: false);
+
     return {
       'target_date': dayString,
       'daily_entry': dailyEntry,
@@ -1723,9 +2718,9 @@ class DemoSeedData {
       'monthly_summary': includeRollups
           ? _insightJson(summaryType: 'monthly', referenceDate: target)
           : null,
-      'wearable_summary': _wearableSummariesJson().first,
-      'documents': _documentsJson(),
-      'timeline_events': _timelineJson(),
+      'wearable_summary': wearableSummary,
+      'documents': documents,
+      'timeline_events': timelineEvents,
     };
   }
 
@@ -1744,14 +2739,14 @@ class DemoSeedData {
   }
 
   static List<Map<String, dynamic>> _dossierShareLinksJson() {
-    final now = DateTime.now().toUtc();
+    final now = _demoGeneratedAtUtc();
     return [
       {
         'id': 'share-1',
         'scope': 'full',
-        'label': 'GP consultation package',
+        'label': 'May 2026 clinician review package',
         'share_url': 'https://demo.clindiary.app/share/share-1',
-        'filename': 'clindiary_dossier_marco_rossi.pdf',
+        'filename': 'clindiary_may_2026_marco_rossi.pdf',
         'mime_type': 'application/pdf',
         'expires_at': now.add(const Duration(days: 5)).toIso8601String(),
         'revoked_at': null,
@@ -1763,25 +2758,111 @@ class DemoSeedData {
     ];
   }
 
+  static List<Map<String, dynamic>> _dossierShareLinksJsonForProfile(
+    String profileId,
+  ) {
+    if (profileId == primaryProfileId) {
+      return _cloneListOfMaps(_dossierShareLinksJson());
+    }
+    final links = _cloneListOfMaps(_dossierShareLinksJson());
+    for (final link in links) {
+      link['id'] = '$profileId-${link['id']}';
+      link['filename'] = '${profileId}_${link['filename']}';
+      link['label'] = '${_profileContextLabel(profileId)} ${link['label']}';
+    }
+    return links;
+  }
+
+  static List<Map<String, dynamic>> _documentQueryHistoryJsonForProfile(
+    String profileId,
+  ) {
+    final docs = _documentsJsonForProfile(profileId);
+    final firstDoc = docs.first;
+    final secondDoc = docs.length > 1 ? docs[1] : docs.first;
+    return [
+      {
+        'id': '$profileId-doc-history-1',
+        'question': 'Explain this report in simple words.',
+        'answer':
+            'This report highlights a few values outside the listed reference ranges and suggests discussing them with a clinician rather than drawing conclusions alone.',
+        'citations': [
+          {
+            'document_id': firstDoc['id'],
+            'document_title': firstDoc['title'],
+            'document_type': firstDoc['document_type'],
+            'folder_name': firstDoc['folder_name'],
+            'exam_date': firstDoc['exam_date'],
+            'chunk_kind': 'lab_panel',
+            'chunk_label': firstDoc['title'],
+            'excerpt':
+                'Creatinine, eGFR, and potassium were outside the listed reference ranges.',
+            'score': 4.8,
+            'viewer_url': 'https://demo.clindiary.app/viewer/${firstDoc['id']}',
+          },
+        ],
+        'model_name': 'gemma-4-E2B-it.litertlm',
+        'provider_name': 'on_device_litertlm',
+        'embedding_model_name': 'gecko-110m-en',
+        'retrieved_chunks': 1,
+        'retrieved_documents': 1,
+        'search_scope_label': 'Entire archive',
+        'language_code': 'en',
+        'created_at': _isoAt(19, 19, 0),
+      },
+      {
+        'id': '$profileId-doc-history-2',
+        'question': 'Which values are abnormal?',
+        'answer':
+            'The stored report marks LDL, triglycerides, HbA1c, and fasting glucose as outside the listed reference ranges.',
+        'citations': [
+          {
+            'document_id': secondDoc['id'],
+            'document_title': secondDoc['title'],
+            'document_type': secondDoc['document_type'],
+            'folder_name': secondDoc['folder_name'],
+            'exam_date': secondDoc['exam_date'],
+            'chunk_kind': 'lab_panel',
+            'chunk_label': secondDoc['title'],
+            'excerpt':
+                'LDL cholesterol 142 mg/dL, triglycerides 168 mg/dL, HbA1c 5.8 %, fasting glucose 103 mg/dL.',
+            'score': 4.6,
+            'viewer_url':
+                'https://demo.clindiary.app/viewer/${secondDoc['id']}',
+          },
+        ],
+        'model_name': 'gemma-4-E2B-it.litertlm',
+        'provider_name': 'on_device_litertlm',
+        'embedding_model_name': 'gecko-110m-en',
+        'retrieved_chunks': 1,
+        'retrieved_documents': 1,
+        'search_scope_label': 'Entire archive',
+        'language_code': 'en',
+        'created_at': _isoAt(20, 9, 15),
+      },
+    ];
+  }
+
   static Map<String, dynamic> _latestReportJson() {
-    final now = DateTime.now().toUtc();
-    final periodStart = now.subtract(const Duration(days: 30));
+    final now = _demoGeneratedAtUtc();
+    final periodStart = _demoMonthStartUtc();
     return {
       'id': 'report-1',
       'report_type': 'monthly',
       'status': 'generated',
-      'title': 'Monthly Clinical Report',
+      'title': 'May 2026 Clinical Report',
       'period_start': periodStart.toIso8601String(),
       'period_end': now.toIso8601String(),
       'summary_excerpt':
-          'Stable blood pressure trend with improved medication adherence.',
-      'content_text': 'Comprehensive monthly report content for demo.',
+          'Early fatigue and stress improved, while May reports raised follow-up questions about blood pressure, kidney markers, LDL, and HbA1c.',
+      'content_text':
+          'May 2026 local report: early month fatigue, poor sleep, and occasional elevated home blood pressure improved with more walking and hydration. Medication adherence was mostly consistent, with two missed doses and one late entry. Local reports added discussion points about creatinine, eGFR, LDL, triglycerides, HbA1c, fasting glucose, and mild inflammation markers.',
       'generated_at': now.toIso8601String(),
     };
   }
 
   static Map<String, dynamic> _healthDossierJson() {
-    final now = DateTime.now().toUtc();
+    final now = _demoGeneratedAtUtc();
+    final documents = _documentsJson();
     return {
       'generated_at': now.toIso8601String(),
       'display_name': 'Marco Rossi',
@@ -1796,18 +2877,23 @@ class DemoSeedData {
       ],
       'emergency_summary': {
         'generated_at': now.toIso8601String(),
-        'headline': 'No critical emergency risks detected',
+        'headline': 'No critical emergency risks detected in local demo data',
         'key_points': [
-          'Mild hypertension under monitoring',
-          'Penicillin allergy',
+          'May 2026 diary shows improving sleep and stress after the first week',
+          'Mid-May reports added non-urgent discussion points for clinician review',
         ],
         'active_problems': ['Mild hypertension', 'Reflux'],
         'active_medications': ['Lisinopril 10 mg', 'Pantoprazole 20 mg PRN'],
         'allergies': ['Penicillin', 'Dust mites'],
         'conditions': ['Mild hypertension', 'Gastroesophageal reflux'],
-        'open_alerts': ['Blood pressure follow-up due'],
-        'latest_wearable_summary': 'Average HR 66 bpm, steps 8.5k',
-        'latest_report_summary': 'Monthly trend stable',
+        'open_alerts': [
+          'Blood pressure follow-up due',
+          'Medication adherence follow-up',
+        ],
+        'latest_wearable_summary':
+            'May 31: 9500 steps, 7.8 h sleep, resting HR 61 bpm',
+        'latest_report_summary':
+            'May report highlights improved routine and pending follow-up questions',
       },
       'allergies': _profileBundleJson()['allergies'],
       'medical_conditions': _profileBundleJson()['medical_conditions'],
@@ -1815,8 +2901,9 @@ class DemoSeedData {
       'family_history': _profileBundleJson()['family_history'],
       'vaccinations': _profileBundleJson()['vaccinations'],
       'clinical_episodes': _profileBundleJson()['clinical_episodes'],
+      'prevention_records': _profileBundleJson()['prevention_records'],
       'recent_daily_entries': _dailyEntriesJson(),
-      'recent_documents': _documentsJson()
+      'recent_documents': documents
           .map(
             (doc) => {
               'id': doc['id'],
@@ -1832,65 +2919,53 @@ class DemoSeedData {
           .toList(),
       'recent_lab_panels': [
         {
-          'document_id': 'doc-1',
-          'document_title': 'Blood panel March 2026',
-          'panel_name': 'Complete Blood Count',
-          'panel_date': DateTime.now()
-              .toUtc()
-              .subtract(const Duration(days: 22))
-              .toIso8601String(),
-          'abnormal_results_count': 1,
-          'key_results': ['LDL 132 mg/dL (slightly elevated)'],
+          'document_id': 'doc-metabolic-may-2026',
+          'document_title': 'May 2026 metabolic panel',
+          'panel_name': 'Metabolic panel',
+          'panel_date': _isoAt(16, 9, 0),
+          'abnormal_results_count': 3,
+          'key_results': [
+            'Creatinine 1.29 mg/dL',
+            'eGFR 71 mL/min/1.73m2',
+            'Potassium 5.1 mmol/L',
+          ],
         },
-      ],
-      'recent_imaging_reports': [
         {
-          'document_id': 'doc-2',
-          'document_title': 'ECG follow-up February 2026',
-          'exam_date': DateTime.now()
-              .toUtc()
-              .subtract(const Duration(days: 50))
-              .toIso8601String(),
-          'exam_type': 'ECG',
-          'body_part': 'Heart',
-          'impression': 'Stable sinus rhythm',
+          'document_id': 'doc-lipids-glucose-may-2026',
+          'document_title': 'May 2026 lipid and glucose follow-up',
+          'panel_name': 'Lipid and glucose follow-up',
+          'panel_date': _isoAt(19, 8, 45),
+          'abnormal_results_count': 4,
+          'key_results': [
+            'LDL 142 mg/dL',
+            'Triglycerides 168 mg/dL',
+            'HbA1c 5.8 %',
+          ],
         },
       ],
+      'recent_imaging_reports': const <Map<String, dynamic>>[],
       'device_measurement_summaries': [
         {
           'provider_code': 'health_connect',
           'provider_name': 'Health Connect',
           'metric_type': 'blood_pressure',
           'metric_label': 'Blood pressure',
-          'measurement_count': 18,
-          'latest_measured_at': now
-              .subtract(const Duration(days: 1))
-              .toIso8601String(),
-          'latest_value': '118/76 mmHg',
-          'trend_label': 'stable',
+          'measurement_count': 31,
+          'latest_measured_at': _isoAt(31, 8, 15),
+          'latest_value': '121/75 mmHg',
+          'trend_label': 'improving after early May elevation',
           'concern_level': 'low',
           'concern_note': null,
-          'summary': 'Values stable in recommended range.',
+          'summary':
+              'Home BP was higher on May 6-10, then settled later in the month.',
         },
       ],
       'recent_insights': [
-        _insightJson(summaryType: 'daily'),
-        _insightJson(summaryType: 'weekly'),
+        _insightJson(summaryType: 'daily', referenceDate: _demoMonthEndUtc()),
+        _insightJson(summaryType: 'weekly', referenceDate: _demoMonthEndUtc()),
+        _insightJson(summaryType: 'monthly', referenceDate: _demoMonthEndUtc()),
       ],
-      'recent_reports': [
-        {
-          'id': 'report-1',
-          'report_type': 'monthly',
-          'title': 'Monthly Clinical Report',
-          'period_start': now
-              .subtract(const Duration(days: 30))
-              .toIso8601String(),
-          'period_end': now.toIso8601String(),
-          'generated_at': now.toIso8601String(),
-          'summary_excerpt':
-              'Stable blood pressure and adherence improvements.',
-        },
-      ],
+      'recent_reports': [_latestReportJson()],
       'alerts': _alertsJson(),
       'wearable_summaries': _wearableSummariesJson(),
     };
@@ -2105,35 +3180,45 @@ class DemoSeedData {
   }
 
   static List<Map<String, dynamic>> _gemmaCenterHistoryJson() {
-    final now = DateTime.now().toUtc();
     return [
       {
-        'id': 'gh-1',
-        'kind': 'question',
-        'title': 'Can I keep running with my current blood pressure trend?',
+        'id': 'gh-may-1',
+        'kind': 'daily_recap',
+        'title': 'Daily recap',
         'response':
-            'Your current trend is stable. Keep moderate running 3 times/week and monitor hydration and recovery.',
-        'created_at': now.subtract(const Duration(days: 1)).toIso8601String(),
-        'prompt': 'Can I keep running with my current blood pressure trend?',
-        'reference_date': now
-            .subtract(const Duration(days: 1))
-            .toIso8601String(),
+            'By the end of May, sleep and stress looked better than at the start of the month. The app also noted a few local documents worth discussing with a clinician.',
+        'created_at': _isoAt(31, 20, 0),
+        'prompt': null,
+        'reference_date': _isoAt(31, 20, 0),
         'document_id': null,
         'document_title': null,
+        'language_code': 'en',
       },
       {
-        'id': 'gh-2',
+        'id': 'gh-may-2',
         'kind': 'document_summary',
-        'title': 'Summary: Blood panel March 2026',
+        'title': 'Summary: May 2026 metabolic panel',
         'response':
-            'Main findings: LDL slightly elevated, all other CBC markers within reference ranges.',
-        'created_at': now.subtract(const Duration(days: 3)).toIso8601String(),
+            'Main points: creatinine, eGFR, and potassium were outside the listed reference ranges. The safe next step is to discuss the pattern with the clinician rather than self-diagnose.',
+        'created_at': _isoAt(16, 19, 20),
         'prompt': null,
-        'reference_date': now
-            .subtract(const Duration(days: 3))
-            .toIso8601String(),
-        'document_id': 'doc-1',
-        'document_title': 'Blood panel March 2026',
+        'reference_date': _isoAt(16, 19, 20),
+        'document_id': 'doc-metabolic-may-2026',
+        'document_title': 'May 2026 metabolic panel',
+        'language_code': 'en',
+      },
+      {
+        'id': 'gh-may-3',
+        'kind': 'question',
+        'title': 'What should I ask my doctor about the May reports?',
+        'response':
+            'You could ask about the early-May blood pressure readings, the meaning of creatinine and eGFR changes, and how LDL, triglycerides, HbA1c, and fasting glucose should be reviewed together.',
+        'created_at': _isoAt(29, 20, 35),
+        'prompt': 'What should I ask my doctor about the May reports?',
+        'reference_date': _isoAt(29, 20, 35),
+        'document_id': 'doc-previsit-may-2026',
+        'document_title': 'May 2026 pre-visit summary note',
+        'language_code': 'en',
       },
     ];
   }
@@ -2152,8 +3237,35 @@ class DemoSeedData {
       'family_history': _familyHistoryJsonForProfile(profileId),
       'vaccinations': _vaccinationsJsonForProfile(profileId),
       'clinical_episodes': _clinicalEpisodesJsonForProfile(profileId),
+      'prevention_records': _preventionRecordsJsonForProfile(profileId),
       'managed_profiles': _managedProfilesForProfile(profileId),
     };
+  }
+
+  static List<Map<String, dynamic>> _preventionRecordsJsonForProfile(
+    String profileId,
+  ) {
+    if (profileId == primaryProfileId) {
+      return _cloneListOfMaps(_preventionRecordsJson());
+    }
+    if (profileId == childManagedProfileId) {
+      return [
+        {
+          'code': 'pediatric_annual_visit',
+          'performed_at': _isoAt(8, 16, 0),
+          'result_summary': 'Pediatric preventive review completed locally.',
+          'source_id': 'profile-2',
+        },
+      ];
+    }
+    return [
+      {
+        'code': 'chronic_care_review',
+        'performed_at': _isoAt(18, 10, 0),
+        'result_summary': 'Chronic care follow-up captured for review.',
+        'source_id': 'profile-3',
+      },
+    ];
   }
 
   static Map<String, dynamic> _primaryBundleMap(String key) {
@@ -2743,12 +3855,12 @@ class DemoSeedData {
         day['source_device_model'] = 'Kids Smartwatch K2';
         day['steps_count'] = (day['steps_count'] as int? ?? 6000) + 1800;
         day['heart_rate_avg_bpm'] =
-            (day['heart_rate_avg_bpm'] as int? ?? 70) + 9;
+            ((day['heart_rate_avg_bpm'] as num?)?.toDouble() ?? 70) + 9;
       } else {
         day['source_device_model'] = 'Xiaomi Smart Band 8';
         day['steps_count'] = (day['steps_count'] as int? ?? 6000) - 1900;
         day['heart_rate_avg_bpm'] =
-            (day['heart_rate_avg_bpm'] as int? ?? 70) + 4;
+            ((day['heart_rate_avg_bpm'] as num?)?.toDouble() ?? 70) + 4;
       }
       summaries[index] = day;
     }
@@ -2874,6 +3986,21 @@ class DemoSeedData {
       }
     }
 
+    final wearables = _wearableSummariesJsonForProfile(profileId);
+    final timeline = _timelineJsonForProfile(profileId)
+        .where(
+          (item) =>
+              _date(DateTime.parse(item['event_date'].toString())) == dayString,
+        )
+        .toList(growable: false);
+    final documents = _documentsJsonForProfile(profileId)
+        .where((item) {
+          final examDate = item['exam_date']?.toString();
+          return examDate != null &&
+              _date(DateTime.parse(examDate)) == dayString;
+        })
+        .toList(growable: false);
+
     return {
       'target_date': dayString,
       'daily_entry': dailyEntry,
@@ -2896,9 +4023,12 @@ class DemoSeedData {
               referenceDate: target,
             )
           : null,
-      'wearable_summary': _wearableSummariesJsonForProfile(profileId).first,
-      'documents': _documentsJsonForProfile(profileId),
-      'timeline_events': _timelineJsonForProfile(profileId),
+      'wearable_summary': wearables.firstWhere(
+        (item) => item['summary_date'].toString() == dayString,
+        orElse: () => wearables.first,
+      ),
+      'documents': documents,
+      'timeline_events': timeline,
     };
   }
 

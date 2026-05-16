@@ -40,23 +40,54 @@ class _ScreeningsScreenState extends ConsumerState<ScreeningsScreen> {
     return grouped;
   }
 
-  Future<void> _recompute() async {
+Future<void> _recompute() async {
+  if (!mounted) return;
+
+  setState(() => _isRecomputing = true);
+
+  try {
+    final bundle = await ref.read(profileBundleProvider.future);
+
+    if (bundle == null) {
+      throw Exception(
+        'Profile not available. Complete the profile before recalculating prevention checks.',
+      );
+    }
+
+    final updated = await ref
+        .read(screeningsRepositoryProvider)
+        .recompute(bundle: bundle);
+
+    invalidateScreeningProviders(
+      ref,
+      includeCatalog: true,
+      includeTimeline: true,
+      includeNotifications: true,
+    );
+
     if (!mounted) return;
-    setState(() => _isRecomputing = true);
-    try {
-      await ref.read(screeningsRepositoryProvider).recompute();
-      invalidateScreeningProviders(ref, includeCatalog: true);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-    } finally {
-      if (mounted) {
-        setState(() => _isRecomputing = false);
-      }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          updated.isEmpty
+              ? 'No personalized prevention checks found for this profile.'
+              : 'Prevention recalculated: ${updated.length} personalized checks.',
+        ),
+      ),
+    );
+  } catch (error) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.toString())));
+  } finally {
+    if (mounted) {
+      setState(() => _isRecomputing = false);
     }
   }
+}
 
   Future<void> _markDone(PatientScreeningStatusItem item) async {
     if (!mounted) return;

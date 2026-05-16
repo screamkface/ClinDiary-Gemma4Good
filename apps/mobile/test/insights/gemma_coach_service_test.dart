@@ -251,27 +251,9 @@ void main() {
         imagingReports: const [],
         storageLocation: 'local',
       );
-      final prompt = OnDeviceTextPrompt(
-        contextType: 'clinical_question',
-        periodStart: referenceDate,
-        periodEnd: referenceDate,
-        systemPrompt: 'system',
-        userPrompt: 'user',
-        providerName: 'on_device_litertlm',
-        suggestedModelFamily: 'Gemma 4',
-        isCloudBypassedForThisRequest: true,
-      );
-
       when(
         () => documentsRepository.fetchDocumentDetail(documentId),
       ).thenAnswer((_) async => detail);
-      when(
-        () => promptBuilder.buildClinicalQuestionPrompt(
-          question: question,
-          referenceDate: referenceDate,
-          focusedDocument: detail,
-        ),
-      ).thenAnswer((_) async => prompt);
       when(
         () => aiService.generateTextStream(
           systemPrompt: any(named: 'systemPrompt'),
@@ -304,11 +286,17 @@ void main() {
       verify(
         () => documentsRepository.fetchDocumentDetail(documentId),
       ).called(1);
-      verify(
+      verifyNever(
         () => promptBuilder.buildClinicalQuestionPrompt(
           question: question,
           referenceDate: referenceDate,
           focusedDocument: detail,
+        ),
+      );
+      verify(
+        () => aiService.generateTextStream(
+          systemPrompt: any(named: 'systemPrompt'),
+          userPrompt: any(named: 'userPrompt'),
         ),
       ).called(1);
     },
