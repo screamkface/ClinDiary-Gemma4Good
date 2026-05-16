@@ -30,11 +30,11 @@ class OnDeviceAiService {
   static const _emptyResponseMessage =
       'The on-device model returned an empty response. Open AI Settings and try CPU/GPU again.';
 
-  static const _gemma4Temperature = 1.0;
-  static const _gemma4TopK = 64;
-  static const _gemma4TopP = 0.95;
-  static const _gemma4TokenBuffer = 256;
-  static const _gemma4ContextTokens = 4096;
+static const _gemma4Temperature = 0.3;
+static const _gemma4TopK = 40;
+static const _gemma4TopP = 0.9;
+static const _gemma4TokenBuffer = 1024;
+static const _gemma4ContextTokens = 4096;
 
   // Kept for backwards compatibility with screens/tests that may read these
   // constants. The service no longer validates the exact local file size
@@ -49,7 +49,7 @@ class OnDeviceAiService {
 
   // Stable hackathon default. Users can still switch to GPU from settings.
   // GPU/NPU are more sensitive to device, manifest and plugin version.
-  PreferredBackend _preferredBackend = PreferredBackend.cpu;
+  PreferredBackend _preferredBackend = PreferredBackend.gpu;
 
   bool _enableSpeculativeDecoding = false;
   bool? _npuAvailable;
@@ -610,41 +610,89 @@ class OnDeviceAiService {
     }
   }
 
-  Future<String> _generateText({
-    required String systemPrompt,
-    required String userPrompt,
-  }) async {
-    InferenceChat? chat;
-    var completed = false;
+Future<String> _generateText({
+  required String systemPrompt,
+  required String userPrompt,
+}) async {
+  InferenceChat? chat;
+  var completed = false;
+  var emittedText = false;
+  final startedAt = DateTime.now();
+  final buffer = StringBuffer();
 
-    try {
-      final model = await _getOrCreateModel();
-      chat = await _createChat(model: model, systemPrompt: systemPrompt);
+  try {
+    final model = await _getOrCreateModel();
 
-      await chat
-          .addQueryChunk(Message.text(text: userPrompt, isUser: true))
-          .timeout(_chatSetupTimeout);
+    chat = await _createChat(
+      model: model,
+      systemPrompt: systemPrompt,
+    );
 
-      final response = await chat.generateChatResponse().timeout(
-        _fullGenerationTimeout,
+    await chat
+        .addQueryChunk(Message.text(text: userPrompt, isUser: true))
+        .timeout(_chatSetupTimeout);
+
+    final responses = chat.generateChatResponseAsync().timeout(
+      _streamIdleTimeout,
+      onTimeout: (sink) {
+        unawaited(_stopChat(chat));
+        sink.addError(
+          Exception(
+            'The on-device model did not emit a response in time. Open AI Settings and try CPU/GPU again.',
+          ),
+        );
+        sink.close();
+      },
+    );
+
+    await for (final response in responses) {
+      _checkStreamDeadlines(
+        startedAt: startedAt,
+        emittedText: emittedText,
       );
 
-      final content = _textFromResponse(response).trim();
-      if (content.isEmpty) {
-        throw Exception(_emptyResponseMessage);
-      }
+      if (response is TextResponse) {
+        if (response.token.isEmpty) continue;
 
-      completed = true;
-      return content;
-    } finally {
-      if (!completed) {
-        await _stopChat(chat);
-        await _resetRuntime();
+        buffer.write(response.token);
+
+        if (response.token.trim().isNotEmpty) {
+          emittedText = true;
+        }
+      } else if (response is ThinkingResponse) {
+        if (response.content.trim().isNotEmpty) {
+          dev.log('[GemmaTest] thinking chunk ignored in non-stream text mode');
+        }
+      } else if (response is FunctionCallResponse) {
+        dev.log(
+          '[GemmaTest] unexpected function call in text mode: ${response.name} ${response.args}',
+        );
+      } else if (response is ParallelFunctionCallResponse) {
+        dev.log(
+          '[GemmaTest] unexpected parallel function call in text mode: ${response.calls.length} calls',
+        );
       } else {
-        await _closeChat(chat);
+        dev.log('[GemmaTest] unexpected response type: ${response.runtimeType}');
       }
     }
+
+    final content = buffer.toString().trim();
+
+    if (content.isEmpty) {
+      throw Exception(_emptyResponseMessage);
+    }
+
+    completed = true;
+    return content;
+  } finally {
+    if (!completed) {
+      await _stopChat(chat);
+      await _resetRuntime();
+    } else {
+      await _closeChat(chat);
+    }
   }
+}
 
   Future<T> _runExclusive<T>(Future<T> Function() action) async {
     final previous = _generationTail;
@@ -702,11 +750,7 @@ class OnDeviceAiService {
         );
   }
 
-  String _textFromResponse(ModelResponse response) {
-    if (response is TextResponse) return response.token;
-    if (response is ThinkingResponse) return '';
-    return '';
-  }
+
 
   void _checkStreamDeadlines({
     required DateTime startedAt,

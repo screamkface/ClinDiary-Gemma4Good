@@ -66,47 +66,68 @@ class GemmaCoachService {
     );
   }
 
-  Stream<String> answerQuestionStream({
-    required String question,
-    DateTime? referenceDate,
-    String? documentId,
-  }) async* {
-    final normalizedQuestion = question.trim();
-    if (normalizedQuestion.isEmpty) {
-      throw Exception('Write a more specific question.');
-    }
-    final focusedDocument = await _resolveFocusedDocument(documentId);
+Stream<String> answerQuestionStream({
+  required String question,
+  DateTime? referenceDate,
+  String? documentId,
+}) async* {
+  final normalizedQuestion = question.trim();
 
-    final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
+  if (normalizedQuestion.isEmpty) {
+    throw Exception('Write a more specific question.');
+  }
+
+  final focusedDocument = await _resolveFocusedDocument(documentId);
+
+  // Important: if the user came from "Ask about this file",
+  // answer directly from the selected document instead of requiring
+  // the full clinical diary prompt to be available.
+  if (focusedDocument != null) {
+    final prompt = _buildFocusedDocumentQuestionPrompt(
       question: normalizedQuestion,
-      referenceDate: referenceDate ?? DateTime.now(),
-      focusedDocument: focusedDocument,
+      detail: focusedDocument,
     );
-    if (prompt != null) {
-      yield* _onDeviceAiService.generateTextStream(
-        systemPrompt: prompt.systemPrompt,
-        userPrompt: prompt.userPrompt,
-      );
-      return;
-    }
 
-    await _warmUpClinicalContext();
-    final refreshedPrompt = await _onDevicePromptBuilder
-        .buildClinicalQuestionPrompt(
-          question: normalizedQuestion,
-          referenceDate: referenceDate ?? DateTime.now(),
-          focusedDocument: focusedDocument,
-        );
-    if (refreshedPrompt == null) {
-      throw Exception(
-        'I do not have enough local data to generate a useful answer.',
-      );
-    }
     yield* _onDeviceAiService.generateTextStream(
-      systemPrompt: refreshedPrompt.systemPrompt,
-      userPrompt: refreshedPrompt.userPrompt,
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: prompt.userPrompt,
+    );
+    return;
+  }
+
+  final prompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
+    question: normalizedQuestion,
+    referenceDate: referenceDate ?? DateTime.now(),
+    focusedDocument: null,
+  );
+
+  if (prompt != null) {
+    yield* _onDeviceAiService.generateTextStream(
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: prompt.userPrompt,
+    );
+    return;
+  }
+
+  await _warmUpClinicalContext();
+
+  final refreshedPrompt = await _onDevicePromptBuilder.buildClinicalQuestionPrompt(
+    question: normalizedQuestion,
+    referenceDate: referenceDate ?? DateTime.now(),
+    focusedDocument: null,
+  );
+
+  if (refreshedPrompt == null) {
+    throw Exception(
+      'I do not have enough local data to generate a useful answer.',
     );
   }
+
+  yield* _onDeviceAiService.generateTextStream(
+    systemPrompt: refreshedPrompt.systemPrompt,
+    userPrompt: refreshedPrompt.userPrompt,
+  );
+}
 
   Future<String> explainTrend({DateTime? referenceDate}) async {
     return _generateWithWarmup(
@@ -231,4 +252,114 @@ class GemmaCoachService {
       return null;
     }
   }
+
+
+OnDeviceTextPrompt _buildFocusedDocumentQuestionPrompt({
+  required String question,
+  required ClinicalDocumentDetail detail,
+}) {
+  final context = _focusedDocumentContext(detail);
+  final documentDate = detail.examDate ?? DateTime.now();
+
+  final systemPrompt = '''
+You are a careful clinical document assistant.
+
+Use only the selected document context provided by the app.
+Do not invent values, dates, diagnoses, medications, or recommendations.
+Do not diagnose.
+Do not prescribe.
+Do not suggest changing medication dosage.
+If the document text is incomplete, say that clearly.
+If the user asks for a summary, explain the document in simple terms.
+If the user asks about abnormal lab values, mention only values present in the document.
+''';
+
+  final userPrompt = '''
+User question:
+$question
+
+Selected document:
+Title: ${detail.title}
+Type: ${detail.documentType}
+Date: ${detail.examDate?.toIso8601String() ?? 'unknown'}
+
+Document context:
+$context
+
+Answer in the same language as the user question.
+Use this structure:
+
+Direct answer:
+Key points:
+Caution:
+''';
+
+
+
+  return OnDeviceTextPrompt(
+    contextType: 'focused_document',
+    periodStart: documentDate,
+    periodEnd: documentDate,
+    systemPrompt: systemPrompt,
+    userPrompt: userPrompt,
+    providerName: 'on_device_litertlm',
+    suggestedModelFamily: 'Gemma 4',
+    isCloudBypassedForThisRequest: true,
+  );
+}
+
+String _focusedDocumentContext(ClinicalDocumentDetail detail) {
+  final parts = <String>[];
+
+  final ocr = detail.ocrText?.trim();
+  if (ocr != null && ocr.isNotEmpty) {
+    final clippedOcr = ocr.length > 6000 ? '${ocr.substring(0, 6000)}...' : ocr;
+    parts.add('Extracted document text:\n$clippedOcr');
+  }
+
+  for (final panel in detail.labPanels) {
+    final rows = panel.results.map((item) {
+      final unit = item.unit == null || item.unit!.trim().isEmpty
+          ? ''
+          : ' ${item.unit}';
+
+      final range = item.refMin != null && item.refMax != null
+          ? ' (ref: ${item.refMin}-${item.refMax})'
+          : '';
+
+      final abnormal = item.abnormalFlag == true ? ' [ABNORMAL]' : '';
+
+      return '- ${item.analyteName}: ${item.value}$unit$range$abnormal';
+    }).join('\n');
+
+    if (rows.trim().isNotEmpty) {
+      parts.add('Lab panel: ${panel.panelName}\n$rows');
+    }
+  }
+
+  for (final report in detail.imagingReports) {
+    parts.add('''
+Imaging report:
+Exam type: ${report.examType ?? 'unknown'}
+Body part: ${report.bodyPart ?? 'unknown'}
+Impression: ${report.impression ?? 'not provided'}
+Report text:
+${report.reportText}
+''');
+  }
+
+  if (parts.isEmpty) {
+    return '''
+No extracted text, lab values, or imaging report text is available for this document.
+
+Document metadata:
+Title: ${detail.title}
+Type: ${detail.documentType}
+Parsed status: ${detail.parsedStatus}
+Processing error: ${detail.processingError ?? 'none'}
+''';
+  }
+
+  return parts.join('\n\n---\n\n');
+}
 }
