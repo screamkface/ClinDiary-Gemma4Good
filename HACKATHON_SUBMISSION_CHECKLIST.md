@@ -19,7 +19,9 @@
 - Provider shown in UI: `Gemma local`
 - Runtime shown in UI: `flutter_gemma (LiteRT-LM)`
 - Model artifact: `gemma-4-E2B-it.litertlm`
-- Model source: Hugging Face URL configured in `OnDeviceAiService`, or user import through the app model screen
+- Model source: Hugging Face revision-pinned URL configured in `OnDeviceAiService`, or user import through the app model screen
+- Expected model size after download/import: `2588147712` bytes
+- Release runtime settings: 4096-token context, GPU first with CPU fallback, speculative decoding off by default
 - First launch requires internet unless a valid `.litertlm` model is imported through the app-owned import flow
 - After successful install/verification, generation runs locally through `flutter_gemma`; health content is not sent to an external server by the local recap path
 

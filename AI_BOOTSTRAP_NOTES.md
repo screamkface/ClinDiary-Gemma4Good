@@ -5,7 +5,10 @@
 - Expected model file: `gemma-4-E2B-it.litertlm`
 - Runtime: `flutter_gemma 0.15.0` over LiteRT-LM
 - Provider label: `Gemma local`
-- Minimum validation size: 100 MB, used as a corruption/partial-download guard until a checksum is added
+- Download URL is pinned to Hugging Face revision `b4f4f4df93418ddb4aa7da8bf33b584602a5b9f8` so judges do not receive a silently changed artifact.
+- Expected size: `2588147712` bytes.
+- Minimum validation size: 100 MB, followed by exact-size validation for the pinned artifact.
+- Runtime verification opens Gemma 4 E2B with the same 4096-token context used for generation; speculative decoding is disabled by default for release stability.
 
 ## App-Owned Model Path
 
@@ -28,8 +31,9 @@
 
 - Missing file: stale plugin metadata is cleared, then the app downloads/reinstalls.
 - Too-small file: exact app-owned file and its partial import/download siblings are removed, then setup can retry.
+- Wrong-size file: exact app-owned file and its partial import/download siblings are removed, then setup can retry from the pinned artifact URL.
 - No internet: bootstrap enters `failed` with a retryable error; the rest of the app remains usable.
-- Runtime open failure: setup retries CPU fallback if GPU fails; if CPU also fails, AI is marked unavailable.
+- Runtime open failure: setup retries CPU fallback if GPU fails; both paths use 4096 tokens and speculative decoding off. If CPU also fails, AI is marked unavailable.
 - Unsupported platform: status reports local Gemma unavailable instead of crashing.
 - Inference timeout or empty response: the runtime is reset and the UI surfaces an explicit error.
 

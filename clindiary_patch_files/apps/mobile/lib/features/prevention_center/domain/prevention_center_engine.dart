@@ -1,6 +1,6 @@
-import 'package:clindiary/features/prevention_center/domain/prevention_center.dart';
-import 'package:clindiary/features/prevention_center/domain/prevention_center_policy.dart';
-import 'package:clindiary/features/profile/domain/profile_bundle.dart';
+import '../../profile/domain/profile_bundle.dart';
+import 'prevention_center.dart';
+import 'prevention_center_policy.dart';
 
 class PreventionCenterEngine {
   const PreventionCenterEngine();
@@ -1868,22 +1868,28 @@ class PreventionCenterEngine {
     return bundle.medicalConditions.isNotEmpty || bundle.medications.isNotEmpty;
   }
 
-  bool _hasRecentRecord(
-    ProfileBundle bundle,
-    List<String> codes,
-    DateTime referenceDate,
-    Duration maxAge,
-  ) {
-    for (final record in bundle.preventionRecords) {
-      if (codes.any((c) => record.code == c)) {
-        final age = referenceDate.difference(record.performedAt);
-        if (age <= maxAge) {
-          return true;
-        }
+bool _hasRecentRecord(
+  ProfileBundle bundle,
+  List<String> codes,
+  DateTime referenceDate,
+  Duration maxAge,
+) {
+  for (final record in bundle.preventionRecords) {
+    if (codes.contains(record.code)) {
+      final age = referenceDate.difference(record.performedAt);
+      if (age <= maxAge) {
+        return true;
       }
     }
-    return false;
   }
+  return false;
+}
+
+bool _hasEverRecord(ProfileBundle bundle, List<String> codes) {
+  return bundle.preventionRecords.any(
+    (record) => codes.contains(record.code),
+  );
+}
 
   bool _hasEverRecord(ProfileBundle bundle, List<String> codes) {
     return bundle.preventionRecords.any((r) => codes.any((c) => r.code == c));

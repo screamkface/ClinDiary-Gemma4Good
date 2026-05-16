@@ -56,11 +56,12 @@ class AiBootstrapStatus {
   bool get isReady => phase == AiBootstrapPhase.ready;
 
   bool get isBusy => switch (phase) {
-    AiBootstrapPhase.notStarted ||
     AiBootstrapPhase.checkingAppOwnedModelState ||
     AiBootstrapPhase.installingOrDownloading ||
     AiBootstrapPhase.verifying => true,
-    AiBootstrapPhase.ready || AiBootstrapPhase.failed => false,
+    AiBootstrapPhase.notStarted ||
+    AiBootstrapPhase.ready ||
+    AiBootstrapPhase.failed => false,
   };
 
   String get stepLabel => switch (phase) {

@@ -27,6 +27,8 @@
         android:roundIcon="@mipmap/ic_launcher">
         <uses-native-library android:name="libvndksupport.so" android:required="false"/>
         <uses-native-library android:name="libOpenCL.so" android:required="false"/>
+        <uses-native-library android:name="libOpenCL-car.so" android:required="false"/>
+        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -70,10 +72,6 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
-        <service
-            android:name=".GemmaDownloadService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
         <activity-alias
             android:name=".ViewPermissionUsageActivity"
             android:exported="true"

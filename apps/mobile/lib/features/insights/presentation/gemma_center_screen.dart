@@ -1067,7 +1067,7 @@ class _GemmaCenterScreenState extends ConsumerState<GemmaCenterScreen> {
                     },
                     title: const Text('Speculative Decoding (MTP)'),
                     subtitle: const Text(
-                      'Generazione multi-token, più veloce su Gemma 4',
+                      'Sperimentale: lascialo spento se il runtime non apre Gemma 4',
                     ),
                     contentPadding: EdgeInsets.zero,
                     dense: true,

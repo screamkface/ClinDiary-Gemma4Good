@@ -18,7 +18,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Load signing properties for release builds
+    // Load signing properties for release builds.
     val keystoreProperties = Properties()
     val keystorePropertiesFile = file("../key.properties")
     if (keystorePropertiesFile.exists()) {
@@ -30,22 +30,26 @@ android {
             if (keystoreProperties.isNotEmpty()) {
                 keyAlias = keystoreProperties.getProperty("keyAlias") ?: ""
                 keyPassword = keystoreProperties.getProperty("keyPassword") ?: ""
-                storeFile = file("${keystoreProperties.getProperty("storeFile", "key.properties")}")
+                storeFile = file(
+                    keystoreProperties.getProperty("storeFile", "app-release.jks")
+                )
                 storePassword = keystoreProperties.getProperty("storePassword") ?: ""
             }
         }
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "it.clindiary.clindiary"
-        multiDexEnabled = true
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = 1
         versionName = "1.0.0"
+
+        multiDexEnabled = true
+
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
