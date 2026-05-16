@@ -1,0 +1,36 @@
+ClinDiary — Gemma 4 Good Hackathon Submission
+
+Creative Commons Attribution 4.0 International (CC-BY 4.0)
+
+Unless otherwise noted, the original ClinDiary submission materials, documentation,
+demo data, and source code created specifically for this hackathon submission are
+licensed under the Creative Commons Attribution 4.0 International License.
+
+You are free to:
+- Share — copy and redistribute the material in any medium or format.
+- Adapt — remix, transform, and build upon the material for any purpose, even commercially.
+
+Under the following terms:
+- Attribution — You must give appropriate credit, provide a link to the license,
+  and indicate if changes were made. You may do so in any reasonable manner,
+  but not in any way that suggests the licensor endorses you or your use.
+
+License text:
+https://creativecommons.org/licenses/by/4.0/
+
+Important notice:
+Third-party dependencies, SDKs, pretrained models, tools, frameworks, and assets
+not authored by the ClinDiary team remain under their respective licenses.
+
+This includes, but is not limited to:
+- Flutter and Dart SDK
+- Android SDK and Gradle tooling
+- Google AI Edge / LiteRT / LiteRT-LM
+- Gemma model family
+- flutter_gemma
+- Riverpod
+- Drift / SQLite-related packages
+- Any other open-source dependency declared in the project dependency files
+
+No real patient data is included in this repository.
+Synthetic demo data is provided only for demonstration and reproducibility.
