@@ -10,6 +10,18 @@ Thumbs.db
 .env.*
 !.env.example
 *.local
+local.properties
+
+# Secrets / credentials
+**/key.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pem
+**/*secret*
+**/*credentials*
+apps/mobile/android/app/google-services.json
+apps/mobile/ios/Runner/GoogleService-Info.plist
 
 # Python / backend
 __pycache__/
@@ -34,17 +46,33 @@ apps/backend/.mypy_cache/
 apps/backend/.ruff_cache/
 
 # Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+coverage/
 apps/mobile/.dart_tool/
 apps/mobile/.flutter-plugins
 apps/mobile/.flutter-plugins-dependencies
 apps/mobile/.packages
-apps/mobile/.idea/
 apps/mobile/build/
+apps/mobile/coverage/
 apps/mobile/devtools_options.yaml
+
+# Android build/cache
 apps/mobile/android/.gradle/
-apps/mobile/android/local.properties
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/android/app/debug/
+apps/mobile/android/app/profile/
+apps/mobile/android/app/release/
+
+# iOS/macOS/Linux/Windows generated Flutter files
 apps/mobile/ios/Flutter/ephemeral/
 apps/mobile/ios/Flutter/flutter_export_environment.sh
+apps/mobile/ios/Pods/
 apps/mobile/macos/Flutter/ephemeral/
 apps/mobile/linux/flutter/ephemeral/
 apps/mobile/windows/flutter/ephemeral/
@@ -61,19 +89,31 @@ tmp/
 *.sqlite3
 .storage/
 apps/backend/.storage/
-celerybeat-schedule-shm
-celerybeat-schedule-wal
 postgres_data/
 minio_data/
 
-# Mobile signing / credentials (never commit)
-**/key.properties
-**/*.jks
-**/*.keystore
-apps/mobile/android/app/google-services.json
-apps/mobile/ios/Runner/GoogleService-Info.plist
+# Celery local state
+celerybeat-schedule*
+*.pid
+
+# Local model artifacts
+*.gguf
+*.safetensors
+*.onnx
+*.tflite
+*.litertlm
+models/
+apps/mobile/models/
+apps/backend/models/
+
+# Agent/editor local artifacts
+.agents/
+.opencode/
+opencode.jsonc
+skills-lock.json
 
 # Temporary validation artifacts
 apps/mobile/test_output.txt
 apps/mobile/tests_expanded.txt
 apps/backend/test_results.txt
+clindiary_patch_files/
