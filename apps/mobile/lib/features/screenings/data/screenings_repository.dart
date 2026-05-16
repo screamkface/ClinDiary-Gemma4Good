@@ -19,9 +19,11 @@ class ScreeningsRepository {
   Future<List<ScreeningCatalogItem>> fetchCatalog({String? regionCode}) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
     final cached = await _readCatalogCache(resolvedRegionCode);
+
     if (cached == null) {
       return const <ScreeningCatalogItem>[];
     }
+
     return _decodeCatalogCache(jsonDecode(cached) as List<dynamic>);
   }
 
@@ -30,12 +32,19 @@ class ScreeningsRepository {
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
     final cached = await _readStatusCache(resolvedRegionCode);
+
     if (cached == null) {
       return const <PatientScreeningStatusItem>[];
     }
+
     return _decodeStatusItems(jsonDecode(cached) as List<dynamic>);
   }
 
+  /// Recomputes the personalized prevention/screening status from the current
+  /// profile bundle instead of simply re-reading the existing cache.
+  ///
+  /// Existing completion state is preserved so a recalculation does not erase
+  /// items already marked as completed by the user.
   Future<List<PatientScreeningStatusItem>> recompute({
     required ProfileBundle bundle,
     String? regionCode,
@@ -43,7 +52,9 @@ class ScreeningsRepository {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
 
     final existingItems =
-        await _readStatusCacheJson(resolvedRegionCode) ?? <Map<String, dynamic>>[];
+        await _readStatusCacheJson(resolvedRegionCode) ??
+        <Map<String, dynamic>>[];
+
     final existingById = <String, Map<String, dynamic>>{
       for (final item in existingItems)
         if (item['id'] != null) item['id'].toString(): item,
@@ -66,40 +77,14 @@ class ScreeningsRepository {
       ...center.followUpReminders,
     ];
 
-    final statusJson = recommendationItems.map<Map<String, dynamic>>((item) {
-      final existing = existingById[item.code];
-
-      final completedThisYear =
-          existing?['completed_this_year'] as bool? ?? false;
-      final currentYearLastCompletedOn =
-          existing?['current_year_last_completed_on'];
-      final lastDoneDate = existing?['last_done_date'];
-
-      final computedStatus = item.status == 'recommended'
-          ? 'recommended'
-          : item.status == 'seasonal'
-          ? 'scheduled'
-          : 'never_done';
-
-      return <String, dynamic>{
-        'id': item.code,
-        'screening_program_id': item.code,
-        'screening_code': item.code,
-        'screening_name': item.title,
-        'screening_category': item.category,
-        'care_pathway': _carePathwayFromItem(item),
-        'recommendation_level': _recommendationLevelFromItem(item),
-        'public_coverage_flag': false,
-        'completed_this_year': completedThisYear,
-        'current_year_last_completed_on': currentYearLastCompletedOn,
-        'last_done_date': lastDoneDate,
-        'status': completedThisYear ? 'completed' : computedStatus,
-        'regional_availability': const <Map<String, dynamic>>[],
-        'cadence_label': item.cadenceLabel,
-        'recommendation_reason': item.reason,
-        'explanation': item.actionHint,
-      };
-    }).toList(growable: false);
+    final statusJson = recommendationItems
+        .map<Map<String, dynamic>>(
+          (item) => _statusJsonFromRecommendation(
+            item,
+            existingById[item.code],
+          ),
+        )
+        .toList(growable: false);
 
     await _writeStatusCacheJson(resolvedRegionCode, statusJson);
 
@@ -111,8 +96,8 @@ class ScreeningsRepository {
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    final fallback = await _markDoneInCache(resolvedRegionCode, screeningId);
-    return PatientScreeningStatusItem.fromJson(fallback);
+    final updated = await _markDoneInCache(resolvedRegionCode, screeningId);
+    return PatientScreeningStatusItem.fromJson(updated);
   }
 
   Future<PatientScreeningStatusItem> clearCurrentYearCompletion(
@@ -120,35 +105,88 @@ class ScreeningsRepository {
     String? regionCode,
   }) async {
     final resolvedRegionCode = _normalizedRegionCode(regionCode);
-    final fallback = await _clearCurrentYearInCache(
+    final updated = await _clearCurrentYearInCache(
       resolvedRegionCode,
       screeningId,
     );
-    return PatientScreeningStatusItem.fromJson(fallback);
+    return PatientScreeningStatusItem.fromJson(updated);
+  }
+
+  Map<String, dynamic> _statusJsonFromRecommendation(
+    PreventionRecommendationItem item,
+    Map<String, dynamic>? existing,
+  ) {
+    final completedThisYear = existing?['completed_this_year'] as bool? ?? false;
+    final currentYearLastCompletedOn =
+        existing?['current_year_last_completed_on'];
+    final lastDoneDate = existing?['last_done_date'];
+
+    final computedStatus = _statusFromRecommendation(item);
+
+    return <String, dynamic>{
+      'id': item.code,
+      'screening_program_id': item.code,
+      'screening_code': item.code,
+      'screening_name': item.title,
+      'screening_category': item.category,
+      'care_pathway': _carePathwayFromItem(item),
+      'recommendation_level': _recommendationLevelFromItem(item),
+      'public_coverage_flag': false,
+      'completed_this_year': completedThisYear,
+      'current_year_last_completed_on': currentYearLastCompletedOn,
+      'last_done_date': lastDoneDate,
+      'status': completedThisYear ? 'completed' : computedStatus,
+      'regional_availability': const <Map<String, dynamic>>[],
+      'cadence_label': item.cadenceLabel,
+      'recommendation_reason': item.reason,
+      'explanation': item.actionHint,
+    };
+  }
+
+  String _statusFromRecommendation(PreventionRecommendationItem item) {
+    switch (item.status) {
+      case 'recommended':
+        return 'recommended';
+      case 'seasonal':
+        return 'scheduled';
+      case 'completed':
+        return 'completed';
+      case 'overdue':
+        return 'overdue';
+      case 'skipped':
+        return 'skipped';
+      default:
+        return 'never_done';
+    }
   }
 
   Future<List<Map<String, dynamic>>?> _readStatusCacheJson(
     String regionCode,
   ) async {
     final cached = await _readStatusCache(regionCode);
+
     if (cached == null) {
       return null;
     }
+
     final decoded = jsonDecode(cached) as List<dynamic>;
+
     return decoded
         .map((item) => Map<String, dynamic>.from(item as Map<String, dynamic>))
-        .toList();
+        .toList(growable: false);
   }
 
   Future<void> _writeStatusCacheJson(
     String regionCode,
     List<Map<String, dynamic>> items,
   ) async {
+    final scopedKey = await profileScopedCacheKey(
+      _localDatabase,
+      _statusCacheKeyForRegion(regionCode),
+    );
+
     await _localDatabase.putCache(
-      key: await profileScopedCacheKey(
-        _localDatabase,
-        _statusCacheKeyForRegion(regionCode),
-      ),
+      key: scopedKey,
       payload: jsonEncode(items),
     );
   }
@@ -159,14 +197,17 @@ class ScreeningsRepository {
   ) async {
     final items =
         await _readStatusCacheJson(regionCode) ?? <Map<String, dynamic>>[];
+
     final index = items.indexWhere(
       (item) => item['id']?.toString() == screeningId,
     );
+
     final nowIso = DateTime.now().toUtc().toIso8601String().split('T').first;
 
     final updated = index == -1
         ? _fallbackStatusItem(screeningId)
         : Map<String, dynamic>.from(items[index]);
+
     updated['completed_this_year'] = true;
     updated['current_year_last_completed_on'] = nowIso;
     updated['last_done_date'] = nowIso;
@@ -177,7 +218,9 @@ class ScreeningsRepository {
     } else {
       items[index] = updated;
     }
+
     await _writeStatusCacheJson(regionCode, items);
+
     return updated;
   }
 
@@ -187,6 +230,7 @@ class ScreeningsRepository {
   ) async {
     final items =
         await _readStatusCacheJson(regionCode) ?? <Map<String, dynamic>>[];
+
     final index = items.indexWhere(
       (item) => item['id']?.toString() == screeningId,
     );
@@ -194,8 +238,10 @@ class ScreeningsRepository {
     final updated = index == -1
         ? _fallbackStatusItem(screeningId)
         : Map<String, dynamic>.from(items[index]);
+
     updated['completed_this_year'] = false;
     updated['current_year_last_completed_on'] = null;
+
     if (updated['status']?.toString() == 'completed') {
       updated['status'] = 'recommended';
     }
@@ -205,7 +251,9 @@ class ScreeningsRepository {
     } else {
       items[index] = updated;
     }
+
     await _writeStatusCacheJson(regionCode, items);
+
     return updated;
   }
 
@@ -242,17 +290,21 @@ class ScreeningsRepository {
     if (item.status == 'recommended' || item.priority == 'high') {
       return 'risk_based';
     }
+
     if (item.priority == 'low') {
       return 'not_routine';
     }
+
     return 'routine';
   }
 
   String _normalizedRegionCode(String? regionCode) {
     final value = regionCode?.trim();
+
     if (value == null || value.isEmpty) {
       return 'IT';
     }
+
     return value.toUpperCase();
   }
 
@@ -266,39 +318,49 @@ class ScreeningsRepository {
 
   Future<String?> _readCatalogCache(String regionCode) async {
     final scope = await activeProfileCacheScope(_localDatabase);
+
     if (scope != null) {
       return _localDatabase.readCache(
         scopedCacheKey(_catalogCacheKeyForRegion(regionCode), scope),
       );
     }
+
     final cached = await _localDatabase.readCache(
       _catalogCacheKeyForRegion(regionCode),
     );
+
     if (cached != null) {
       return cached;
     }
+
     if (regionCode.toUpperCase() == 'IT') {
       return _localDatabase.readCache(_catalogCacheKey);
     }
+
     return null;
   }
 
   Future<String?> _readStatusCache(String regionCode) async {
     final scope = await activeProfileCacheScope(_localDatabase);
+
     if (scope != null) {
       return _localDatabase.readCache(
         scopedCacheKey(_statusCacheKeyForRegion(regionCode), scope),
       );
     }
+
     final cached = await _localDatabase.readCache(
       _statusCacheKeyForRegion(regionCode),
     );
+
     if (cached != null) {
       return cached;
     }
+
     if (regionCode.toUpperCase() == 'IT') {
       return _localDatabase.readCache(_statusCacheKey);
     }
+
     return null;
   }
 
@@ -307,7 +369,7 @@ class ScreeningsRepository {
         .map(
           (item) => ScreeningCatalogItem.fromJson(item as Map<String, dynamic>),
         )
-        .toList();
+        .toList(growable: false);
   }
 
   List<PatientScreeningStatusItem> _decodeStatusItems(List<dynamic> items) {
@@ -316,6 +378,6 @@ class ScreeningsRepository {
           (item) =>
               PatientScreeningStatusItem.fromJson(item as Map<String, dynamic>),
         )
-        .toList();
+        .toList(growable: false);
   }
 }

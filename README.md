@@ -4,8 +4,8 @@ ClinDiary is a mobile health diary prototype built for the **Gemma 4 Good Hackat
 
 The app helps a user collect daily health context — symptoms, notes, medications, basic trends, clinical documents, and preventive reminders — and then uses **on-device Gemma 4 inference** to turn that local context into careful, readable summaries.
 
-ClinDiary is **not an AI doctor**.  
-It does not diagnose, prescribe medication, change dosages, or triage emergencies.  
+ClinDiary is **not an AI doctor**.
+It does not diagnose, prescribe medication, change dosages, or triage emergencies.
 Its purpose is to help users remember and explain their health story more clearly.
 
 ---
@@ -34,9 +34,9 @@ The most important demo flows are:
 
 ## What the submitted APK actually does
 
-The hackathon APK is intended to be built in:
+The hackathon APK is intended to be built with:
 
-```bash
+```text
 HACKATHON_DEMO_MODE=true
 LOCAL_ONLY_MODE=true
 ```
@@ -450,5 +450,5 @@ Demo health data is local/mocked.
 External cloud AI is bypassed for local Gemma requests.
 ```
 
-This is the core idea of ClinDiary:  
+This is the core idea of ClinDiary:
 **use local AI to help users understand their own health context without turning every personal detail into a cloud request.**

@@ -1,49 +1,45 @@
-#!/bin/bash
-# Build release APK with demo mode enabled
-# Usage: ./build_demo_apk.sh
-
-set -e  # Exit on error
+#!/usr/bin/env bash
+set -euo pipefail
 
 cd "$(dirname "$0")"
 
 FLUTTER_PROJECT_PATH="apps/mobile"
 
 echo "================================"
-echo "🚀 ClinDiary Demo APK Builder"
+echo " ClinDiary Demo APK Builder"
 echo "================================"
 echo ""
 
-# Verify Flutter is installed
-if ! command -v flutter &> /dev/null; then
-    echo "❌ Flutter not found. Please install Flutter and add it to PATH."
-    exit 1
+if ! command -v flutter >/dev/null 2>&1; then
+  echo "Flutter not found. Please install Flutter and add it to PATH."
+  exit 1
 fi
 
-echo "📦 Cleaning previous builds..."
 cd "$FLUTTER_PROJECT_PATH"
+
+echo "Cleaning previous builds..."
 flutter clean
 flutter pub get
 
 echo ""
-echo "🔨 Building release APK with local demo mode..."
+echo "Building release APK with local demo mode..."
+
 flutter build apk --release \
   --dart-define=HACKATHON_DEMO_MODE=true \
-  --dart-define=LOCAL_ONLY_MODE=true \
-  --dart-define=API_BASE_URL=http://localhost:8000 \
-  -v
+  --dart-define=LOCAL_ONLY_MODE=true
 
 echo ""
-echo "✅ APK built successfully!"
+echo "APK built successfully."
+echo "Location:"
+echo "build/app/outputs/flutter-apk/app-release.apk"
 echo ""
-echo "📍 APK location:"
-echo "   build/app/outputs/flutter-apk/app-release.apk"
+
+du -h build/app/outputs/flutter-apk/app-release.apk || \
+  ls -lh build/app/outputs/flutter-apk/app-release.apk
+
 echo ""
-echo "📊 APK size:"
-du -h build/app/outputs/flutter-apk/app-release.apk || ls -lh build/app/outputs/flutter-apk/app-release.apk
-echo ""
-echo "🎯 Next steps:"
-echo "   1. Install on device: adb install build/app/outputs/flutter-apk/app-release.apk"
-echo "   2. Test the app (no internet required!)"
-echo "   3. Record demo video"
-echo ""
-echo "Remember: demo/local mode does not require backend access."
+echo "Next steps:"
+echo "1. Install on device:"
+echo "   adb install -r build/app/outputs/flutter-apk/app-release.apk"
+echo "2. Test local Gemma inference."
+echo "3. Record demo video."

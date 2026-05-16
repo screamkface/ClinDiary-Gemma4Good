@@ -109,6 +109,7 @@ apps/backend/models/
 # Agent/editor local artifacts
 .agents/
 .opencode/
+opencode.json
 opencode.jsonc
 skills-lock.json
 
@@ -117,3 +118,7 @@ apps/mobile/test_output.txt
 apps/mobile/tests_expanded.txt
 apps/backend/test_results.txt
 clindiary_patch_files/
+AI_BOOTSTRAP_NOTES.md
+EMBEDDING_IMPLEMENTATION.md
+REMAINING_WORK.md
+ClinDiary Bue Print.md
