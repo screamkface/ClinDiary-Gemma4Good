@@ -1423,16 +1423,20 @@ class _GemmaChatBubble extends StatelessWidget {
                 _GemmaThinkingTile(thinking: message.thinking!),
               if (message.isStreaming && message.text.isEmpty)
                 const _GemmaTypingDots()
-              else if (message.isStreaming || message.isUser)
+              else if (message.isUser)
                 SelectableText(
-                  message.isStreaming ? '${message.text}|' : message.text,
+                  message.text,
                   style: textTheme.bodyMedium?.copyWith(
                     color: foreground,
                     height: 1.42,
                   ),
                 )
               else
-                ChatMarkdownText(text: message.text, foreground: foreground),
+                ChatMarkdownText(
+                  text: message.text,
+                  foreground: foreground,
+                  showTrailingCursor: message.isStreaming,
+                ),
             ],
           ),
         ),

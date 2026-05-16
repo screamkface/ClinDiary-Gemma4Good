@@ -739,15 +739,19 @@ class _DocumentChatBubble extends StatelessWidget {
           ),
           child: message.isStreaming && message.text.isEmpty
               ? const _DocumentTypingDots()
-              : message.isStreaming || message.isUser
+              : message.isUser
               ? SelectableText(
-                  message.isStreaming ? '${message.text}|' : message.text,
+                  message.text,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: foreground,
                     height: 1.42,
                   ),
                 )
-              : ChatMarkdownText(text: message.text, foreground: foreground),
+              : ChatMarkdownText(
+                  text: message.text,
+                  foreground: foreground,
+                  showTrailingCursor: message.isStreaming,
+                ),
         ),
       ),
     );

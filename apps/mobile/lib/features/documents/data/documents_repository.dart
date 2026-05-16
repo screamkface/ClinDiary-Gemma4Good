@@ -11,6 +11,10 @@ import 'package:clindiary/features/documents/domain/document_manual_review.dart'
 import 'package:clindiary/features/insights/data/on_device_ai_service.dart';
 
 class DocumentsRepository {
+  static const int _defaultPromptCandidateCount = 3;
+  static const int _maxReturnedCandidates = 8;
+  static const int _maxDetailedCandidatesPerQuery = 12;
+
   DocumentsRepository({
     required LocalDatabase localDatabase,
     OnDeviceAiService? onDeviceAiService,
@@ -100,16 +104,42 @@ class DocumentsRepository {
   }
 
   Future<int> reindexDocuments() async {
-    final scope = await _resolveLocalScope();
-    final localDocuments = await _localVaultService.fetchDocumentsForScope(
-      userScopeId: scope.userId,
-      profileScopeId: scope.profileId,
-    );
+    final localDocuments = await _listLocalDocuments();
+    if (localDocuments.isEmpty) {
+      return 0;
+    }
+
+    final shouldWarmEmbeddings = await _onDeviceAiService
+        .hasActiveEmbeddingModel()
+        .catchError((_) => false);
+
+    for (final summary in localDocuments) {
+      try {
+        final detail = await fetchDocumentDetail(summary.id);
+        if (shouldWarmEmbeddings) {
+          await _getDocumentEmbedding(detail);
+        }
+      } catch (_) {
+        // Reindex is best-effort. Individual failures should not abort the pass.
+      }
+    }
+
     return localDocuments.length;
   }
 
   Future<int> reindexDocument(String documentId) async {
-    return 1;
+    try {
+      final detail = await fetchDocumentDetail(documentId);
+      final shouldWarmEmbeddings = await _onDeviceAiService
+          .hasActiveEmbeddingModel()
+          .catchError((_) => false);
+      if (shouldWarmEmbeddings) {
+        await _getDocumentEmbedding(detail);
+      }
+      return 1;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<ClinicalDocumentDetail> processDocument(String documentId) async {
@@ -207,17 +237,7 @@ class DocumentsRepository {
       );
     }
 
-    final scope = await _resolveLocalScope();
-    final archive = await _localVaultService.fetchArchiveForScope(
-      userScopeId: scope.userId,
-      profileScopeId: scope.profileId,
-      folderId: folderId,
-      query: null,
-    );
-
-    final localDocuments = archive.documents
-        .where((item) => item.isLocal)
-        .toList();
+    final localDocuments = await _listLocalDocuments(folderId: folderId);
     if (localDocuments.isEmpty) {
       return DocumentQueryResult(
         answer: isItalian
@@ -238,33 +258,17 @@ class DocumentsRepository {
       );
     }
 
-    final questionEmbedding = await _onDeviceAiService
-        .generateEmbedding(text: normalizedQuestion)
-        .catchError((_) => <double>[]);
-
-    final ranked = <_LocalQueryCandidate>[];
-    for (final summary in localDocuments) {
-      final detail = await fetchDocumentDetail(summary.id);
-      final candidate = await _buildLocalQueryCandidate(
-        summary,
-        detail,
-        normalizedQuestion,
-        questionEmbedding,
-      );
-      if (candidate.score > 0) {
-        ranked.add(candidate);
-      }
-    }
-
-    ranked.sort((a, b) {
-      final scoreOrder = b.score.compareTo(a.score);
-      if (scoreOrder != 0) {
-        return scoreOrder;
-      }
-      return b.summary.uploadDate.compareTo(a.summary.uploadDate);
-    });
-
-    final limited = ranked.take((topK ?? 3).clamp(1, 8)).toList();
+    final ranking = await _rankLocalDocuments(
+      localDocuments: localDocuments,
+      question: normalizedQuestion,
+    );
+    final resolvedTopK = (topK ?? _defaultPromptCandidateCount).clamp(
+      1,
+      _maxReturnedCandidates,
+    );
+    final limited = ranking.candidates
+        .take(resolvedTopK)
+        .toList(growable: false);
     if (limited.isEmpty) {
       return DocumentQueryResult(
         answer: isItalian
@@ -273,14 +277,15 @@ class DocumentsRepository {
         citations: const [],
         providerName: 'on_device_litertlm',
         modelName: 'gemma-4-E2B-it.litertlm',
-        embeddingModelName: 'gecko-110m-en',
-        rerankerModelName: 'local-semantic-ranker',
+        embeddingModelName: _embeddingModelName(ranking.embeddingAvailable),
+        rerankerModelName: _rerankerModelName(ranking.embeddingAvailable),
         retrievedChunks: 0,
         retrievedDocuments: 0,
         searchScopeLabel: searchScopeLabel,
-        coverageNote: isItalian
-            ? 'Nessun estratto rilevante trovato nei documenti.'
-            : 'No relevant excerpts were found in local documents.',
+        coverageNote: _noMatchCoverageNote(
+          isItalian: isItalian,
+          embeddingAvailable: ranking.embeddingAvailable,
+        ),
         usedFallback: true,
       );
     }
@@ -309,19 +314,29 @@ class DocumentsRepository {
     );
 
     return DocumentQueryResult(
-      answer: answer,
+      answer: answer.text,
       citations: citations,
-      providerName: 'on_device_litertlm',
-      modelName: 'gemma-4-E2B-it.litertlm',
-      embeddingModelName: 'gecko-110m-en',
-      rerankerModelName: 'local-semantic-ranker',
+      providerName: answer.usedFallback
+          ? 'local_fallback'
+          : 'on_device_litertlm',
+      modelName: answer.usedFallback
+          ? 'deterministic-local'
+          : 'gemma-4-E2B-it.litertlm',
+      embeddingModelName: _embeddingModelName(ranking.embeddingAvailable),
+      rerankerModelName: _rerankerModelName(ranking.embeddingAvailable),
       retrievedChunks: limited.length,
       retrievedDocuments: limited.map((item) => item.summary.id).toSet().length,
       searchScopeLabel: searchScopeLabel,
-      coverageNote: isItalian
-          ? 'Risposta generata da estratti locali dei documenti.'
-          : 'Answer generated from local encrypted document snippets.',
-      usedFallback: false,
+      coverageNote: answer.usedFallback
+          ? _fallbackCoverageNote(
+              isItalian: isItalian,
+              embeddingAvailable: ranking.embeddingAvailable,
+            )
+          : _successCoverageNote(
+              isItalian: isItalian,
+              embeddingAvailable: ranking.embeddingAvailable,
+            ),
+      usedFallback: answer.usedFallback,
     );
   }
 
@@ -484,7 +499,7 @@ class DocumentsRepository {
     return score;
   }
 
-  Future<String> _generateLocalQueryAnswer({
+  Future<_GeneratedLocalQueryAnswer> _generateLocalQueryAnswer({
     required String question,
     required List<_LocalQueryCandidate> candidates,
     required String languageCode,
@@ -523,13 +538,19 @@ class DocumentsRepository {
               'Caution: ...';
 
     try {
-      return await _onDeviceAiService.generateText(
-        systemPrompt: systemPrompt,
-        userPrompt: userPrompt,
+      return _GeneratedLocalQueryAnswer(
+        text: await _onDeviceAiService.generateText(
+          systemPrompt: systemPrompt,
+          userPrompt: userPrompt,
+        ),
+        usedFallback: false,
       );
     } catch (_) {
       final top = candidates.first;
-      return _fallbackLocalQueryAnswer(isItalian: isItalian, top: top);
+      return _GeneratedLocalQueryAnswer(
+        text: _fallbackLocalQueryAnswer(isItalian: isItalian, top: top),
+        usedFallback: true,
+      );
     }
   }
 
@@ -541,21 +562,15 @@ class DocumentsRepository {
   }) async {
     final normalizedQuestion = question.trim();
     final languageCode = await readStoredAppLanguageCode(_localDatabase);
-    final scope = await _resolveLocalScope();
-    final archive = await _localVaultService.fetchArchiveForScope(
-      userScopeId: scope.userId,
-      profileScopeId: scope.profileId,
-      folderId: folderId,
-      query: null,
-    );
-    final hasLocalDocuments = archive.documents.any((item) => item.isLocal);
+    final localDocuments = await _listLocalDocuments(folderId: folderId);
+    final hasLocalDocuments = localDocuments.isNotEmpty;
 
     // Phase 1: embedding, ranking, prompt building (no streaming)
-    final candidates = await _rankLocalDocuments(
+    final ranking = await _rankLocalDocuments(
+      localDocuments: localDocuments,
       question: normalizedQuestion,
-      folderId: folderId,
-      languageCode: languageCode,
     );
+    final candidates = ranking.candidates;
 
     if (candidates.isEmpty) {
       return QueryDocumentsStreamResult.identity(
@@ -571,8 +586,12 @@ class DocumentsRepository {
       );
     }
 
+    final limited = candidates
+        .take(_defaultPromptCandidateCount)
+        .toList(growable: false);
+
     // Build the prompt
-    final context = candidates
+    final context = limited
         .asMap()
         .entries
         .map(
@@ -607,7 +626,6 @@ class DocumentsRepository {
     final answerController = StreamController<String>();
     final resultCompleter = Completer<DocumentQueryResult>();
     final answerBuffer = StringBuffer();
-    final limited = candidates.take(3).toList();
     final citations = _citationsForCandidates(limited);
 
     _onDeviceAiService
@@ -618,20 +636,46 @@ class DocumentsRepository {
             answerController.add(token);
           },
           onDone: () async {
-            if (!answerController.isClosed) {
-              answerController.close();
-            }
             if (resultCompleter.isCompleted) {
+              if (!answerController.isClosed) {
+                await answerController.close();
+              }
               return;
             }
+
+            var answer = answerBuffer.toString().trim();
+            var usedFallback = false;
+            if (answer.isEmpty) {
+              usedFallback = true;
+              answer = _fallbackLocalQueryAnswer(
+                isItalian: isItalian,
+                top: limited.first,
+              );
+              if (!answerController.isClosed) {
+                answerController.add(answer);
+              }
+            }
+
+            if (!answerController.isClosed) {
+              await answerController.close();
+            }
+
             resultCompleter.complete(
               DocumentQueryResult(
-                answer: answerBuffer.toString().trim(),
+                answer: answer,
                 citations: citations,
-                providerName: 'on_device_litertlm',
-                modelName: 'gemma-4-E2B-it.litertlm',
-                embeddingModelName: 'gecko-110m-en',
-                rerankerModelName: 'local-semantic-ranker',
+                providerName: usedFallback
+                    ? 'local_fallback'
+                    : 'on_device_litertlm',
+                modelName: usedFallback
+                    ? 'deterministic-local'
+                    : 'gemma-4-E2B-it.litertlm',
+                embeddingModelName: _embeddingModelName(
+                  ranking.embeddingAvailable,
+                ),
+                rerankerModelName: _rerankerModelName(
+                  ranking.embeddingAvailable,
+                ),
                 retrievedChunks: limited.length,
                 retrievedDocuments: limited
                     .map((item) => item.summary.id)
@@ -640,10 +684,16 @@ class DocumentsRepository {
                 searchScopeLabel: folderId == null
                     ? (isItalian ? 'Tutto l\'archivio' : 'Entire archive')
                     : (isItalian ? 'Cartella selezionata' : 'Selected folder'),
-                coverageNote: isItalian
-                    ? 'Risposta generata da estratti locali dei documenti.'
-                    : 'Answer generated from local encrypted document snippets.',
-                usedFallback: false,
+                coverageNote: usedFallback
+                    ? _fallbackCoverageNote(
+                        isItalian: isItalian,
+                        embeddingAvailable: ranking.embeddingAvailable,
+                      )
+                    : _successCoverageNote(
+                        isItalian: isItalian,
+                        embeddingAvailable: ranking.embeddingAvailable,
+                      ),
+                usedFallback: usedFallback,
               ),
             );
           },
@@ -667,8 +717,12 @@ class DocumentsRepository {
                   citations: citations,
                   providerName: 'local_fallback',
                   modelName: 'deterministic-local',
-                  embeddingModelName: 'gecko-110m-en',
-                  rerankerModelName: 'local-semantic-ranker',
+                  embeddingModelName: _embeddingModelName(
+                    ranking.embeddingAvailable,
+                  ),
+                  rerankerModelName: _rerankerModelName(
+                    ranking.embeddingAvailable,
+                  ),
                   retrievedChunks: limited.length,
                   retrievedDocuments: limited
                       .map((item) => item.summary.id)
@@ -679,9 +733,10 @@ class DocumentsRepository {
                       : (isItalian
                             ? 'Cartella selezionata'
                             : 'Selected folder'),
-                  coverageNote: isItalian
-                      ? 'Gemma non ha completato in tempo: risposta locale costruita dagli estratti citati.'
-                      : 'Gemma did not finish in time: local fallback built from cited snippets.',
+                  coverageNote: _fallbackCoverageNote(
+                    isItalian: isItalian,
+                    embeddingAvailable: ranking.embeddingAvailable,
+                  ),
                   usedFallback: true,
                 ),
               );
@@ -726,31 +781,41 @@ class DocumentsRepository {
   }
 
   /// Embedding + ranking phase (shared between streaming and non-streaming paths).
-  Future<List<_LocalQueryCandidate>> _rankLocalDocuments({
+  Future<_RankedLocalDocuments> _rankLocalDocuments({
+    required List<ClinicalDocumentSummary> localDocuments,
     required String question,
-    String? folderId,
-    required String languageCode,
   }) async {
-    final scope = await _resolveLocalScope();
-    final archive = await _localVaultService.fetchArchiveForScope(
-      userScopeId: scope.userId,
-      profileScopeId: scope.profileId,
-      folderId: folderId,
-      query: null,
-    );
+    if (localDocuments.isEmpty) {
+      return const _RankedLocalDocuments(
+        candidates: <_LocalQueryCandidate>[],
+        embeddingAvailable: false,
+      );
+    }
 
-    final localDocuments = archive.documents
-        .where((item) => item.isLocal)
-        .toList();
-    if (localDocuments.isEmpty) return [];
+    final shortlisted = _shortlistDocumentsForQuery(localDocuments, question);
 
     final questionEmbedding = await _onDeviceAiService
         .generateEmbedding(text: question)
         .catchError((_) => <double>[]);
+    final embeddingAvailable = questionEmbedding.isNotEmpty;
+
+    final details = await Future.wait(
+      shortlisted.map((summary) async {
+        try {
+          return await fetchDocumentDetail(summary.id);
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
 
     final ranked = <_LocalQueryCandidate>[];
-    for (final summary in localDocuments) {
-      final detail = await fetchDocumentDetail(summary.id);
+    for (var index = 0; index < shortlisted.length; index++) {
+      final detail = details[index];
+      if (detail == null) {
+        continue;
+      }
+      final summary = shortlisted[index];
       final candidate = await _buildLocalQueryCandidate(
         summary,
         detail,
@@ -768,7 +833,179 @@ class DocumentsRepository {
       return b.summary.uploadDate.compareTo(a.summary.uploadDate);
     });
 
-    return ranked.take(8).toList();
+    return _RankedLocalDocuments(
+      candidates: ranked.take(_maxReturnedCandidates).toList(growable: false),
+      embeddingAvailable: embeddingAvailable,
+    );
+  }
+
+  Future<List<ClinicalDocumentSummary>> _listLocalDocuments({
+    String? folderId,
+  }) async {
+    final scope = await _resolveLocalScope();
+    final archive = await _localVaultService.fetchArchiveForScope(
+      userScopeId: scope.userId,
+      profileScopeId: scope.profileId,
+      folderId: folderId,
+      query: null,
+    );
+    return archive.documents
+        .where((item) => item.isLocal)
+        .toList(growable: false);
+  }
+
+  List<ClinicalDocumentSummary> _shortlistDocumentsForQuery(
+    List<ClinicalDocumentSummary> documents,
+    String question,
+  ) {
+    if (documents.length <= _maxDetailedCandidatesPerQuery) {
+      return documents;
+    }
+
+    final normalizedQuestion = question.trim().toLowerCase();
+    final tokens = normalizedQuestion
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((item) => item.trim().length >= 3)
+        .toSet();
+    if (tokens.isEmpty) {
+      return documents
+          .take(_maxDetailedCandidatesPerQuery)
+          .toList(growable: false);
+    }
+
+    final scored =
+        documents
+            .map(
+              (document) => (
+                summary: document,
+                score: _summaryKeywordScore(
+                  document,
+                  normalizedQuestion,
+                  tokens,
+                ),
+              ),
+            )
+            .toList(growable: false)
+          ..sort((a, b) {
+            final scoreOrder = b.score.compareTo(a.score);
+            if (scoreOrder != 0) {
+              return scoreOrder;
+            }
+            return b.summary.uploadDate.compareTo(a.summary.uploadDate);
+          });
+
+    final selected = <ClinicalDocumentSummary>[];
+    for (final item in scored) {
+      if (item.score <= 0 && selected.isNotEmpty) {
+        continue;
+      }
+      selected.add(item.summary);
+      if (selected.length >= _maxDetailedCandidatesPerQuery) {
+        return selected;
+      }
+    }
+
+    for (final document in documents) {
+      if (selected.any((item) => item.id == document.id)) {
+        continue;
+      }
+      selected.add(document);
+      if (selected.length >= _maxDetailedCandidatesPerQuery) {
+        break;
+      }
+    }
+
+    return selected;
+  }
+
+  double _summaryKeywordScore(
+    ClinicalDocumentSummary summary,
+    String normalizedQuestion,
+    Set<String> tokens,
+  ) {
+    var score = 0.0;
+    final haystack = [
+      summary.title,
+      summary.documentType,
+      summary.source,
+      summary.folderName,
+      summary.originalFilename,
+    ].whereType<String>().join(' ').toLowerCase();
+
+    for (final token in tokens) {
+      if (haystack.contains(token)) {
+        score += 1.0;
+      }
+    }
+
+    if (summary.title.toLowerCase().contains(normalizedQuestion)) {
+      score += 2.0;
+    }
+    if (haystack.contains(normalizedQuestion)) {
+      score += 1.5;
+    }
+    if (summary.documentType.toLowerCase().contains('lab') &&
+        normalizedQuestion.contains('lab')) {
+      score += 0.8;
+    }
+    if (summary.documentType.toLowerCase().contains('imaging') &&
+        normalizedQuestion.contains('imaging')) {
+      score += 0.8;
+    }
+
+    return score;
+  }
+
+  String _embeddingModelName(bool embeddingAvailable) {
+    return embeddingAvailable ? 'gecko-110m-en' : 'local-keyword-index';
+  }
+
+  String _rerankerModelName(bool embeddingAvailable) {
+    return embeddingAvailable
+        ? 'local-semantic-ranker'
+        : 'local-keyword-ranker';
+  }
+
+  String _successCoverageNote({
+    required bool isItalian,
+    required bool embeddingAvailable,
+  }) {
+    if (embeddingAvailable) {
+      return isItalian
+          ? 'Risposta generata da estratti locali dei documenti.'
+          : 'Answer generated from local encrypted document snippets.';
+    }
+    return isItalian
+        ? 'Risposta generata da estratti locali dei documenti con ranking a parole chiave, perche il modello di embedding non era disponibile.'
+        : 'Answer generated from local encrypted document snippets using keyword ranking because the embedding model was unavailable.';
+  }
+
+  String _fallbackCoverageNote({
+    required bool isItalian,
+    required bool embeddingAvailable,
+  }) {
+    if (embeddingAvailable) {
+      return isItalian
+          ? 'Gemma non ha prodotto una risposta utile in tempo: e stata costruita una risposta locale dagli estratti citati.'
+          : 'Gemma did not produce a useful answer in time: a local fallback was built from cited snippets.';
+    }
+    return isItalian
+        ? 'Gemma non ha prodotto una risposta utile in tempo e il modello di embedding non era disponibile: e stata costruita una risposta locale con ranking a parole chiave.'
+        : 'Gemma did not produce a useful answer in time and the embedding model was unavailable: a local keyword-ranked fallback was built from cited snippets.';
+  }
+
+  String _noMatchCoverageNote({
+    required bool isItalian,
+    required bool embeddingAvailable,
+  }) {
+    if (embeddingAvailable) {
+      return isItalian
+          ? 'Nessun estratto rilevante trovato nei documenti.'
+          : 'No relevant excerpts were found in local documents.';
+    }
+    return isItalian
+        ? 'Nessun estratto rilevante trovato nei documenti con il ranking a parole chiave.'
+        : 'No relevant excerpts were found in local documents with keyword ranking.';
   }
 
   Future<_LocalVaultScope> _resolveLocalScope() async {
@@ -795,6 +1032,26 @@ class _LocalQueryCandidate {
   final String excerpt;
   final String chunkKind;
   final String? chunkLabel;
+}
+
+class _RankedLocalDocuments {
+  const _RankedLocalDocuments({
+    required this.candidates,
+    required this.embeddingAvailable,
+  });
+
+  final List<_LocalQueryCandidate> candidates;
+  final bool embeddingAvailable;
+}
+
+class _GeneratedLocalQueryAnswer {
+  const _GeneratedLocalQueryAnswer({
+    required this.text,
+    required this.usedFallback,
+  });
+
+  final String text;
+  final bool usedFallback;
 }
 
 String _buildExcerpt(ClinicalDocumentDetail detail) {
@@ -825,7 +1082,7 @@ String _buildExcerpt(ClinicalDocumentDetail detail) {
 
   final ocrText = detail.ocrText?.trim();
   if (ocrText != null && ocrText.isNotEmpty) {
-    return ocrText.length > 500 ? '${ocrText.substring(0, 500)}...' : ocrText;
+    return ocrText.length > 320 ? '${ocrText.substring(0, 320)}...' : ocrText;
   }
 
   return 'No extractable text available.';

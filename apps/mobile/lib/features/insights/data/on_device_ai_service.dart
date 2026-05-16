@@ -30,11 +30,11 @@ class OnDeviceAiService {
   static const _emptyResponseMessage =
       'The on-device model returned an empty response. Open AI Settings and try CPU/GPU again.';
 
-static const _gemma4Temperature = 0.3;
-static const _gemma4TopK = 40;
-static const _gemma4TopP = 0.9;
-static const _gemma4TokenBuffer = 1024;
-static const _gemma4ContextTokens = 4096;
+  static const _gemma4Temperature = 0.3;
+  static const _gemma4TopK = 40;
+  static const _gemma4TopP = 0.9;
+  static const _gemma4TokenBuffer = 1024;
+  static const _gemma4ContextTokens = 4096;
 
   // Kept for backwards compatibility with screens/tests that may read these
   // constants. The service no longer validates the exact local file size
@@ -144,8 +144,7 @@ static const _gemma4ContextTokens = 4096;
           activeProviderLabel: 'Gemma local unavailable',
           backendPreference: _preferredBackend.name.toUpperCase(),
           modelName: _modelName,
-          lastError:
-              _lastBootstrapError ?? 'Gemma model is not installed yet.',
+          lastError: _lastBootstrapError ?? 'Gemma model is not installed yet.',
           lastInferenceLatencyMillis: _lastInferenceLatency?.inMilliseconds,
           isCloudBypassedForThisRequest: true,
         );
@@ -392,10 +391,8 @@ static const _gemma4ContextTokens = 4096;
     dev.log('[GemmaTest] userPrompt length=${userPrompt.length}');
 
     return _runExclusiveStream(
-      () => _streamForPrompt(
-        systemPrompt: systemPrompt,
-        userPrompt: userPrompt,
-      ),
+      () =>
+          _streamForPrompt(systemPrompt: systemPrompt, userPrompt: userPrompt),
     );
   }
 
@@ -403,6 +400,15 @@ static const _gemma4ContextTokens = 4096;
     await _ensureInitialized();
     final embedder = await _getOrCreateEmbedder();
     return embedder.generateEmbedding(text, taskType: TaskType.retrievalQuery);
+  }
+
+  Future<bool> hasActiveEmbeddingModel() async {
+    await _ensureInitialized();
+    try {
+      return FlutterGemma.hasActiveEmbedder();
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<String?> importModelFromPicker() async {
@@ -610,89 +616,87 @@ static const _gemma4ContextTokens = 4096;
     }
   }
 
-Future<String> _generateText({
-  required String systemPrompt,
-  required String userPrompt,
-}) async {
-  InferenceChat? chat;
-  var completed = false;
-  var emittedText = false;
-  final startedAt = DateTime.now();
-  final buffer = StringBuffer();
+  Future<String> _generateText({
+    required String systemPrompt,
+    required String userPrompt,
+  }) async {
+    InferenceChat? chat;
+    var completed = false;
+    var emittedText = false;
+    final startedAt = DateTime.now();
+    final buffer = StringBuffer();
 
-  try {
-    final model = await _getOrCreateModel();
+    try {
+      final model = await _getOrCreateModel();
 
-    chat = await _createChat(
-      model: model,
-      systemPrompt: systemPrompt,
-    );
+      chat = await _createChat(model: model, systemPrompt: systemPrompt);
 
-    await chat
-        .addQueryChunk(Message.text(text: userPrompt, isUser: true))
-        .timeout(_chatSetupTimeout);
+      await chat
+          .addQueryChunk(Message.text(text: userPrompt, isUser: true))
+          .timeout(_chatSetupTimeout);
 
-    final responses = chat.generateChatResponseAsync().timeout(
-      _streamIdleTimeout,
-      onTimeout: (sink) {
-        unawaited(_stopChat(chat));
-        sink.addError(
-          Exception(
-            'The on-device model did not emit a response in time. Open AI Settings and try CPU/GPU again.',
-          ),
-        );
-        sink.close();
-      },
-    );
-
-    await for (final response in responses) {
-      _checkStreamDeadlines(
-        startedAt: startedAt,
-        emittedText: emittedText,
+      final responses = chat.generateChatResponseAsync().timeout(
+        _streamIdleTimeout,
+        onTimeout: (sink) {
+          unawaited(_stopChat(chat));
+          sink.addError(
+            Exception(
+              'The on-device model did not emit a response in time. Open AI Settings and try CPU/GPU again.',
+            ),
+          );
+          sink.close();
+        },
       );
 
-      if (response is TextResponse) {
-        if (response.token.isEmpty) continue;
+      await for (final response in responses) {
+        _checkStreamDeadlines(startedAt: startedAt, emittedText: emittedText);
 
-        buffer.write(response.token);
+        if (response is TextResponse) {
+          if (response.token.isEmpty) continue;
 
-        if (response.token.trim().isNotEmpty) {
-          emittedText = true;
+          buffer.write(response.token);
+
+          if (response.token.trim().isNotEmpty) {
+            emittedText = true;
+          }
+        } else if (response is ThinkingResponse) {
+          if (response.content.trim().isNotEmpty) {
+            dev.log(
+              '[GemmaTest] thinking chunk ignored in non-stream text mode',
+            );
+          }
+        } else if (response is FunctionCallResponse) {
+          dev.log(
+            '[GemmaTest] unexpected function call in text mode: ${response.name} ${response.args}',
+          );
+        } else if (response is ParallelFunctionCallResponse) {
+          dev.log(
+            '[GemmaTest] unexpected parallel function call in text mode: ${response.calls.length} calls',
+          );
+        } else {
+          dev.log(
+            '[GemmaTest] unexpected response type: ${response.runtimeType}',
+          );
         }
-      } else if (response is ThinkingResponse) {
-        if (response.content.trim().isNotEmpty) {
-          dev.log('[GemmaTest] thinking chunk ignored in non-stream text mode');
-        }
-      } else if (response is FunctionCallResponse) {
-        dev.log(
-          '[GemmaTest] unexpected function call in text mode: ${response.name} ${response.args}',
-        );
-      } else if (response is ParallelFunctionCallResponse) {
-        dev.log(
-          '[GemmaTest] unexpected parallel function call in text mode: ${response.calls.length} calls',
-        );
+      }
+
+      final content = buffer.toString().trim();
+
+      if (content.isEmpty) {
+        throw Exception(_emptyResponseMessage);
+      }
+
+      completed = true;
+      return content;
+    } finally {
+      if (!completed) {
+        await _stopChat(chat);
+        await _resetRuntime();
       } else {
-        dev.log('[GemmaTest] unexpected response type: ${response.runtimeType}');
+        await _closeChat(chat);
       }
     }
-
-    final content = buffer.toString().trim();
-
-    if (content.isEmpty) {
-      throw Exception(_emptyResponseMessage);
-    }
-
-    completed = true;
-    return content;
-  } finally {
-    if (!completed) {
-      await _stopChat(chat);
-      await _resetRuntime();
-    } else {
-      await _closeChat(chat);
-    }
   }
-}
 
   Future<T> _runExclusive<T>(Future<T> Function() action) async {
     final previous = _generationTail;
@@ -750,8 +754,6 @@ Future<String> _generateText({
         );
   }
 
-
-
   void _checkStreamDeadlines({
     required DateTime startedAt,
     required bool emittedText,
@@ -797,16 +799,17 @@ Future<String> _generateText({
     await _ensureActiveModelReady();
 
     final backend = _preferredBackend;
-    final model = await FlutterGemma.getActiveModel(
-      maxTokens: _gemma4ContextTokens,
-      preferredBackend: backend,
-      enableSpeculativeDecoding: _shouldUseSpeculativeDecoding(backend),
-    ).timeout(
-      _modelOpenTimeout,
-      onTimeout: () => throw Exception(
-        'The on-device model could not be opened with ${backend.name.toUpperCase()} in time. Open AI Settings and retry with CPU.',
-      ),
-    );
+    final model =
+        await FlutterGemma.getActiveModel(
+          maxTokens: _gemma4ContextTokens,
+          preferredBackend: backend,
+          enableSpeculativeDecoding: _shouldUseSpeculativeDecoding(backend),
+        ).timeout(
+          _modelOpenTimeout,
+          onTimeout: () => throw Exception(
+            'The on-device model could not be opened with ${backend.name.toUpperCase()} in time. Open AI Settings and retry with CPU.',
+          ),
+        );
 
     _currentModel = model;
     return model;
@@ -837,12 +840,9 @@ Future<String> _generateText({
     await FlutterGemma.installModel(
       modelType: ModelType.gemma4,
       fileType: ModelFileType.litertlm,
-    )
-        .fromNetwork(_modelDownloadUrl, foreground: true)
-        .withProgress((progress) {
-          onProgress?.call(progress);
-        })
-        .install();
+    ).fromNetwork(_modelDownloadUrl, foreground: true).withProgress((progress) {
+      onProgress?.call(progress);
+    }).install();
   }
 
   Future<void> _verifyRuntimeCanOpen() async {
@@ -873,16 +873,17 @@ Future<String> _generateText({
     await _closePluginCachedModel();
     _currentModel = null;
 
-    final model = await FlutterGemma.getActiveModel(
-      maxTokens: _gemma4ContextTokens,
-      preferredBackend: backend,
-      enableSpeculativeDecoding: _shouldUseSpeculativeDecoding(backend),
-    ).timeout(
-      _modelOpenTimeout,
-      onTimeout: () => throw Exception(
-        'The local Gemma runtime did not open with ${backend.name.toUpperCase()} in time.',
-      ),
-    );
+    final model =
+        await FlutterGemma.getActiveModel(
+          maxTokens: _gemma4ContextTokens,
+          preferredBackend: backend,
+          enableSpeculativeDecoding: _shouldUseSpeculativeDecoding(backend),
+        ).timeout(
+          _modelOpenTimeout,
+          onTimeout: () => throw Exception(
+            'The local Gemma runtime did not open with ${backend.name.toUpperCase()} in time.',
+          ),
+        );
 
     try {
       await model.close().timeout(const Duration(seconds: 5));
@@ -954,10 +955,9 @@ Future<String> _generateText({
     if (_currentEmbedder != null) return _currentEmbedder!;
 
     if (!FlutterGemma.hasActiveEmbedder()) {
-      await FlutterGemma.installEmbedder()
-          .modelFromNetwork(_geckoModelUrl)
-          .tokenizerFromNetwork(_geckoTokenizerUrl)
-          .install();
+      throw Exception(
+        'The local embedding model is not installed. Falling back to keyword ranking.',
+      );
     }
 
     final embedder = await FlutterGemma.getActiveEmbedder(
