@@ -1,36 +1,63 @@
 ClinDiary — Gemma 4 Good Hackathon Submission
 
-Creative Commons Attribution 4.0 International (CC-BY 4.0)
+Creative Commons Attribution 4.0 International
+SPDX-License-Identifier: CC-BY-4.0
 
-Unless otherwise noted, the original ClinDiary submission materials, documentation,
-demo data, and source code created specifically for this hackathon submission are
-licensed under the Creative Commons Attribution 4.0 International License.
+Copyright (c) 2026 ClinDiary contributors
+
+Unless otherwise noted, the original ClinDiary source code, documentation,
+synthetic demo data, and hackathon submission materials in this repository are
+licensed under the Creative Commons Attribution 4.0 International License
+(CC-BY 4.0).
 
 You are free to:
+
 - Share — copy and redistribute the material in any medium or format.
-- Adapt — remix, transform, and build upon the material for any purpose, even commercially.
+- Adapt — remix, transform, and build upon the material for any purpose,
+  including commercial purposes.
 
 Under the following terms:
+
 - Attribution — You must give appropriate credit, provide a link to the license,
   and indicate if changes were made. You may do so in any reasonable manner,
-  but not in any way that suggests the licensor endorses you or your use.
+  but not in any way that suggests the original authors endorse you or your use.
 
-License text:
+The full license text is available at:
+
+https://creativecommons.org/licenses/by/4.0/legalcode
+
+Human-readable summary:
+
 https://creativecommons.org/licenses/by/4.0/
 
-Important notice:
-Third-party dependencies, SDKs, pretrained models, tools, frameworks, and assets
-not authored by the ClinDiary team remain under their respective licenses.
+Third-party notice:
 
-This includes, but is not limited to:
+This license applies only to original ClinDiary materials created for this
+project, unless otherwise stated.
+
+Third-party dependencies, SDKs, pretrained models, tools, frameworks, and assets
+remain under their respective licenses and terms. This includes, but is not
+limited to:
+
 - Flutter and Dart SDK
-- Android SDK and Gradle tooling
+- Android SDK and Android build tooling
 - Google AI Edge / LiteRT / LiteRT-LM
 - Gemma model family
 - flutter_gemma
 - Riverpod
-- Drift / SQLite-related packages
-- Any other open-source dependency declared in the project dependency files
+- Drift and SQLite-related packages
+- Any other dependency declared in the project dependency files
 
-No real patient data is included in this repository.
-Synthetic demo data is provided only for demonstration and reproducibility.
+Pretrained models and third-party runtime components are not relicensed by this
+repository.
+
+Demo data notice:
+
+The demo health data included in this repository is synthetic and was created
+only for demonstration and reproducibility. It does not contain real patient data,
+real medical records, or real personal health information.
+
+Medical safety notice:
+
+ClinDiary is a hackathon prototype and is not a medical device. It does not
+diagnose, prescribe medication, change dosages, or replace clinical care.
