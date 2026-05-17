@@ -8,7 +8,6 @@ Thumbs.db
 # Environment / local config
 .env
 .env.*
-!.env.example
 local.properties
 *.local
 
