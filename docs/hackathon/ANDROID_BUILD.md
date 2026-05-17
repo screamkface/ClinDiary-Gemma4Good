@@ -89,7 +89,7 @@ Provider: on_device_litertlm
 Runtime: flutter_gemma / LiteRT-LM
 Model: Gemma 4 E2B LiteRT-LM
 Backend: CPU or GPU
-External cloud AI used: No
+Remote AI request used: No
 ```
 
 ## Notes

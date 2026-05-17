@@ -3,7 +3,7 @@
 ClinDiary includes a synthetic local demo scenario for the Gemma 4 Good Hackathon.
 
 The purpose of the demo data is to make the application reviewable without a real
-backend account, real patient records, or private health information.
+patient account, real patient records, or private health information.
 
 ## Data policy
 

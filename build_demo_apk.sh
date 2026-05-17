@@ -32,14 +32,6 @@ echo ""
 echo "APK built successfully."
 echo "Location:"
 echo "build/app/outputs/flutter-apk/app-release.apk"
-echo ""
 
 du -h build/app/outputs/flutter-apk/app-release.apk || \
   ls -lh build/app/outputs/flutter-apk/app-release.apk
-
-echo ""
-echo "Next steps:"
-echo "1. Install on device:"
-echo "   adb install -r build/app/outputs/flutter-apk/app-release.apk"
-echo "2. Test local Gemma inference."
-echo "3. Record demo video."

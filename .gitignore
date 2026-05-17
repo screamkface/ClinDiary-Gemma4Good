@@ -9,8 +9,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
-*.local
 local.properties
+*.local
 
 # Secrets / credentials
 **/key.properties
@@ -22,28 +22,6 @@ local.properties
 **/*credentials*
 apps/mobile/android/app/google-services.json
 apps/mobile/ios/Runner/GoogleService-Info.plist
-
-# Python / backend
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.tox/
-.coverage
-.coverage.*
-htmlcov/
-dist/
-build/
-*.egg-info/
-.eggs/
-.venv/
-apps/backend/.venv/
-apps/backend/.pytest_cache/
-apps/backend/.mypy_cache/
-apps/backend/.ruff_cache/
 
 # Flutter / Dart
 .dart_tool/
@@ -60,6 +38,11 @@ apps/mobile/.packages
 apps/mobile/build/
 apps/mobile/coverage/
 apps/mobile/devtools_options.yaml
+apps/mobile/ios/Flutter/ephemeral/
+apps/mobile/ios/Flutter/flutter_export_environment.sh
+apps/mobile/macos/Flutter/ephemeral/
+apps/mobile/linux/flutter/ephemeral/
+apps/mobile/windows/flutter/ephemeral/
 
 # Android build/cache
 apps/mobile/android/.gradle/
@@ -69,13 +52,16 @@ apps/mobile/android/app/debug/
 apps/mobile/android/app/profile/
 apps/mobile/android/app/release/
 
-# iOS/macOS/Linux/Windows generated Flutter files
-apps/mobile/ios/Flutter/ephemeral/
-apps/mobile/ios/Flutter/flutter_export_environment.sh
-apps/mobile/ios/Pods/
-apps/mobile/macos/Flutter/ephemeral/
-apps/mobile/linux/flutter/ephemeral/
-apps/mobile/windows/flutter/ephemeral/
+# Backend/Python leftovers if present
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+*.egg-info/
 
 # Logs / temp
 *.log
@@ -88,26 +74,24 @@ tmp/
 *.sqlite
 *.sqlite3
 .storage/
-apps/backend/.storage/
 postgres_data/
 minio_data/
+infra/
 
 # Celery local state
 celerybeat-schedule*
 *.pid
 
-# Local model artifacts
+# Model and binary artifacts
 *.gguf
 *.safetensors
 *.onnx
 *.tflite
 *.litertlm
+*.apk
+*.aab
 models/
 apps/mobile/models/
-apps/backend/models/
-
-# Local infra (Docker, etc.)
-infra/
 
 # Agent/editor local artifacts
 .agents/
@@ -117,14 +101,4 @@ opencode.jsonc
 skills-lock.json
 
 # Temporary validation artifacts
-apps/mobile/test_output.txt
-apps/mobile/tests_expanded.txt
-apps/backend/test_results.txt
 clindiary_patch_files/
-AI_BOOTSTRAP_NOTES.md
-EMBEDDING_IMPLEMENTATION.md
-REMAINING_WORK.md
-ClinDiary Bue Print.md
-HACKATHON_SUBMISSION_CHECKLIST.md
-RELEASE_APK_GUIDE.md
-AGENTS.md

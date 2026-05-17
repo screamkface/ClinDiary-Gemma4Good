@@ -71,7 +71,7 @@ If needed, clearing app data also forces a clean reseed on next launch.
    - `Which values are abnormal?`
    - `What should I ask my doctor about?`
 10. Open Gemma recap or trend flow and show that the app uses local May context.
-11. Confirm the local proof/runtime card indicates cloud AI is bypassed.
+11. Confirm the local proof/runtime card indicates no remote AI request is required.
 
 ## Known Limitations
 
