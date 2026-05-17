@@ -104,6 +104,8 @@ docs/
 scripts/       Utility scripts, when relevant
 ```
 
+Installation instructions for the submitted Android demo APK are available in [`docs/hackathon/INSTALLATION.md`](docs/hackathon/INSTALLATION.md).
+
 ## Privacy statement
 
 ClinDiary is designed around a simple principle: personal health context should remain close to the user whenever possible.
