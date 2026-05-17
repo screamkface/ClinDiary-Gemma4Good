@@ -184,26 +184,6 @@
   "@authStartingApp": {
     "description": "User-facing UI text (lib/features/auth/presentation/session_gate_screen.dart:71)"
   },
-  "billingBillingAndPlanActivationFlowsAre": "Billing and plan activation flows are disabled. Features are driven by local-only mode and on-device capabilities.",
-  "@billingBillingAndPlanActivationFlowsAre": {
-    "description": "User-facing UI text (lib/features/billing/presentation/billing_screen.dart:21)"
-  },
-  "billingBillingRemovedForHackathon": "Billing removed for hackathon",
-  "@billingBillingRemovedForHackathon": {
-    "description": "Title text (lib/features/billing/presentation/billing_screen.dart:13)"
-  },
-  "billingLocalFirstBuild": "Local-first build",
-  "@billingLocalFirstBuild": {
-    "description": "Title text (lib/features/billing/presentation/billing_screen.dart:18)"
-  },
-  "billingOpenPrivacyAndAiSettings": "Open Privacy and AI settings",
-  "@billingOpenPrivacyAndAiSettings": {
-    "description": "User-facing UI text (lib/features/billing/presentation/billing_screen.dart:28)"
-  },
-  "billingThisHackathonBuildRunsWithoutBilling": "This hackathon build runs without billing gates.",
-  "@billingThisHackathonBuildRunsWithoutBilling": {
-    "description": "Title text (lib/features/billing/presentation/billing_screen.dart:19)"
-  },
   "checkUp": "Check-up",
   "@checkUp": {
     "description": "User-facing UI text (lib/features/history/presentation/history_screen.dart:413)"
@@ -1172,7 +1152,6 @@
   "@devicesWeight2": {
     "description": "User-facing UI text (lib/features/devices/presentation/devices_screen.dart:1371)"
   },
-  "discoverAiPlus": "Discover AI Plus",
   "documents": "Documents",
   "@documents": {
     "description": "User-facing UI text (lib/features/debug/presentation/sync_debug_screen.dart:118)"

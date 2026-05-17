@@ -5,7 +5,6 @@ import 'package:clindiary/app/core/storage/local_database.dart' hide DailyEntry;
 import 'package:clindiary/app/core/storage/profile_scoped_cache.dart';
 import 'package:clindiary/features/alerts/domain/clinical_alert.dart';
 import 'package:clindiary/features/auth/domain/auth_session.dart';
-import 'package:clindiary/features/billing/domain/billing_status.dart';
 import 'package:clindiary/features/daily_journal/domain/daily_entry.dart';
 import 'package:clindiary/features/dossier/domain/health_dossier.dart';
 import 'package:clindiary/features/devices/domain/device_hub.dart';
@@ -451,10 +450,6 @@ class DemoSeedData {
   }
 
   static List<DailyEntry> demoDailyEntriesForMay2026() => demoDailyEntries();
-
-  static BillingStatus demoBillingStatus() {
-    return BillingStatus.fromJson(_billingStatusJson());
-  }
 
   static DeviceOverview demoDeviceOverview() {
     return DeviceOverview.fromJson(_deviceOverviewJson());
@@ -2975,75 +2970,6 @@ class DemoSeedData {
       'recent_reports': [_latestReportJson()],
       'alerts': _alertsJson(),
       'wearable_summaries': _wearableSummariesJson(),
-    };
-  }
-
-  static Map<String, dynamic> _billingStatusJson() {
-    return {
-      'current_plan': {
-        'id': 'plan-pro',
-        'code': 'ai_plus_yearly',
-        'name': 'AI Plus Annual',
-        'description': 'Full cloud + AI feature set for demo',
-        'billing_interval': 'yearly',
-        'price_cents': 9900,
-        'currency': 'EUR',
-        'sort_order': 1,
-        'highlight_label': 'Recommended',
-        'is_active': true,
-        'is_public': true,
-        'is_recommended': true,
-        'feature_codes': [
-          'cloud_document_storage',
-          'ai_document_query',
-          'advanced_reports',
-        ],
-      },
-      'available_plans': [
-        {
-          'id': 'plan-free',
-          'code': 'free',
-          'name': 'Free',
-          'description': 'Local-only mode',
-          'billing_interval': 'monthly',
-          'price_cents': 0,
-          'currency': 'EUR',
-          'sort_order': 0,
-          'highlight_label': null,
-          'is_active': true,
-          'is_public': true,
-          'is_recommended': false,
-          'feature_codes': [],
-        },
-        {
-          'id': 'plan-pro',
-          'code': 'ai_plus_yearly',
-          'name': 'AI Plus Annual',
-          'description': 'Full cloud + AI feature set for demo',
-          'billing_interval': 'yearly',
-          'price_cents': 9900,
-          'currency': 'EUR',
-          'sort_order': 1,
-          'highlight_label': 'Recommended',
-          'is_active': true,
-          'is_public': true,
-          'is_recommended': true,
-          'feature_codes': [
-            'cloud_document_storage',
-            'ai_document_query',
-            'advanced_reports',
-          ],
-        },
-      ],
-      'entitlement_codes': [
-        'cloud_document_storage',
-        'ai_document_query',
-        'advanced_reports',
-      ],
-      'has_active_paid_subscription': true,
-      'checkout_ready': true,
-      'hackathon_demo_mode': true,
-      'active_subscription': null,
     };
   }
 

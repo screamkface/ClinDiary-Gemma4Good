@@ -6,7 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
-import 'app_localizations_it.dart';
 
 // ignore_for_file: type=lint
 
@@ -93,10 +92,7 @@ abstract class AppLocalizations {
       ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
-    Locale('it'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('en')];
 
   /// No description provided for @activeProfileLabel.
   ///
@@ -379,36 +375,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Starting app...'**
   String get authStartingApp;
-
-  /// User-facing UI text (lib/features/billing/presentation/billing_screen.dart:21)
-  ///
-  /// In en, this message translates to:
-  /// **'Billing and plan activation flows are disabled. Features are driven by local-only mode and on-device capabilities.'**
-  String get billingBillingAndPlanActivationFlowsAre;
-
-  /// Title text (lib/features/billing/presentation/billing_screen.dart:13)
-  ///
-  /// In en, this message translates to:
-  /// **'Billing removed for hackathon'**
-  String get billingBillingRemovedForHackathon;
-
-  /// Title text (lib/features/billing/presentation/billing_screen.dart:18)
-  ///
-  /// In en, this message translates to:
-  /// **'Local-first build'**
-  String get billingLocalFirstBuild;
-
-  /// User-facing UI text (lib/features/billing/presentation/billing_screen.dart:28)
-  ///
-  /// In en, this message translates to:
-  /// **'Open Privacy and AI settings'**
-  String get billingOpenPrivacyAndAiSettings;
-
-  /// Title text (lib/features/billing/presentation/billing_screen.dart:19)
-  ///
-  /// In en, this message translates to:
-  /// **'This hackathon build runs without billing gates.'**
-  String get billingThisHackathonBuildRunsWithoutBilling;
 
   /// User-facing UI text (lib/features/history/presentation/history_screen.dart:413)
   ///
@@ -1897,12 +1863,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Weight'**
   String get devicesWeight2;
-
-  /// No description provided for @discoverAiPlus.
-  ///
-  /// In en, this message translates to:
-  /// **'Discover AI Plus'**
-  String get discoverAiPlus;
 
   /// User-facing UI text (lib/features/debug/presentation/sync_debug_screen.dart:118)
   ///
@@ -12302,7 +12262,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'it'].contains(locale.languageCode);
+      <String>['en'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -12313,8 +12273,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en':
       return AppLocalizationsEn();
-    case 'it':
-      return AppLocalizationsIt();
   }
 
   throw FlutterError(

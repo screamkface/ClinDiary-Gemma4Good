@@ -157,24 +157,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authStartingApp => 'Starting app...';
 
   @override
-  String get billingBillingAndPlanActivationFlowsAre =>
-      'Billing and plan activation flows are disabled. Features are driven by local-only mode and on-device capabilities.';
-
-  @override
-  String get billingBillingRemovedForHackathon =>
-      'Billing removed for hackathon';
-
-  @override
-  String get billingLocalFirstBuild => 'Local-first build';
-
-  @override
-  String get billingOpenPrivacyAndAiSettings => 'Open Privacy and AI settings';
-
-  @override
-  String get billingThisHackathonBuildRunsWithoutBilling =>
-      'This hackathon build runs without billing gates.';
-
-  @override
   String get checkUp => 'Check-up';
 
   @override
@@ -964,9 +946,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get devicesWeight2 => 'Weight';
-
-  @override
-  String get discoverAiPlus => 'Discover AI Plus';
 
   @override
   String get documents => 'Documents';
